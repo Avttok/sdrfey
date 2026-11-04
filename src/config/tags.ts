@@ -39,6 +39,8 @@ export const TAG = {
   semContato: "sem_contato",
   contabilidade: "contabilidade",
   cliente: "cliente",
+  descartado: "descartado",
+  conversando: "conversando",
 } as const;
 
 export const TAG_GROUPS_SEED: TagGroupSeed[] = [
@@ -102,6 +104,7 @@ export const TAG_GROUPS_SEED: TagGroupSeed[] = [
       { key: "email_errado", label: "Email errado", color: "#a16207" },
       { key: "dados_errados", label: "Dados errados", color: "#a16207" },
       { key: "inexistente", label: "Inexistente", color: "#dc2626", blocksSorting: true },
+      { key: "descartado", label: "Descartado", color: "#b91c1c", blocksSorting: true },
     ],
   },
   { key: "porte", name: "Porte", exclusive: true, mode: "auto", tags: [] },
@@ -114,4 +117,9 @@ export const SETTINGS_SEED: Record<string, unknown> = {
   lock_minutes: 30,
   /** Meta diária de contatos por pessoa. */
   daily_goal: 35,
+  /** Horas que um lead pulado fica escondido só para quem pulou. */
+  skip_hours: 24,
+  /** Dias até "Sem contato" voltar ao sorteio. */
+  sem_contato_days: 3,
+  rework_days: 30,
 };
