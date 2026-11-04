@@ -1,5 +1,5 @@
 import { inArray } from "drizzle-orm";
-import { db, leads, leadTags, tagGroups, tags, users, type Db } from "@/db";
+import { db, leadChannels, leadPeople, leads, leadTags, tagGroups, tags, users, type Db } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import type { LeadDraft, TagRef } from "./leads-parse";
 import { stripAccents } from "./normalize";
@@ -108,6 +108,20 @@ export async function applyLeadDrafts(
         }),
       );
       for (const links of chunk(tagLinks, 2000)) await tx.insert(leadTags).values(links);
+
+      /* telefones e e-mails viram canais; o contato da planilha vira uma pessoa */
+      const channels = part.flatMap((d) => {
+        const leadId = idByCnpj.get(d.cnpj)!;
+        return [
+          ...d.phones.map((value) => ({ leadId, kind: "phone" as const, value, origin: "import" as const })),
+          ...(d.email ? [{ leadId, kind: "email" as const, value: d.email, origin: "import" as const }] : []),
+        ];
+      });
+      for (const rows of chunk(channels, 2000)) await tx.insert(leadChannels).values(rows).onConflictDoNothing();
+      const people = part.flatMap((d) =>
+        d.contactName ? [{ leadId: idByCnpj.get(d.cnpj)!, name: d.contactName, roleTitle: d.roleTitle }] : [],
+      );
+      for (const rows of chunk(people, 2000)) await tx.insert(leadPeople).values(rows);
 
       await logAudit(
         tx,

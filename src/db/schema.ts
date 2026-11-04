@@ -35,6 +35,12 @@ export const users = pgTable("users", {
   /** Aumente para derrubar todas as sessões abertas do usuário. */
   sessionVersion: integer("session_version").notNull().default(1),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+  /** Meta diária própria. Nulo = usa a meta global. */
+  dailyGoal: integer("daily_goal"),
+  /** Permissão dada pelo Adm: pode alterar metas da equipe. */
+  canManageGoals: boolean("can_manage_goals").notNull().default(false),
+  /** Ajustes do Adm só para esta pessoa (abas, blocos do painel...). Vazio = usa o padrão do cargo. */
+  permissions: jsonb("permissions").$type<Record<string, boolean>>().notNull().default(sql`'{}'::jsonb`),
   createdAt: now(),
 });
 
@@ -106,6 +112,14 @@ export const leads = pgTable(
     uf: text("uf"),
     registrationStatus: text("registration_status"),
     cnpjData: jsonb("cnpj_data"),
+    /** Respostas cruas de cada serviço de consulta, guardadas separadas. */
+    brasilApiData: jsonb("brasilapi_data"),
+    receitaWsData: jsonb("receitaws_data"),
+    tradeName: text("trade_name"),
+    /** Lead de teste (modo teste): nunca entra nas métricas reais. */
+    isTest: boolean("is_test").notNull().default(false),
+    /** Data combinada para voltar a falar com o lead. */
+    returnAt: timestamp("return_at", { withTimezone: true }),
     enrichedAt: timestamp("enriched_at", { withTimezone: true }),
 
     source: text("source"),
@@ -220,3 +234,102 @@ export const auditLog = pgTable(
     index("audit_user_idx").on(t.userId),
   ],
 );
+
+/* ───────────── Contatos do lead: pessoas e canais ───────────── */
+
+export const leadPeople = pgTable(
+  "lead_people",
+  {
+    id: serial("id").primaryKey(),
+    leadId: integer("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    roleTitle: text("role_title"),
+    extension: text("extension"),
+    notes: text("notes"),
+    createdAt: now(),
+  },
+  (t) => [index("lead_people_lead_idx").on(t.leadId)],
+);
+
+/** Telefones e e-mails. Pertencem à empresa (personId nulo) ou a uma pessoa. */
+export const leadChannels = pgTable(
+  "lead_channels",
+  {
+    id: serial("id").primaryKey(),
+    leadId: integer("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
+    personId: integer("person_id").references(() => leadPeople.id, { onDelete: "set null" }),
+    kind: text("kind").$type<"phone" | "email">().notNull(),
+    /** Telefone só com dígitos; e-mail em minúsculas. */
+    value: text("value").notNull(),
+    label: text("label"),
+    origin: text("origin").$type<"import" | "manual" | "brasilapi" | "receitaws">().notNull().default("manual"),
+    wrong: boolean("wrong").notNull().default(false),
+    createdAt: now(),
+  },
+  (t) => [uniqueIndex("lead_channels_uq").on(t.leadId, t.kind, t.value), index("lead_channels_value_idx").on(t.value)],
+);
+
+/* ───────────── Atendimento ───────────── */
+
+/** Cada contato feito com um lead (ligação, WhatsApp, e-mail...). */
+export const interactions = pgTable(
+  "interactions",
+  {
+    id: serial("id").primaryKey(),
+    leadId: integer("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    /** Chave da tag do grupo "meio". */
+    channel: text("channel").notNull(),
+    note: text("note"),
+    isTest: boolean("is_test").notNull().default(false),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("interactions_at_idx").on(t.at), index("interactions_user_idx").on(t.userId), index("interactions_lead_idx").on(t.leadId)],
+);
+
+/** Uma passada do usuário por um lead: base do tempo médio e da meta. */
+export const attendanceSessions = pgTable(
+  "attendance_sessions",
+  {
+    id: serial("id").primaryKey(),
+    leadId: integer("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    shownAt: timestamp("shown_at", { withTimezone: true }).notNull().defaultNow(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    savedAt: timestamp("saved_at", { withTimezone: true }),
+    /** 'saved' | 'skipped' | 'abandoned' | 'released' */
+    outcome: text("outcome"),
+    isTest: boolean("is_test").notNull().default(false),
+  },
+  (t) => [index("sessions_user_idx").on(t.userId, t.savedAt), index("sessions_lead_idx").on(t.leadId)],
+);
+
+/** Lead pulado: some só para esse usuário até `until`. */
+export const leadSkips = pgTable(
+  "lead_skips",
+  {
+    leadId: integer("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    until: timestamp("until", { withTimezone: true }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.leadId, t.userId] })],
+);
+
+/** Quem está online (batimento a cada ~30 s; online se < 90 s). */
+export const presence = pgTable("presence", {
+  userId: integer("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  activity: text("activity"),
+  leadId: integer("lead_id"),
+});
+
+/** Modelos de e-mail gerenciados pelo Adm. Variáveis: {meu_nome} {empresa} {contato|fallback} {cidade} {representante}. */
+export const emailTemplates = pgTable("email_templates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  active: boolean("active").notNull().default(true),
+  sort: integer("sort").notNull().default(0),
+  createdAt: now(),
+});
