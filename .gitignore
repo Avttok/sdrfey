@@ -1,0 +1,12 @@
+node_modules
+.next
+.vercel
+.env*
+!.env.example
+*.tsbuildinfo
+next-env.d.ts
+# Dados de leads têm informações pessoais: nunca versionar
+*.csv
+*.ods
+*.xlsx
+data/
