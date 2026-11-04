@@ -4,7 +4,7 @@ import { PasswordForm } from "@/components/password-form";
 import { RoleBadge } from "@/components/role-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { btnGhost, panelCls } from "@/components/ui";
-import { ACCENTS, resolveAccent } from "@/config/theme";
+import { CHOOSABLE_ACCENTS, resolveAccent } from "@/config/theme";
 import { requireUser } from "@/modules/auth/guard";
 import { setAccentAction } from "@/modules/users/actions";
 
@@ -41,7 +41,7 @@ export default async function AccountPage() {
 
           <p className="mb-2 text-sm font-medium">Cor do sistema</p>
           <form action={setAccentAction} className="flex flex-wrap gap-2.5">
-            {ACCENTS.map((a) => {
+            {CHOOSABLE_ACCENTS.map((a) => {
               const selected = a.key === current.key;
               return (
                 <button
@@ -53,7 +53,7 @@ export default async function AccountPage() {
                   aria-label={a.label}
                   aria-pressed={selected}
                   className="flex size-10 items-center justify-center rounded-full ring-offset-2 ring-offset-panel transition hover:scale-105 aria-pressed:ring-2 aria-pressed:ring-ink"
-                  style={{ background: a.hex, color: a.key === "amarelo" ? "#1a1a1a" : "#fff" }}
+                  style={{ background: a.hex, color: a.key === "lima" ? "#1a1a1a" : "#fff" }}
                 >
                   {selected && <Check size={18} aria-hidden />}
                 </button>

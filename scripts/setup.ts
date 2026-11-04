@@ -5,7 +5,8 @@
 import { readFileSync } from "node:fs";
 import { sql as dsql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
-import { db, sql, cities, settings, tagGroups, tags, users } from "../src/db";
+import { db, sql, cities, emailTemplates, settings, tagGroups, tags, users } from "../src/db";
+import { DEFAULT_TEMPLATE } from "../src/modules/email/render";
 import { SEED_USERS } from "../src/config/seed-users";
 import { SETTINGS_SEED, TAG_GROUPS_SEED } from "../src/config/tags";
 import { cityKey } from "../src/modules/import/reps";
@@ -49,6 +50,10 @@ async function main() {
   for (const [key, value] of Object.entries(SETTINGS_SEED)) {
     await db.insert(settings).values({ key, value }).onConflictDoNothing();
   }
+
+  // modelo de e-mail inicial (só se ainda não existir nenhum)
+  const [{ n: nTpl }] = await db.select({ n: dsql<number>`count(*)` }).from(emailTemplates);
+  if (Number(nTpl) === 0) await db.insert(emailTemplates).values(DEFAULT_TEMPLATE);
 
   // cidades (para achar o representante mais próximo)
   const [{ count }] = await db.select({ count: sqlCount() }).from(cities);

@@ -12,12 +12,22 @@ export const ACCENTS = [
   { key: "ciano", label: "Ciano", hex: "#06b6d4" },
   { key: "indigo", label: "Índigo", hex: "#6366f1" },
   { key: "grafite", label: "Grafite", hex: "#64748b" },
+  { key: "lima", label: "Lima", hex: "#84cc16" },
+  { key: "turquesa", label: "Turquesa", hex: "#14b8a6" },
 ] as const;
+
+/** Amarelo e vermelho são reservados aos cargos Gestor e Adm: ninguém os escolhe. */
+export const CHOOSABLE_ACCENTS = ACCENTS.filter((a) => a.key !== "amarelo" && a.key !== "vermelho");
 
 export type AccentKey = (typeof ACCENTS)[number]["key"];
 
 export function isAccentKey(value: string | null | undefined): value is AccentKey {
   return ACCENTS.some((a) => a.key === value);
+}
+
+/** Cores que uma pessoa pode escolher para si. */
+export function isChoosableAccent(value: string | null | undefined): value is AccentKey {
+  return CHOOSABLE_ACCENTS.some((a) => a.key === value);
 }
 
 /** Cor efetiva: a escolhida pela pessoa ou a padrão do cargo mais alto. */

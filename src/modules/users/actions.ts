@@ -3,7 +3,7 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, users } from "@/db";
-import { isAccentKey } from "@/config/theme";
+import { isChoosableAccent } from "@/config/theme";
 import { logAudit } from "@/modules/audit/log";
 import { requireUser } from "@/modules/auth/guard";
 
@@ -11,7 +11,7 @@ import { requireUser } from "@/modules/auth/guard";
 export async function setAccentAction(formData: FormData) {
   const me = await requireUser();
   const raw = String(formData.get("accent") ?? "");
-  const next = isAccentKey(raw) ? raw : null;
+  const next = isChoosableAccent(raw) ? raw : null;
   if (next === me.accent) return;
 
   await db.update(users).set({ accent: next }).where(eq(users.id, me.id));
