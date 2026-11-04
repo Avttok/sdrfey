@@ -4,6 +4,9 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { db, users } from "@/db";
 import { hasRole, type Role } from "@/config/roles";
+import type { PermissionMap, RoleOverrides } from "@/config/permissions";
+import { resolvePermissions } from "@/modules/permissions/resolve";
+import { settings } from "@/db";
 import { SESSION_COOKIE, readToken, sessionMaxAge, signToken } from "./token";
 
 export type CurrentUser = {
@@ -13,6 +16,9 @@ export type CurrentUser = {
   roles: Role[];
   accent: string | null;
   mustChangePassword: boolean;
+  permissions: PermissionMap;
+  canManageGoals: boolean;
+  dailyGoal: number | null;
 };
 
 /** Grava o cookie de login. */
@@ -40,7 +46,14 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const [u] = await db.select().from(users).where(eq(users.id, session.uid)).limit(1);
   if (!u || !u.active || u.sessionVersion !== session.v) return null;
 
+  const [ro] = await db.select().from(settings).where(eq(settings.key, "role_permissions")).limit(1);
+  const permissions = resolvePermissions(u.roles, u.permissions, (ro?.value ?? {}) as RoleOverrides);
+  if (u.canManageGoals) permissions["goals.edit"] = true;
+
   return {
+    permissions,
+    canManageGoals: u.canManageGoals,
+    dailyGoal: u.dailyGoal,
     id: u.id,
     username: u.username,
     name: u.name,
@@ -63,4 +76,16 @@ export async function requireRole(role: Role): Promise<CurrentUser> {
   const user = await requireUser();
   if (!hasRole(user.roles, role)) redirect("/painel");
   return user;
+}
+
+/** Exige uma permissão (o Adm sempre passa). Quem não tem volta para a primeira página que pode ver. */
+export async function requirePerm(key: string): Promise<CurrentUser> {
+  const user = await requireUser();
+  if (!user.permissions[key]) redirect("/conta");
+  return user;
+}
+
+/** Área do Adm: só quem tem o cargo Adm. */
+export async function requireAdmin(): Promise<CurrentUser> {
+  return requireRole("admin");
 }

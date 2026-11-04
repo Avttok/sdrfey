@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import { AttendButton } from "@/components/attend-button";
 import { panelCls } from "@/components/ui";
 import { fmtDateTime, fmtDuration } from "@/lib/format";
-import { requireUser } from "@/modules/auth/guard";
+import { requirePerm } from "@/modules/auth/guard";
 import { userHistory } from "@/modules/leads/sorter";
 
 export const metadata: Metadata = { title: "Meu histórico" };
 export const dynamic = "force-dynamic";
 
 export default async function HistoryPage() {
-  const me = await requireUser();
+  const me = await requirePerm("tab.historico");
   const rows = await userHistory(me.id);
   return (
     <div className="space-y-5">

@@ -56,8 +56,8 @@ function where(f: LeadFilters): SQL | undefined {
   if (f.status) c.push(sql`${leads.registrationStatus} ilike ${f.status}`);
   if (f.phone) c.push(f.phone === "1" ? sql`exists (select 1 from lead_channels c where c.lead_id = ${leads.id} and c.kind = 'phone' and not c.wrong)` : sql`not exists (select 1 from lead_channels c where c.lead_id = ${leads.id} and c.kind = 'phone' and not c.wrong)`);
   if (f.email) c.push(f.email === "1" ? sql`exists (select 1 from lead_channels c where c.lead_id = ${leads.id} and c.kind = 'email' and not c.wrong)` : sql`not exists (select 1 from lead_channels c where c.lead_id = ${leads.id} and c.kind = 'email' and not c.wrong)`);
-  if (f.from) c.push(sql`${leads.updatedAt} >= ${dayStart(f.from)}`);
-  if (f.to) c.push(sql`${leads.updatedAt} <= ${dayEnd(f.to)}`);
+  if (f.from) c.push(sql`${leads.updatedAt} >= ${dayStart(f.from).toISOString()}::timestamptz`);
+  if (f.to) c.push(sql`${leads.updatedAt} <= ${dayEnd(f.to).toISOString()}::timestamptz`);
   if (f.visit) c.push(sql`exists (select 1 from visits v where v.lead_id = ${leads.id} and v.code ilike ${`%${f.visit}%`})`);
   return and(...c);
 }
@@ -65,8 +65,8 @@ function where(f: LeadFilters): SQL | undefined {
 export async function listLeads(f: LeadFilters) {
   const w = where(f);
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(leads).where(w);
-  const rows = await db.execute<{ id: number; company: string; trade_name: string | null; cnpj: string; city: string | null; uf: string | null; owner_name: string | null; owner_accent: string | null; owner_roles: string[] | null; locked_by_name: string | null; tags: { label: string; color: string; group: string }[] }>(sql`
-    select leads.id, leads.company, leads.trade_name, leads.cnpj, leads.city, leads.uf, o.name as owner_name, o.accent as owner_accent, o.roles as owner_roles, lk.name as locked_by_name,
+  const rows = await db.execute<{ id: number; company: string; trade_name: string | null; cnpj: string; city: string | null; uf: string | null; owner_name: string | null; owner_accent: string | null; owner_id: number | null; locked_by_name: string | null; tags: { label: string; color: string; group: string }[] }>(sql`
+    select leads.id, leads.company, leads.trade_name, leads.cnpj, leads.city, leads.uf, o.name as owner_name, o.accent as owner_accent, leads.owner_id as owner_id, lk.name as locked_by_name,
       coalesce((select json_agg(json_build_object('label', t.label, 'color', t.color, 'group', t.group_key) order by t.sort)
                 from lead_tags lt join tags t on t.id = lt.tag_id where lt.lead_id = leads.id and t.group_key in ('temperatura','meio','qualificacao','agenda','situacao')), '[]'::json) as tags
     from leads left join users o on o.id = leads.owner_id left join users lk on lk.id = leads.locked_by

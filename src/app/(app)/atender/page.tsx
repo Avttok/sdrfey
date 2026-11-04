@@ -4,7 +4,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { AttendFlow } from "@/components/attend-flow";
 import { btnPrimary, panelCls } from "@/components/ui";
 import { attendanceSessions, db, leads } from "@/db";
-import { requireUser } from "@/modules/auth/guard";
+import { requirePerm } from "@/modules/auth/guard";
 import { startAction } from "@/modules/leads/actions";
 import { getSettings } from "@/modules/settings/get";
 import { getActiveTemplates, getLeadView, getTagCatalog } from "@/modules/leads/view";
@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Começar" };
 export const dynamic = "force-dynamic";
 
 export default async function AttendPage() {
-  const me = await requireUser();
+  const me = await requirePerm("tab.comecar");
   const [mine] = await db.select({ id: leads.id }).from(leads).where(eq(leads.lockedBy, me.id)).limit(1);
   const lead = mine ? await getLeadView(mine.id) : null;
 
@@ -40,5 +40,5 @@ export default async function AttendPage() {
       .from(attendanceSessions)
       .where(and(eq(attendanceSessions.userId, me.id), eq(attendanceSessions.outcome, "saved"), eq(attendanceSessions.isTest, false), sql`${attendanceSessions.savedAt} >= (date_trunc('day', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo')`)),
   ]);
-  return <AttendFlow lead={lead} catalog={catalog} templates={templates} myName={me.name} doneToday={done?.n ?? 0} goal={settings.daily_goal} />;
+  return <AttendFlow lead={lead} catalog={catalog} templates={templates} myName={me.name} doneToday={done?.n ?? 0} goal={me.dailyGoal ?? settings.daily_goal} />;
 }

@@ -1,5 +1,6 @@
 import { LogOut } from "lucide-react";
 import Link from "next/link";
+import { visibleNav } from "@/config/nav";
 import { topRole } from "@/config/roles";
 import type { CurrentUser } from "@/modules/auth/guard";
 import { logoutAction } from "@/modules/auth/actions";
@@ -13,12 +14,12 @@ export function AppHeader({ user }: { user: CurrentUser }) {
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-panel/90 backdrop-blur">
       <div className="thread" aria-hidden />
-      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2.5 sm:px-6">
+      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2.5 sm:px-6">
         <Link href="/painel" aria-label="SDR Fey, ir para o painel">
           <Logo />
         </Link>
         <div className="order-3 w-full sm:order-none sm:w-auto sm:flex-1">
-          <NavLinks roles={user.roles} />
+          <NavLinks hrefs={visibleNav(user.permissions, user.roles.includes("admin")).map((i) => i.href)} />
         </div>
         <div className="ml-auto flex items-center gap-3">
           <div className="hidden text-right leading-tight sm:block">

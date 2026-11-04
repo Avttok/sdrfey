@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db, leadChannels, presence } from "@/db";
 import { logAudit } from "@/modules/audit/log";
-import { requireUser } from "@/modules/auth/guard";
+import { requirePerm, requireUser } from "@/modules/auth/guard";
 import { enrichLead } from "@/modules/enrich/enrich";
 import { addChannel, discardLead, markStarted, saveAttendance, type SaveInput } from "./attend";
 import { attendLead, claimNext, releaseLead, skipLead, touchLock, UserError } from "./sorter";
@@ -27,14 +27,14 @@ async function guard(fn: () => Promise<ActionResult | void>): Promise<ActionResu
 
 /** "Começar": sorteia o próximo lead (ou volta ao que já está em mãos). */
 export async function startAction() {
-  const me = await requireUser();
+  const me = await requirePerm("tab.comecar");
   await claimNext(me.id);
   redirect("/atender");
 }
 
 /** "ATENDER" em um lead específico (aba Leads ou Histórico): mesmo fluxo do sorteio. */
 export async function attendAction(leadId: number): Promise<ActionResult> {
-  const me = await requireUser();
+  const me = await requirePerm("tab.comecar");
   return guard(async () => {
     await attendLead(me.id, leadId);
     redirect("/atender");
@@ -42,7 +42,7 @@ export async function attendAction(leadId: number): Promise<ActionResult> {
 }
 
 export async function skipAction(leadId: number): Promise<ActionResult> {
-  const me = await requireUser();
+  const me = await requirePerm("tab.comecar");
   return guard(async () => {
     await skipLead(me.id, leadId);
     revalidatePath("/atender");
@@ -50,7 +50,7 @@ export async function skipAction(leadId: number): Promise<ActionResult> {
 }
 
 export async function releaseAction(leadId: number): Promise<ActionResult> {
-  const me = await requireUser();
+  const me = await requirePerm("tab.comecar");
   return guard(async () => {
     await releaseLead(me.id, leadId);
     redirect("/painel");
@@ -58,7 +58,7 @@ export async function releaseAction(leadId: number): Promise<ActionResult> {
 }
 
 export async function saveAction(input: SaveInput): Promise<ActionResult> {
-  const me = await requireUser();
+  const me = await requirePerm("tab.comecar");
   return guard(async () => {
     await saveAttendance(me.id, input);
     revalidatePath("/atender");
@@ -67,7 +67,7 @@ export async function saveAction(input: SaveInput): Promise<ActionResult> {
 }
 
 export async function discardAction(leadId: number, reason: string): Promise<ActionResult> {
-  const me = await requireUser();
+  const me = await requirePerm("tab.comecar");
   return guard(async () => {
     await discardLead(me.id, leadId, reason);
     revalidatePath("/atender");
@@ -76,7 +76,7 @@ export async function discardAction(leadId: number, reason: string): Promise<Act
 }
 
 export async function startedAction(leadId: number): Promise<void> {
-  const me = await requireUser();
+  const me = await requirePerm("tab.comecar");
   await markStarted(me.id, leadId);
 }
 
@@ -112,7 +112,7 @@ export async function removeChannelAction(leadId: number, channelId: number): Pr
 }
 
 export async function refreshInfoAction(leadId: number): Promise<ActionResult> {
-  const me = await requireUser();
+  const me = await requirePerm("tab.comecar");
   return guard(async () => {
     const r = await enrichLead(leadId, me.id);
     revalidatePath("/atender");
@@ -130,4 +130,12 @@ export async function heartbeatAction(leadId: number | null, activity: string): 
     .insert(presence)
     .values({ userId: me.id, activity, leadId, lastSeenAt: new Date() })
     .onConflictDoUpdate({ target: presence.userId, set: { activity, leadId, lastSeenAt: new Date() } });
+}
+
+/** Modo teste: o Adm atende leads falsos, sem tocar nas métricas reais. */
+export async function startTestAction() {
+  const me = await requireUser();
+  if (!me.roles.includes("admin")) redirect("/painel");
+  await claimNext(me.id, { test: true });
+  redirect("/atender");
 }

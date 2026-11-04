@@ -7,10 +7,9 @@ import { LeadFilters } from "@/components/lead-filters";
 import { TagChip } from "@/components/tag-chip";
 import { panelCls } from "@/components/ui";
 import { db, leads, users } from "@/db";
-import type { Role } from "@/config/roles";
-import { resolveAccent } from "@/config/theme";
+import { bubbleHex } from "@/config/theme";
 import { fmtCnpj } from "@/lib/format";
-import { requireUser } from "@/modules/auth/guard";
+import { requirePerm } from "@/modules/auth/guard";
 import { listLeads, parseFilters } from "@/modules/leads/list";
 import { getTagCatalog } from "@/modules/leads/view";
 
@@ -18,7 +17,7 @@ export const metadata: Metadata = { title: "Leads" };
 export const dynamic = "force-dynamic";
 
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  await requireUser();
+  await requirePerm("tab.leads");
   const sp = await searchParams;
   const filters = parseFilters(sp);
   const [catalog, people, ufRows, { total, rows, pages }] = await Promise.all([
@@ -45,11 +44,11 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
       <p className="text-sm font-medium">{new Intl.NumberFormat("pt-BR").format(total)} lead(s)</p>
       <ul className="space-y-2">
         {rows.map((l) => {
-          const accent = l.owner_name ? resolveAccent(l.owner_accent, (l.owner_roles ?? ["user"]) as Role[]) : null;
+          const accent = l.owner_name ? { hex: bubbleHex(l.owner_accent, l.owner_id ?? 0) } : null;
           return (
             <li key={l.id} className={`${panelCls} flex flex-wrap items-center gap-3 p-4`}>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{l.trade_name ?? l.company}</p>
+                <Link href={`/leads/${l.id}`} className="block truncate font-medium hover:underline">{l.trade_name ?? l.company}</Link>
                 <p className="text-xs text-muted">{fmtCnpj(l.cnpj)}{l.city ? ` · ${l.city}/${l.uf}` : ""}</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {l.tags.map((t) => <TagChip key={t.label} label={t.label} color={t.color} />)}

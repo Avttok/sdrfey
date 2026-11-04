@@ -44,3 +44,9 @@ function readableOn(hex: string): string {
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   return luminance > 0.62 ? "#1a1a1a" : "#ffffff";
 }
+
+/** Cor da bolha de uma pessoa: a que ela escolheu; sem escolha, uma cor fixa da paleta (nunca amarelo/vermelho, que são dos cargos). */
+export function bubbleHex(accent: string | null | undefined, userId: number): string {
+  if (isChoosableAccent(accent)) return CHOOSABLE_ACCENTS.find((a) => a.key === accent)!.hex;
+  return CHOOSABLE_ACCENTS[userId % CHOOSABLE_ACCENTS.length].hex;
+}

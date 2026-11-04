@@ -3,11 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV } from "@/config/nav";
-import { hasRole, type Role } from "@/config/roles";
 
-export function NavLinks({ roles }: { roles: Role[] }) {
+export function NavLinks({ hrefs }: { hrefs: string[] }) {
   const pathname = usePathname();
-  const items = NAV.filter((item) => hasRole(roles, item.role));
+  const items = NAV.filter((item) => hrefs.includes(item.href));
 
   return (
     <nav aria-label="Principal" className="-mx-1 flex gap-1 overflow-x-auto">
