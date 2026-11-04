@@ -52,6 +52,16 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, goal }
   const goodEmails = emails.filter((e) => !e.wrong);
   const groups = useMemo(() => Object.fromEntries(catalog.map((g) => [g.key, g])), [catalog]);
 
+  /* lead ainda não consultado: busca os dados da Receita sozinho, uma vez, ao abrir */
+  useEffect(() => {
+    if (lead.enrichedAt !== null) return;
+    void refreshInfoAction(lead.id).then((r) => {
+      if (!r.ok) toast("warn", r.message);
+      else if (r.message?.includes("novo")) toast("info", r.message);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lead.id]);
+
   /* batimento a cada 30 s: mantém o lead com você e mostra que está online */
   useEffect(() => {
     const beat = () => void heartbeatAction(lead.id, `Atendendo ${lead.company}`);
