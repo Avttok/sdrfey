@@ -55,5 +55,5 @@ export default async function AttendPage() {
   }
 
   const [catalog, templates] = await Promise.all([getTagCatalog(), getActiveTemplates()]);
-  return <AttendFlow lead={lead} catalog={catalog} templates={templates} myName={me.name} doneToday={done?.n ?? 0} scheduledToday={sched?.n ?? 0} goals={goals} />;
+  return <AttendFlow lead={lead} catalog={catalog} templates={templates} myName={me.name} showMap={me.mapMode === "map"} doneToday={done?.n ?? 0} scheduledToday={sched?.n ?? 0} goals={goals} />;
 }

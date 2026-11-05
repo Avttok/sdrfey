@@ -53,12 +53,33 @@ export async function removePersonAction(id: number, personId: number): Promise<
   return { ok: true, message: "Pessoa removida." };
 }
 
-export async function cancelVisitAction(id: number, code: string): Promise<ActionResult> {
+/** Apaga o registro de uma visita (fica no Registro de atividades). */
+export async function deleteVisitAction(leadId: number, visitId: number): Promise<ActionResult> {
   const me = await requirePerm("lead.edit");
-  await db.update(visits).set({ canceledAt: new Date() }).where(and(eq(visits.leadId, id), eq(visits.code, code)));
-  await logAudit(db, { userId: me.id, leadId: id, entity: "visit", action: "cancelou visita", field: "Agenda", oldValue: code, newValue: "cancelada" });
-  revalidatePath(`/leads/${id}`);
-  return { ok: true, message: "Visita cancelada." };
+  const [v] = await db.select().from(visits).where(and(eq(visits.id, visitId), eq(visits.leadId, leadId)));
+  if (!v) return fail("Visita não encontrada.");
+  await db.transaction(async (tx) => {
+    await tx.delete(visits).where(eq(visits.id, visitId));
+    await logAudit(tx, { userId: me.id, leadId, entity: "visit", action: "apagou visita", field: "Agenda", oldValue: v.code, newValue: null, meta: { dataDaVisita: v.visitDate } });
+  });
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/visitas");
+  return { ok: true, message: "Visita apagada." };
+}
+
+/** Registra uma visita na página do lead (um lead pode ter várias). */
+export async function addVisitAction(leadId: number, input: { code: string; visitDate: string }): Promise<ActionResult> {
+  const me = await requirePerm("lead.edit");
+  const code = input.code.trim().toUpperCase();
+  if (!/^V-\d{3,}$/.test(code)) return fail("Código da visita inválido. Exemplo: V-12345.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.visitDate)) return fail("Informe a data da visita.");
+  await db.transaction(async (tx) => {
+    await tx.insert(visits).values({ leadId, userId: me.id, code, visitDate: input.visitDate });
+    await logAudit(tx, { userId: me.id, leadId, entity: "visit", action: "agendou visita", field: "Agenda", oldValue: null, newValue: code, meta: { dataDaVisita: input.visitDate } });
+  });
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/visitas");
+  return { ok: true, message: "Visita registrada." };
 }
 
 /** Gestor/Adm libera um lead que ficou preso com alguém. */

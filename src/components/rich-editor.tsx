@@ -9,17 +9,25 @@ import { sanitizeHtml, TEMPLATE_VARIABLES } from "@/modules/email/render";
 const FONTS = ["Arial", "Georgia", "Verdana", "Tahoma", "Trebuchet MS", "Times New Roman", "Courier New"];
 const SIZES: [string, string][] = [["1", "Pequeno"], ["3", "Normal"], ["4", "Médio"], ["5", "Grande"], ["6", "Muito grande"]];
 
-/** Redimensiona a imagem escolhida (máx. 520 px) e devolve um data URL leve. */
+/** Reduz qualquer imagem (arquivo ou data URL) para no máximo 520 px de largura e ~120 KB. Fundo branco; JPEG leve. */
+async function shrinkSrc(src: string): Promise<string> {
+  const img = await new Promise<HTMLImageElement>((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src; });
+  let width = Math.min(520, img.width);
+  for (let quality = 0.82; ; quality -= 0.12) {
+    const k = width / img.width;
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
+    const ctx = c.getContext("2d")!;
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    const out = c.toDataURL("image/jpeg", Math.max(quality, 0.4));
+    if (out.length < 160_000 || (quality <= 0.4 && width <= 240)) return out;
+    if (quality <= 0.4) { width = Math.round(width * 0.75); quality = 0.94; }
+  }
+}
 async function shrink(file: File): Promise<string> {
   const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise<HTMLImageElement>((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; });
-    const k = Math.min(1, 520 / img.width);
-    const c = document.createElement("canvas");
-    c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-    c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
-    return c.toDataURL(file.type === "image/png" ? "image/png" : "image/jpeg", 0.82);
-  } finally { URL.revokeObjectURL(url); }
+  try { return await shrinkSrc(url); } finally { URL.revokeObjectURL(url); }
 }
 
 export function RichEditor({ value, onChange }: { value: string; onChange: (html: string) => void }) {
@@ -29,6 +37,21 @@ export function RichEditor({ value, onChange }: { value: string; onChange: (html
   useEffect(() => { if (ref.current && ref.current.innerHTML !== value) ref.current.innerHTML = sanitizeHtml(value); /* só ao montar / trocar de modelo */ // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const emit = () => onChange(ref.current?.innerHTML ?? "");
+  /** Colar ou soltar imagem: reduz antes de entrar no modelo (evita o erro de "muito grande"). */
+  const addFiles = async (files: File[]) => {
+    for (const f of files) {
+      try { ref.current?.focus(); document.execCommand("insertImage", false, await shrink(f)); } catch { toast("warn", "Não consegui ler essa imagem."); }
+    }
+    emit();
+  };
+  /** Imagens que vieram embutidas num texto colado (copiadas de uma página, por exemplo) também são reduzidas. */
+  const lighten = () => {
+    const root = ref.current; if (!root) return;
+    root.querySelectorAll("img").forEach((img) => {
+      const src = img.getAttribute("src") ?? "";
+      if (src.startsWith("data:") && src.length > 160_000) void shrinkSrc(src).then((out) => { img.setAttribute("src", out); emit(); }).catch(() => {});
+    });
+  };
   const cmd = (c: string, v?: string) => { ref.current?.focus(); document.execCommand(c, false, v); emit(); };
   const btn = "grid size-8 place-items-center rounded-md border border-line bg-panel text-ink hover:bg-sunk";
   return (
@@ -58,7 +81,9 @@ export function RichEditor({ value, onChange }: { value: string; onChange: (html
           try { const d = await shrink(f); if (d.length > 400_000) toast("warn", "Imagem pesada demais. Escolha uma menor."); else cmd("insertImage", d); } catch { toast("warn", "Não consegui ler essa imagem."); }
         }} />
       </div>
-      <div ref={ref} contentEditable suppressContentEditableWarning onInput={emit} onBlur={emit} className="min-h-44 p-3 text-sm leading-relaxed outline-none [&_a]:text-accent [&_a]:underline [&_img]:max-w-full" />
+      <div ref={ref} contentEditable suppressContentEditableWarning onInput={emit} onBlur={emit}
+        onPaste={(e) => { const imgs = [...e.clipboardData.files].filter((f) => f.type.startsWith("image/")); if (imgs.length) { e.preventDefault(); void addFiles(imgs); } else setTimeout(lighten, 0); }}
+        onDrop={(e) => { const imgs = [...e.dataTransfer.files].filter((f) => f.type.startsWith("image/")); if (imgs.length) { e.preventDefault(); void addFiles(imgs); } }} className="min-h-44 p-3 text-sm leading-relaxed outline-none [&_a]:text-accent [&_a]:underline [&_img]:max-w-full" />
     </div>
   );
 }

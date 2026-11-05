@@ -2,7 +2,7 @@
 
 import { PersonBubble } from "@/components/person-bubble";
 
-import { ArrowLeft, Ban, Copy, MapPin, Pencil, Phone, Plus, Tag, Trash2, RotateCcw, UnlockKeyhole, Users } from "lucide-react";
+import { ArrowLeft, Ban, CalendarCheck, Copy, MapPin, Pencil, Phone, Plus, Tag, Trash2, RotateCcw, UnlockKeyhole, Users } from "lucide-react";
 import Link from "next/link";
 import { SectionCard } from "@/components/section-card";
 import { useState } from "react";
@@ -13,12 +13,13 @@ import { TagChip } from "@/components/tag-chip";
 import { useToast } from "@/components/toast";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
-import { fmtCnpj, fmtDate, fmtPhone } from "@/lib/format";
+import { DateInput } from "@/components/date-input";
+import { fmtCnpj, fmtDate, fmtDateTime, fmtPhone } from "@/lib/format";
 import { addChannelAction, markWrongAction, removeChannelAction } from "@/modules/leads/actions";
-import { addPersonAction, cancelVisitAction, changeTagAction, forceReleaseAction, removePersonAction, resetLeadFromPageAction, updateLeadAction } from "@/modules/leads/edit";
+import { addPersonAction, addVisitAction, deleteVisitAction, changeTagAction, forceReleaseAction, removePersonAction, resetLeadFromPageAction, updateLeadAction } from "@/modules/leads/edit";
 import type { LeadView, TagCatalog } from "@/modules/leads/view";
 
-export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedBy }: { lead: LeadView; catalog: TagCatalog; owners: { id: number; name: string }[]; canEdit: boolean; canRelease: boolean; lockedBy: { name: string; hex: string } | null }) {
+export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedBy, showMap }: { showMap: boolean; lead: LeadView; catalog: TagCatalog; owners: { id: number; name: string }[]; canEdit: boolean; canRelease: boolean; lockedBy: { name: string; hex: string } | null }) {
   const toast = useToast();
   const active = lead.registrationStatus ? lead.registrationStatus.toUpperCase() === "ATIVA" : null;
   const name0 = lead.tradeName ?? lead.company;
@@ -28,6 +29,8 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
   const [on, setOn] = useState(new Set(lead.tags.map((t) => `${t.groupKey}:${t.key}`)));
   const [newCh, setNewCh] = useState("");
   const [confirmReset, setConfirmReset] = useState(false);
+  const [vis, setVis] = useState({ code: "", date: "" });
+  const [delVisit, setDelVisit] = useState<number | null>(null);
   const [p, setP] = useState({ name: "", roleTitle: "", extension: "" });
 
   const toggleTag = (g: string, k: string, exclusive: boolean) => {
@@ -71,7 +74,7 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
         onConfirm={() => { setConfirmReset(false); run(() => resetLeadFromPageAction(lead.id)); }}>
         Apaga tags (menos porte e capital), observação, interações e visitas, e devolve o lead ao estoque como novo. Os dados da empresa continuam salvos. Fica tudo registrado.
       </ConfirmDialog>
-      <div className={`${panelCls} p-5 sm:p-6`}><LeadInfoPanel lead={lead} wide /></div>
+      <div className={`${panelCls} p-5 sm:p-6`}><LeadInfoPanel lead={lead} wide showMap={showMap} /></div>
 
       <div className="grid items-start gap-5 lg:grid-cols-2">
       <div className="space-y-5">
@@ -108,14 +111,39 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
         {canEdit && <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); const v = newCh.trim(); if (v) run(() => addChannelAction(lead.id, v.includes("@") ? "email" : "phone", v), undefined, () => setNewCh("")); }}><input className={inputCls} placeholder="Novo telefone ou e-mail" value={newCh} onChange={(e) => setNewCh(e.target.value)} /><button type="submit" className={btnGhost} disabled={pending}><Plus size={15} aria-hidden /> Adicionar</button></form>}
       </SectionCard>
 
-      <SectionCard icon={Users} title="Pessoas e visitas">
+      <SectionCard icon={Users} title="Pessoas">
         <ul className="space-y-1.5">
           {lead.people.map((x) => <li key={x.id} className="flex items-center gap-2 rounded-lg bg-sunk px-3 py-2 text-sm"><span className="flex-1">{x.name}{x.roleTitle ? ` · ${x.roleTitle}` : ""}{x.extension ? ` · ramal ${x.extension}` : ""}</span>{canEdit && <button type="button" aria-label="Remover pessoa" onClick={() => run(() => removePersonAction(lead.id, x.id))}><Trash2 size={15} /></button>}</li>)}
           {lead.people.length === 0 && <li className="text-sm text-muted">Nenhuma pessoa cadastrada.</li>}
         </ul>
         {canEdit && <form className="grid gap-2 sm:grid-cols-4" onSubmit={(e) => { e.preventDefault(); run(() => addPersonAction(lead.id, { name: p.name, roleTitle: p.roleTitle || null, extension: p.extension || null }), undefined, () => setP({ name: "", roleTitle: "", extension: "" })); }}><input className={inputCls} placeholder="Nome" value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} /><input className={inputCls} placeholder="Cargo" value={p.roleTitle} onChange={(e) => setP({ ...p, roleTitle: e.target.value })} /><input className={inputCls} placeholder="Ramal" value={p.extension} onChange={(e) => setP({ ...p, extension: e.target.value })} /><button type="submit" className={btnGhost} disabled={pending}><Plus size={15} aria-hidden /> Adicionar pessoa</button></form>}
-        <ul className="space-y-1 text-sm">{lead.visits.map((v) => <li key={v.at} className="flex items-center gap-2"><span className="rounded-md bg-sunk px-2 py-0.5 text-xs">{v.code}</span>{fmtDate(v.at)}{v.canceled ? " (cancelada)" : canEdit && <button type="button" className="text-danger underline" onClick={() => run(() => cancelVisitAction(lead.id, v.code))}>cancelar</button>}</li>)}</ul>
       </SectionCard>
+      <SectionCard icon={CalendarCheck} title={`Visitas${lead.visits.length ? ` (${lead.visits.length})` : ""}`}>
+        <ul className="space-y-2">
+          {lead.visits.map((v) => (
+            <li key={v.id} className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-sunk px-3 py-2.5 text-sm ${v.canceled ? "opacity-60" : ""}`}>
+              <span className="rounded-md bg-grad px-2 py-0.5 text-xs font-bold text-on-accent">{v.code}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">{v.visitDate ? `Visita em ${fmtDate(v.visitDate)}` : "Sem data de visita"}{v.canceled && <span className="ml-2 rounded-full bg-danger/15 px-2 py-0.5 text-xs font-medium text-danger">Cancelada</span>}</span>
+                <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">Agendada em {fmtDateTime(v.at)}{v.by && v.byHex && <>&nbsp;por <PersonBubble name={v.by} hex={v.byHex} /></>}</span>
+              </span>
+              {canEdit && <button type="button" aria-label={`Apagar visita ${v.code}`} title="Apagar visita" disabled={pending} className="grid size-8 place-items-center rounded-lg text-danger transition hover:bg-danger/10" onClick={() => setDelVisit(v.id)}><Trash2 size={16} aria-hidden /></button>}
+            </li>
+          ))}
+          {lead.visits.length === 0 && <li className="text-sm text-muted">Nenhuma visita agendada para este lead.</li>}
+        </ul>
+        {canEdit && (
+          <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); run(() => addVisitAction(lead.id, { code: vis.code, visitDate: vis.date }), undefined, () => setVis({ code: "", date: "" })); }}>
+            <label className="block min-w-36 flex-1 text-sm"><span className="mb-1 block text-muted">Código</span><input className={inputCls} placeholder="V-12345" value={vis.code} onChange={(e) => setVis({ ...vis, code: e.target.value })} /></label>
+            <div className="block w-44 text-sm"><span className="mb-1 block text-muted">Data da visita</span><DateInput label="Data da visita" value={vis.date} onChange={(d) => setVis({ ...vis, date: d })} /></div>
+            <button type="submit" className={btnGhost} disabled={pending}><Plus size={15} aria-hidden /> Adicionar visita</button>
+          </form>
+        )}
+      </SectionCard>
+      <ConfirmDialog open={delVisit !== null} tone="danger" icon={Trash2} busy={pending} title="Apagar esta visita?" confirmLabel="Sim, apagar" cancelLabel="Cancelar" onCancel={() => setDelVisit(null)}
+        onConfirm={() => { const id = delVisit!; setDelVisit(null); run(() => deleteVisitAction(lead.id, id)); }}>
+        O registro da visita é removido do lead e da aba Visitas. A ação fica no Registro de atividades.
+      </ConfirmDialog>
       </div>
       </div>
     </div>

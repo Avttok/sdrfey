@@ -52,7 +52,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const settings = await getSettings();
   const d = await getDashboard(period, scope, settings);
   const can = (k: string) => !!me.permissions[k];
-  const hoursRange = Array.from({ length: 14 }, (_, i) => 7 + i);
+  // Só do primeiro ao último horário com registro; horas vazias no meio (almoço) continuam aparecendo.
+  const activeHours = d.hours.map((x) => x.h);
+  const hoursRange = activeHours.length ? Array.from({ length: Math.max(...activeHours) - Math.min(...activeHours) + 1 }, (_, i) => Math.min(...activeHours) + i) : [];
   const colorOf = new Map(d.ranking.map((r) => [r.id, { hex: bubbleHex(r.accent, r.id, r.roles), name: r.name }]));
   const perHour = hoursRange.map((h) => ({ h, parts: d.hours.filter((x) => x.h === h).map((x) => ({ ...x, ...(colorOf.get(x.uid) ?? { hex: "#888780", name: "?" }) })) }));
   const maxHour = Math.max(1, ...perHour.map((x) => x.parts.reduce((a, p) => a + p.n, 0)));
@@ -108,6 +110,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       {can("panel.horas") && (
         <Block icon={Clock} title="Atividade por hora">
+          {hoursRange.length === 0 ? <p className="text-sm text-muted">Nenhuma atividade neste período ainda.</p> : <>
           <div className="flex h-28 items-end gap-1.5">
             {perHour.map(({ h, parts }) => {
               const total = parts.reduce((a, p) => a + p.n, 0);
@@ -118,7 +121,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               );
             })}
           </div>
-          <div className="mt-1 flex gap-1.5">{hoursRange.map((h) => <span key={h} className="flex-1 text-center text-[11px] text-muted">{h}h</span>)}</div>
+          <div className="mt-1 flex gap-1.5">{hoursRange.map((h) => <span key={h} className="flex-1 text-center text-[11px] text-muted">{h}h</span>)}</div></>}
           {d.ranking.length > 1 && <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">{d.ranking.map((r) => <span key={r.id} className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: bubbleHex(r.accent, r.id, r.roles) }} />{r.name.split(" ")[0]}</span>)}</div>}
         </Block>
       )}

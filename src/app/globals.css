@@ -144,3 +144,9 @@ body.dragging, body.dragging * { user-select: none !important; cursor: grabbing 
 
 .pop-in { animation: pop-in 0.16s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; transform-origin: top right; }
 @keyframes pop-in { from { opacity: 0; transform: translateY(-6px) scale(0.96); } to { opacity: 1; transform: none; } }
+
+/* Troca de etapa no Shuffler: o conteúdo desliza de leve na direção em que a pessoa foi. */
+.step-fwd { animation: step-fwd 0.32s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+.step-back { animation: step-back 0.32s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+@keyframes step-fwd { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@keyframes step-back { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }

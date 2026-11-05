@@ -1,9 +1,10 @@
 "use client";
 
-import { Ban, Building2, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Plus, RotateCcw, SkipForward, Square, TriangleAlert, Trash2, X } from "lucide-react";
+import { Ban, Building2, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Send, Plus, RotateCcw, SkipForward, Square, TriangleAlert, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { DateInput } from "@/components/date-input";
 import { GoalBar } from "@/components/goal-bar";
 import { CopyVal } from "@/components/copy-val";
 import { LeadInfoPanel } from "@/components/lead-info-panel";
@@ -17,7 +18,7 @@ import type { LeadView, TagCatalog } from "@/modules/leads/view";
 import type { Goals } from "@/modules/settings/goals";
 
 type Template = { id: number; name: string; subject: string; body: string; bodyHtml: string | null };
-const STEPS = ["Contatos", "E-mail", "WhatsApp", "Ligação", "Resultado"] as const;
+const STEPS = ["Perfil", "E-mail", "WhatsApp", "Ligação", "Finalizar"] as const;
 
 const copy = async (text: string, toast: ReturnType<typeof useToast>) => {
   try {
@@ -28,7 +29,7 @@ const copy = async (text: string, toast: ReturnType<typeof useToast>) => {
   }
 };
 
-export function AttendFlow({ lead, catalog, templates, myName, doneToday, scheduledToday, goals }: { lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; doneToday: number; scheduledToday: number; goals: Goals }) {
+export function AttendFlow({ lead, catalog, templates, myName, showMap, doneToday, scheduledToday, goals }: { lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; doneToday: number; scheduledToday: number; goals: Goals }) {
   const toast = useToast();
   const [pending, start] = useTransition();
   useBusyWhile(pending);
@@ -39,6 +40,8 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
   const [situations, setSituations] = useState<Set<string>>(new Set(lead.tags.filter((t) => t.groupKey === "situacao").map((t) => t.key)));
   const [note, setNote] = useState(lead.notes ?? "");
   const [visit, setVisit] = useState("");
+  const [visitDate, setVisitDate] = useState("");
+  const dir = useRef<"fwd" | "back">("fwd");
   const [showVisit, setShowVisit] = useState(false);
   const [newValue, setNewValue] = useState("");
   const [tplId, setTplId] = useState(templates[0]?.id ?? 0);
@@ -79,14 +82,23 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
   };
   const go = (n: number) => {
     if (step === 0 && n > 0) void startedAction(lead.id);
-    setStep(Math.min(Math.max(n, 0), STEPS.length - 1));
+    const to = Math.min(Math.max(n, 0), STEPS.length - 1);
+    dir.current = to >= step ? "fwd" : "back";
+    setStep(to);
   };
 
   const tpl = templates.find((t) => t.id === tplId);
   const vars = { meu_nome: myName.split(" ")[0], empresa: lead.tradeName ?? lead.company, cidade: lead.city, representante: lead.rep?.repName, contato: lead.people[0]?.name?.split(" ")[0] };
   const mail = tpl && (emailTo || goodEmails[0]?.value) ? mailtoLink(emailTo || goodEmails[0].value, renderTemplate(tpl.subject, vars), renderTemplate(tpl.body, vars)) : null;
 
-  const payload = () => ({ leadId: lead.id, channels: [...used], temperature, qualification, situations: [...situations], note, visitCode: showVisit ? visit : null });
+  /** Copia o corpo formatado e abre o e-mail já com destinatário e assunto; só falta colar (Ctrl+V). */
+  const copyAndOpen = async () => {
+    await copyFormatted();
+    const to = emailTo || goodEmails[0]?.value;
+    if (tpl && to) window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(renderTemplate(tpl.subject, vars))}`;
+  };
+
+  const payload = () => ({ leadId: lead.id, channels: [...used], temperature, qualification, situations: [...situations], note, visitCode: showVisit ? visit : null, visitDate: showVisit ? visitDate : null });
   /** Salva e sorteia o próximo lead. */
   const save = () => run(async () => {
     const r = await saveAction(payload());
@@ -111,7 +123,7 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
   };
   const resetNow = () => run(async () => {
     const r = await resetLeadAction(lead.id);
-    if (r.ok) { setUsed(new Set()); setTemperature(null); setQualification(null); setSituations(new Set()); setNote(""); setVisit(""); setShowVisit(false); setConfirmReset(false); setStep(0); router.refresh(); }
+    if (r.ok) { setUsed(new Set()); setTemperature(null); setQualification(null); setSituations(new Set()); setNote(""); setVisit(""); setVisitDate(""); setShowVisit(false); setConfirmReset(false); setStep(0); router.refresh(); }
     return r;
   });
   const discardNow = () => run(async () => { const r = await discardAction(lead.id, "Descartado no atendimento"); if (r.ok) await startAction(); return r; });
@@ -163,16 +175,16 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
                 <span className={`grid size-9 place-items-center rounded-full text-sm font-bold transition-all ${i === step ? "scale-110 bg-grad text-on-accent shadow-lg shadow-accent/30" : i < step ? "bg-accent/20 text-accent" : "bg-sunk text-muted group-hover:bg-line"}`}>{i < step ? <Check size={16} aria-hidden /> : i + 1}</span>
                 <span className={`text-xs font-medium ${i === step ? "text-ink" : "text-muted"}`}>{st}</span>
               </button>
-              {i < STEPS.length - 1 && <span aria-hidden className={`mx-1 mb-5 h-0.5 flex-1 rounded transition-colors ${i < step ? "bg-accent/50" : "bg-line"}`} />}
+              {i < STEPS.length - 1 && <span aria-hidden className="relative mx-1 mb-5 h-1 flex-1 overflow-hidden rounded-full bg-line"><span className="absolute inset-y-0 left-0 rounded-full bg-grad transition-[width] duration-500 ease-out" style={{ width: i < step ? "100%" : "0%" }} /></span>}
             </li>
           ))}
         </ol>
       </header>
 
-      <div className={`${panelCls} p-5 sm:p-6`}>
+      <div key={step} className={`${panelCls} p-5 sm:p-6 ${dir.current === "fwd" ? "step-fwd" : "step-back"}`}>
         {step === 0 && (
           <div className="space-y-6">
-            <LeadInfoPanel lead={lead} wide />
+            <LeadInfoPanel lead={lead} wide showMap={showMap} />
             <div className="grid gap-6 border-t border-line pt-5 lg:grid-cols-2">
             <section className="space-y-3">
               <h2 className="display text-xl">Contatos</h2>
@@ -233,10 +245,11 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
                   </div>
                 )}
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" className={btnPrimary} onClick={copyFormatted}><Copy size={16} aria-hidden /> Copiar e-mail formatado</button>
-                  {mail && <a href={mail} onClick={() => setUsed(new Set(used).add("email"))} className={btnGhost}><ExternalLink size={16} aria-hidden /> Abrir e-mail (só texto)</a>}
+                  <button type="button" className={btnPrimary} onClick={copyAndOpen}><Send size={16} aria-hidden /> Copiar e abrir e-mail</button>
+                  <button type="button" className={btnGhost} onClick={copyFormatted}><Copy size={16} aria-hidden /> Só copiar</button>
+                  {mail && <a href={mail} onClick={() => setUsed(new Set(used).add("email"))} className={btnGhost}><ExternalLink size={16} aria-hidden /> Abrir com texto simples</a>}
                 </div>
-                <p className="text-xs text-muted">Para manter negrito, cores e imagens: abra um e-mail novo, cole o assunto e use “Copiar e-mail formatado” para colar o corpo. O botão “Abrir e-mail” preenche só o texto simples.</p>
+                <p className="text-xs text-muted">“Copiar e abrir e-mail” copia o corpo formatado (negrito, cores e imagens) e abre o e-mail com destinatário e assunto prontos: é só colar com Ctrl+V.</p>
               </>
             )}
             <UsedToggle on={used.has("email")} onClick={() => toggle(used, "email", setUsed)} label="Email Enviado" />
@@ -280,7 +293,13 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
             <Group title={groups.situacao?.name ?? "Situação"}>{groups.situacao?.tags.filter((t) => !t.autoOnly).map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={situations.has(t.key)} onClick={() => toggle(situations, t.key, setSituations)} />)}</Group>
             <div>
               <button type="button" className={btnGhost} onClick={() => setShowVisit(!showVisit)}>{showVisit ? "Sem agendamento" : "Agendar visita"}</button>
-              {showVisit && <div className="mt-2 max-w-xs"><input className={inputCls} placeholder="Código da visita (V-12345)" value={visit} onChange={(e) => setVisit(e.target.value)} /><p className="mt-1 text-xs text-muted">Agendar visita qualifica o lead automaticamente.</p></div>}
+              {showVisit && (
+                <div className="mt-2 flex flex-wrap items-end gap-3">
+                  <label className="block w-48 text-sm"><span className="mb-1 block text-muted">Código da visita</span><input className={inputCls} placeholder="V-12345" value={visit} onChange={(e) => setVisit(e.target.value)} /></label>
+                  <div className="block w-48 text-sm"><span className="mb-1 block text-muted">Data da visita</span><DateInput label="Data da visita" value={visitDate} onChange={setVisitDate} /></div>
+                  <p className="w-full text-xs text-muted">Agendar visita qualifica o lead automaticamente.</p>
+                </div>
+              )}
             </div>
             <label className="block text-sm">Observação<textarea className={`${inputCls} min-h-24`} value={note} onChange={(e) => setNote(e.target.value)} /></label>
             <div className="flex flex-wrap items-center justify-center gap-2 border-t border-line pt-5">

@@ -8,6 +8,8 @@ const dateTimeSec = new Intl.DateTimeFormat("pt-BR", { timeZone: TZ, day: "2-dig
 const asDate = (d: Date | string | number | null | undefined) => (d == null ? null : new Date(d));
 
 export const fmtDate = (d: Date | string | number | null | undefined) => {
+  // Data pura (AAAA-MM-DD) não tem horário: formata direto, sem deslocar pelo fuso.
+  if (typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)) return `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
   const x = asDate(d);
   return x ? date.format(x) : "—";
 };

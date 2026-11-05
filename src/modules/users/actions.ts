@@ -69,3 +69,14 @@ export async function setFontAction(font: string): Promise<{ ok: boolean; messag
   revalidatePath("/", "layout");
   return { ok: true, message: "Fonte atualizada." };
 }
+
+/** Mostrar o mapa do Google ao lado do lead ou só o link "Google Maps". */
+export async function setMapModeAction(mode: "map" | "link"): Promise<{ ok: boolean; message?: string }> {
+  const me = await requireUser();
+  const next = mode === "link" ? "link" : "map";
+  if (next === me.mapMode) return { ok: true };
+  await db.update(users).set({ mapMode: next }).where(eq(users.id, me.id));
+  await logAudit(db, { userId: me.id, entity: "user", action: "alterou", field: "mapa do lead", oldValue: me.mapMode, newValue: next });
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Preferência salva." };
+}

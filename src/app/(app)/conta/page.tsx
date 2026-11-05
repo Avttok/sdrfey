@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { MapModePicker } from "@/components/map-mode-picker";
 import { FontPicker } from "@/components/font-picker";
 import { NavPrefsForm } from "@/components/nav-prefs-form";
 import { orderNav, visibleNav } from "@/config/nav";
@@ -67,6 +68,12 @@ export default async function AccountPage() {
 
           <p className="mb-2 mt-8 text-sm font-medium">Tema</p>
           <ThemeToggle withLabels />
+        </section>
+
+        <section className={`${panelCls} p-6 lg:col-span-2`}>
+          <h2 className="display mb-1 text-xl">Mapa do lead</h2>
+          <p className="mb-4 text-sm text-muted">Como mostrar a localização do lead no Shuffler e na página do lead.</p>
+          <MapModePicker current={user.mapMode} />
         </section>
 
         <section className={`${panelCls} p-6 lg:col-span-2`}>

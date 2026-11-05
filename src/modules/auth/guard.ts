@@ -19,6 +19,7 @@ export type CurrentUser = {
   navOrder: string[];
   navCollapsed: boolean;
   font: string;
+  mapMode: "map" | "link";
   mustChangePassword: boolean;
   permissions: PermissionMap;
   canManageGoals: boolean;
@@ -73,6 +74,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     navOrder: u.navOrder ?? [],
     navCollapsed: !!u.navCollapsed,
     font: u.font ?? "archivo",
+    mapMode: u.mapMode === "link" ? "link" : "map",
     mustChangePassword: u.mustChangePassword,
   };
 });

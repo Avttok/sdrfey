@@ -19,10 +19,20 @@ export const NAV: NavItem[] = [
   { href: "/conta", label: "Minha conta", icon: UserRound },
 ];
 
-/** Aplica a ordem escolhida pela pessoa; itens que ela não ordenou vão ao fim na ordem padrão. */
+/**
+ * Aplica a ordem escolhida pela pessoa. Itens que ela nunca ordenou (abas novas) entram logo depois
+ * do item que vem antes deles no menu padrão, e não no fim.
+ */
 export function orderNav<T extends { href: string }>(items: T[], order: readonly string[]): T[] {
-  const rank = (h: string) => { const i = order.indexOf(h); return i === -1 ? order.length + NAV.findIndex((n) => n.href === h) : i; };
-  return [...items].sort((a, b) => rank(a.href) - rank(b.href));
+  const result = items.filter((i) => order.includes(i.href)).sort((a, b) => order.indexOf(a.href) - order.indexOf(b.href));
+  const defaults = NAV.map((n) => n.href);
+  for (const item of items.filter((i) => !order.includes(i.href))) {
+    const pos = defaults.indexOf(item.href);
+    let at = -1;
+    for (let k = pos - 1; k >= 0 && at === -1; k--) at = result.findIndex((r) => r.href === defaults[k]);
+    result.splice(at + 1, 0, item);
+  }
+  return result;
 }
 
 export function visibleNav(permissions: Record<string, boolean>, isAdmin: boolean): NavItem[] {

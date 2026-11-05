@@ -15,7 +15,7 @@ import type { LeadView } from "@/modules/leads/view";
 type Search = "idle" | "searching" | "failed";
 
 /** Dados da empresa + representante mais próximo. Usado no atendimento e no editor do lead. */
-export function LeadInfoPanel({ lead, autoSearch = true, wide = false }: { lead: LeadView; autoSearch?: boolean; wide?: boolean }) {
+export function LeadInfoPanel({ lead, autoSearch = true, wide = false, showMap = true }: { lead: LeadView; autoSearch?: boolean; wide?: boolean; showMap?: boolean }) {
   const toast = useToast();
   const [pending, start] = useTransition();
   const [state, setState] = useState<Search>(autoSearch && lead.enrichedAt === null ? "searching" : "idle");
@@ -68,9 +68,9 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false }: { lead:
         <dt className="text-muted">Tempo de atividade</dt><dd>{ageText ? (ageText) : missing}</dd>
         <dt className="text-muted">Capital</dt><dd>{info?.capital != null ? (fmtMoney(info.capital)) : missing}</dd>
         <dt className="text-muted">Sócios</dt><dd>{info?.partners.length ? <ul className="space-y-0.5">{info.partners.map((p, i) => <li key={i}><b className="font-semibold">{p.name}</b>{cleanRole(p.role) ? <span className="text-muted"> · {cleanRole(p.role)}</span> : null}</li>)}</ul> : missing}</dd>
-        <dt className="text-muted">Endereço</dt><dd>{addressLine ? <CopyVal>{addressLine}</CopyVal> : missing}</dd>
+        <dt className="text-muted">Endereço</dt><dd className="flex flex-wrap items-center gap-x-2 gap-y-1">{addressLine ? <CopyVal>{addressLine}</CopyVal> : missing}{!showMap && <a href={mapsHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent underline"><MapPin size={14} aria-hidden /> Google Maps</a>}</dd>
         <dt className="text-muted">Cidade</dt>
-        <dd className="flex flex-wrap items-center gap-2">{lead.city ? (`${lead.city}/${lead.uf}`) : missing} <a href={mapsHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent underline"><MapPin size={14} aria-hidden /> Google Maps</a></dd>
+        <dd className="flex flex-wrap items-center gap-2">{lead.city ? (`${lead.city}/${lead.uf}`) : missing}</dd>
       </dl>
       {lead.enrichedAt && <p className="text-xs text-muted">Consulta salva em {fmtDate(lead.enrichedAt)}. Use “Atualizar informações” para buscar de novo.</p>}
       <div className="flex flex-wrap gap-2 pt-1">
@@ -119,7 +119,7 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false }: { lead:
           <dt className="text-muted">Código SAP</dt><dd>{rep.sapCode ? (rep.sapCode) : missing}</dd>
         </dl>
       ) : <p className="text-sm">{missing}{!lead.city && !searching ? <span className="ml-1 text-xs text-muted">(cidade do lead desconhecida)</span> : null}</p>}
-      {(a?.street || lead.city) && (
+      {showMap && (a?.street || lead.city) && (
         <div className="overflow-hidden rounded-xl border border-line">
           <iframe title={`Mapa de ${lead.tradeName ?? lead.company}`} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="block h-60 w-full" src={`https://www.google.com/maps?q=${encodeURIComponent(mapsQuery)}&output=embed`} />
         </div>

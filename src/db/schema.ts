@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  date,
   doublePrecision,
   index,
   integer,
@@ -32,6 +33,8 @@ export const users = pgTable("users", {
   navOrder: text("nav_order").array().notNull().default(sql`ARRAY[]::text[]`),
   /** Barra lateral recolhida (só ícones). */
   navCollapsed: boolean("nav_collapsed").notNull().default(false),
+  /** Como mostrar o local do lead: "map" (mapa do Google) ou "link" (só o link Google Maps). */
+  mapMode: text("map_mode").notNull().default("map"),
   /** Fonte preferida (ver config/fonts.ts). */
   font: text("font").notNull().default("archivo"),
   mustChangePassword: boolean("must_change_password").notNull().default(true),
@@ -175,6 +178,8 @@ export const visits = pgTable(
     userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
     code: text("code").notNull(),
     note: text("note"),
+    /** Dia em que a visita vai acontecer (a data em que foi agendada é createdAt). */
+    visitDate: date("visit_date"),
     canceledAt: timestamp("canceled_at", { withTimezone: true }),
     createdAt: now(),
   },

@@ -50,6 +50,13 @@
       "when": 1793907863626,
       "tag": "0006_round11_prefs",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793910178637,
+      "tag": "0007_visits_dates_map",
+      "breakpoints": true
     }
   ]
 }

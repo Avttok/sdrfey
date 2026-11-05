@@ -17,6 +17,8 @@ export type SaveInput = {
   note?: string | null;
   /** Código da visita no Salesforce, ex.: V-12345. Agendar qualifica o lead. */
   visitCode?: string | null;
+  /** Dia em que a visita vai acontecer (AAAA-MM-DD). Obrigatório junto com o código. */
+  visitDate?: string | null;
 };
 
 const VISIT_RE = /^V-\d{3,}$/i;
@@ -33,6 +35,8 @@ export async function saveAttendance(userId: number, input: SaveInput): Promise<
   if (input.channels.length === 0) throw new UserError("Marque ao menos um meio de contato usado.");
   const visitCode = input.visitCode?.trim().toUpperCase() || null;
   if (visitCode && !VISIT_RE.test(visitCode)) throw new UserError("Código da visita inválido. Exemplo: V-12345.");
+  const visitDate = input.visitDate && /^\d{4}-\d{2}-\d{2}$/.test(input.visitDate) ? input.visitDate : null;
+  if (visitCode && !visitDate) throw new UserError("Informe a data da visita.");
   const s = await getSettings();
 
   await db.transaction(async (tx) => {
@@ -59,8 +63,8 @@ export async function saveAttendance(userId: number, input: SaveInput): Promise<
     await setLeadTags(tx, { leadId: lead.id, userId, add, remove });
 
     if (visitCode) {
-      await tx.insert(visits).values({ leadId: lead.id, userId, code: visitCode });
-      await logAudit(tx, { userId, leadId: lead.id, entity: "visit", action: "agendou visita", field: "Agenda", oldValue: null, newValue: visitCode });
+      await tx.insert(visits).values({ leadId: lead.id, userId, code: visitCode, visitDate });
+      await logAudit(tx, { userId, leadId: lead.id, entity: "visit", action: "agendou visita", field: "Agenda", oldValue: null, newValue: visitCode, meta: { dataDaVisita: visitDate } });
     }
 
     await tx.insert(interactions).values(
