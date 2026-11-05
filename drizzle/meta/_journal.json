@@ -29,6 +29,13 @@
       "when": 1793895486720,
       "tag": "0003_metas_agendados",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793898989352,
+      "tag": "0004_email_body_html",
+      "breakpoints": true
     }
   ]
 }

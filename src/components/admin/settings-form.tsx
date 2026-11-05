@@ -17,14 +17,16 @@ export function SettingsForm({ initial }: { initial: Record<SettingKey, number> 
   const [v, setV] = useState(initial);
   const { run, pending } = useRun();
   return (
-    <form className={`${panelCls} max-w-2xl space-y-4 p-5`} onSubmit={(e) => { e.preventDefault(); run(() => saveSettingsAction(v)); }}>
-      {FIELDS.map((f) => (
-        <label key={f.key} className="block text-sm">
-          <span className="font-medium">{f.label}</span>
-          <input type="number" min={0} className={`${inputCls} mt-1 max-w-40`} value={v[f.key]} onChange={(e) => setV({ ...v, [f.key]: Number(e.target.value) })} />
-          <span className="mt-1 block text-xs text-muted">{f.hint}</span>
-        </label>
-      ))}
+    <form className={`${panelCls} mx-auto max-w-3xl space-y-3 p-5 sm:p-6`} onSubmit={(e) => { e.preventDefault(); run(() => saveSettingsAction(v)); }}>
+      <h2 className="display text-xl">Regras do sorteio</h2>
+      <div className="divide-y divide-line">
+        {FIELDS.map((f) => (
+          <label key={f.key} className="grid items-center gap-x-6 gap-y-1 py-3 text-sm sm:grid-cols-[1fr_8rem]">
+            <span><span className="block font-medium">{f.label}</span><span className="mt-0.5 block text-xs text-muted">{f.hint}</span></span>
+            <input type="number" min={0} className={`${inputCls} text-center`} value={v[f.key]} onChange={(e) => setV({ ...v, [f.key]: Number(e.target.value) })} />
+          </label>
+        ))}
+      </div>
       <button type="submit" disabled={pending} className={btnPrimary}>Salvar parâmetros</button>
     </form>
   );

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { GoalsForm } from "@/components/goals-form";
 import { attendanceSessions, db, leads, users, visits } from "@/db";
+import { bubbleHex } from "@/config/theme";
 import { requirePerm } from "@/modules/auth/guard";
 import { getSettings } from "@/modules/settings/get";
 
@@ -20,12 +21,12 @@ export default async function Page() {
       .where(sql`${visits.canceledAt} is null and not ${leads.isTest} and ${visits.createdAt} >= ${today}`).groupBy(visits.userId),
   ]);
   return (
-    <div className="space-y-4">
+    <div className="mx-auto max-w-5xl space-y-4">
       <h1 className="display text-3xl">Metas</h1>
       <GoalsForm
         canEdit={!!me.permissions["goals.edit"]}
         global={{ attended: { on: s.goal_attended_on === 1, qty: s.daily_goal }, scheduled: { on: s.goal_scheduled_on === 1, qty: s.daily_goal_scheduled } }}
-        people={list.map((u) => ({ id: u.id, name: u.name, today: { attended: done.find((d) => d.id === u.id)?.n ?? 0, scheduled: sched.find((d) => d.id === u.id)?.n ?? 0 }, own: { attended: { on: u.goalAttendedOn, qty: u.dailyGoal }, scheduled: { on: u.goalScheduledOn, qty: u.dailyGoalScheduled } } }))}
+        people={list.map((u) => ({ id: u.id, name: u.name, hex: bubbleHex(u.accent, u.id, u.roles), today: { attended: done.find((d) => d.id === u.id)?.n ?? 0, scheduled: sched.find((d) => d.id === u.id)?.n ?? 0 }, own: { attended: { on: u.goalAttendedOn, qty: u.dailyGoal }, scheduled: { on: u.goalScheduledOn, qty: u.dailyGoalScheduled } } }))}
       />
     </div>
   );

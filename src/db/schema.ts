@@ -336,6 +336,8 @@ export const emailTemplates = pgTable("email_templates", {
   name: text("name").notNull(),
   subject: text("subject").notNull(),
   body: text("body").notNull(),
+  /** Versão com formatação (negrito, cores, imagens). Vazio = só texto. */
+  bodyHtml: text("body_html"),
   active: boolean("active").notNull().default(true),
   sort: integer("sort").notNull().default(0),
   createdAt: now(),

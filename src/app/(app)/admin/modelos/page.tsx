@@ -6,5 +6,5 @@ export const dynamic = "force-dynamic";
 
 export default async function Page() {
   const rows = await db.select().from(emailTemplates).orderBy(asc(emailTemplates.sort), asc(emailTemplates.id));
-  return <TemplatesAdmin rows={rows.map((r) => ({ id: r.id, name: r.name, subject: r.subject, body: r.body, active: r.active }))} />;
+  return <TemplatesAdmin rows={rows.map((r) => ({ id: r.id, name: r.name, subject: r.subject, body: r.body, bodyHtml: r.bodyHtml, active: r.active }))} />;
 }

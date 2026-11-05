@@ -53,7 +53,7 @@ async function main() {
 
   // modelo de e-mail inicial (só se ainda não existir nenhum)
   const [{ n: nTpl }] = await db.select({ n: dsql<number>`count(*)` }).from(emailTemplates);
-  if (Number(nTpl) === 0) await db.insert(emailTemplates).values(DEFAULT_TEMPLATE);
+  if (Number(nTpl) === 0) await db.insert(emailTemplates).values({ name: DEFAULT_TEMPLATE.name, subject: DEFAULT_TEMPLATE.subject, body: DEFAULT_TEMPLATE.body, bodyHtml: DEFAULT_TEMPLATE.html });
 
   // cidades (para achar o representante mais próximo)
   const [{ count }] = await db.select({ count: sqlCount() }).from(cities);

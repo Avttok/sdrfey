@@ -1,5 +1,6 @@
 import { PersonBubble } from "@/components/person-bubble";
 import type { Metadata } from "next";
+import { Mail, MapPin, Phone } from "lucide-react";
 import Link from "next/link";
 import { asc, eq, sql } from "drizzle-orm";
 import { Suspense } from "react";
@@ -37,34 +38,46 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="space-y-5">
-      <h1 className="display text-3xl">Leads</h1>
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h1 className="display text-3xl">Leads</h1>
+          <p className="mt-1 text-sm text-muted">Busque, filtre e abra qualquer lead. ATENDER traz o lead para o seu Shufflar.</p>
+        </div>
+        <p className="rounded-full bg-accent/15 px-3.5 py-1.5 text-sm font-semibold text-accent"><span className="figure">{new Intl.NumberFormat("pt-BR").format(total)}</span> {total === 1 ? "lead" : "leads"}</p>
+      </div>
       <Suspense fallback={null}>
         <LeadFilters catalog={catalog} people={people} ufs={ufRows.map((r) => r.uf!).filter(Boolean)} />
       </Suspense>
 
-      <p className="text-sm font-medium">{new Intl.NumberFormat("pt-BR").format(total)} lead(s)</p>
-      <ul className="space-y-2">
+      <ul className="space-y-2.5">
         {rows.map((l) => {
-          const accent = l.owner_name ? { hex: bubbleHex(l.owner_accent, l.owner_id ?? 0, l.owner_roles ?? undefined) } : null;
+          const name = l.trade_name ?? l.company;
+          const active = l.status?.toUpperCase() === "ATIVA";
+          const initials = name.split(/\s+/).filter((w) => w.length > 2).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || name[0];
           return (
-            <li key={l.id} className={`${panelCls} flex flex-wrap items-center gap-3 p-4`}>
-              <div className="min-w-0 flex-1">
-                <Link href={`/leads/${l.id}`} className="block truncate font-medium hover:underline">{l.trade_name ?? l.company}</Link>
-                <p className="text-xs text-muted">{fmtCnpj(l.cnpj)}{l.city ? ` · ${l.city}/${l.uf}` : ""}</p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {l.tags.map((t) => <TagChip key={t.label} label={t.label} color={t.color} />)}
-                </div>
+            <li key={l.id} className={`${panelCls} group flex flex-wrap items-center gap-4 p-4 transition hover:border-accent/50 hover:shadow-md`}>
+              <span aria-hidden className={`grid size-12 shrink-0 place-items-center rounded-xl text-sm font-bold ${l.status ? (active ? "bg-ok/15 text-ok" : "bg-danger/15 text-danger") : "bg-sunk text-muted"}`}>{initials}</span>
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <Link href={`/leads/${l.id}`} className="block truncate text-[15px] font-semibold group-hover:text-accent">{name}</Link>
+                <p className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted">
+                  <span>{fmtCnpj(l.cnpj)}</span>
+                  {l.city && <span className="inline-flex items-center gap-1"><MapPin size={12} aria-hidden />{l.city}/{l.uf}</span>}
+                  {l.status && <b className={active ? "text-ok" : "text-danger"}>{l.status.toUpperCase()}</b>}
+                  <span className="inline-flex items-center gap-1"><Phone size={12} aria-hidden />{l.phones}</span>
+                  <span className="inline-flex items-center gap-1"><Mail size={12} aria-hidden />{l.emails}</span>
+                </p>
+                {l.tags.length > 0 && <div className="flex flex-wrap gap-1.5">{l.tags.map((t) => <TagChip key={t.label} label={t.label} color={t.color} />)}</div>}
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
                 {l.locked_by_name && <PersonBubble name={l.locked_by_name} hex={bubbleHex(l.locked_by_accent, l.locked_by_id ?? 0, l.locked_roles ?? undefined)} prefix="Atendendo" />}
-                {accent && <PersonBubble name={l.owner_name!} hex={accent.hex} prefix="Responsável" />}
-                {!accent && !l.locked_by_name && <span className="rounded-full border border-line px-2.5 py-0.5 text-xs text-muted">Sem responsável</span>}
+                {l.owner_name && <PersonBubble name={l.owner_name} hex={bubbleHex(l.owner_accent, l.owner_id ?? 0, l.owner_roles ?? undefined)} prefix="Responsável" />}
+                {!l.owner_name && !l.locked_by_name && <span className="rounded-full border border-line px-2.5 py-0.5 text-xs text-muted">Livre</span>}
                 {!l.locked_by_name && <AttendButton leadId={l.id} compact />}
               </div>
             </li>
           );
         })}
-        {rows.length === 0 && <li className={`${panelCls} p-6 text-center text-muted`}>Nenhum lead com esses filtros.</li>}
+        {rows.length === 0 && <li className={`${panelCls} p-10 text-center text-muted`}>Nenhum lead com esses filtros.</li>}
       </ul>
 
       {pages > 1 && (

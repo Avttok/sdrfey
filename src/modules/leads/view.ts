@@ -56,5 +56,5 @@ export async function getLeadView(leadId: number) {
 export type LeadView = NonNullable<Awaited<ReturnType<typeof getLeadView>>>;
 
 export async function getActiveTemplates() {
-  return db.select({ id: emailTemplates.id, name: emailTemplates.name, subject: emailTemplates.subject, body: emailTemplates.body }).from(emailTemplates).where(eq(emailTemplates.active, true)).orderBy(asc(emailTemplates.sort), asc(emailTemplates.id));
+  return db.select({ id: emailTemplates.id, name: emailTemplates.name, subject: emailTemplates.subject, body: emailTemplates.body, bodyHtml: emailTemplates.bodyHtml }).from(emailTemplates).where(eq(emailTemplates.active, true)).orderBy(asc(emailTemplates.sort), asc(emailTemplates.id));
 }

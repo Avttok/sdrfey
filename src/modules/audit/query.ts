@@ -22,7 +22,7 @@ export async function listAudit(f: AuditFilters) {
   if (f.type) c.push(f.type === "lead" ? sql`${auditLog.entity} in ('lead','visit')` : eq(auditLog.entity, f.type));
   if (f.q) { const like = `%${f.q.replace(/[%_]/g, "")}%`; c.push(sql`(${auditLog.action} ilike ${like} or ${auditLog.field} ilike ${like} or ${auditLog.oldValue} ilike ${like} or ${auditLog.newValue} ilike ${like} or ${leads.company} ilike ${like})`); }
   const where = c.length ? and(...c) : undefined;
-  const base = db.select({ id: auditLog.id, at: auditLog.at, entity: auditLog.entity, action: auditLog.action, field: auditLog.field, oldValue: auditLog.oldValue, newValue: auditLog.newValue, meta: auditLog.meta, leadId: auditLog.leadId, userId: auditLog.userId, userName: users.name, company: leads.company })
+  const base = db.select({ id: auditLog.id, at: auditLog.at, entity: auditLog.entity, action: auditLog.action, field: auditLog.field, oldValue: auditLog.oldValue, newValue: auditLog.newValue, meta: auditLog.meta, leadId: auditLog.leadId, userId: auditLog.userId, userName: users.name, userAccent: users.accent, userRoles: users.roles, company: leads.company })
     .from(auditLog).leftJoin(users, eq(users.id, auditLog.userId)).leftJoin(leads, eq(leads.id, auditLog.leadId));
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(auditLog).leftJoin(leads, eq(leads.id, auditLog.leadId)).where(where);
   const rows = await base.where(where).orderBy(desc(auditLog.at), desc(auditLog.id)).limit(AUDIT_PAGE).offset((f.page - 1) * AUDIT_PAGE);

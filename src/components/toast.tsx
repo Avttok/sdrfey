@@ -8,17 +8,17 @@ type Kind = "ok" | "info" | "warn" | "bad";
 type Item = { id: number; kind: Kind; text: string };
 
 const ToastCtx = createContext<(kind: Kind, text: string) => void>(() => {});
-const BusyCtx = createContext<{ begin: () => void; end: () => void }>({ begin: () => {}, end: () => {} });
+const BusyCtx = createContext<{ begin: (label?: string) => void; end: (label?: string) => void }>({ begin: () => {}, end: () => {} });
 export const useToast = () => useContext(ToastCtx);
 
 /** Mostra o aviso “Carregando…” enquanto `active` for verdadeiro (ações do servidor, filtros, etc.). */
-export function useBusyWhile(active: boolean) {
+export function useBusyWhile(active: boolean, label = "Carregando…") {
   const { begin, end } = useContext(BusyCtx);
   useEffect(() => {
     if (!active) return;
-    begin();
-    return end;
-  }, [active, begin, end]);
+    begin(label);
+    return () => end(label);
+  }, [active, label, begin, end]);
 }
 export const useBusy = () => useContext(BusyCtx);
 
@@ -32,21 +32,21 @@ const STYLE: Record<Kind, { color: string; Icon: typeof Info }> = {
 /** Avisos fixos embaixo, centralizados, sempre visíveis (máx. 3). Mais o aviso de carregamento no topo. */
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<Item[]>([]);
-  const [busy, setBusy] = useState(0);
+  const [busy, setBusy] = useState<string[]>([]);
   const push = useCallback((kind: Kind, text: string) => {
     const id = Date.now() + Math.random();
     setItems((cur) => [...cur.slice(-2), { id, kind, text }]);
     setTimeout(() => setItems((cur) => cur.filter((i) => i.id !== id)), kind === "bad" ? 6000 : 3500);
   }, []);
-  const busyApi = useMemo(() => ({ begin: () => setBusy((n) => n + 1), end: () => setBusy((n) => Math.max(0, n - 1)) }), []);
+  const busyApi = useMemo(() => ({ begin: (l = "Carregando…") => setBusy((n) => [...n, l]), end: (l = "Carregando…") => setBusy((n) => { const i = n.lastIndexOf(l); return i < 0 ? n : n.filter((_, j) => j !== i); }) }), []);
   return (
     <ToastCtx.Provider value={push}>
       <BusyCtx.Provider value={busyApi}>
         {children}
-        {busy > 0 && (
+        {busy.length > 0 && (
           <div role="status" aria-live="polite" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
             <div className="flex items-center gap-3 rounded-2xl border border-line bg-panel px-8 py-5 text-lg font-semibold shadow-2xl">
-              <Spinner size={28} className="text-accent" /> Carregando…
+              <Spinner size={28} className="text-accent" /> {busy[busy.length - 1]}
             </div>
           </div>
         )}

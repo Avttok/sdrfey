@@ -7,7 +7,7 @@ import { btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { saveGoalsAction, type PersonGoalInput } from "@/modules/admin/goals";
 
 type Kind = "attended" | "scheduled";
-export type GoalPerson = { id: number; name: string; today: Record<Kind, number>; own: Record<Kind, PersonGoalInput> };
+export type GoalPerson = { id: number; name: string; hex: string; today: Record<Kind, number>; own: Record<Kind, PersonGoalInput> };
 type Global = Record<Kind, { on: boolean; qty: number }>;
 
 const KINDS: { k: Kind; title: string; sub: string; Icon: LucideIcon }[] = [
@@ -39,7 +39,7 @@ export function GoalsForm({ global, people, canEdit }: { global: Global; people:
   }));
 
   return (
-    <div className="max-w-5xl space-y-5">
+    <div className="mx-auto max-w-5xl space-y-5">
       <div className="panel-grid">
         {KINDS.map(({ k, title, sub, Icon }) => (
           <section key={k} className={`${panelCls} p-5 transition-opacity ${g[k].on ? "" : "opacity-60"}`}>
@@ -61,7 +61,7 @@ export function GoalsForm({ global, people, canEdit }: { global: Global; people:
         <ul className="divide-y divide-line">
           {people.map((p) => (
             <li key={p.id} className="grid items-start gap-x-6 gap-y-3 py-4 lg:grid-cols-[7rem_1fr_1fr]">
-              <span className="font-medium">{p.name}</span>
+              <span className="flex items-center gap-2 font-medium"><span aria-hidden className="size-3 rounded-full" style={{ background: p.hex }} />{p.name}</span>
               {KINDS.map(({ k, title }) => {
                 const on = effOn(p.id, k), qty = effQty(p.id, k);
                 const pct = on && qty ? Math.min(100, Math.round((p.today[k] / qty) * 100)) : 0;

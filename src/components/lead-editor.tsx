@@ -1,5 +1,7 @@
 "use client";
 
+import { PersonBubble } from "@/components/person-bubble";
+
 import { Ban, Copy, Plus, Trash2, UnlockKeyhole } from "lucide-react";
 import { useState } from "react";
 import { AttendButton } from "@/components/attend-button";
@@ -13,7 +15,7 @@ import { addChannelAction, markWrongAction, removeChannelAction } from "@/module
 import { addPersonAction, cancelVisitAction, changeTagAction, forceReleaseAction, removePersonAction, updateLeadAction } from "@/modules/leads/edit";
 import type { LeadView, TagCatalog } from "@/modules/leads/view";
 
-export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedByName }: { lead: LeadView; catalog: TagCatalog; owners: { id: number; name: string }[]; canEdit: boolean; canRelease: boolean; lockedByName: string | null }) {
+export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedBy }: { lead: LeadView; catalog: TagCatalog; owners: { id: number; name: string }[]; canEdit: boolean; canRelease: boolean; lockedBy: { name: string; hex: string } | null }) {
   const toast = useToast();
   const { run, pending } = useRun();
   const [f, setF] = useState({ company: lead.company, tradeName: lead.tradeName ?? "", city: lead.city ?? "", uf: lead.uf ?? "", ownerId: lead.ownerId, notes: lead.notes ?? "" });
@@ -39,8 +41,8 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
         <h1 className="display text-2xl sm:text-3xl">{lead.tradeName ?? lead.company}</h1>
         <span className="text-sm text-muted">{fmtCnpj(lead.cnpj)}</span>
         <span className="flex-1" />
-        {lockedByName ? <span className="text-sm text-muted">Em atendimento: {lockedByName}</span> : <AttendButton leadId={lead.id} />}
-        {lockedByName && canRelease && <button type="button" className={btnGhost} disabled={pending} onClick={() => run(() => forceReleaseAction(lead.id))}><UnlockKeyhole size={15} aria-hidden /> Liberar lead</button>}
+        {lockedBy ? <PersonBubble name={lockedBy.name} hex={lockedBy.hex} prefix="Em atendimento" /> : <AttendButton leadId={lead.id} />}
+        {lockedBy && canRelease && <button type="button" className={btnGhost} disabled={pending} onClick={() => run(() => forceReleaseAction(lead.id))}><UnlockKeyhole size={15} aria-hidden /> Liberar lead</button>}
       </div>
 
       <div className={`${panelCls} p-5`}><LeadInfoPanel lead={lead} /></div>

@@ -1,19 +1,21 @@
 "use client";
 
-import { Ban, Check, RotateCcw, ChevronLeft, ChevronRight, Copy, ExternalLink, Mail, MapPin, MessageCircle, Phone, Plus, RefreshCw, SkipForward, Trash2, X } from "lucide-react";
+import { Ban, Building2, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Plus, RotateCcw, SkipForward, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { GoalBar } from "@/components/goal-bar";
+import { CopyVal } from "@/components/copy-val";
 import { LeadInfoPanel } from "@/components/lead-info-panel";
 import { TagChip } from "@/components/tag-chip";
 import { useBusyWhile, useToast } from "@/components/toast";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { fmtCnpj, fmtDate, fmtMoney, fmtPhone } from "@/lib/format";
-import { addChannelAction, discardAction, heartbeatAction, markWrongAction, refreshInfoAction, releaseAction, removeChannelAction, resetLeadAction, saveAction, skipAction, startAction, startedAction } from "@/modules/leads/actions";
-import { mailtoLink, renderTemplate } from "@/modules/email/render";
+import { addChannelAction, discardAction, heartbeatAction, markWrongAction, releaseAction, removeChannelAction, resetLeadAction, saveAction, skipAction, startAction, startedAction } from "@/modules/leads/actions";
+import { htmlToText, mailtoLink, renderHtml, renderTemplate } from "@/modules/email/render";
 import type { LeadView, TagCatalog } from "@/modules/leads/view";
 import type { Goals } from "@/modules/settings/goals";
 
-type Template = { id: number; name: string; subject: string; body: string };
+type Template = { id: number; name: string; subject: string; body: string; bodyHtml: string | null };
 const STEPS = ["Contatos", "E-mail", "WhatsApp", "Ligação", "Resultado"] as const;
 
 const copy = async (text: string, toast: ReturnType<typeof useToast>) => {
@@ -81,37 +83,84 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
   const mail = tpl && (emailTo || goodEmails[0]?.value) ? mailtoLink(emailTo || goodEmails[0].value, renderTemplate(tpl.subject, vars), renderTemplate(tpl.body, vars)) : null;
   const wa = (phoneSel || goodPhones[0]?.value) ? `https://app.chatpro.com.br/add/cloud/55${phoneSel || goodPhones[0].value}` : null;
 
-  const save = (extraSituation?: string) => {
-    const sits = new Set(situations);
-    if (extraSituation) sits.add(extraSituation);
-    run(async () => {
-      const r = await saveAction({ leadId: lead.id, channels: [...used], temperature, qualification, situations: [...sits], note, visitCode: showVisit ? visit : null });
-      if (r.ok) await startAction();
-      return r;
-    });
+  const payload = () => ({ leadId: lead.id, channels: [...used], temperature, qualification, situations: [...situations], note, visitCode: showVisit ? visit : null });
+  /** Salva e sorteia o próximo lead. */
+  const save = () => run(async () => {
+    const r = await saveAction(payload());
+    if (r.ok) await startAction();
+    return r;
+  });
+  /** Salva, libera o lead e volta à tela do botão Shufflar (pausa: o lead não fica contando tempo). */
+  const saveAndStop = () => run(async () => {
+    const r = await saveAction(payload());
+    if (r.ok) { router.replace("/atender"); router.refresh(); }
+    return r;
+  });
+  const copyFormatted = async () => {
+    if (!tpl) return;
+    const html = tpl.bodyHtml ? renderHtml(tpl.bodyHtml, vars) : null;
+    try {
+      if (html && typeof ClipboardItem !== "undefined") await navigator.clipboard.write([new ClipboardItem({ "text/html": new Blob([html], { type: "text/html" }), "text/plain": new Blob([htmlToText(html)], { type: "text/plain" }) })]);
+      else await navigator.clipboard.writeText(html ? htmlToText(html) : renderTemplate(tpl.body, vars));
+      setUsed(new Set(used).add("email"));
+      toast("ok", html ? "E-mail formatado copiado. Cole no corpo da mensagem (Ctrl+V)." : "Texto copiado.");
+    } catch { toast("warn", "Não consegui copiar. Tente de novo."); }
   };
+  const resetNow = () => run(async () => {
+    const r = await resetLeadAction(lead.id);
+    if (r.ok) { setUsed(new Set()); setTemperature(null); setQualification(null); setSituations(new Set()); setNote(""); setVisit(""); setShowVisit(false); setConfirmReset(false); setStep(0); router.refresh(); }
+    return r;
+  });
+  const discardNow = () => run(async () => { const r = await discardAction(lead.id, "Descartado no atendimento"); if (r.ok) await startAction(); return r; });
+
+  const resetDiscard = (
+    <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
+      <span className="mr-auto text-xs font-medium uppercase tracking-wide text-muted">Este lead não serve?</span>
+      {confirmReset ? (
+        <span className="flex flex-wrap items-center gap-2 rounded-lg border border-danger/50 px-3 py-1.5 text-sm">
+          <span className="font-medium text-danger">Apagar tags, observação e interações? Os dados da empresa continuam.</span>
+          <button type="button" disabled={pending} className={`${btnGhost} !border-danger !bg-danger !text-white`} onClick={resetNow}>Sim, resetar</button>
+          <button type="button" className={btnGhost} onClick={() => setConfirmReset(false)}>Cancelar</button>
+        </span>
+      ) : <button type="button" disabled={pending} className={btnGhost} onClick={() => { setConfirmReset(true); setConfirmDiscard(false); }}><RotateCcw size={16} aria-hidden /> Resetar lead</button>}
+      {confirmDiscard ? (
+        <span className="flex flex-wrap items-center gap-2 rounded-lg border border-danger/50 px-3 py-1.5 text-sm">
+          <span className="font-medium text-danger">Descartar este lead? Ele sai do sorteio.</span>
+          <button type="button" disabled={pending} className={`${btnGhost} !border-danger !bg-danger !text-white`} onClick={discardNow}>Sim, descartar</button>
+          <button type="button" className={btnGhost} onClick={() => setConfirmDiscard(false)}>Cancelar</button>
+        </span>
+      ) : <button type="button" disabled={pending} className={`${btnGhost} text-danger`} onClick={() => { setConfirmDiscard(true); setConfirmReset(false); }}><X size={16} aria-hidden /> Descartar lead</button>}
+    </div>
+  );
 
   return (
     <div className="space-y-5">
-      {/* topo: progresso do dia + passos */}
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="display text-2xl sm:text-3xl">{lead.tradeName ?? lead.company}</h1>
-        {lead.isTest && <span className="rounded-md bg-sunk px-2 py-0.5 text-xs font-semibold">MODO TESTE</span>}
-        <span className="ml-auto flex flex-wrap gap-x-5 text-sm text-muted">
-          {goals.attended.on && <span>Atendidos hoje: <b className="figure text-ink">{doneToday}</b> / {goals.attended.qty}</span>}
-          {goals.scheduled.on && <span>Agendados hoje: <b className="figure text-ink">{scheduledToday}</b> / {goals.scheduled.qty}</span>}
-        </span>
-      </div>
-      <ol className="flex flex-wrap gap-1.5" aria-label="Passos do atendimento">
-        {STEPS.map((s, i) => (
-          <li key={s}>
-            <button type="button" onClick={() => go(i)} aria-current={i === step ? "step" : undefined}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${i === step ? "bg-accent text-on-accent" : i < step ? "bg-sunk text-ink" : "text-muted hover:bg-sunk/60"}`}>
-              <span className="figure text-xs opacity-80">{i + 1}</span> {s}
-            </button>
-          </li>
-        ))}
-      </ol>
+      {/* topo: empresa, metas do dia e passos */}
+      <header className={`${panelCls} relative overflow-hidden p-5 sm:p-6`}>
+        <div aria-hidden className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-accent/10 blur-2xl" />
+        <div className="relative flex flex-wrap items-start gap-x-8 gap-y-4">
+          <div className="min-w-0 flex-1">
+            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-accent"><Building2 size={14} aria-hidden /> Lead sorteado</p>
+            <h1 className="display mt-1 text-2xl sm:text-3xl">{lead.tradeName ?? lead.company}</h1>
+            <p className="mt-1 text-sm text-muted">{fmtCnpj(lead.cnpj)}{lead.city ? ` · ${lead.city}/${lead.uf}` : ""}{lead.isTest ? " · MODO TESTE" : ""}</p>
+          </div>
+          <div className="grid w-full max-w-sm gap-3 sm:w-72">
+            {goals.attended.on && <GoalBar label="Atendidos hoje" value={doneToday} qty={goals.attended.qty} />}
+            {goals.scheduled.on && <GoalBar label="Agendados hoje" value={scheduledToday} qty={goals.scheduled.qty} alt />}
+          </div>
+        </div>
+        <ol className="relative mt-5 flex items-center" aria-label="Passos do atendimento">
+          {STEPS.map((st, i) => (
+            <li key={st} className={`flex items-center ${i < STEPS.length - 1 ? "flex-1" : ""}`}>
+              <button type="button" onClick={() => go(i)} aria-current={i === step ? "step" : undefined} className="group flex flex-col items-center gap-1">
+                <span className={`grid size-9 place-items-center rounded-full text-sm font-bold transition-all ${i === step ? "scale-110 bg-accent text-on-accent shadow-lg shadow-accent/30" : i < step ? "bg-accent/20 text-accent" : "bg-sunk text-muted group-hover:bg-line"}`}>{i < step ? <Check size={16} aria-hidden /> : i + 1}</span>
+                <span className={`text-xs font-medium ${i === step ? "text-ink" : "text-muted"}`}>{st}</span>
+              </button>
+              {i < STEPS.length - 1 && <span aria-hidden className={`mx-1 mb-5 h-0.5 flex-1 rounded transition-colors ${i < step ? "bg-accent/50" : "bg-line"}`} />}
+            </li>
+          ))}
+        </ol>
+      </header>
 
       <div className={`${panelCls} p-5 sm:p-6`}>
         {step === 0 && (
@@ -142,18 +191,20 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
               {lead.tags.length ? <div className="flex flex-wrap gap-1.5">{lead.tags.map((t) => <TagChip key={t.id} label={t.label} color={t.color} />)}</div> : <p className="text-sm text-muted">Nenhuma tag ainda.</p>}
             </section>
             </div>
+            {resetDiscard}
           </div>
         )}
 
         {step > 0 && (
-          <div className="mb-5 grid gap-x-6 gap-y-1.5 rounded-xl bg-sunk p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <p><span className="text-muted">Empresa</span><br /><b>{lead.tradeName ?? lead.company}</b></p>
-            <p><span className="text-muted">CNPJ</span><br />{fmtCnpj(lead.cnpj)}</p>
-            <p><span className="text-muted">Situação</span><br />{lead.registrationStatus ? <b className={lead.registrationStatus.toUpperCase() === "ATIVA" ? "text-ok" : "text-danger"}>{lead.registrationStatus.toUpperCase()}</b> : <span className="text-warn">Sem informação</span>}</p>
-            <p><span className="text-muted">Cidade</span><br />{lead.city ? `${lead.city}/${lead.uf}` : <span className="text-warn">Sem informação</span>}</p>
-            <p className="sm:col-span-2"><span className="text-muted">Atividade</span><br />{lead.info?.activity ? `${lead.info.cnae ? `${lead.info.cnae} - ` : ""}${lead.info.activity}` : <span className="text-warn">Sem informação</span>}</p>
-            <p><span className="text-muted">Representante</span><br />{lead.rep ? `${lead.rep.repName ?? "—"} · ${lead.rep.km} km` : <span className="text-warn">Sem informação</span>}</p>
-            <p><span className="text-muted">Contato principal</span><br />{goodPhones[0] ? fmtPhone(goodPhones[0].value) : goodEmails[0]?.value ?? <span className="text-warn">Sem contato</span>}</p>
+          <div className="mb-5 grid gap-x-6 gap-y-3 rounded-xl bg-sunk p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <Info label="Empresa"><CopyVal><b>{lead.tradeName ?? lead.company}</b></CopyVal></Info>
+            <Info label="CNPJ"><CopyVal text={lead.cnpj}>{fmtCnpj(lead.cnpj)}</CopyVal></Info>
+            <Info label="Situação">{lead.registrationStatus ? <b className={lead.registrationStatus.toUpperCase() === "ATIVA" ? "text-ok" : "text-danger"}>{lead.registrationStatus.toUpperCase()}</b> : <span className="text-warn">Sem informação</span>}</Info>
+            <Info label="Cidade">{lead.city ? <CopyVal>{`${lead.city}/${lead.uf}`}</CopyVal> : <span className="text-warn">Sem informação</span>}</Info>
+            <Info label="Sócios" wide>{lead.info?.partners.length ? <ul className="space-y-0.5">{lead.info.partners.map((p, i) => <li key={i}><CopyVal text={p.name}><b>{p.name}</b>{p.role ? <span className="text-muted"> · {p.role}</span> : null}</CopyVal></li>)}</ul> : <span className="text-warn">Sem informação</span>}</Info>
+            <Info label="Atividade" wide>{lead.info?.activity ? <CopyVal>{`${lead.info.cnae ? `${lead.info.cnae} - ` : ""}${lead.info.activity}`}</CopyVal> : <span className="text-warn">Sem informação</span>}</Info>
+            <Info label="Representante">{lead.rep ? <CopyVal>{`${lead.rep.repName ?? "—"} · ${lead.rep.km} km`}</CopyVal> : <span className="text-warn">Sem informação</span>}</Info>
+            <Info label="Contato principal">{goodPhones[0] ? <CopyVal text={goodPhones[0].value}>{fmtPhone(goodPhones[0].value)}</CopyVal> : goodEmails[0] ? <CopyVal>{goodEmails[0].value}</CopyVal> : <span className="text-warn">Sem contato</span>}</Info>
           </div>
         )}
 
@@ -166,8 +217,19 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
                   <label className="text-sm">Modelo<select className={inputCls} value={tplId} onChange={(e) => setTplId(Number(e.target.value))}>{templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></label>
                   <label className="text-sm">Enviar para<select className={inputCls} value={emailTo} onChange={(e) => setEmailTo(e.target.value)}>{goodEmails.map((e) => <option key={e.id} value={e.value}>{e.value}</option>)}</select></label>
                 </div>
-                {tpl && <div className="rounded-lg bg-sunk p-3 text-sm"><p className="font-semibold">{renderTemplate(tpl.subject, vars)}</p><p className="mt-2 whitespace-pre-wrap">{renderTemplate(tpl.body, vars)}</p></div>}
-                {mail && <a href={mail} onClick={() => setUsed(new Set(used).add("email"))} className={btnPrimary}><ExternalLink size={16} aria-hidden /> Abrir e-mail</a>}
+                {tpl && (
+                  <div className="rounded-xl border border-line bg-white p-4 text-sm text-neutral-900">
+                    <p className="flex items-center gap-1.5 border-b border-neutral-200 pb-2 font-semibold"><FileText size={14} aria-hidden /> <CopyVal className="text-neutral-900">{renderTemplate(tpl.subject, vars)}</CopyVal></p>
+                    {tpl.bodyHtml
+                      ? <div className="mt-3 leading-relaxed [&_a]:text-blue-700 [&_a]:underline [&_img]:max-w-full" dangerouslySetInnerHTML={{ __html: renderHtml(tpl.bodyHtml, vars) }} />
+                      : <p className="mt-3 whitespace-pre-wrap">{renderTemplate(tpl.body, vars)}</p>}
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" className={btnPrimary} onClick={copyFormatted}><Copy size={16} aria-hidden /> Copiar e-mail formatado</button>
+                  {mail && <a href={mail} onClick={() => setUsed(new Set(used).add("email"))} className={btnGhost}><ExternalLink size={16} aria-hidden /> Abrir e-mail (só texto)</a>}
+                </div>
+                <p className="text-xs text-muted">Para manter negrito, cores e imagens: abra um e-mail novo, cole o assunto e use “Copiar e-mail formatado” para colar o corpo. O botão “Abrir e-mail” preenche só o texto simples.</p>
               </>
             )}
             <UsedToggle on={used.has("email")} onClick={() => toggle(used, "email", setUsed)} label="Usei e-mail neste lead" />
@@ -211,31 +273,16 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
               {showVisit && <div className="mt-2 max-w-xs"><input className={inputCls} placeholder="Código da visita (V-12345)" value={visit} onChange={(e) => setVisit(e.target.value)} /><p className="mt-1 text-xs text-muted">Agendar visita qualifica o lead automaticamente.</p></div>}
             </div>
             <label className="block text-sm">Observação<textarea className={`${inputCls} min-h-24`} value={note} onChange={(e) => setNote(e.target.value)} /></label>
-            <div className="flex flex-wrap justify-center gap-2">
-              <button type="button" disabled={pending} className={btnPrimary} onClick={() => save()}><Check size={17} aria-hidden /> Salvar e próximo</button>
-              <button type="button" disabled={pending} className={btnGhost} onClick={() => save("sem_contato")}>Sem contato (salvar)</button>
-              {confirmReset ? (
-                <span className="flex flex-wrap items-center gap-2 rounded-lg border border-danger/50 px-3 py-1.5 text-sm">
-                  <span className="font-medium text-danger">Apagar tags, observação e interações deste lead? Os dados continuam salvos.</span>
-                  <button type="button" disabled={pending} className={`${btnGhost} !border-danger !bg-danger !text-white`} onClick={() => run(async () => {
-                    const r = await resetLeadAction(lead.id);
-                    if (r.ok) { setUsed(new Set()); setTemperature(null); setQualification(null); setSituations(new Set()); setNote(""); setVisit(""); setShowVisit(false); setConfirmReset(false); setStep(0); router.refresh(); }
-                    return r;
-                  })}>Sim, resetar</button>
-                  <button type="button" className={btnGhost} onClick={() => setConfirmReset(false)}>Cancelar</button>
-                </span>
-              ) : (
-                <button type="button" disabled={pending} className={btnGhost} onClick={() => setConfirmReset(true)}><RotateCcw size={16} aria-hidden /> Resetar lead</button>
-              )}
+            <div className="flex flex-wrap items-center justify-center gap-2 border-t border-line pt-5">
+              <button type="button" disabled={pending} className={btnPrimary} onClick={save}><Check size={17} aria-hidden /> SALVAR E PRÓXIMO</button>
+              <button type="button" disabled={pending} className={btnGhost} onClick={saveAndStop} title="Salva, libera o lead e volta ao botão Shufflar"><Pause size={16} aria-hidden /> SALVAR E PARAR</button>
               {confirmDiscard ? (
                 <span className="flex flex-wrap items-center gap-2 rounded-lg border border-danger/50 px-3 py-1.5 text-sm">
                   <span className="font-medium text-danger">Descartar este lead? Ele sai do sorteio.</span>
-                  <button type="button" disabled={pending} className={`${btnGhost} !border-danger !bg-danger !text-white`} onClick={() => run(async () => { const r = await discardAction(lead.id, "Descartado no atendimento"); if (r.ok) await startAction(); return r; })}>Sim, descartar</button>
+                  <button type="button" disabled={pending} className={`${btnGhost} !border-danger !bg-danger !text-white`} onClick={discardNow}>Sim, descartar</button>
                   <button type="button" className={btnGhost} onClick={() => setConfirmDiscard(false)}>Cancelar</button>
                 </span>
-              ) : (
-                <button type="button" disabled={pending} className={`${btnGhost} text-danger`} onClick={() => setConfirmDiscard(true)}><X size={16} aria-hidden /> Descartar</button>
-              )}
+              ) : <button type="button" disabled={pending} className={`${btnGhost} text-danger`} onClick={() => setConfirmDiscard(true)}><X size={16} aria-hidden /> DESCARTAR LEAD</button>}
             </div>
           </section>
         )}
@@ -262,4 +309,8 @@ function UsedToggle({ on, onClick, label }: { on: boolean; onClick: () => void; 
       {label}
     </label>
   );
+}
+
+function Info({ label, children, wide }: { label: string; children: React.ReactNode; wide?: boolean }) {
+  return <div className={wide ? "sm:col-span-2" : ""}><p className="text-xs text-muted">{label}</p><div className="mt-0.5">{children}</div></div>;
 }

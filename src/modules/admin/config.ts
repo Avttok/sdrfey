@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { PERMISSION_KEYS, type PermissionMap } from "@/config/permissions";
 import type { Role } from "@/config/roles";
+import { sanitizeHtml } from "@/modules/email/render";
 import { db, emailTemplates, leadTags, leads, settings, tags, users } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { requireAdmin } from "@/modules/auth/guard";
@@ -93,15 +94,16 @@ export async function deleteTagAction(id: number): Promise<ActionResult> {
 }
 
 /* ───── Modelos de e-mail ───── */
-export async function saveTemplateAction(input: { id?: number; name: string; subject: string; body: string; active: boolean }): Promise<ActionResult> {
+export async function saveTemplateAction(input: { id?: number; name: string; subject: string; body: string; bodyHtml?: string | null; active: boolean }): Promise<ActionResult> {
   const me = await requireAdmin();
-  const p = z.object({ id: z.number().int().optional(), name: z.string().trim().min(1, "Informe o nome do modelo."), subject: z.string().trim().min(1, "Informe o assunto."), body: z.string().trim().min(1, "Escreva o texto."), active: z.boolean() }).safeParse(input);
+  const p = z.object({ id: z.number().int().optional(), name: z.string().trim().min(1, "Informe o nome do modelo."), subject: z.string().trim().min(1, "Informe o assunto."), body: z.string().trim().min(1, "Escreva o texto."), bodyHtml: z.string().max(900_000, "O modelo ficou grande demais (imagens pesadas). Use uma imagem menor.").nullish(), active: z.boolean() }).safeParse(input);
   if (!p.success) return fail(p.error.issues[0].message);
-  const { id, ...v } = p.data;
+  const { id, bodyHtml, ...rest } = p.data;
+  const v = { ...rest, bodyHtml: bodyHtml ? sanitizeHtml(bodyHtml) : null };
   if (id) {
     const [b] = await db.select().from(emailTemplates).where(eq(emailTemplates.id, id));
     await db.update(emailTemplates).set(v).where(eq(emailTemplates.id, id));
-    for (const k of ["name", "subject", "body", "active"] as const) if (b && String(b[k]) !== String(v[k])) await logAudit(db, { userId: me.id, entity: "template", action: "alterou modelo", field: `${b.name} · ${k}`, oldValue: b[k], newValue: v[k] });
+    for (const k of ["name", "subject", "body", "bodyHtml", "active"] as const) if (b && String(b[k] ?? "") !== String(v[k] ?? "")) await logAudit(db, { userId: me.id, entity: "template", action: "alterou modelo", field: `${b.name} · ${k}`, oldValue: b[k], newValue: v[k] });
   } else {
     await db.insert(emailTemplates).values(v);
     await logAudit(db, { userId: me.id, entity: "template", action: "criou modelo", field: v.name });

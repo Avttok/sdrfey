@@ -54,8 +54,8 @@ export async function getDashboard(period: Period, userIds: number[], gs: Record
     db.execute<{ conversando: number }>(sql`select count(distinct s.lead_id)::int as conversando from attendance_sessions s
       join lead_tags lt on lt.lead_id = s.lead_id join tags t on t.id = lt.tag_id and t.key = 'conversando'
       where s.outcome = 'saved' and not s.is_test and s.user_id in (${U}) and s.saved_at between ${from} and ${to}`),
-    db.execute<{ code: string; at: Date; company: string; name: string | null }>(sql`
-      select v.code, v.created_at as at, l.company, u.name from visits v join leads l on l.id = v.lead_id left join users u on u.id = v.user_id
+    db.execute<{ code: string; at: Date; company: string; name: string | null; uid: number | null; accent: string | null; roles: Role[] | null }>(sql`
+      select v.code, v.created_at as at, l.company, u.name, u.id as uid, u.accent, u.roles from visits v join leads l on l.id = v.lead_id left join users u on u.id = v.user_id
       where not l.is_test and v.canceled_at is null and (v.user_id in (${U})) order by v.created_at desc limit 8`),
     db.execute<{ key: string; label: string; color: string; n: number }>(sql`
       select t.key, t.label, t.color, count(*)::int as n from lead_tags lt join tags t on t.id = lt.tag_id join leads l on l.id = lt.lead_id
@@ -84,7 +84,7 @@ export async function getDashboard(period: Period, userIds: number[], gs: Record
     qualified: quals[0]?.n ?? 0, scheduled: visitsN[0]?.n ?? 0, conversing: funnel[0]?.conversando ?? 0,
     ranking: [...per].map((r) => ({ id: r.user_id, name: r.name, accent: r.accent, roles: r.roles as Role[], n: r.n, avgSeconds: r.avg == null ? null : Number(r.avg) })),
     hours: [...hours], meios: [...meios], temp: [...temp], stock: stock[0] ?? { novos: 0, trabalhados: 0, fora: 0, clientes: 0 },
-    recentVisits: recentVisits.map((v) => ({ code: v.code, at: v.at.toString(), company: v.company, name: v.name })),
+    recentVisits: recentVisits.map((v) => ({ code: v.code, at: v.at.toString(), company: v.company, name: v.name, uid: v.uid, accent: v.accent, roles: v.roles })),
     alerts: { hot: hot[0]?.n ?? 0, noInfo: noInfo[0]?.n ?? 0 },
   };
 }

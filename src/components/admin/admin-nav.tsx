@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, FlaskConical, KeyRound, Mail, Settings2, Tags, Upload, Users, type LucideIcon } from "lucide-react";
+import { Clock, Download, FlaskConical, KeyRound, Mail, Settings2, Tags, Upload, Users, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -13,6 +13,7 @@ const SECTIONS: { title: string; items: { href: string; label: string; hint: str
     { href: "/admin/tags", label: "Tags", hint: "Nomes, cores e ordem", icon: Tags },
     { href: "/admin/modelos", label: "Modelos de e-mail", hint: "Textos prontos", icon: Mail },
     { href: "/admin/importar", label: "Importar CSV", hint: "Leads e representantes", icon: Upload },
+    { href: "/admin/exportar", label: "Exportar / backup", hint: "Baixar o banco com segurança", icon: Download },
   ] },
   { title: "Sistema", items: [
     { href: "/admin/parametros", label: "Parâmetros", hint: "Regras do sorteio", icon: Settings2 },

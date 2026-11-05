@@ -52,7 +52,7 @@ export function ImportForm() {
   });
 
   return (
-    <div className="max-w-4xl space-y-5">
+    <div className="mx-auto max-w-4xl space-y-5">
       <section className={`${panelCls} p-5`}>
         <StepTitle n={1} done={!!file}>O que você vai importar?</StepTitle>
         <div className="grid gap-3 sm:grid-cols-2">
