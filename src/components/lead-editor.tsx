@@ -3,6 +3,7 @@
 import { Ban, Copy, Plus, Trash2, UnlockKeyhole } from "lucide-react";
 import { useState } from "react";
 import { AttendButton } from "@/components/attend-button";
+import { LeadInfoPanel } from "@/components/lead-info-panel";
 import { TagChip } from "@/components/tag-chip";
 import { useToast } from "@/components/toast";
 import { useRun } from "@/components/use-run";
@@ -42,8 +43,10 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
         {lockedByName && canRelease && <button type="button" className={btnGhost} disabled={pending} onClick={() => run(() => forceReleaseAction(lead.id))}><UnlockKeyhole size={15} aria-hidden /> Liberar lead</button>}
       </div>
 
+      <div className={`${panelCls} p-5`}><LeadInfoPanel lead={lead} /></div>
+
       <section className={`${panelCls} space-y-3 p-5`}>
-        <h2 className="display text-xl">Dados</h2>
+        <h2 className="display text-xl">Editar dados</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           {input("company", "Razão social", true)}{input("tradeName", "Nome fantasia")}{input("city", "Cidade")}{input("uf", "UF")}
           <label className="block text-sm"><span className="mb-1 block text-muted">Responsável</span><select className={inputCls} disabled={!canEdit} value={f.ownerId ?? ""} onChange={(e) => setF({ ...f, ownerId: e.target.value ? Number(e.target.value) : null })}><option value="">Sem responsável</option>{owners.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select></label>

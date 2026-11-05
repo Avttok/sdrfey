@@ -2,14 +2,15 @@ import type { Metadata } from "next";
 import { Play } from "lucide-react";
 import { and, eq, sql } from "drizzle-orm";
 import { AttendFlow } from "@/components/attend-flow";
-import { btnPrimary, panelCls } from "@/components/ui";
+import { SubmitButton } from "@/components/submit-button";
+import { panelCls } from "@/components/ui";
 import { attendanceSessions, db, leads } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
 import { startAction } from "@/modules/leads/actions";
 import { getSettings } from "@/modules/settings/get";
 import { getActiveTemplates, getLeadView, getTagCatalog } from "@/modules/leads/view";
 
-export const metadata: Metadata = { title: "Começar" };
+export const metadata: Metadata = { title: "Shufflar" };
 export const dynamic = "force-dynamic";
 
 export default async function AttendPage() {
@@ -25,7 +26,7 @@ export default async function AttendPage() {
           <p className="mt-2 text-muted">O sistema escolhe um lead livre para você. Se quiser um específico, use ATENDER na aba Leads ou no seu histórico.</p>
         </div>
         <form action={startAction}>
-          <button type="submit" className={btnPrimary}><Play size={18} aria-hidden /> Começar</button>
+          <SubmitButton><Play size={18} aria-hidden /> Shufflar</SubmitButton>
         </form>
       </div>
     );

@@ -2,13 +2,18 @@
 
 import { FilterX } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useTransition } from "react";
+import { useBusyWhile } from "@/components/toast";
 import { useEffect, useState } from "react";
 import { DateInput } from "@/components/date-input";
 import { inputCls, panelCls } from "@/components/ui";
 
 /** Filtros do Registro: data, usuário, tipo e texto, cada um com seu rótulo FORA da caixa. */
 export function AuditFilters({ people, types }: { people: { id: number; name: string }[]; types: [string, string][] }) {
-  const router = useRouter();
+  const router0 = useRouter();
+  const [navPending, startNav] = useTransition();
+  useBusyWhile(navPending);
+  const router = { replace: (url: string, o?: { scroll?: boolean }) => startNav(() => router0.replace(url, o)) };
   const path = usePathname();
   const sp = useSearchParams();
   const [q, setQ] = useState(sp.get("q") ?? "");

@@ -8,8 +8,8 @@ import type { Role } from "./roles";
 export type PermissionDef = { key: string; label: string; group: "Abas" | "Painel" | "Funções"; defaults: Role[] };
 
 export const PERMISSIONS: PermissionDef[] = [
-  { key: "tab.painel", label: "Aba Painel", group: "Abas", defaults: ["user", "manager"] },
-  { key: "tab.comecar", label: "Aba Começar", group: "Abas", defaults: ["user", "manager"] },
+  { key: "tab.painel", label: "Aba Dashboard", group: "Abas", defaults: ["user", "manager"] },
+  { key: "tab.comecar", label: "Aba Shufflar", group: "Abas", defaults: ["user", "manager"] },
   { key: "tab.leads", label: "Aba Leads", group: "Abas", defaults: ["user", "manager"] },
   { key: "tab.historico", label: "Aba Meu histórico", group: "Abas", defaults: ["user", "manager"] },
   { key: "tab.registro", label: "Aba Registro de atividades", group: "Abas", defaults: ["manager"] },
@@ -23,8 +23,8 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "panel.funil", label: "Funil", group: "Painel", defaults: ["manager"] },
   { key: "panel.horas", label: "Atividade por hora", group: "Painel", defaults: ["manager"] },
   { key: "panel.meios", label: "Meios de contato", group: "Painel", defaults: ["manager"] },
-  { key: "panel.temperatura", label: "Temperatura", group: "Painel", defaults: ["manager"] },
-  { key: "panel.estoque", label: "Estoque de leads", group: "Painel", defaults: ["manager"] },
+  { key: "panel.temperatura", label: "Interesse (Frio/Morno/Quente)", group: "Painel", defaults: ["manager"] },
+  { key: "panel.estoque", label: "Leads (estoque)", group: "Painel", defaults: ["manager"] },
   { key: "panel.alertas", label: "Alertas", group: "Painel", defaults: ["manager"] },
   { key: "panel.agendamentos", label: "Agendamentos recentes", group: "Painel", defaults: ["user", "manager"] },
 

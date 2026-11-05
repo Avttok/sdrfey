@@ -16,6 +16,10 @@ import { getTagCatalog } from "@/modules/leads/view";
 export const metadata: Metadata = { title: "Leads" };
 export const dynamic = "force-dynamic";
 
+function Bubble({ name, hex, prefix }: { name: string; hex: string; prefix: string }) {
+  return <span title={`${prefix}: ${name}`} className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium" style={{ background: `color-mix(in srgb, ${hex} 22%, transparent)`, color: `color-mix(in srgb, ${hex} 75%, var(--ink))`, border: `1px solid color-mix(in srgb, ${hex} 45%, transparent)` }}><span className="opacity-70">{prefix}:</span> {name.split(" ")[0]}</span>;
+}
+
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   await requirePerm("tab.leads");
   const sp = await searchParams;
@@ -54,11 +58,10 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                   {l.tags.map((t) => <TagChip key={t.label} label={t.label} color={t.color} />)}
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                {l.locked_by_name && <span className="text-xs text-muted">Em atendimento: {l.locked_by_name}</span>}
-                {accent ? (
-                  <span className="rounded-full px-2.5 py-0.5 text-xs font-medium" style={{ background: `color-mix(in srgb, ${accent.hex} 22%, transparent)`, color: `color-mix(in srgb, ${accent.hex} 75%, var(--ink))` }}>{l.owner_name!.split(" ")[0]}</span>
-                ) : <span className="text-xs text-muted">Sem responsável</span>}
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {l.locked_by_name && <Bubble name={l.locked_by_name} hex={bubbleHex(l.locked_by_accent, l.locked_by_id ?? 0)} prefix="Atendendo" />}
+                {accent && <Bubble name={l.owner_name!} hex={accent.hex} prefix="Responsável" />}
+                {!accent && !l.locked_by_name && <span className="rounded-full border border-line px-2.5 py-0.5 text-xs text-muted">Sem responsável</span>}
                 {!l.locked_by_name && <AttendButton leadId={l.id} compact />}
               </div>
             </li>

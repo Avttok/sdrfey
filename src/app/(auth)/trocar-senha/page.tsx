@@ -11,7 +11,6 @@ export default async function ChangePasswordPage() {
 
   return (
     <main className="min-h-dvh">
-      <div className="thread" aria-hidden />
       <div className="mx-auto w-full max-w-md px-6 py-12">
         <Logo />
         <h1 className="display mt-10 text-3xl">

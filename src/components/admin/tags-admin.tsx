@@ -1,19 +1,25 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { TagChip } from "@/components/tag-chip";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
-import { deleteTagAction, saveTagAction } from "@/modules/admin/config";
+import { deleteTagAction, moveTagAction, saveTagAction } from "@/modules/admin/config";
 
 export type TagRow = { id?: number; groupKey: string; label: string; color: string; blocksSorting: boolean; cooldownDays: number | null; active: boolean; autoOnly?: boolean };
 
-function Row({ t, isNew }: { t: TagRow; isNew?: boolean }) {
+function Row({ t, isNew, first, last }: { t: TagRow; isNew?: boolean; first?: boolean; last?: boolean }) {
   const [f, setF] = useState(t);
   const { run, pending } = useRun();
   return (
     <li className="flex flex-wrap items-center gap-2 rounded-lg bg-sunk p-2.5 text-sm">
+      {!isNew && (
+        <span className="flex flex-col">
+          <button type="button" aria-label={`Subir ${t.label}`} title="Subir na ordem" disabled={pending || first} className="rounded p-0.5 hover:bg-line disabled:opacity-30" onClick={() => run(() => moveTagAction(t.id!, "up"))}><ArrowUp size={14} /></button>
+          <button type="button" aria-label={`Descer ${t.label}`} title="Descer na ordem" disabled={pending || last} className="rounded p-0.5 hover:bg-line disabled:opacity-30" onClick={() => run(() => moveTagAction(t.id!, "down"))}><ArrowDown size={14} /></button>
+        </span>
+      )}
       <input className={`${inputCls} !w-40 !py-1.5`} aria-label="Nome" placeholder="Nome da tag" value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} />
       <input type="color" aria-label="Cor" className="h-9 w-12 cursor-pointer rounded border border-line bg-transparent" value={f.color} onChange={(e) => setF({ ...f, color: e.target.value })} />
       {!isNew && <TagChip label={f.label || "—"} color={f.color} />}
@@ -35,7 +41,7 @@ export function TagsAdmin({ groups }: { groups: { key: string; name: string; tag
         <section key={g.key} className={`${panelCls} space-y-2 p-4`}>
           <h2 className="display text-xl">{g.name}</h2>
           <ul className="space-y-2">
-            {g.tags.map((t) => <Row key={t.id} t={t} />)}
+            {g.tags.map((t, i) => <Row key={t.id} t={t} first={i === 0} last={i === g.tags.length - 1} />)}
             <Row isNew t={{ groupKey: g.key, label: "", color: "#64748b", blocksSorting: false, cooldownDays: null, active: true }} />
           </ul>
         </section>

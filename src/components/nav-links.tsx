@@ -1,8 +1,14 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
+import { Spinner } from "@/components/spinner";
 import { usePathname } from "next/navigation";
 import { NAV } from "@/config/nav";
+
+function Pending({ Icon }: { Icon: React.ComponentType<{ size?: number; "aria-hidden"?: boolean }> }) {
+  const { pending } = useLinkStatus();
+  return pending ? <Spinner size={17} /> : <Icon size={17} aria-hidden />;
+}
 
 export function NavLinks({ hrefs }: { hrefs: string[] }) {
   const pathname = usePathname();
@@ -21,7 +27,7 @@ export function NavLinks({ hrefs }: { hrefs: string[] }) {
               active ? "bg-sunk text-ink" : "text-muted hover:bg-sunk/60 hover:text-ink"
             }`}
           >
-            <Icon size={17} aria-hidden />
+            <Pending Icon={Icon} />
             {label}
           </Link>
         );

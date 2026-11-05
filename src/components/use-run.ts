@@ -1,14 +1,15 @@
 "use client";
 
 import { useTransition } from "react";
-import { useToast } from "@/components/toast";
+import { useBusyWhile, useToast } from "@/components/toast";
 
 type R = { ok: boolean; message?: string } | void;
 
-/** Executa uma ação do servidor mostrando o resultado num aviso (verde se deu certo, vermelho se não). */
+/** Executa uma ação do servidor: mostra “Carregando…” enquanto roda e o resultado num aviso (verde ok, vermelho erro). */
 export function useRun() {
   const toast = useToast();
   const [pending, start] = useTransition();
+  useBusyWhile(pending);
   const run = (fn: () => Promise<R>, okMsg?: string, after?: () => void) =>
     start(async () => {
       const r = await fn();

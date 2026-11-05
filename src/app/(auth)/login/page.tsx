@@ -16,7 +16,6 @@ export default function LoginPage() {
             O sistema sorteia o próximo lead, mostra os dados da empresa e guia e-mail, WhatsApp e ligação.
           </p>
         </div>
-        <div className="thread absolute inset-x-0 bottom-0 h-3" aria-hidden />
       </section>
 
       <section className="flex flex-col px-6 py-8 sm:px-12">

@@ -2,7 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { cities, db, reps } from "@/db";
 import { cityLookupKey } from "@/modules/import/reps";
 
-export type NearestRep = { id: number; repName: string | null; managerName: string | null; team: string | null; city: string | null; uf: string | null; address: string | null; km: number };
+export type NearestRep = { id: number; sapCode: string; esc: number | null; cnpj: string | null; cep: string | null; repName: string | null; managerName: string | null; team: string | null; city: string | null; uf: string | null; address: string | null; km: number };
 
 /** Representante ativo mais próximo da cidade do lead (distância em linha reta, pelas coordenadas do IBGE). */
 export async function nearestRep(city: string | null, uf: string | null): Promise<NearestRep | null> {
@@ -13,7 +13,7 @@ export async function nearestRep(city: string | null, uf: string | null): Promis
   if (!c) return null;
   const dist = sql<number>`6371 * 2 * asin(sqrt(power(sin(radians(${reps.lat} - ${c.lat}) / 2), 2) + cos(radians(${c.lat})) * cos(radians(${reps.lat})) * power(sin(radians(${reps.lon} - ${c.lon}) / 2), 2)))`;
   const [r] = await db
-    .select({ id: reps.id, repName: reps.repName, managerName: reps.managerName, team: reps.team, city: reps.city, uf: reps.uf, address: reps.address, km: dist })
+    .select({ id: reps.id, sapCode: reps.sapCode, esc: reps.esc, cnpj: reps.cnpj, cep: reps.cep, repName: reps.repName, managerName: reps.managerName, team: reps.team, city: reps.city, uf: reps.uf, address: reps.address, km: dist })
     .from(reps)
     .where(and(eq(reps.active, true), sql`${reps.lat} is not null`))
     .orderBy(dist)

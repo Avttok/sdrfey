@@ -12,7 +12,7 @@ import { requirePerm } from "@/modules/auth/guard";
 import { getDashboard, resolvePeriod } from "@/modules/dashboard/stats";
 import { getSettings } from "@/modules/settings/get";
 
-export const metadata: Metadata = { title: "Painel" };
+export const metadata: Metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
 const nf = new Intl.NumberFormat("pt-BR");
 const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : "0%");
@@ -62,7 +62,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="space-y-5">
-      <h1 className="display text-3xl">Painel</h1>
+      <h1 className="display text-3xl">Dashboard</h1>
       <Suspense fallback={null}>
         <DashboardFilters preset={period.preset} from={period.preset === "custom" ? period.from : ""} to={period.preset === "custom" ? period.to : ""} people={team ? people : []} selected={scope} />
       </Suspense>
@@ -105,7 +105,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </Block>
         )}
         {(can("panel.temperatura") || can("panel.estoque")) && (
-          <Block icon={Flame} title="Temperatura e estoque">
+          <Block icon={Flame} title="Interesse e Leads">
             {can("panel.temperatura") && <><div className="mb-1 flex h-2.5 overflow-hidden rounded-full">{d.temp.map((t) => <span key={t.key} style={{ flex: t.n, background: t.color }} />)}</div><p className="mb-3 text-xs text-muted">{d.temp.map((t) => `${t.label} ${nf.format(t.n)}`).join(" · ")}</p></>}
             {can("panel.estoque") && <><div className="mb-1 flex h-2.5 overflow-hidden rounded-full"><span style={{ flex: d.stock.novos, background: "#888780" }} /><span style={{ flex: d.stock.trabalhados, background: "#378ADD" }} /><span style={{ flex: d.stock.fora, background: "#E24B4A" }} /><span style={{ flex: d.stock.clientes, background: "#1D9E75" }} /></div><p className="text-xs text-muted">{nf.format(d.stock.novos)} novos · {nf.format(d.stock.trabalhados)} trabalhados · {nf.format(d.stock.fora)} fora do sorteio · {nf.format(d.stock.clientes)} clientes ({pct(d.stock.novos, totalStock)} novos)</p></>}
           </Block>

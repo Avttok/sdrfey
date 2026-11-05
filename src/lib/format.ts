@@ -43,3 +43,27 @@ export const fmtCnpj = (d: string) => d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\
 
 export const fmtMoney = (n: number | null | undefined) =>
   n == null ? "—" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(n);
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** Tempo desde a abertura da empresa: "1 ano e 3 meses", "2 anos", "10 meses", "menos de 1 mês". Só meses cheios contam. */
+export function fmtAge(openedIso: string | null | undefined, now: Date = new Date()): string | null {
+  const m = openedIso?.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  const [y, mo, d] = [+m[1], +m[2], +m[3]];
+  let months = (now.getUTCFullYear() - y) * 12 + (now.getUTCMonth() + 1 - mo);
+  if (now.getUTCDate() < d) months -= 1;
+  if (months < 0) return null;
+  if (months < 1) return "menos de 1 mês";
+  const years = Math.floor(months / 12);
+  const rest = months % 12;
+  if (years === 0) return plural(rest, "mês", "meses");
+  if (rest === 0) return plural(years, "ano", "anos");
+  return `${plural(years, "ano", "anos")} e ${plural(rest, "mês", "meses")}`;
+}
+
+/** 4789099 → "4789-0/99" */
+export function fmtCnae(code: string | number | null | undefined): string | null {
+  const d = String(code ?? "").replace(/\D/g, "");
+  return d.length === 7 ? `${d.slice(0, 4)}-${d[4]}/${d.slice(5)}` : d || null;
+}

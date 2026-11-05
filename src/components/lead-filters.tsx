@@ -2,6 +2,8 @@
 
 import { Filter, FilterX, Search, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useTransition } from "react";
+import { useBusyWhile } from "@/components/toast";
 import { useEffect, useState } from "react";
 import { DateInput } from "@/components/date-input";
 import { TagChip } from "@/components/tag-chip";
@@ -12,7 +14,10 @@ type Person = { id: number; name: string };
 
 /** Filtros da aba Leads. O painel abre e fecha; os filtros ativos continuam visíveis como bolhas. */
 export function LeadFilters({ catalog, people, ufs }: { catalog: TagCatalog; people: Person[]; ufs: string[] }) {
-  const router = useRouter();
+  const router0 = useRouter();
+  const [navPending, startNav] = useTransition();
+  useBusyWhile(navPending);
+  const router = { replace: (url: string, o?: { scroll?: boolean }) => startNav(() => router0.replace(url, o)) };
   const path = usePathname();
   const sp = useSearchParams();
   const [open, setOpen] = useState(false);

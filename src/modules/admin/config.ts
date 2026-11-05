@@ -1,6 +1,6 @@
 "use server";
 
-import { eq, sql } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { PERMISSION_KEYS, type PermissionMap } from "@/config/permissions";
@@ -132,4 +132,22 @@ export async function clearTestDataAction(): Promise<ActionResult> {
   await logAudit(db, { userId: me.id, entity: "setting", action: "apagou leads de teste", field: "Modo teste", oldValue: del.length, newValue: 0 });
   revalidatePath("/admin/modo-teste");
   return { ok: true, message: `${del.length} leads de teste apagados (com atendimentos e contatos).` };
+}
+
+/** Move uma tag para cima/baixo dentro do próprio grupo (muda a ordem em que aparece para todos). */
+export async function moveTagAction(id: number, dir: "up" | "down"): Promise<ActionResult> {
+  const me = await requireAdmin();
+  const [t] = await db.select().from(tags).where(eq(tags.id, id));
+  if (!t) return fail("Tag não encontrada.");
+  const list = await db.select().from(tags).where(eq(tags.groupKey, t.groupKey)).orderBy(asc(tags.sort), asc(tags.label));
+  const i = list.findIndex((x) => x.id === id);
+  const j = dir === "up" ? i - 1 : i + 1;
+  if (j < 0 || j >= list.length) return { ok: true };
+  [list[i], list[j]] = [list[j], list[i]];
+  await db.transaction(async (tx) => {
+    for (const [pos, row] of list.entries()) if (row.sort !== pos) await tx.update(tags).set({ sort: pos }).where(eq(tags.id, row.id));
+  });
+  await logAudit(db, { userId: me.id, entity: "tag", action: "reordenou tags", field: t.groupKey, oldValue: String(i + 1), newValue: String(j + 1), meta: { tag: t.label } });
+  revalidatePath("/admin/tags");
+  return { ok: true, message: `${t.label} agora é a ${j + 1}ª tag do grupo.` };
 }

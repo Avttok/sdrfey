@@ -25,7 +25,7 @@ async function guard(fn: () => Promise<ActionResult | void>): Promise<ActionResu
   }
 }
 
-/** "Começar": sorteia o próximo lead (ou volta ao que já está em mãos). */
+/** "Shufflar": sorteia o próximo lead (ou volta ao que já está em mãos). */
 export async function startAction() {
   const me = await requirePerm("tab.comecar");
   await claimNext(me.id);
@@ -112,10 +112,12 @@ export async function removeChannelAction(leadId: number, channelId: number): Pr
 }
 
 export async function refreshInfoAction(leadId: number): Promise<ActionResult> {
-  const me = await requirePerm("tab.comecar");
+  const me = await requireUser();
+  if (!me.permissions["tab.comecar"] && !me.permissions["tab.leads"]) return { ok: false, message: "Sem permissão." };
   return guard(async () => {
     const r = await enrichLead(leadId, me.id);
     revalidatePath("/atender");
+    revalidatePath(`/leads/${leadId}`);
     if (r.state === "unavailable") return { ok: false, message: "Consulta indisponível agora. Tente atualizar de novo em instantes." };
     const extra = r.newPhones + r.newEmails;
     return { ok: true, message: extra ? `Dados atualizados: ${r.newPhones} telefone(s) e ${r.newEmails} e-mail(s) novos.` : "Dados atualizados. Nenhum contato novo." };

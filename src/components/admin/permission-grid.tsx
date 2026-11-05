@@ -10,7 +10,7 @@ export function PermissionGrid({ mode, value, onChange }: { mode: "role" | "user
     <div className="space-y-4">
       {GROUPS.map((g) => (
         <fieldset key={g}>
-          <legend className="mb-1.5 text-sm font-medium">{g === "Painel" ? "Blocos do Painel" : g}</legend>
+          <legend className="mb-1.5 text-sm font-medium">{g === "Painel" ? "Blocos do Dashboard" : g}</legend>
           <div className="grid gap-1.5 sm:grid-cols-2">
             {PERMISSIONS.filter((p) => p.group === g).map((p) =>
               mode === "role" ? (

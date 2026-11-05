@@ -1,3 +1,5 @@
+import { fmtCnae } from "@/lib/format";
+
 /** Leitura das respostas da BrasilAPI e da ReceitaWS num formato único. Sem rede, fácil de testar. */
 
 export type CnpjInfo = {
@@ -13,6 +15,9 @@ export type CnpjInfo = {
   capital: number | null;
   openedAt: string | null; // ISO yyyy-mm-dd
   activity: string | null;
+  /** Código CNAE já formatado (4789-0/99). */
+  cnae: string | null;
+  address: { street: string | null; number: string | null; complement: string | null; district: string | null; cep: string | null };
   partners: { name: string; role: string | null }[];
 };
 
@@ -46,6 +51,11 @@ export function parseBrasilApi(j: any): CnpjInfo | null {
     capital: typeof j.capital_social === "number" ? j.capital_social : null,
     openedAt: str(j.data_inicio_atividade),
     activity: str(j.cnae_fiscal_descricao),
+    cnae: fmtCnae(j.cnae_fiscal),
+    address: {
+      street: [str(j.descricao_tipo_de_logradouro), str(j.logradouro)].filter(Boolean).join(" ") || null,
+      number: str(j.numero), complement: str(j.complemento), district: str(j.bairro), cep: str(j.cep)?.replace(/\D/g, "") || null,
+    },
     partners: Array.isArray(j.qsa)
       ? j.qsa.filter((p: any) => str(p?.nome_socio)).map((p: any) => ({ name: str(p.nome_socio)!, role: str(p.qualificacao_socio) }))
       : [],
@@ -68,6 +78,8 @@ export function parseReceitaWs(j: any): CnpjInfo | null {
     capital: Number.isFinite(cap) && String(j.capital_social ?? "") !== "" ? cap : null,
     openedAt: open ? `${open[3]}-${open[2]}-${open[1]}` : null,
     activity: str(j.atividade_principal?.[0]?.text),
+    cnae: fmtCnae(j.atividade_principal?.[0]?.code),
+    address: { street: str(j.logradouro), number: str(j.numero), complement: str(j.complemento), district: str(j.bairro), cep: str(j.cep)?.replace(/\D/g, "") || null },
     partners: Array.isArray(j.qsa) ? j.qsa.filter((p: any) => str(p?.nome)).map((p: any) => ({ name: str(p.nome)!, role: str(p.qual) })) : [],
   };
 }
@@ -90,6 +102,11 @@ export function mergeInfo(a: CnpjInfo | null, b: CnpjInfo | null): CnpjInfo | nu
     capital: pick("capital"),
     openedAt: pick("openedAt"),
     activity: pick("activity"),
+    cnae: pick("cnae"),
+    address: {
+      street: x.address.street ?? y?.address.street ?? null, number: x.address.number ?? y?.address.number ?? null,
+      complement: x.address.complement ?? y?.address.complement ?? null, district: x.address.district ?? y?.address.district ?? null, cep: x.address.cep ?? y?.address.cep ?? null,
+    },
     partners: x.partners.length ? x.partners : (y?.partners ?? []),
   };
 }

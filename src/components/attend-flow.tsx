@@ -2,8 +2,9 @@
 
 import { Ban, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, Mail, MapPin, MessageCircle, Phone, Plus, RefreshCw, SkipForward, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { LeadInfoPanel } from "@/components/lead-info-panel";
 import { TagChip } from "@/components/tag-chip";
-import { useToast } from "@/components/toast";
+import { useBusyWhile, useToast } from "@/components/toast";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { fmtCnpj, fmtDate, fmtMoney, fmtPhone } from "@/lib/format";
 import { addChannelAction, discardAction, heartbeatAction, markWrongAction, refreshInfoAction, releaseAction, removeChannelAction, saveAction, skipAction, startAction, startedAction } from "@/modules/leads/actions";
@@ -23,15 +24,10 @@ const copy = async (text: string, toast: ReturnType<typeof useToast>) => {
   }
 };
 
-function yearsSince(iso: string | null) {
-  if (!iso) return null;
-  const y = (Date.now() - new Date(iso).getTime()) / (365.25 * 86400_000);
-  return y >= 1 ? `${Math.floor(y)} ano(s)` : `${Math.max(1, Math.round(y * 12))} mês(es)`;
-}
-
 export function AttendFlow({ lead, catalog, templates, myName, doneToday, goal }: { lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; doneToday: number; goal: number }) {
   const toast = useToast();
   const [pending, start] = useTransition();
+  useBusyWhile(pending);
   const [step, setStep] = useState(0);
   const [used, setUsed] = useState<Set<string>>(new Set());
   const [temperature, setTemperature] = useState<string | null>(lead.tags.find((t) => t.groupKey === "temperatura")?.key ?? null);
@@ -40,27 +36,17 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, goal }
   const [note, setNote] = useState(lead.notes ?? "");
   const [visit, setVisit] = useState("");
   const [showVisit, setShowVisit] = useState(false);
-  const [more, setMore] = useState(false);
   const [newValue, setNewValue] = useState("");
   const [tplId, setTplId] = useState(templates[0]?.id ?? 0);
   const [emailTo, setEmailTo] = useState("");
   const [phoneSel, setPhoneSel] = useState("");
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   const phones = lead.channels.filter((c) => c.kind === "phone");
   const emails = lead.channels.filter((c) => c.kind === "email");
   const goodPhones = phones.filter((p) => !p.wrong);
   const goodEmails = emails.filter((e) => !e.wrong);
   const groups = useMemo(() => Object.fromEntries(catalog.map((g) => [g.key, g])), [catalog]);
-
-  /* lead ainda não consultado: busca os dados da Receita sozinho, uma vez, ao abrir */
-  useEffect(() => {
-    if (lead.enrichedAt !== null) return;
-    void refreshInfoAction(lead.id).then((r) => {
-      if (!r.ok) toast("warn", r.message);
-      else if (r.message?.includes("novo")) toast("info", r.message);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lead.id]);
 
   /* batimento a cada 30 s: mantém o lead com você e mostra que está online */
   useEffect(() => {
@@ -91,7 +77,6 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, goal }
   const vars = { meu_nome: myName.split(" ")[0], empresa: lead.tradeName ?? lead.company, cidade: lead.city, representante: lead.rep?.repName, contato: lead.people[0]?.name?.split(" ")[0] };
   const mail = tpl && (emailTo || goodEmails[0]?.value) ? mailtoLink(emailTo || goodEmails[0].value, renderTemplate(tpl.subject, vars), renderTemplate(tpl.body, vars)) : null;
   const wa = (phoneSel || goodPhones[0]?.value) ? `https://app.chatpro.com.br/add/cloud/55${phoneSel || goodPhones[0].value}` : null;
-  const mapsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lead.company} ${lead.city ?? ""} ${lead.uf ?? ""}`)}`;
 
   const save = (extraSituation?: string) => {
     const sits = new Set(situations);
@@ -125,42 +110,10 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, goal }
       <div className={`${panelCls} p-5 sm:p-6`}>
         {step === 0 && (
           <div className="grid gap-6 lg:grid-cols-2">
-            <section className="space-y-3">
-              <h2 className="display text-xl">Dados da empresa</h2>
-              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-                <dt className="text-muted">Razão social</dt><dd>{lead.company}</dd>
-                {lead.tradeName && <><dt className="text-muted">Fantasia</dt><dd>{lead.tradeName}</dd></>}
-                <dt className="text-muted">CNPJ</dt><dd className="flex items-center gap-2">{fmtCnpj(lead.cnpj)} <button type="button" aria-label="Copiar CNPJ" onClick={() => copy(lead.cnpj, toast)}><Copy size={14} /></button></dd>
-                <dt className="text-muted">Situação</dt><dd>{lead.registrationStatus ?? "Sem informação"}</dd>
-                <dt className="text-muted">Atividade</dt><dd>{lead.info?.activity ?? "Sem informação"}</dd>
-                <dt className="text-muted">Tempo de atividade</dt><dd>{yearsSince(lead.info?.openedAt ?? null) ?? "Sem informação"}</dd>
-                <dt className="text-muted">Capital</dt><dd>{lead.info?.capital != null ? fmtMoney(lead.info.capital) : "Sem informação"}</dd>
-                <dt className="text-muted">Sócios</dt><dd>{lead.info?.partners.length ? lead.info.partners.map((p) => p.name).join(", ") : "Sem informação"}</dd>
-                <dt className="text-muted">Cidade</dt>
-                <dd className="flex flex-wrap items-center gap-2">{lead.city ? `${lead.city}/${lead.uf}` : "Sem informação"} <a href={mapsHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent underline"><MapPin size={14} aria-hidden /> Google Maps</a></dd>
-              </dl>
-              {lead.enrichedAt === null && <p className="text-xs text-muted">Consulta ainda não feita ou indisponível. Use “Atualizar informações”.</p>}
-              <div className="flex flex-wrap gap-2">
-                <button type="button" disabled={pending} className={btnGhost} onClick={() => run(() => refreshInfoAction(lead.id))}><RefreshCw size={15} aria-hidden /> Atualizar informações</button>
-                <button type="button" className={btnGhost} onClick={() => setMore(!more)}>{more ? "Ocultar" : "Ver todas as informações"}</button>
-              </div>
-              {more && (
-                <div className="rounded-lg bg-sunk p-3 text-xs">
-                  <p className="mb-1 font-semibold">Pessoas</p>
-                  {lead.people.length ? lead.people.map((p) => <p key={p.id}>{p.name}{p.roleTitle ? ` · ${p.roleTitle}` : ""}{p.extension ? ` · ramal ${p.extension}` : ""}</p>) : <p className="text-muted">Nenhuma pessoa cadastrada.</p>}
-                  <p className="mb-1 mt-2 font-semibold">Visitas</p>
-                  {lead.visits.length ? lead.visits.map((v) => <p key={v.at}>{v.code} · {fmtDate(v.at)}{v.canceled ? " (cancelada)" : ""}</p>) : <p className="text-muted">Nenhuma visita.</p>}
-                  {lead.legacyVisit && <p className="mt-1">Planilha antiga: {lead.legacyVisit}</p>}
-                </div>
-              )}
-              <div className="flex flex-wrap gap-1.5">
-                {lead.tags.map((t) => <TagChip key={t.id} label={t.label} color={t.color} />)}
-              </div>
-              <div className="rounded-lg border border-line p-3 text-sm">
-                <p className="mb-1 font-semibold">Representante mais próximo</p>
-                {lead.rep ? <p>{lead.rep.repName ?? "—"} · {lead.rep.city}/{lead.rep.uf} · a ~{lead.rep.km} km{lead.rep.managerName ? ` · gestor ${lead.rep.managerName}` : ""}</p> : <p className="text-muted">Sem informação (cidade do lead não encontrada).</p>}
-              </div>
-            </section>
+            <div className="space-y-3">
+              <LeadInfoPanel lead={lead} />
+              <div className="flex flex-wrap gap-1.5">{lead.tags.map((t) => <TagChip key={t.id} label={t.label} color={t.color} />)}</div>
+            </div>
 
             <section className="space-y-3">
               <h2 className="display text-xl">Contatos</h2>
@@ -241,7 +194,15 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, goal }
             <div className="flex flex-wrap justify-center gap-2">
               <button type="button" disabled={pending} className={btnPrimary} onClick={() => save()}><Check size={17} aria-hidden /> Salvar e próximo</button>
               <button type="button" disabled={pending} className={btnGhost} onClick={() => save("sem_contato")}>Sem contato (salvar)</button>
-              <button type="button" disabled={pending} className={`${btnGhost} text-danger`} onClick={() => run(async () => { const r = await discardAction(lead.id, "Descartado no atendimento"); if (r.ok) await startAction(); return r; })}><X size={16} aria-hidden /> Descartar</button>
+              {confirmDiscard ? (
+                <span className="flex flex-wrap items-center gap-2 rounded-lg border border-danger/50 px-3 py-1.5 text-sm">
+                  <span className="font-medium text-danger">Descartar este lead? Ele sai do sorteio.</span>
+                  <button type="button" disabled={pending} className={`${btnGhost} !border-danger !bg-danger !text-white`} onClick={() => run(async () => { const r = await discardAction(lead.id, "Descartado no atendimento"); if (r.ok) await startAction(); return r; })}>Sim, descartar</button>
+                  <button type="button" className={btnGhost} onClick={() => setConfirmDiscard(false)}>Cancelar</button>
+                </span>
+              ) : (
+                <button type="button" disabled={pending} className={`${btnGhost} text-danger`} onClick={() => setConfirmDiscard(true)}><X size={16} aria-hidden /> Descartar</button>
+              )}
             </div>
           </section>
         )}
@@ -262,5 +223,5 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
   return <div><p className="mb-1.5 text-sm font-medium">{title}</p><div className="flex flex-wrap gap-2">{children}</div></div>;
 }
 function UsedToggle({ on, onClick, label }: { on: boolean; onClick: () => void; label: string }) {
-  return <button type="button" onClick={onClick} aria-pressed={on} className={`${btnGhost} ${on ? "border-accent bg-sunk" : ""}`}>{on ? <Check size={15} aria-hidden /> : null} {label}</button>;
+  return <button type="button" onClick={onClick} aria-pressed={on} className={`${btnGhost} mt-6 ${on ? "border-accent bg-sunk" : ""}`}>{on ? <Check size={15} aria-hidden /> : null} {label}</button>;
 }

@@ -44,6 +44,8 @@ export async function getLeadView(leadId: number) {
     isTest: lead.isTest,
     enrichedAt: lead.enrichedAt?.toISOString() ?? null,
     info,
+    brasilApi: lead.brasilApiData ?? null,
+    receitaWs: lead.receitaWsData ?? null,
     tags: tagRows,
     channels: channels.map((c) => ({ id: c.id, personId: c.personId, kind: c.kind, value: c.value, label: c.label, origin: c.origin, wrong: c.wrong })),
     people: people.map((p) => ({ id: p.id, name: p.name, roleTitle: p.roleTitle, extension: p.extension })),

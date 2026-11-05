@@ -12,6 +12,7 @@
   --color-on-accent: var(--on-accent);
   --color-danger: var(--danger);
   --color-ok: var(--ok);
+  --color-warn: var(--warn);
   --font-sans: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -25,6 +26,7 @@
   --muted: #566069;
   --danger: #b42318;
   --ok: #15803d;
+  --warn: #a16207;
   --accent: #3b82f6;
   --on-accent: #ffffff;
   color-scheme: light;
@@ -39,6 +41,7 @@
   --muted: #8e98a5;
   --danger: #f97066;
   --ok: #4ade80;
+  --warn: #fbbf24;
   color-scheme: dark;
 }
 
@@ -68,12 +71,6 @@ body {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
-}
-
-/* A rosca do parafuso: único elemento decorativo do sistema. */
-.thread {
-  height: 6px;
-  background: repeating-linear-gradient(118deg, var(--accent) 0 6px, transparent 6px 11px);
 }
 
 :focus-visible {
