@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { ArrowRight, Download, ExternalLink, FileText, Gauge, Settings2, Tag, Target, Upload, User, UserRound, Users } from "lucide-react";
+import { PageHead } from "@/components/page-head";
+import { ScrollText, ArrowRight, Download, ExternalLink, FileText, Gauge, Settings2, Tag, Target, Upload, User, UserRound, Users } from "lucide-react";
 import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
 import { Suspense } from "react";
@@ -38,16 +39,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="display text-3xl">Registro de atividades</h1>
-          <p className="mt-1 text-sm text-muted">Tudo o que acontece no sistema, com quem fez, quando e o que mudou.</p>
-        </div>
+      <PageHead icon={ScrollText} title="Registro de atividades" subtitle="Tudo o que acontece no sistema, com quem fez, quando e o que mudou.">
         <div className="flex items-center gap-2">
           <p className="rounded-full bg-accent/15 px-3.5 py-1.5 text-sm font-semibold text-accent"><span className="figure">{new Intl.NumberFormat("pt-BR").format(total)}</span> {total === 1 ? "registro" : "registros"}</p>
           {me.roles.includes("admin") && <a className={btnGhost} href="/admin/exportar/registro" download><Download size={15} aria-hidden /> Exportar</a>}
         </div>
-      </div>
+      </PageHead>
 
       <div className="flex flex-wrap gap-1.5" aria-label="Filtro rápido por tipo">
         <Link href={typeHref("")} className={`rounded-full border px-3 py-1 text-xs font-medium ${!f.type ? "border-accent bg-accent text-on-accent" : "border-line hover:bg-sunk"}`}>Tudo</Link>

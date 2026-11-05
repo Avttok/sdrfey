@@ -9,7 +9,7 @@ import { LeadInfoPanel } from "@/components/lead-info-panel";
 import { TagChip } from "@/components/tag-chip";
 import { useBusyWhile, useToast } from "@/components/toast";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
-import { fmtCnpj, fmtDate, fmtMoney, fmtPhone } from "@/lib/format";
+import { cleanRole, fmtCnpj, fmtDate, fmtMoney, fmtPhone } from "@/lib/format";
 import { addChannelAction, discardAction, heartbeatAction, markWrongAction, releaseAction, removeChannelAction, resetLeadAction, saveAction, skipAction, startAction, startedAction } from "@/modules/leads/actions";
 import { htmlToText, mailtoLink, renderHtml, renderTemplate } from "@/modules/email/render";
 import type { LeadView, TagCatalog } from "@/modules/leads/view";
@@ -90,7 +90,7 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
     if (r.ok) await startAction();
     return r;
   });
-  /** Salva, libera o lead e volta à tela do botão Shufflar (pausa: o lead não fica contando tempo). */
+  /** Salva, libera o lead e volta à tela do botão Shuffler (pausa: o lead não fica contando tempo). */
   const saveAndStop = () => run(async () => {
     const r = await saveAction(payload());
     if (r.ok) { router.replace("/atender"); router.refresh(); }
@@ -197,13 +197,13 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
 
         {step > 0 && (
           <div className="mb-5 grid gap-x-6 gap-y-3 rounded-xl bg-sunk p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <Info label="Empresa"><CopyVal><b>{lead.tradeName ?? lead.company}</b></CopyVal></Info>
+            <Info label="Empresa"><b>{lead.tradeName ?? lead.company}</b></Info>
             <Info label="CNPJ"><CopyVal text={lead.cnpj}>{fmtCnpj(lead.cnpj)}</CopyVal></Info>
             <Info label="Situação">{lead.registrationStatus ? <b className={lead.registrationStatus.toUpperCase() === "ATIVA" ? "text-ok" : "text-danger"}>{lead.registrationStatus.toUpperCase()}</b> : <span className="text-warn">Sem informação</span>}</Info>
-            <Info label="Cidade">{lead.city ? <CopyVal>{`${lead.city}/${lead.uf}`}</CopyVal> : <span className="text-warn">Sem informação</span>}</Info>
-            <Info label="Sócios" wide>{lead.info?.partners.length ? <ul className="space-y-0.5">{lead.info.partners.map((p, i) => <li key={i}><CopyVal text={p.name}><b>{p.name}</b>{p.role ? <span className="text-muted"> · {p.role}</span> : null}</CopyVal></li>)}</ul> : <span className="text-warn">Sem informação</span>}</Info>
-            <Info label="Atividade" wide>{lead.info?.activity ? <CopyVal>{`${lead.info.cnae ? `${lead.info.cnae} - ` : ""}${lead.info.activity}`}</CopyVal> : <span className="text-warn">Sem informação</span>}</Info>
-            <Info label="Representante">{lead.rep ? <CopyVal>{`${lead.rep.repName ?? "—"} · ${lead.rep.km} km`}</CopyVal> : <span className="text-warn">Sem informação</span>}</Info>
+            <Info label="Cidade">{lead.city ? (`${lead.city}/${lead.uf}`) : <span className="text-warn">Sem informação</span>}</Info>
+            <Info label="Sócios" wide>{lead.info?.partners.length ? <ul className="space-y-0.5">{lead.info.partners.map((p, i) => <li key={i}><b>{p.name}</b>{cleanRole(p.role) ? <span className="text-muted"> · {cleanRole(p.role)}</span> : null}</li>)}</ul> : <span className="text-warn">Sem informação</span>}</Info>
+            <Info label="Atividade" wide>{lead.info?.activity ? (`${lead.info.cnae ? `${lead.info.cnae} - ` : ""}${lead.info.activity}`) : <span className="text-warn">Sem informação</span>}</Info>
+            <Info label="Representante">{lead.rep ? (`${lead.rep.repName ?? "—"} · ${lead.rep.km} km`) : <span className="text-warn">Sem informação</span>}</Info>
             <Info label="Contato principal">{goodPhones[0] ? <CopyVal text={goodPhones[0].value}>{fmtPhone(goodPhones[0].value)}</CopyVal> : goodEmails[0] ? <CopyVal>{goodEmails[0].value}</CopyVal> : <span className="text-warn">Sem contato</span>}</Info>
           </div>
         )}
@@ -219,7 +219,7 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
                 </div>
                 {tpl && (
                   <div className="rounded-xl border border-line bg-white p-4 text-sm text-neutral-900">
-                    <p className="flex items-center gap-1.5 border-b border-neutral-200 pb-2 font-semibold"><FileText size={14} aria-hidden /> <CopyVal className="text-neutral-900">{renderTemplate(tpl.subject, vars)}</CopyVal></p>
+                    <p className="flex items-center gap-1.5 border-b border-neutral-200 pb-2 font-semibold"><FileText size={14} aria-hidden /> {renderTemplate(tpl.subject, vars)}</p>
                     {tpl.bodyHtml
                       ? <div className="mt-3 leading-relaxed [&_a]:text-blue-700 [&_a]:underline [&_img]:max-w-full" dangerouslySetInnerHTML={{ __html: renderHtml(tpl.bodyHtml, vars) }} />
                       : <p className="mt-3 whitespace-pre-wrap">{renderTemplate(tpl.body, vars)}</p>}
@@ -275,7 +275,7 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
             <label className="block text-sm">Observação<textarea className={`${inputCls} min-h-24`} value={note} onChange={(e) => setNote(e.target.value)} /></label>
             <div className="flex flex-wrap items-center justify-center gap-2 border-t border-line pt-5">
               <button type="button" disabled={pending} className={btnPrimary} onClick={save}><Check size={17} aria-hidden /> SALVAR E PRÓXIMO</button>
-              <button type="button" disabled={pending} className={btnGhost} onClick={saveAndStop} title="Salva, libera o lead e volta ao botão Shufflar"><Pause size={16} aria-hidden /> SALVAR E PARAR</button>
+              <button type="button" disabled={pending} className={btnGhost} onClick={saveAndStop} title="Salva, libera o lead e volta ao botão Shuffler"><Pause size={16} aria-hidden /> SALVAR E PARAR</button>
               {confirmDiscard ? (
                 <span className="flex flex-wrap items-center gap-2 rounded-lg border border-danger/50 px-3 py-1.5 text-sm">
                   <span className="font-medium text-danger">Descartar este lead? Ele sai do sorteio.</span>

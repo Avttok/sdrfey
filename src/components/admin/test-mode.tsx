@@ -1,5 +1,6 @@
 "use client";
 
+import { FlaskConical, Play, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
@@ -10,14 +11,24 @@ export function TestMode({ count }: { count: number }) {
   const [n, setN] = useState(20);
   const { run, pending } = useRun();
   return (
-    <section className={`${panelCls} mx-auto max-w-2xl space-y-4 p-5`}>
-      <p className="text-sm">Leads de teste existentes: <b>{count}</b>. Eles nunca aparecem em Leads, no Dashboard, nas metas ou no histórico real.</p>
-      <div className="flex flex-wrap items-end gap-2">
-        <label className="text-sm">Quantidade<input type="number" min={1} max={200} className={`${inputCls} !w-28`} value={n} onChange={(e) => setN(Number(e.target.value))} /></label>
-        <button type="button" className={btnPrimary} disabled={pending} onClick={() => run(() => createTestLeadsAction(n))}>Criar leads de teste</button>
-        <form action={startTestAction}><button type="submit" className={btnGhost}>Atender em modo teste</button></form>
-        <button type="button" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => { if (confirm("Apagar todos os leads de teste?")) run(() => clearTestDataAction()); }}>Apagar leads de teste</button>
+    <div className="max-w-3xl space-y-4">
+      <section className={`${panelCls} flex items-center gap-4 p-5`}>
+        <span className="grid size-14 place-items-center rounded-2xl bg-accent/15 text-accent"><FlaskConical size={26} aria-hidden /></span>
+        <div><p className="figure text-3xl font-bold leading-none">{count}</p><p className="mt-1 text-sm text-muted">leads de teste existentes. Eles nunca aparecem em Leads, Dashboard, metas ou histórico real.</p></div>
+      </section>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <section className={`${panelCls} space-y-3 p-5`}>
+          <h2 className="font-semibold">Criar leads de teste</h2>
+          <label className="block text-sm"><span className="mb-1 block text-muted">Quantidade (1 a 200)</span><input type="number" min={1} max={200} className={inputCls} value={n} onChange={(e) => setN(Number(e.target.value))} /></label>
+          <button type="button" className={`${btnPrimary} w-full`} disabled={pending} onClick={() => run(() => createTestLeadsAction(n))}><Plus size={16} aria-hidden /> Criar leads de teste</button>
+        </section>
+        <section className={`${panelCls} flex flex-col gap-3 p-5`}>
+          <h2 className="font-semibold">Treinar e limpar</h2>
+          <p className="flex-1 text-sm text-muted">Atenda um lead de teste para treinar o fluxo, e apague tudo quando terminar.</p>
+          <form action={startTestAction}><button type="submit" className={`${btnGhost} w-full`}><Play size={15} aria-hidden /> Atender em modo teste</button></form>
+          <button type="button" className={`${btnGhost} w-full text-danger`} disabled={pending} onClick={() => { if (confirm("Apagar todos os leads de teste?")) run(() => clearTestDataAction()); }}><Trash2 size={15} aria-hidden /> Apagar leads de teste</button>
+        </section>
       </div>
-    </section>
+    </div>
   );
 }

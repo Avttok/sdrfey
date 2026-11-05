@@ -1,5 +1,7 @@
 import { and, asc, eq, sql } from "drizzle-orm";
+import { KeyRound } from "lucide-react";
 import { PermissionMatrix } from "@/components/admin/permission-matrix";
+import { PageHead } from "@/components/page-head";
 import { PERMISSIONS, type PermissionMap, type RoleOverrides } from "@/config/permissions";
 import { resolveAccent } from "@/config/theme";
 import { db, settings, users } from "@/db";
@@ -14,8 +16,8 @@ export default async function Page() {
   const o = (row?.value ?? {}) as RoleOverrides;
   const initial = (r: "user" | "manager"): PermissionMap => Object.fromEntries(PERMISSIONS.map((p) => [p.key, o[r]?.[p.key] ?? p.defaults.includes(r)]));
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted">Controle numa grade só o que cada cargo e cada pessoa vê e pode fazer. Clique, ajuste e salve no fim.</p>
+    <div className="space-y-5">
+      <PageHead icon={KeyRound} size="md" title="Permissões" subtitle="Quem vê e faz o quê: por cargo ou por pessoa." />
       <PermissionMatrix roles={{ user: initial("user"), manager: initial("manager") }} users={people.map((u) => ({ id: u.id, name: u.name, roles: u.roles, perms: (u.permissions ?? {}) as PermissionMap, hex: resolveAccent(u.accent, u.roles).hex }))} />
     </div>
   );

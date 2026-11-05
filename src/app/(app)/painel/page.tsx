@@ -3,13 +3,14 @@ import { plural } from "@/lib/format";
 import type { Metadata } from "next";
 import { and, asc, eq } from "drizzle-orm";
 import Link from "next/link";
-import { AlertTriangle, CalendarCheck, Clock, Database, Flame, MessagesSquare, Percent, Timer, Target, Trophy, Filter as FunnelIcon, PhoneCall, CircleCheck } from "lucide-react";
+import { PageHead } from "@/components/page-head";
+import { AlertTriangle, LayoutDashboard, CalendarCheck, Clock, Database, Flame, MessagesSquare, Percent, Timer, Target, Trophy, Filter as FunnelIcon, PhoneCall, CircleCheck } from "lucide-react";
 import { Suspense } from "react";
 import { DashboardFilters } from "@/components/dashboard-filters";
 import { panelCls } from "@/components/ui";
 import { bubbleHex } from "@/config/theme";
 import { db, tags, users } from "@/db";
-import { fmtDateTime, fmtDuration } from "@/lib/format";
+import { fmtDate, fmtDateTime, fmtDuration } from "@/lib/format";
 import { requirePerm } from "@/modules/auth/guard";
 import { getDashboard, resolvePeriod } from "@/modules/dashboard/stats";
 import { getSettings } from "@/modules/settings/get";
@@ -21,15 +22,18 @@ const pct = (a: number, b: number) => (b ? `${Math.min(100, Math.round((a / b) *
 
 function Bar({ label, value, max, color, right }: { label: string; value: number; max: number; color: string; right?: string }) {
   return (
-    <div className="mb-1.5 flex items-center gap-2 text-sm">
-      <span className="w-28 shrink-0 truncate text-muted">{label}</span>
-      <span className="h-2 flex-1 overflow-hidden rounded-full bg-sunk"><span className="block h-full rounded-full" style={{ width: `${max ? Math.round((value / max) * 100) : 0}%`, background: color }} /></span>
-      <span className="figure w-20 text-right text-xs">{right ?? nf.format(value)}</span>
+    <div className="mb-2.5 flex items-center gap-3 text-sm last:mb-0">
+      <span className="w-24 shrink-0 truncate text-muted">{label}</span>
+      <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-sunk"><span className="block h-full rounded-full transition-[width] duration-700" style={{ width: `${max ? Math.max(value ? 3 : 0, Math.round((value / max) * 100)) : 0}%`, background: color }} /></span>
+      <span className="figure w-24 text-right text-xs font-medium">{right ?? nf.format(value)}</span>
     </div>
   );
 }
 const Block = ({ icon: I, title, children }: { icon: typeof Clock; title: string; children: React.ReactNode }) => (
-  <section className={`${panelCls} p-4`}><h2 className="mb-3 flex items-center gap-2 text-sm font-semibold"><I size={16} aria-hidden /> {title}</h2>{children}</section>
+  <section className={`${panelCls} p-5`}>
+    <h2 className="mb-4 flex items-center gap-2.5 text-[15px] font-semibold"><span className="grid size-8 place-items-center rounded-lg bg-accent/15 text-accent"><I size={16} aria-hidden /></span> {title}</h2>
+    {children}
+  </section>
 );
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -54,10 +58,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const maxHour = Math.max(1, ...perHour.map((x) => x.parts.reduce((a, p) => a + p.n, 0)));
   const totalStock = d.stock.novos + d.stock.trabalhados + d.stock.fora + d.stock.clientes || 1;
 
-  const kpis = [
+  const kpis: { k: string; I: typeof Clock; t: string; v: string; s: string; bar?: number }[] = [
     { k: "contatos", I: PhoneCall, t: "Contatos", v: nf.format(d.contacts), s: plural(d.days, "dia", "dias") },
-    { k: "meta", I: Target, t: "Meta atendidos", v: d.goal ? pct(d.contacts, d.goal) : "—", s: d.goal ? `de ${nf.format(d.goal)}` : "meta desligada" },
-    { k: "meta_agend", I: CalendarCheck, t: "Meta agendados", v: d.goalScheduled ? pct(d.scheduled, d.goalScheduled) : "—", s: d.goalScheduled ? `de ${nf.format(d.goalScheduled)}` : "meta desligada" },
+    { k: "meta", I: Target, t: "Meta atendidos", v: d.goal ? pct(d.contacts, d.goal) : "—", s: d.goal ? `de ${nf.format(d.goal)}` : "meta desligada", bar: d.goal ? (d.contacts / d.goal) * 100 : undefined },
+    { k: "meta_agend", I: CalendarCheck, t: "Meta agendados", v: d.goalScheduled ? pct(d.scheduled, d.goalScheduled) : "—", s: d.goalScheduled ? `de ${nf.format(d.goalScheduled)}` : "meta desligada", bar: d.goalScheduled ? (d.scheduled / d.goalScheduled) * 100 : undefined },
     { k: "qualificados", I: CircleCheck, t: "Qualificados", v: nf.format(d.qualified), s: "no período" },
     { k: "agendados", I: CalendarCheck, t: "Agendados", v: nf.format(d.scheduled), s: "visitas marcadas" },
     { k: "taxa_qualif", I: Percent, t: "Taxa de qualificação", v: pct(d.qualified, d.contacts), s: "dos contatos" },
@@ -68,15 +72,20 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="space-y-5">
-      <h1 className="display text-3xl">Dashboard</h1>
-      <Suspense fallback={null}>
+      <PageHead icon={LayoutDashboard} title="Dashboard" subtitle={`${period.preset === "hoje" ? "Hoje" : period.preset === "custom" ? `${fmtDate(period.from)} a ${fmtDate(period.to)}` : `Últimos ${period.preset} dias`} · ${plural(scope.length, "pessoa", "pessoas")}`} />
+      <div className={`${panelCls} p-4`}><Suspense fallback={null}>
         <DashboardFilters preset={period.preset} from={period.preset === "custom" ? period.from : ""} to={period.preset === "custom" ? period.to : ""} people={team ? people : []} selected={scope} />
-      </Suspense>
+      </Suspense></div>
 
       {kpis.some((x) => can(`panel.kpi.${x.k}`)) && (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {kpis.filter((x) => can(`panel.kpi.${x.k}`)).map(({ I, t, v, s }) => (
-            <div key={t} className={`${panelCls} p-4`}><p className="flex items-center gap-1.5 text-xs text-muted"><I size={14} aria-hidden /> {t}</p><p className="figure mt-1 text-3xl">{v}</p><p className="text-xs text-muted">{s}</p></div>
+          {kpis.filter((x) => can(`panel.kpi.${x.k}`)).map(({ I, t, v, s: sub, bar }) => (
+            <div key={t} className={`${panelCls} relative overflow-hidden p-4 transition hover:border-accent/50 hover:shadow-md`}>
+              <div className="flex items-center justify-between"><p className="text-xs font-medium text-muted">{t}</p><span className="grid size-8 place-items-center rounded-lg bg-accent/15 text-accent"><I size={15} aria-hidden /></span></div>
+              <p className="figure mt-2 text-3xl font-bold leading-none">{v}</p>
+              <p className="mt-1.5 text-xs text-muted">{sub}</p>
+              {bar !== undefined && <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-sunk"><div className={`h-full rounded-full ${bar >= 100 ? "bg-ok" : "bg-accent"}`} style={{ width: `${Math.min(100, bar)}%` }} /></div>}
+            </div>
           ))}
         </div>
       )}

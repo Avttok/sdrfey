@@ -1,4 +1,4 @@
-import { fmtCnae } from "@/lib/format";
+import { cleanRole, fmtCnae } from "@/lib/format";
 
 /** Leitura das respostas da BrasilAPI e da ReceitaWS num formato único. Sem rede, fácil de testar. */
 
@@ -61,7 +61,7 @@ export function parseBrasilApi(j: any): CnpjInfo | null {
       number: str(j.numero), complement: str(j.complemento), district: str(j.bairro), cep: str(j.cep)?.replace(/\D/g, "") || null,
     },
     partners: Array.isArray(j.qsa)
-      ? j.qsa.filter((p: any) => str(p?.nome_socio)).map((p: any) => ({ name: str(p.nome_socio)!, role: str(p.qualificacao_socio) }))
+      ? j.qsa.filter((p: any) => str(p?.nome_socio)).map((p: any) => ({ name: str(p.nome_socio)!, role: cleanRole(str(p.qualificacao_socio)) }))
       : [],
   };
 }
@@ -86,7 +86,7 @@ export function parseReceitaWs(j: any): CnpjInfo | null {
     activity: str(j.atividade_principal?.[0]?.text),
     cnae: fmtCnae(j.atividade_principal?.[0]?.code),
     address: { street: str(j.logradouro), number: str(j.numero), complement: str(j.complemento), district: str(j.bairro), cep: str(j.cep)?.replace(/\D/g, "") || null },
-    partners: Array.isArray(j.qsa) ? j.qsa.filter((p: any) => str(p?.nome)).map((p: any) => ({ name: str(p.nome)!, role: str(p.qual) })) : [],
+    partners: Array.isArray(j.qsa) ? j.qsa.filter((p: any) => str(p?.nome)).map((p: any) => ({ name: str(p.nome)!, role: cleanRole(str(p.qual)) })) : [],
   };
 }
 

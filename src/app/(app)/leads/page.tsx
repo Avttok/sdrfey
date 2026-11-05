@@ -1,6 +1,7 @@
 import { PersonBubble } from "@/components/person-bubble";
 import type { Metadata } from "next";
-import { Mail, MapPin, Phone } from "lucide-react";
+import { PageHead } from "@/components/page-head";
+import { Mail, MapPin, Phone, Users } from "lucide-react";
 import Link from "next/link";
 import { asc, eq, sql } from "drizzle-orm";
 import { Suspense } from "react";
@@ -38,13 +39,9 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="display text-3xl">Leads</h1>
-          <p className="mt-1 text-sm text-muted">Busque, filtre e abra qualquer lead. ATENDER traz o lead para o seu Shufflar.</p>
-        </div>
+      <PageHead icon={Users} title="Leads" subtitle="Busque, filtre e abra qualquer lead. ATENDER traz o lead para o seu Shuffler.">
         <p className="rounded-full bg-accent/15 px-3.5 py-1.5 text-sm font-semibold text-accent"><span className="figure">{new Intl.NumberFormat("pt-BR").format(total)}</span> {total === 1 ? "lead" : "leads"}</p>
-      </div>
+      </PageHead>
       <Suspense fallback={null}>
         <LeadFilters catalog={catalog} people={people} ufs={ufRows.map((r) => r.uf!).filter(Boolean)} />
       </Suspense>

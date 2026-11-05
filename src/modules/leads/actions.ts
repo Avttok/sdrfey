@@ -26,7 +26,7 @@ async function guard(fn: () => Promise<ActionResult | void>): Promise<ActionResu
   }
 }
 
-/** "Shufflar": sorteia o próximo lead (ou volta ao que já está em mãos). */
+/** "Shuffler": sorteia o próximo lead (ou volta ao que já está em mãos). */
 export async function startAction() {
   const me = await requirePerm("tab.comecar");
   await claimNext(me.id);

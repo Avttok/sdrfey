@@ -25,7 +25,7 @@ const SECTIONS: { title: string; items: { href: string; label: string; hint: str
 export function AdminNav() {
   const path = usePathname();
   return (
-    <nav aria-label="Administração" className="space-y-5 lg:sticky lg:top-20 lg:self-start">
+    <nav aria-label="Administração" className="space-y-4 rounded-2xl border border-line bg-panel p-3 lg:sticky lg:top-20 lg:self-start">
       {SECTIONS.map((s) => (
         <div key={s.title}>
           <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted">{s.title}</p>
@@ -36,7 +36,7 @@ export function AdminNav() {
                 <li key={href}>
                   <Link href={href} aria-current={on ? "page" : undefined}
                     className={`flex items-center gap-3 rounded-xl px-3 py-2 transition-colors ${on ? "bg-accent text-on-accent shadow-sm" : "hover:bg-sunk"}`}>
-                    <Icon size={18} aria-hidden className="shrink-0" />
+                    <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${on ? "bg-white/20" : "bg-sunk"}`}><Icon size={17} aria-hidden /></span>
                     <span className="min-w-0 leading-tight"><span className="block text-sm font-medium">{label}</span><span className={`block truncate text-xs ${on ? "opacity-80" : "text-muted"}`}>{hint}</span></span>
                   </Link>
                 </li>

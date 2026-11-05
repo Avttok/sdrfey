@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { CalendarCheck, CheckCircle2, Clock, Search, Timer } from "lucide-react";
+import { PageHead } from "@/components/page-head";
+import { History, CalendarCheck, CheckCircle2, Clock, Search, Timer } from "lucide-react";
 import Link from "next/link";
 import { AttendButton } from "@/components/attend-button";
 import { TagChip } from "@/components/tag-chip";
@@ -41,18 +42,12 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="display text-3xl">Meu histórico</h1>
-          <p className="mt-1 text-sm text-muted">Tudo o que você atendeu e salvou. Use ATENDER para voltar a um lead.</p>
-        </div>
-        <div className="flex flex-wrap gap-1.5 text-sm">
-          <Link className={btnGhost} href={preset(1)}>Hoje</Link>
-          <Link className={btnGhost} href={preset(7)}>7 dias</Link>
-          <Link className={btnGhost} href={preset(30)}>30 dias</Link>
-          <Link className={btnGhost} href="/historico">Tudo</Link>
-        </div>
-      </div>
+      <PageHead icon={History} title="Meu histórico" subtitle="Tudo o que você atendeu e salvou. Use ATENDER para voltar a um lead.">
+        <Link className={btnGhost} href={preset(1)}>Hoje</Link>
+        <Link className={btnGhost} href={preset(7)}>7 dias</Link>
+        <Link className={btnGhost} href={preset(30)}>30 dias</Link>
+        <Link className={btnGhost} href="/historico">Tudo</Link>
+      </PageHead>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat icon={<CheckCircle2 size={18} />} label="Atendidos" value={String(rows.length)} hint={rows.length === 600 ? "mostrando os 600 mais recentes" : undefined} />

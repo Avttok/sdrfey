@@ -8,7 +8,7 @@ export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: st
  */
 export const NAV: NavItem[] = [
   { href: "/painel", label: "Dashboard", icon: Gauge, perm: "tab.painel" },
-  { href: "/atender", label: "Shufflar", icon: Play, perm: "tab.comecar" },
+  { href: "/atender", label: "Shuffler", icon: Play, perm: "tab.comecar" },
   { href: "/leads", label: "Leads", icon: Users, perm: "tab.leads" },
   { href: "/historico", label: "Histórico", icon: History, perm: "tab.historico" },
   { href: "/metas", label: "Metas", icon: Target, perm: "tab.metas" },

@@ -69,3 +69,11 @@ export function fmtCnae(code: string | number | null | undefined): string | null
   return d.length === 7 ? `${d.slice(0, 4)}-${d[4]}/${d.slice(5)}` : d || null;
 }
 
+
+/** Cargo do sócio sem o código da Receita: "49-Sócio-Administrador" → "Sócio-Administrador". */
+export function cleanRole(role: string | null | undefined): string | null {
+  const r = (role ?? "").replace(/^\s*\d+\s*[-–.:]\s*/, "").replace(/\s+/g, " ").trim();
+  if (!r) return null;
+  const t = r === r.toUpperCase() ? r.toLowerCase() : r;
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}

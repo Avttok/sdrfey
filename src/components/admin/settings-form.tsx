@@ -17,7 +17,7 @@ export function SettingsForm({ initial }: { initial: Record<SettingKey, number> 
   const [v, setV] = useState(initial);
   const { run, pending } = useRun();
   return (
-    <form className={`${panelCls} mx-auto max-w-3xl space-y-3 p-5 sm:p-6`} onSubmit={(e) => { e.preventDefault(); run(() => saveSettingsAction(v)); }}>
+    <form className={`${panelCls} max-w-3xl space-y-3 p-5 sm:p-6`} onSubmit={(e) => { e.preventDefault(); run(() => saveSettingsAction(v)); }}>
       <h2 className="display text-xl">Regras do sorteio</h2>
       <div className="divide-y divide-line">
         {FIELDS.map((f) => (

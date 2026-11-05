@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { useState } from "react";
 import { useRun } from "@/components/use-run";
 import { btnPrimary, inputCls, panelCls } from "@/components/ui";
@@ -10,10 +10,10 @@ export function NewUser() {
   const [f, setF] = useState({ username: "", name: "" });
   const { run, pending } = useRun();
   return (
-    <form className={`${panelCls} flex flex-wrap items-end gap-3 p-4`} onSubmit={(e) => { e.preventDefault(); run(() => createUserAction({ ...f, roles: ["user"] }), undefined, () => setF({ username: "", name: "" })); }}>
-      <label className="text-sm">Login<input className={inputCls} placeholder="nome.sobrenome" value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} /></label>
-      <label className="text-sm">Nome<input className={inputCls} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
-      <button type="submit" disabled={pending} className={btnPrimary}><Plus size={16} aria-hidden /> Criar usuário</button>
+    <form className={`${panelCls} grid items-end gap-3 border-dashed p-4 sm:grid-cols-[1fr_1fr_auto]`} onSubmit={(e) => { e.preventDefault(); run(() => createUserAction({ ...f, roles: ["user"] }), undefined, () => setF({ username: "", name: "" })); }}>
+      <label className="text-sm"><span className="mb-1 block text-muted">Login</span><input className={inputCls} placeholder="nome.sobrenome" value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} /></label>
+      <label className="text-sm"><span className="mb-1 block text-muted">Nome</span><input className={inputCls} placeholder="Nome e sobrenome" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
+      <button type="submit" disabled={pending} className={`${btnPrimary} h-[2.75rem]`}><UserPlus size={16} aria-hidden /> Criar usuário</button>
     </form>
   );
 }

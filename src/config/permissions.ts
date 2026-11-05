@@ -9,7 +9,7 @@ export type PermissionDef = { key: string; label: string; group: "Abas" | "Paine
 
 export const PERMISSIONS: PermissionDef[] = [
   { key: "tab.painel", label: "Aba Dashboard", group: "Abas", defaults: ["user", "manager"] },
-  { key: "tab.comecar", label: "Aba Shufflar", group: "Abas", defaults: ["user", "manager"] },
+  { key: "tab.comecar", label: "Aba Shuffler", group: "Abas", defaults: ["user", "manager"] },
   { key: "tab.leads", label: "Aba Leads", group: "Abas", defaults: ["user", "manager"] },
   { key: "tab.historico", label: "Aba Meu histórico", group: "Abas", defaults: ["user", "manager"] },
   { key: "tab.registro", label: "Aba Registro de atividades", group: "Abas", defaults: ["manager"] },

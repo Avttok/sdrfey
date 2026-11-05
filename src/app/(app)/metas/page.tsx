@@ -1,3 +1,5 @@
+import { Target } from "lucide-react";
+import { PageHead } from "@/components/page-head";
 import type { Metadata } from "next";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { GoalsForm } from "@/components/goals-form";
@@ -22,7 +24,7 @@ export default async function Page() {
   ]);
   return (
     <div className="mx-auto max-w-5xl space-y-4">
-      <h1 className="display text-3xl">Metas</h1>
+      <PageHead icon={Target} title="Metas" subtitle="Metas diárias de atendimentos e agendamentos, globais ou por pessoa." />
       <GoalsForm
         canEdit={!!me.permissions["goals.edit"]}
         global={{ attended: { on: s.goal_attended_on === 1, qty: s.daily_goal }, scheduled: { on: s.goal_scheduled_on === 1, qty: s.daily_goal_scheduled } }}

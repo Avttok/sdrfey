@@ -6,7 +6,7 @@ import { CopyVal } from "@/components/copy-val";
 import { Spinner } from "@/components/spinner";
 import { useBusyWhile, useToast } from "@/components/toast";
 import { btnGhost, panelCls } from "@/components/ui";
-import { fmtAge, fmtCnpj, fmtDate, fmtMoney } from "@/lib/format";
+import { cleanRole, fmtAge, fmtCnpj, fmtDate, fmtMoney } from "@/lib/format";
 import { selectedRows } from "@/modules/enrich/flatten";
 import { refreshInfoAction } from "@/modules/leads/actions";
 import type { LeadView } from "@/modules/leads/view";
@@ -57,18 +57,18 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false }: { lead:
     <div className="space-y-3">
       <h2 className="display text-xl">Dados da empresa</h2>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-        <dt className="text-muted">Razão social</dt><dd><CopyVal>{lead.company}</CopyVal></dd>
-        {lead.tradeName && <><dt className="text-muted">Fantasia</dt><dd><CopyVal>{lead.tradeName}</CopyVal></dd></>}
+        <dt className="text-muted">Razão social</dt><dd>{lead.company}</dd>
+        {lead.tradeName && <><dt className="text-muted">Fantasia</dt><dd>{lead.tradeName}</dd></>}
         <dt className="text-muted">CNPJ</dt><dd><CopyVal text={lead.cnpj}>{fmtCnpj(lead.cnpj)}</CopyVal></dd>
         <dt className="text-muted">Situação</dt>
         <dd>{status ? <b className={status.toUpperCase() === "ATIVA" ? "text-ok" : "text-danger"}>{status.toUpperCase()}</b> : missing}</dd>
-        <dt className="text-muted">Atividade</dt><dd>{info?.activity ? <CopyVal>{`${info.cnae ? `${info.cnae} - ` : ""}${info.activity}`}</CopyVal> : missing}</dd>
-        <dt className="text-muted">Tempo de atividade</dt><dd>{ageText ? <CopyVal>{ageText}</CopyVal> : missing}</dd>
-        <dt className="text-muted">Capital</dt><dd>{info?.capital != null ? <CopyVal>{fmtMoney(info.capital)}</CopyVal> : missing}</dd>
-        <dt className="text-muted">Sócios</dt><dd>{info?.partners.length ? <ul className="space-y-0.5">{info.partners.map((p, i) => <li key={i}><CopyVal text={p.name}><b className="font-semibold">{p.name}</b>{p.role ? <span className="text-muted"> · {p.role}</span> : null}</CopyVal></li>)}</ul> : missing}</dd>
+        <dt className="text-muted">Atividade</dt><dd>{info?.activity ? (`${info.cnae ? `${info.cnae} - ` : ""}${info.activity}`) : missing}</dd>
+        <dt className="text-muted">Tempo de atividade</dt><dd>{ageText ? (ageText) : missing}</dd>
+        <dt className="text-muted">Capital</dt><dd>{info?.capital != null ? (fmtMoney(info.capital)) : missing}</dd>
+        <dt className="text-muted">Sócios</dt><dd>{info?.partners.length ? <ul className="space-y-0.5">{info.partners.map((p, i) => <li key={i}><b className="font-semibold">{p.name}</b>{cleanRole(p.role) ? <span className="text-muted"> · {cleanRole(p.role)}</span> : null}</li>)}</ul> : missing}</dd>
         <dt className="text-muted">Endereço</dt><dd>{addressLine ? <CopyVal>{addressLine}</CopyVal> : missing}</dd>
         <dt className="text-muted">Cidade</dt>
-        <dd className="flex flex-wrap items-center gap-2">{lead.city ? <CopyVal>{`${lead.city}/${lead.uf}`}</CopyVal> : missing} <a href={mapsHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent underline"><MapPin size={14} aria-hidden /> Google Maps</a></dd>
+        <dd className="flex flex-wrap items-center gap-2">{lead.city ? (`${lead.city}/${lead.uf}`) : missing} <a href={mapsHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent underline"><MapPin size={14} aria-hidden /> Google Maps</a></dd>
       </dl>
       {lead.enrichedAt && <p className="text-xs text-muted">Consulta salva em {fmtDate(lead.enrichedAt)}. Use “Atualizar informações” para buscar de novo.</p>}
       <div className="flex flex-wrap gap-2 pt-1">
@@ -87,7 +87,7 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false }: { lead:
             return (
               <div key={name}>
                 <p className="mb-1.5 text-sm font-semibold">{name}</p>
-                {rows.length ? <dl className="grid grid-cols-[minmax(0,9rem)_1fr] gap-x-3 gap-y-1">{rows.map((r, i) => <div key={i} className="contents"><dt className="text-muted">{r.label}</dt><dd><CopyVal>{r.value}</CopyVal></dd></div>)}</dl> : <p className="text-warn">{searching ? "Pesquisando…" : (name === "BrasilAPI" && lead.receitaWs ? "" : "Sem resposta desta fonte. Use “Atualizar informações”.")}</p>}
+                {rows.length ? <dl className="grid grid-cols-[minmax(0,9rem)_1fr] gap-x-3 gap-y-1">{rows.map((r, i) => <div key={i} className="contents"><dt className="text-muted">{r.label}</dt><dd>{r.value}</dd></div>)}</dl> : <p className="text-warn">{searching ? "Pesquisando…" : (name === "BrasilAPI" && lead.receitaWs ? "" : "Sem resposta desta fonte. Use “Atualizar informações”.")}</p>}
               </div>
             );
           })}
@@ -107,12 +107,12 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false }: { lead:
         <p className="mb-2 font-semibold">Representante mais próximo</p>
         {rep ? (
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-            <dt className="text-muted">Representante</dt><dd>{rep.repName ? <CopyVal>{rep.repName}</CopyVal> : missing}</dd>
-            <dt className="text-muted">Equipe</dt><dd>{rep.team ? <CopyVal>{rep.team}</CopyVal> : missing}</dd>
-            <dt className="text-muted">Cidade/UF</dt><dd>{rep.city ? <CopyVal>{`${rep.city}/${rep.uf}`}</CopyVal> : missing}</dd>
-            <dt className="text-muted">Distância</dt><dd><CopyVal text={`${rep.km} km`}>{rep.km} km</CopyVal></dd>
-            <dt className="text-muted">Gestor</dt><dd>{rep.managerName ? <CopyVal>{rep.managerName}</CopyVal> : missing}</dd>
-            <dt className="text-muted">Código SAP</dt><dd>{rep.sapCode ? <CopyVal>{rep.sapCode}</CopyVal> : missing}</dd>
+            <dt className="text-muted">Representante</dt><dd>{rep.repName ? (rep.repName) : missing}</dd>
+            <dt className="text-muted">Equipe</dt><dd>{rep.team ? (rep.team) : missing}</dd>
+            <dt className="text-muted">Cidade/UF</dt><dd>{rep.city ? (`${rep.city}/${rep.uf}`) : missing}</dd>
+            <dt className="text-muted">Distância</dt><dd>{rep.km} km</dd>
+            <dt className="text-muted">Gestor</dt><dd>{rep.managerName ? (rep.managerName) : missing}</dd>
+            <dt className="text-muted">Código SAP</dt><dd>{rep.sapCode ? (rep.sapCode) : missing}</dd>
           </dl>
         ) : <p>{missing}{!lead.city && !searching ? <span className="ml-1 text-xs text-muted">(cidade do lead desconhecida)</span> : null}</p>}
       </div>

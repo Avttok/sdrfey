@@ -34,7 +34,7 @@ export type AuditGroup = { key: string; rows: Row[] };
 
 /**
  * Junta registros seguidos da mesma pessoa, no mesmo lead (ou mesmo tipo), feitos em até 10 minutos um do outro.
- * Assim "shufflar um lead" vira um bloco só, e cada alteração continua visível e revertível lá dentro.
+ * Assim "shuffler um lead" vira um bloco só, e cada alteração continua visível e revertível lá dentro.
  */
 export function groupAudit(rows: Row[], gapMs = 10 * 60_000): AuditGroup[] {
   const out: AuditGroup[] = [];

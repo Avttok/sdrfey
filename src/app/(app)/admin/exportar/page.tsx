@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Database, Download, FileJson, FileSpreadsheet } from "lucide-react";
+import { PageHead } from "@/components/page-head";
 import { btnGhost, btnPrimary, panelCls } from "@/components/ui";
 import { requireAdmin } from "@/modules/auth/guard";
 import { EXPORT_KINDS, type ExportKind } from "@/modules/export/build";
@@ -11,7 +12,7 @@ export default async function Page() {
   const entries = Object.entries(EXPORT_KINDS) as [ExportKind, (typeof EXPORT_KINDS)[ExportKind]][];
   return (
     <div className="space-y-5">
-      <div><h1 className="display text-2xl">Exportar dados</h1><p className="mt-1 text-sm text-muted">Baixe o banco para backup ou análise. Cada download fica registrado no Registro.</p></div>
+      <PageHead icon={Download} size="md" title="Exportar / backup" subtitle="Baixe o banco para backup ou análise. Cada download fica registrado no Registro." />
       <section className={`${panelCls} flex flex-wrap items-center gap-4 border-accent/40 bg-accent/5 p-5`}>
         <span className="grid size-12 place-items-center rounded-xl bg-accent text-on-accent"><Database size={22} aria-hidden /></span>
         <div className="min-w-0 flex-1"><h2 className="font-semibold">{EXPORT_KINDS.backup.label}</h2><p className="text-sm text-muted">{EXPORT_KINDS.backup.hint}</p></div>

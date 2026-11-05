@@ -13,7 +13,7 @@ import { getSettings } from "@/modules/settings/get";
 import { effectiveGoals } from "@/modules/settings/goals";
 import { getActiveTemplates, getLeadView, getTagCatalog } from "@/modules/leads/view";
 
-export const metadata: Metadata = { title: "Shufflar" };
+export const metadata: Metadata = { title: "Shuffler" };
 export const dynamic = "force-dynamic";
 
 export default async function AttendPage() {
@@ -47,7 +47,7 @@ export default async function AttendPage() {
           )}
           {!goals.attended.on && !goals.scheduled.on && <p className="text-sm text-muted">Hoje: <b className="figure text-ink">{done?.n ?? 0}</b> {plural(done?.n ?? 0, "atendido", "atendidos")} · <b className="figure text-ink">{sched?.n ?? 0}</b> {plural(sched?.n ?? 0, "agendado", "agendados")}</p>}
           <form action={startAction}>
-            <SubmitButton><Play size={18} aria-hidden /> Shufflar</SubmitButton>
+            <SubmitButton><Play size={18} aria-hidden /> Shuffler</SubmitButton>
           </form>
         </div>
       </div>

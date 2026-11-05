@@ -33,7 +33,7 @@ export function RepFilters({ ufs, teams, managers }: { ufs: string[]; teams: str
     </select>
   );
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-panel p-3">
       <div className="relative min-w-64 flex-1">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" aria-hidden />
         <input className={`${inputCls} pl-9`} placeholder="Buscar por nome, código SAP, cidade, gestor, equipe ou CNPJ" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -44,7 +44,7 @@ export function RepFilters({ ufs, teams, managers }: { ufs: string[]; teams: str
       <select aria-label="Situação" className={`${inputCls} !w-auto`} value={sp.get("status") ?? ""} onChange={(e) => set("status", e.target.value)}>
         <option value="">Ativos e inativos</option><option value="ativo">Só ativos</option><option value="inativo">Só inativos</option>
       </select>
-      {active && <button type="button" className="inline-flex items-center gap-1.5 text-sm underline" onClick={() => { setQ(""); start(() => router.replace(path, { scroll: false })); }}><FilterX size={15} aria-hidden /> Limpar</button>}
+      {active && <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-danger/50 px-3 py-2 text-sm font-medium text-danger hover:bg-sunk" onClick={() => { setQ(""); start(() => router.replace(path, { scroll: false })); }}><FilterX size={15} aria-hidden /> Limpar</button>}
     </div>
   );
 }
