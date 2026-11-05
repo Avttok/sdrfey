@@ -14,7 +14,7 @@ export default async function Page() {
     <div className="space-y-4">
       <h1 className="display text-3xl">Representantes</h1>
       <p className="text-sm text-muted">{rows.length} cadastrados. O representante mais próximo de cada lead é calculado pela cidade (distância em linha reta).</p>
-      <RepsAdmin canEdit={!!me.permissions["rep.edit"]} rows={rows.map((r) => ({ id: r.id, sapCode: r.sapCode, repName: r.repName ?? "", managerName: r.managerName ?? "", team: r.team ?? "", cnpj: r.cnpj ?? "", address: r.address ?? "", cep: r.cep ?? "", city: r.city ?? "", uf: r.uf ?? "", active: r.active }))} />
+      <RepsAdmin isAdmin={me.roles.includes("admin")} canEdit={!!me.permissions["rep.edit"]} rows={rows.map((r) => ({ id: r.id, sapCode: r.sapCode, repName: r.repName ?? "", managerName: r.managerName ?? "", team: r.team ?? "", cnpj: r.cnpj ?? "", address: r.address ?? "", cep: r.cep ?? "", city: r.city ?? "", uf: r.uf ?? "", active: r.active }))} />
     </div>
   );
 }

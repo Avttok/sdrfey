@@ -12,6 +12,8 @@ export type CnpjInfo = {
   phones: string[];
   emails: string[];
   porte: string | null;
+  nature: string | null;
+  isMei: boolean | null;
   capital: number | null;
   openedAt: string | null; // ISO yyyy-mm-dd
   activity: string | null;
@@ -47,7 +49,9 @@ export function parseBrasilApi(j: any): CnpjInfo | null {
     uf: str(j.uf)?.toUpperCase() ?? null,
     phones: [...parsePhones(j.ddd_telefone_1), ...parsePhones(j.ddd_telefone_2)],
     emails: str(j.email) ? [str(j.email)!.toLowerCase()] : [],
-    porte: str(j.porte) ?? str(j.descricao_porte),
+    porte: str(j.descricao_porte) ?? str(j.porte),
+    nature: str(j.natureza_juridica),
+    isMei: typeof j.opcao_pelo_mei === "boolean" ? j.opcao_pelo_mei : null,
     capital: typeof j.capital_social === "number" ? j.capital_social : null,
     openedAt: str(j.data_inicio_atividade),
     activity: str(j.cnae_fiscal_descricao),
@@ -75,6 +79,8 @@ export function parseReceitaWs(j: any): CnpjInfo | null {
     phones: parsePhones(j.telefone),
     emails: str(j.email) ? [str(j.email)!.toLowerCase()] : [],
     porte: str(j.porte),
+    nature: str(j.natureza_juridica),
+    isMei: typeof j.simei?.optante === "boolean" ? j.simei.optante : null,
     capital: Number.isFinite(cap) && String(j.capital_social ?? "") !== "" ? cap : null,
     openedAt: open ? `${open[3]}-${open[2]}-${open[1]}` : null,
     activity: str(j.atividade_principal?.[0]?.text),
@@ -99,6 +105,8 @@ export function mergeInfo(a: CnpjInfo | null, b: CnpjInfo | null): CnpjInfo | nu
     phones: [...new Set([...x.phones, ...(y?.phones ?? [])])],
     emails: [...new Set([...x.emails, ...(y?.emails ?? [])])],
     porte: pick("porte"),
+    nature: pick("nature"),
+    isMei: pick("isMei"),
     capital: pick("capital"),
     openedAt: pick("openedAt"),
     activity: pick("activity"),

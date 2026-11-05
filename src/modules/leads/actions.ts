@@ -129,9 +129,10 @@ export async function refreshInfoAction(leadId: number): Promise<ActionResult> {
     const r = await enrichLead(leadId, me.id);
     revalidatePath("/atender");
     revalidatePath(`/leads/${leadId}`);
-    if (r.state === "unavailable") return { ok: false, message: "Consulta indisponível agora. Tente atualizar de novo em instantes." };
+    const falhas = [r.why.brasilapi && `BrasilAPI: ${r.why.brasilapi}`, r.why.receitaws && `ReceitaWS: ${r.why.receitaws}`].filter(Boolean).join(" · ");
+    if (r.state === "unavailable") return { ok: false, message: `Consulta indisponível agora (${falhas}). Tente atualizar de novo em instantes.` };
     const extra = r.newPhones + r.newEmails;
-    return { ok: true, message: extra ? `Dados atualizados: ${plural(r.newPhones, "telefone novo", "telefones novos")} e ${plural(r.newEmails, "e-mail novo", "e-mails novos")}.` : "Dados atualizados. Nenhum contato novo." };
+    return { ok: true, message: extra ? `Dados atualizados: ${plural(r.newPhones, "telefone novo", "telefones novos")} e ${plural(r.newEmails, "e-mail novo", "e-mails novos")}.` : `Dados atualizados. Nenhum contato novo.${falhas ? ` Atenção — ${falhas}.` : ""}` };
   });
 }
 

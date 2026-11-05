@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { cities, db, reps } from "@/db";
 import { logAudit } from "@/modules/audit/log";
-import { requirePerm } from "@/modules/auth/guard";
+import { requireAdmin, requirePerm } from "@/modules/auth/guard";
 import { cityLookupKey } from "@/modules/import/reps";
 import type { ActionResult } from "@/modules/leads/actions";
 
@@ -43,4 +43,17 @@ export async function saveRepAction(input: RepInput): Promise<ActionResult> {
   }
   revalidatePath("/representantes");
   return { ok: true, message: "Representante salvo." };
+}
+
+/** Exclui o representante por completo (só Adm). Fica no Registro. */
+export async function deleteRepAction(id: number): Promise<ActionResult> {
+  const me = await requireAdmin();
+  const [r] = await db.select().from(reps).where(eq(reps.id, id));
+  if (!r) return { ok: false, message: "Representante não encontrado." };
+  await db.transaction(async (tx) => {
+    await logAudit(tx, { userId: me.id, entity: "rep", action: "excluiu representante", field: r.repName, oldValue: `SAP ${r.sapCode} · ${r.city}/${r.uf}`, newValue: null });
+    await tx.delete(reps).where(eq(reps.id, id));
+  });
+  revalidatePath("/representantes");
+  return { ok: true, message: `${r.repName} foi excluído.` };
 }

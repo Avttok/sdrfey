@@ -34,6 +34,8 @@ export const users = pgTable("users", {
   lockedUntil: timestamp("locked_until", { withTimezone: true }),
   /** Aumente para derrubar todas as sessões abertas do usuário. */
   sessionVersion: integer("session_version").notNull().default(1),
+  /** Aparece nas métricas (Dashboard, Metas, ranking). Desmarque para contas só administrativas. */
+  inMetrics: boolean("in_metrics").notNull().default(true),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
   /** Meta diária própria. Nulo = usa a meta global. */
   dailyGoal: integer("daily_goal"),

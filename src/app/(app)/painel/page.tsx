@@ -1,6 +1,6 @@
 import { plural } from "@/lib/format";
 import type { Metadata } from "next";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { AlertTriangle, CalendarCheck, Clock, Database, Flame, MessagesSquare, Percent, Timer, Target, Trophy, Filter as FunnelIcon, PhoneCall, CircleCheck } from "lucide-react";
 import { Suspense } from "react";
@@ -39,7 +39,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const period = resolvePeriod({ p: one("p"), from: iso("from"), to: iso("to") });
   const team = !!me.permissions["panel.equipe"];
 
-  const all = await db.select().from(users).where(eq(users.active, true)).orderBy(asc(users.name));
+  const all = await db.select().from(users).where(and(eq(users.active, true), eq(users.inMetrics, true))).orderBy(asc(users.name));
   const people = all.map((u) => ({ id: u.id, name: u.name, hex: bubbleHex(u.accent, u.id, u.roles) }));
   const picked = (Array.isArray(sp.u) ? sp.u : sp.u ? [sp.u] : []).map(Number).filter((id) => people.some((p) => p.id === id));
   const scope = team ? (picked.length ? picked : people.map((p) => p.id)) : [me.id];
@@ -52,14 +52,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const totalStock = d.stock.novos + d.stock.trabalhados + d.stock.fora + d.stock.clientes || 1;
 
   const kpis = [
-    { I: PhoneCall, t: "Contatos", v: nf.format(d.contacts), s: plural(d.days, "dia", "dias") },
-    { I: Target, t: "Meta atingida", v: pct(d.contacts, d.goal), s: `de ${nf.format(d.goal)}` },
-    { I: CircleCheck, t: "Qualificados", v: nf.format(d.qualified), s: "no período" },
-    { I: CalendarCheck, t: "Agendados", v: nf.format(d.scheduled), s: "visitas marcadas" },
-    { I: Percent, t: "Taxa de qualificação", v: pct(d.qualified, d.contacts), s: "dos contatos" },
-    { I: Percent, t: "Taxa de agendamento", v: pct(d.scheduled, d.contacts), s: "dos contatos" },
-    { I: Timer, t: "Tempo por lead", v: fmtDuration(d.avgSeconds), s: `mediana ${fmtDuration(d.medianSeconds)}` },
-    { I: Database, t: "Leads novos", v: nf.format(d.stock.novos), s: "no estoque" },
+    { k: "contatos", I: PhoneCall, t: "Contatos", v: nf.format(d.contacts), s: plural(d.days, "dia", "dias") },
+    { k: "meta", I: Target, t: "Meta atingida", v: pct(d.contacts, d.goal), s: `de ${nf.format(d.goal)}` },
+    { k: "qualificados", I: CircleCheck, t: "Qualificados", v: nf.format(d.qualified), s: "no período" },
+    { k: "agendados", I: CalendarCheck, t: "Agendados", v: nf.format(d.scheduled), s: "visitas marcadas" },
+    { k: "taxa_qualif", I: Percent, t: "Taxa de qualificação", v: pct(d.qualified, d.contacts), s: "dos contatos" },
+    { k: "taxa_agend", I: Percent, t: "Taxa de agendamento", v: pct(d.scheduled, d.contacts), s: "dos contatos" },
+    { k: "tempo", I: Timer, t: "Tempo por lead", v: fmtDuration(d.avgSeconds), s: `mediana ${fmtDuration(d.medianSeconds)}` },
+    { k: "novos", I: Database, t: "Leads novos", v: nf.format(d.stock.novos), s: "no estoque" },
   ];
 
   return (
@@ -69,9 +69,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <DashboardFilters preset={period.preset} from={period.preset === "custom" ? period.from : ""} to={period.preset === "custom" ? period.to : ""} people={team ? people : []} selected={scope} />
       </Suspense>
 
-      {can("panel.kpis") && (
+      {kpis.some((x) => can(`panel.kpi.${x.k}`)) && (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {kpis.map(({ I, t, v, s }) => (
+          {kpis.filter((x) => can(`panel.kpi.${x.k}`)).map(({ I, t, v, s }) => (
             <div key={t} className={`${panelCls} p-4`}><p className="flex items-center gap-1.5 text-xs text-muted"><I size={14} aria-hidden /> {t}</p><p className="figure mt-1 text-3xl">{v}</p><p className="text-xs text-muted">{s}</p></div>
           ))}
         </div>

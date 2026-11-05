@@ -15,6 +15,13 @@
       "when": 1793831224238,
       "tag": "0001_fase2_base",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793877683470,
+      "tag": "0002_usuarios_metricas",
+      "breakpoints": true
     }
   ]
 }

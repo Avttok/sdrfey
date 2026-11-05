@@ -22,9 +22,28 @@ export async function listAudit(f: AuditFilters) {
   if (f.type) c.push(f.type === "lead" ? sql`${auditLog.entity} in ('lead','visit')` : eq(auditLog.entity, f.type));
   if (f.q) { const like = `%${f.q.replace(/[%_]/g, "")}%`; c.push(sql`(${auditLog.action} ilike ${like} or ${auditLog.field} ilike ${like} or ${auditLog.oldValue} ilike ${like} or ${auditLog.newValue} ilike ${like} or ${leads.company} ilike ${like})`); }
   const where = c.length ? and(...c) : undefined;
-  const base = db.select({ id: auditLog.id, at: auditLog.at, entity: auditLog.entity, action: auditLog.action, field: auditLog.field, oldValue: auditLog.oldValue, newValue: auditLog.newValue, meta: auditLog.meta, leadId: auditLog.leadId, userName: users.name, company: leads.company })
+  const base = db.select({ id: auditLog.id, at: auditLog.at, entity: auditLog.entity, action: auditLog.action, field: auditLog.field, oldValue: auditLog.oldValue, newValue: auditLog.newValue, meta: auditLog.meta, leadId: auditLog.leadId, userId: auditLog.userId, userName: users.name, company: leads.company })
     .from(auditLog).leftJoin(users, eq(users.id, auditLog.userId)).leftJoin(leads, eq(leads.id, auditLog.leadId));
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(auditLog).leftJoin(leads, eq(leads.id, auditLog.leadId)).where(where);
   const rows = await base.where(where).orderBy(desc(auditLog.at), desc(auditLog.id)).limit(AUDIT_PAGE).offset((f.page - 1) * AUDIT_PAGE);
   return { total: n, rows, pages: Math.max(1, Math.ceil(n / AUDIT_PAGE)) };
+}
+
+type Row = Awaited<ReturnType<typeof listAudit>>["rows"][number];
+export type AuditGroup = { key: string; rows: Row[] };
+
+/**
+ * Junta registros seguidos da mesma pessoa, no mesmo lead (ou mesmo tipo), feitos em até 10 minutos um do outro.
+ * Assim "shufflar um lead" vira um bloco só, e cada alteração continua visível e revertível lá dentro.
+ */
+export function groupAudit(rows: Row[], gapMs = 10 * 60_000): AuditGroup[] {
+  const out: AuditGroup[] = [];
+  for (const r of rows) {
+    const last = out[out.length - 1];
+    const prev = last?.rows[last.rows.length - 1];
+    const same = prev && prev.userId === r.userId && prev.entity === r.entity && prev.leadId === r.leadId && (r.leadId != null || prev.action === r.action) && prev.at.getTime() - r.at.getTime() <= gapMs;
+    if (same) last.rows.push(r);
+    else out.push({ key: String(r.id), rows: [r] });
+  }
+  return out;
 }

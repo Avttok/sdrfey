@@ -55,7 +55,7 @@ export async function getDashboard(period: Period, userIds: number[], globalGoal
       where not l.is_test and v.canceled_at is null and (v.user_id in (${U})) order by v.created_at desc limit 8`),
     db.execute<{ key: string; label: string; color: string; n: number }>(sql`
       select t.key, t.label, t.color, count(*)::int as n from lead_tags lt join tags t on t.id = lt.tag_id join leads l on l.id = lt.lead_id
-      where t.group_key = 'temperatura' and not l.is_test group by 1, 2, 3, t.sort order by t.sort`),
+      where t.group_key = 'temperatura' and t.active and not l.is_test group by 1, 2, 3, t.sort order by t.sort`),
     db.execute<{ novos: number; trabalhados: number; fora: number; clientes: number }>(sql`
       with b as (select lt.lead_id, bool_or(t.key = 'cliente') as cliente from lead_tags lt join tags t on t.id = lt.tag_id where t.blocks_sorting group by 1)
       select count(*) filter (where b.lead_id is null and l.times_worked = 0)::int as novos,

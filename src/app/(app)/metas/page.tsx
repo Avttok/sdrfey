@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { GoalsForm } from "@/components/goals-form";
 import { attendanceSessions, db, users } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
@@ -12,7 +12,7 @@ export default async function Page() {
   const me = await requirePerm("tab.metas");
   const [s, list, done] = await Promise.all([
     getSettings(),
-    db.select({ id: users.id, name: users.name, goal: users.dailyGoal }).from(users).where(eq(users.active, true)).orderBy(asc(users.name)),
+    db.select({ id: users.id, name: users.name, goal: users.dailyGoal }).from(users).where(and(eq(users.active, true), eq(users.inMetrics, true))).orderBy(asc(users.name)),
     db.select({ id: attendanceSessions.userId, n: sql<number>`count(*)::int` }).from(attendanceSessions)
       .where(sql`${attendanceSessions.outcome} = 'saved' and not ${attendanceSessions.isTest} and ${attendanceSessions.savedAt} >= (date_trunc('day', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo')`).groupBy(attendanceSessions.userId),
   ]);

@@ -3,10 +3,10 @@
 import { Copy, MapPin, RefreshCw } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 import { Spinner } from "@/components/spinner";
-import { useToast } from "@/components/toast";
+import { useBusyWhile, useToast } from "@/components/toast";
 import { btnGhost, panelCls } from "@/components/ui";
 import { fmtAge, fmtCnpj, fmtDate, fmtMoney } from "@/lib/format";
-import { flattenRaw } from "@/modules/enrich/flatten";
+import { selectedRows } from "@/modules/enrich/flatten";
 import { refreshInfoAction } from "@/modules/leads/actions";
 import type { LeadView } from "@/modules/leads/view";
 
@@ -18,8 +18,11 @@ export function LeadInfoPanel({ lead, autoSearch = true }: { lead: LeadView; aut
   const [pending, start] = useTransition();
   const [state, setState] = useState<Search>(autoSearch && lead.enrichedAt === null ? "searching" : "idle");
   const [all, setAll] = useState(false);
+  const [manual, setManual] = useState(false);
+  useBusyWhile(pending && manual); // a busca automática não bloqueia a tela
 
-  const search = () => {
+  const search = (isManual = false) => {
+    setManual(isManual);
     setState("searching");
     start(async () => {
       const r = await refreshInfoAction(lead.id);
@@ -66,18 +69,18 @@ export function LeadInfoPanel({ lead, autoSearch = true }: { lead: LeadView; aut
       </dl>
       {lead.enrichedAt && <p className="text-xs text-muted">Consulta salva em {fmtDate(lead.enrichedAt)}. Use “Atualizar informações” para buscar de novo.</p>}
       <div className="flex flex-wrap gap-2 pt-1">
-        <button type="button" disabled={pending} className={btnGhost} onClick={search}>{pending ? <Spinner size={15} /> : <RefreshCw size={15} aria-hidden />} Atualizar informações</button>
+        <button type="button" disabled={pending} className={btnGhost} onClick={() => search(true)}>{pending ? <Spinner size={15} /> : <RefreshCw size={15} aria-hidden />} Atualizar informações</button>
         <button type="button" className={btnGhost} onClick={() => setAll(!all)}>{all ? "Ocultar informações" : "Ver todas as informações"}</button>
       </div>
 
       {all && (
         <div className="space-y-4 rounded-lg bg-sunk p-3 text-xs">
           {sources.map(([name, raw]) => {
-            const rows = flattenRaw(raw);
+            const rows = selectedRows(name, raw);
             return (
               <div key={name}>
                 <p className="mb-1.5 text-sm font-semibold">{name}</p>
-                {rows.length ? <dl className="grid grid-cols-[minmax(0,14rem)_1fr] gap-x-3 gap-y-1">{rows.map((r, i) => <div key={i} className="contents"><dt className="text-muted">{r.label}</dt><dd className="break-words">{r.value}</dd></div>)}</dl> : <p className="text-warn">{searching ? "Pesquisando…" : "Sem resposta desta fonte."}</p>}
+                {rows.length ? <dl className="grid grid-cols-[minmax(0,14rem)_1fr] gap-x-3 gap-y-1">{rows.map((r, i) => <div key={i} className="contents"><dt className="text-muted">{r.label}</dt><dd className="break-words">{r.value}</dd></div>)}</dl> : <p className="text-warn">{searching ? "Pesquisando…" : "Sem resposta desta fonte. Use “Atualizar informações”."}</p>}
               </div>
             );
           })}
