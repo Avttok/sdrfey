@@ -1,4 +1,4 @@
-import { Gauge, History, Play, ScrollText, ShieldCheck, Target, Upload, UserRound, Users, MapPin, type LucideIcon } from "lucide-react";
+import { Gauge, History, Play, ScrollText, ShieldCheck, Target, UserRound, Users, MapPin, type LucideIcon } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: string; adminOnly?: boolean };
 
@@ -14,7 +14,6 @@ export const NAV: NavItem[] = [
   { href: "/metas", label: "Metas", icon: Target, perm: "tab.metas" },
   { href: "/registro", label: "Registro", icon: ScrollText, perm: "tab.registro" },
   { href: "/representantes", label: "Representantes", icon: MapPin, perm: "tab.representantes" },
-  { href: "/importar", label: "Importar", icon: Upload, perm: "tab.importar" },
   { href: "/admin", label: "Admin", icon: ShieldCheck, adminOnly: true },
   { href: "/conta", label: "Minha conta", icon: UserRound },
 ];

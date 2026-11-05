@@ -39,6 +39,11 @@ export const users = pgTable("users", {
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
   /** Meta diária própria. Nulo = usa a meta global. */
   dailyGoal: integer("daily_goal"),
+  /** Meta de agendados por dia (nulo = meta global). */
+  dailyGoalScheduled: integer("daily_goal_scheduled"),
+  /** Liga/desliga cada meta só para esta pessoa (nulo = segue a global). */
+  goalAttendedOn: boolean("goal_attended_on"),
+  goalScheduledOn: boolean("goal_scheduled_on"),
   /** Permissão dada pelo Adm: pode alterar metas da equipe. */
   canManageGoals: boolean("can_manage_goals").notNull().default(false),
   /** Ajustes do Adm só para esta pessoa (abas, blocos do painel...). Vazio = usa o padrão do cargo. */

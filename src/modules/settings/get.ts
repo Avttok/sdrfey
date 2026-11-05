@@ -5,6 +5,10 @@ import type { DbOrTx } from "@/modules/audit/log";
 export const SETTING_DEFAULTS = {
   lock_minutes: 30,
   daily_goal: 35,
+  /** Meta de agendados por pessoa/dia, e se cada meta está ligada (1) ou desligada (0). */
+  daily_goal_scheduled: 5,
+  goal_attended_on: 1,
+  goal_scheduled_on: 1,
   skip_hours: 24,
   sem_contato_days: 3,
   /** Dias até um lead já trabalhado (sem outra regra) poder ser sorteado de novo. */

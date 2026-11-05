@@ -7,7 +7,6 @@ import { saveSettingsAction } from "@/modules/admin/config";
 import type { SettingKey } from "@/modules/settings/get";
 
 const FIELDS: { key: SettingKey; label: string; hint: string }[] = [
-  { key: "daily_goal", label: "Meta diária por pessoa (contatos)", hint: "Vale para todos, a menos que a pessoa tenha meta própria." },
   { key: "lock_minutes", label: "Minutos até liberar um lead parado", hint: "Passou disso sem atividade, o lead volta ao sorteio." },
   { key: "skip_hours", label: "Horas que um lead pulado fica escondido", hint: "Só some para quem pulou." },
   { key: "sem_contato_days", label: "Dias até “Sem contato” voltar ao sorteio", hint: "Dias corridos." },

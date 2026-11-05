@@ -10,7 +10,7 @@ import { mergeInfo, parseBrasilApi, parseReceitaWs, statusToSituation, type Cnpj
 export type EnrichResult = {
   /** ok = ao menos uma fonte respondeu; unavailable = nenhuma respondeu (tente atualizar). */
   state: "ok" | "unavailable";
-  sources: { brasilapi: "ok" | "falhou"; receitaws: "ok" | "falhou" };
+  sources: { brasilapi: "ok" | "falhou" | "dispensada"; receitaws: "ok" | "falhou" };
   /** Motivo quando uma fonte falha (ex.: "HTTP 429", "tempo esgotado"). */
   why: { brasilapi?: string; receitaws?: string };
   info: CnpjInfo | null;
@@ -55,17 +55,18 @@ export async function enrichLead(leadId: number, userId: number | null = null): 
   const [lead] = await db.select().from(leads).where(eq(leads.id, leadId));
   if (!lead) throw new Error("Lead não encontrado.");
 
-  const [{ data: rb, why: whyB }, { data: rw, why: whyW }] = await Promise.all([
-    getJson(`https://brasilapi.com.br/api/cnpj/v1/${lead.cnpj}`),
-    getJson(`https://receitaws.com.br/v1/cnpj/${lead.cnpj}`),
-  ]);
-  const a = parseBrasilApi(rb);
+  /* ReceitaWS primeiro; a BrasilAPI só é consultada se a ReceitaWS falhar ou não trouxer dados (mais rápido) */
+  const { data: rw, why: whyW } = await getJson(`https://receitaws.com.br/v1/cnpj/${lead.cnpj}`);
   const b = parseReceitaWs(rw);
+  let rb: unknown | null = null;
+  let whyB: string | undefined;
+  if (!b) ({ data: rb, why: whyB } = await getJson(`https://brasilapi.com.br/api/cnpj/v1/${lead.cnpj}`));
+  const a = parseBrasilApi(rb);
   const info = mergeInfo(a, b);
   const result: EnrichResult = {
     state: info ? "ok" : "unavailable",
-    sources: { brasilapi: a ? "ok" : "falhou", receitaws: b ? "ok" : "falhou" },
-    why: { ...(a ? {} : { brasilapi: whyB ?? "resposta sem dados" }), ...(b ? {} : { receitaws: whyW ?? "resposta sem dados" }) },
+    sources: { brasilapi: a ? "ok" : b ? "dispensada" : "falhou", receitaws: b ? "ok" : "falhou" },
+    why: { ...(a || b ? {} : { brasilapi: whyB ?? "resposta sem dados" }), ...(b ? {} : { receitaws: whyW ?? "resposta sem dados" }) },
     info,
     newPhones: 0,
     newEmails: 0,

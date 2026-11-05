@@ -4,7 +4,7 @@ import { asc, eq } from "drizzle-orm";
 import { Suspense } from "react";
 import { AuditFilters } from "@/components/audit-filters";
 import { RevertButton } from "@/components/revert-button";
-import { panelCls } from "@/components/ui";
+import { btnGhost, panelCls } from "@/components/ui";
 import { db, users } from "@/db";
 import { fmtDateTimeSec } from "@/lib/format";
 import { ENTITY_LABEL, groupAudit, listAudit, parseAuditFilters } from "@/modules/audit/query";
@@ -52,7 +52,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
                         {r.meta ? <><dt className="text-muted">Detalhes</dt><dd className="break-words text-xs">{JSON.stringify(r.meta)}</dd></> : null}
                       </dl>
                       <div className="flex flex-wrap gap-2">
-                        {r.leadId && <Link className="underline" href={`/leads?q=${encodeURIComponent(r.company ?? "")}`}>Abrir lead</Link>}
+                        {r.leadId && <Link className={btnGhost} href={`/leads?q=${encodeURIComponent(r.company ?? "")}`}>Abrir lead</Link>}
                         {me.permissions["audit.revert"] && r.leadId && <RevertButton id={r.id} />}
                       </div>
                     </div>

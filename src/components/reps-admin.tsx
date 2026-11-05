@@ -17,8 +17,16 @@ function Card({ r, canEdit, isNew, isAdmin }: { r: RepRow; canEdit: boolean; isN
   const field = (k: keyof RepRow, label: string) => <label className="block text-sm"><span className="mb-1 block text-muted">{label}</span><input className={inputCls} disabled={!canEdit} value={String(f[k] ?? "")} onChange={(e) => setF({ ...f, [k]: e.target.value })} /></label>;
   return (
     <li className={`${panelCls} ${f.active ? "" : "opacity-70"}`}>
-      <button type="button" className="flex w-full items-center gap-3 p-4 text-left" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <span className="flex-1">{isNew ? <b className="flex items-center gap-2"><Plus size={16} aria-hidden /> Novo representante</b> : <><b>{r.repName}</b> <span className="text-xs text-muted">SAP {r.sapCode} · {r.city}/{r.uf}{r.active ? "" : " · inativo"}</span></>}</span>
+      <button type="button" className="flex w-full items-center gap-3 p-3.5 text-left" aria-expanded={open} onClick={() => setOpen(!open)}>
+        {isNew ? <b className="flex flex-1 items-center gap-2"><Plus size={16} aria-hidden /> Novo representante</b> : (
+          <span className="grid min-w-0 flex-1 items-center gap-x-4 gap-y-0.5 md:grid-cols-[minmax(0,2fr)_6rem_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,1.3fr)]">
+            <b className="truncate">{r.repName}</b>
+            <span className="figure w-fit rounded-md bg-sunk px-2 py-0.5 text-xs">SAP {r.sapCode}</span>
+            <span className="truncate text-sm text-muted"><span className="md:hidden">Gestor: </span>{r.managerName || "—"}</span>
+            <span className="truncate text-sm text-muted"><span className="md:hidden">Equipe: </span>{r.team || "—"}</span>
+            <span className="truncate text-sm">{r.city}/{r.uf} {!r.active && <span className="ml-1 rounded-full bg-danger/15 px-2 py-0.5 text-xs text-danger">inativo</span>}</span>
+          </span>
+        )}
         <ChevronDown size={18} className={open ? "rotate-180" : ""} aria-hidden />
       </button>
       {open && (

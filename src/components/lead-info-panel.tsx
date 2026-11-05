@@ -13,7 +13,7 @@ import type { LeadView } from "@/modules/leads/view";
 type Search = "idle" | "searching" | "failed";
 
 /** Dados da empresa + representante mais próximo. Usado no atendimento e no editor do lead. */
-export function LeadInfoPanel({ lead, autoSearch = true }: { lead: LeadView; autoSearch?: boolean }) {
+export function LeadInfoPanel({ lead, autoSearch = true, wide = false }: { lead: LeadView; autoSearch?: boolean; wide?: boolean }) {
   const toast = useToast();
   const [pending, start] = useTransition();
   const [state, setState] = useState<Search>(autoSearch && lead.enrichedAt === null ? "searching" : "idle");
@@ -43,15 +43,19 @@ export function LeadInfoPanel({ lead, autoSearch = true }: { lead: LeadView; aut
   const ageText = fmtAge(info?.openedAt);
   const a = info?.address;
   const addressLine = a && (a.street || a.district) ? [a.street && `${a.street}${a.number ? `, ${a.number}` : ""}`, a.complement, a.district, a.cep && `CEP ${a.cep.replace(/^(\d{5})(\d{3})$/, "$1-$2")}`].filter(Boolean).join(" · ") : null;
-  const mapsQuery = a?.street ? [a.street, a.number, lead.city, lead.uf].filter(Boolean).join(", ") : [lead.company, lead.city, lead.uf].filter(Boolean).join(" ");
+  /** Sem número (vazio, S/N, SN, “sem número”…): busca por NOME DA EMPRESA + RUA + CIDADE + UF. */
+  const noNumber = !a?.number || /^(s\s*\/?\s*n|sn|sem\s+n[uú]mero|s\.?\s*n\.?|0+|-+)$/i.test(a.number.trim());
+  const mapsQuery = a?.street
+    ? (noNumber ? [lead.tradeName ?? lead.company, a.street, lead.city, lead.uf] : [a.street, a.number, lead.city, lead.uf]).filter(Boolean).join(", ")
+    : [lead.company, lead.city, lead.uf].filter(Boolean).join(" ");
   const mapsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`;
   const rep = lead.rep;
   const copy = async (t: string) => { try { await navigator.clipboard.writeText(t); toast("info", `Copiado: ${t}`); } catch { toast("warn", "Não consegui copiar."); } };
 
   const sources = [["BrasilAPI", lead.brasilApi], ["ReceitaWS", lead.receitaWs]] as const;
 
-  return (
-    <section className="space-y-3">
+  const companyBlock = (
+    <div className="space-y-3">
       <h2 className="display text-xl">Dados da empresa</h2>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
         <dt className="text-muted">Razão social</dt><dd>{lead.company}</dd>
@@ -73,14 +77,18 @@ export function LeadInfoPanel({ lead, autoSearch = true }: { lead: LeadView; aut
         <button type="button" className={btnGhost} onClick={() => setAll(!all)}>{all ? "Ocultar informações" : "Ver todas as informações"}</button>
       </div>
 
+    </div>
+  );
+  const allBlock = (
+    <>
       {all && (
-        <div className="space-y-4 rounded-lg bg-sunk p-3 text-xs">
+        <div className={`grid gap-4 rounded-lg bg-sunk p-3 text-xs ${wide ? "md:grid-cols-3 md:gap-6" : ""}`}>
           {sources.map(([name, raw]) => {
             const rows = selectedRows(name, raw);
             return (
               <div key={name}>
                 <p className="mb-1.5 text-sm font-semibold">{name}</p>
-                {rows.length ? <dl className="grid grid-cols-[minmax(0,14rem)_1fr] gap-x-3 gap-y-1">{rows.map((r, i) => <div key={i} className="contents"><dt className="text-muted">{r.label}</dt><dd className="break-words">{r.value}</dd></div>)}</dl> : <p className="text-warn">{searching ? "Pesquisando…" : "Sem resposta desta fonte. Use “Atualizar informações”."}</p>}
+                {rows.length ? <dl className="grid grid-cols-[minmax(0,9rem)_1fr] gap-x-3 gap-y-1">{rows.map((r, i) => <div key={i} className="contents"><dt className="text-muted">{r.label}</dt><dd className="break-words">{r.value}</dd></div>)}</dl> : <p className="text-warn">{searching ? "Pesquisando…" : (name === "BrasilAPI" && lead.receitaWs ? "Não consultada: a ReceitaWS já trouxe os dados." : "Sem resposta desta fonte. Use “Atualizar informações”.")}</p>}
               </div>
             );
           })}
@@ -92,6 +100,10 @@ export function LeadInfoPanel({ lead, autoSearch = true }: { lead: LeadView; aut
         </div>
       )}
 
+    </>
+  );
+  const repBlock = (
+    <>
       <div className={`${panelCls} p-3 text-sm`}>
         <p className="mb-2 font-semibold">Representante mais próximo</p>
         {rep ? (
@@ -105,6 +117,25 @@ export function LeadInfoPanel({ lead, autoSearch = true }: { lead: LeadView; aut
           </dl>
         ) : <p>{missing}{!lead.city && !searching ? <span className="ml-1 text-xs text-muted">(cidade do lead desconhecida)</span> : null}</p>}
       </div>
+    </>
+  );
+
+  if (wide) {
+    return (
+      <section className="space-y-4">
+        <div className="grid gap-x-8 gap-y-4 lg:grid-cols-2">
+          {companyBlock}
+          <div className="space-y-3">{repBlock}</div>
+        </div>
+        {allBlock}
+      </section>
+    );
+  }
+  return (
+    <section className="space-y-3">
+      {companyBlock}
+      {allBlock}
+      {repBlock}
     </section>
   );
 }

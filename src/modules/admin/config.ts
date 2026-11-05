@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { PERMISSION_KEYS, type PermissionMap } from "@/config/permissions";
 import type { Role } from "@/config/roles";
-import { db, emailTemplates, leadTags, leads, settings, tags } from "@/db";
+import { db, emailTemplates, leadTags, leads, settings, tags, users } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { requireAdmin } from "@/modules/auth/guard";
 import type { ActionResult } from "@/modules/leads/actions";
@@ -16,15 +16,17 @@ const fail = (message: string): ActionResult => ({ ok: false, message });
 const slug = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 
 /* ───── Parâmetros globais ───── */
-export async function saveSettingsAction(values: Record<SettingKey, number>): Promise<ActionResult> {
+const PARAM_KEYS = ["lock_minutes", "skip_hours", "sem_contato_days", "rework_days"] as const;
+/** As metas ficam na aba Metas; aqui só as regras do sorteio. */
+export async function saveSettingsAction(values: Record<(typeof PARAM_KEYS)[number], number>): Promise<ActionResult> {
   const me = await requireAdmin();
   const p = z.object({
-    lock_minutes: z.number().int().min(1).max(600), daily_goal: z.number().int().min(0).max(1000),
+    lock_minutes: z.number().int().min(1).max(600),
     skip_hours: z.number().int().min(0).max(720), sem_contato_days: z.number().int().min(0).max(365), rework_days: z.number().int().min(0).max(3650),
   }).safeParse(values);
   if (!p.success) return fail("Confira os valores: precisam ser números inteiros dentro de limites razoáveis.");
   const before = await getSettings();
-  for (const k of Object.keys(SETTING_DEFAULTS) as SettingKey[]) {
+  for (const k of PARAM_KEYS) {
     if (before[k] === p.data[k]) continue;
     await db.insert(settings).values({ key: k, value: p.data[k], updatedBy: me.id }).onConflictDoUpdate({ target: settings.key, set: { value: p.data[k], updatedAt: new Date(), updatedBy: me.id } });
     await logAudit(db, { userId: me.id, entity: "setting", action: "alterou parâmetro", field: k, oldValue: before[k], newValue: p.data[k] });
@@ -135,20 +137,48 @@ export async function clearTestDataAction(): Promise<ActionResult> {
   return { ok: true, message: `${del.length} leads de teste apagados (com atendimentos e contatos).` };
 }
 
-/** Move uma tag para cima/baixo dentro do próprio grupo (muda a ordem em que aparece para todos). */
-export async function moveTagAction(id: number, dir: "up" | "down"): Promise<ActionResult> {
+/** Salva a nova ordem das tags de um grupo (a ordem que todos veem). Recebe os ids na ordem final. */
+export async function reorderTagsAction(groupKey: string, orderedIds: number[]): Promise<ActionResult> {
   const me = await requireAdmin();
-  const [t] = await db.select().from(tags).where(eq(tags.id, id));
-  if (!t) return fail("Tag não encontrada.");
-  const list = await db.select().from(tags).where(eq(tags.groupKey, t.groupKey)).orderBy(asc(tags.sort), asc(tags.label));
-  const i = list.findIndex((x) => x.id === id);
-  const j = dir === "up" ? i - 1 : i + 1;
-  if (j < 0 || j >= list.length) return { ok: true };
-  [list[i], list[j]] = [list[j], list[i]];
+  const list = await db.select().from(tags).where(eq(tags.groupKey, groupKey)).orderBy(asc(tags.sort), asc(tags.label));
+  const known = new Set(list.map((t) => t.id));
+  if (orderedIds.length !== list.length || !orderedIds.every((id) => known.has(id))) return fail("A lista mudou. Recarregue a página e tente de novo.");
+  const before = list.map((t) => t.label).join(" › ");
+  const byId = new Map(list.map((t) => [t.id, t]));
   await db.transaction(async (tx) => {
-    for (const [pos, row] of list.entries()) if (row.sort !== pos) await tx.update(tags).set({ sort: pos }).where(eq(tags.id, row.id));
+    for (const [pos, id] of orderedIds.entries()) if (byId.get(id)!.sort !== pos) await tx.update(tags).set({ sort: pos }).where(eq(tags.id, id));
+    await logAudit(tx, { userId: me.id, entity: "tag", action: "reordenou tags", field: groupKey, oldValue: before, newValue: orderedIds.map((id) => byId.get(id)!.label).join(" › ") });
   });
-  await logAudit(db, { userId: me.id, entity: "tag", action: "reordenou tags", field: t.groupKey, oldValue: String(i + 1), newValue: String(j + 1), meta: { tag: t.label } });
   revalidatePath("/", "layout");
-  return { ok: true, message: `${t.label} agora é a ${j + 1}ª tag do grupo.` };
+  return { ok: true, message: "Ordem das tags salva." };
+}
+
+/** Grade de permissões: padrão de cada cargo + ajuste de cada pessoa (liberar/bloquear), tudo de uma vez. */
+export async function savePermissionMatrixAction(input: { roles: Record<"user" | "manager", PermissionMap>; users: Record<number, PermissionMap> }): Promise<ActionResult> {
+  const me = await requireAdmin();
+  const clean = (m: PermissionMap) => Object.fromEntries(Object.entries(m ?? {}).filter(([k, v]) => PERMISSION_KEYS.includes(k) && typeof v === "boolean"));
+  const [row] = await db.select().from(settings).where(eq(settings.key, "role_permissions"));
+  const before = (row?.value ?? {}) as Record<string, PermissionMap>;
+  const next = { ...before, user: clean(input.roles.user), manager: clean(input.roles.manager) };
+  let changed = 0;
+  await db.transaction(async (tx) => {
+    for (const role of ["user", "manager"] as const) {
+      if (JSON.stringify(before[role] ?? {}) === JSON.stringify(next[role])) continue;
+      changed++;
+      await logAudit(tx, { userId: me.id, entity: "setting", action: "alterou permissões do cargo", field: role, oldValue: JSON.stringify(before[role] ?? {}), newValue: JSON.stringify(next[role]) });
+    }
+    await tx.insert(settings).values({ key: "role_permissions", value: next, updatedBy: me.id }).onConflictDoUpdate({ target: settings.key, set: { value: next, updatedAt: new Date(), updatedBy: me.id } });
+    for (const [idStr, map] of Object.entries(input.users)) {
+      const id = Number(idStr);
+      const [u] = await tx.select({ name: users.name, permissions: users.permissions }).from(users).where(eq(users.id, id));
+      if (!u) continue;
+      const perms = clean(map);
+      if (JSON.stringify(u.permissions ?? {}) === JSON.stringify(perms)) continue;
+      changed++;
+      await tx.update(users).set({ permissions: perms }).where(eq(users.id, id));
+      await logAudit(tx, { userId: me.id, entity: "user", action: "alterou", field: `${u.name} · Permissões individuais`, oldValue: JSON.stringify(u.permissions ?? {}), newValue: JSON.stringify(perms) });
+    }
+  });
+  revalidatePath("/", "layout");
+  return { ok: true, message: changed ? "Permissões salvas." : "Nada mudou." };
 }

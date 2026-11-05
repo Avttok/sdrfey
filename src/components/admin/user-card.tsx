@@ -2,7 +2,7 @@
 
 import { ChevronDown, KeyRound, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { PermissionGrid } from "@/components/admin/permission-grid";
+import Link from "next/link";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { ROLE_META, ROLES, type Role } from "@/config/roles";
@@ -54,7 +54,10 @@ export function UserCard({ u, isMe }: { u: UserRow; isMe: boolean }) {
             </div>
           )}
           {tab === "perm" && (
-            <div className="space-y-2"><p className="text-sm text-muted">“Padrão do cargo” segue o que está em Permissões por cargo. O Adm sempre tem tudo.</p><PermissionGrid mode="user" value={f.permissions} onChange={(permissions) => setF({ ...f, permissions })} /></div>
+            <div className="space-y-3 rounded-lg bg-sunk p-4 text-sm">
+              <p>As permissões de {u.name} (abas, blocos do Dashboard e funções) ficam todas na tela <b>Permissões</b>, numa grade só.</p>
+              <Link href="/admin/permissoes" className={btnGhost}>Abrir Permissões</Link>
+            </div>
           )}
           {tab === "metas" && (
             <div className="space-y-3">

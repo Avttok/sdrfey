@@ -45,15 +45,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const scope = team ? (picked.length ? picked : people.map((p) => p.id)) : [me.id];
   const tagColor = Object.fromEntries((await db.select({ key: tags.key, color: tags.color }).from(tags)).map((t) => [t.key, t.color]));
   const settings = await getSettings();
-  const d = await getDashboard(period, scope, settings.daily_goal);
+  const d = await getDashboard(period, scope, settings);
   const can = (k: string) => !!me.permissions[k];
-  const maxHour = Math.max(1, ...d.hours.map((h) => h.n));
   const hoursRange = Array.from({ length: 14 }, (_, i) => 7 + i);
+  const colorOf = new Map(d.ranking.map((r) => [r.id, { hex: bubbleHex(r.accent, r.id, r.roles), name: r.name }]));
+  const perHour = hoursRange.map((h) => ({ h, parts: d.hours.filter((x) => x.h === h).map((x) => ({ ...x, ...(colorOf.get(x.uid) ?? { hex: "#888780", name: "?" }) })) }));
+  const maxHour = Math.max(1, ...perHour.map((x) => x.parts.reduce((a, p) => a + p.n, 0)));
   const totalStock = d.stock.novos + d.stock.trabalhados + d.stock.fora + d.stock.clientes || 1;
 
   const kpis = [
     { k: "contatos", I: PhoneCall, t: "Contatos", v: nf.format(d.contacts), s: plural(d.days, "dia", "dias") },
-    { k: "meta", I: Target, t: "Meta atingida", v: pct(d.contacts, d.goal), s: `de ${nf.format(d.goal)}` },
+    { k: "meta", I: Target, t: "Meta atendidos", v: d.goal ? pct(d.contacts, d.goal) : "—", s: d.goal ? `de ${nf.format(d.goal)}` : "meta desligada" },
+    { k: "meta_agend", I: CalendarCheck, t: "Meta agendados", v: d.goalScheduled ? pct(d.scheduled, d.goalScheduled) : "—", s: d.goalScheduled ? `de ${nf.format(d.goalScheduled)}` : "meta desligada" },
     { k: "qualificados", I: CircleCheck, t: "Qualificados", v: nf.format(d.qualified), s: "no período" },
     { k: "agendados", I: CalendarCheck, t: "Agendados", v: nf.format(d.scheduled), s: "visitas marcadas" },
     { k: "taxa_qualif", I: Percent, t: "Taxa de qualificação", v: pct(d.qualified, d.contacts), s: "dos contatos" },
@@ -77,7 +80,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
       )}
 
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="panel-grid">
         {can("panel.ranking") && (
           <Block icon={Trophy} title="Ranking da equipe">
             {d.ranking.map((r) => <Bar key={r.id} label={r.name.split(" ")[0]} value={r.n} max={Math.max(1, settings.daily_goal * d.days)} color={bubbleHex(r.accent, r.id, r.roles)} right={`${r.n} · ${fmtDuration(r.avgSeconds)}`} />)}
@@ -94,13 +97,23 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       </div>
 
       {can("panel.horas") && (
-        <Block icon={Clock} title="Atividade por hora (Brasília)">
-          <div className="flex h-24 items-end gap-1.5">{hoursRange.map((h) => { const n = d.hours.find((x) => x.h === h)?.n ?? 0; return <span key={h} title={`${h}h: ${n}`} className="flex-1 rounded-t bg-accent/80" style={{ height: `${Math.max(2, (n / maxHour) * 100)}%` }} />; })}</div>
+        <Block icon={Clock} title="Atividade por hora">
+          <div className="flex h-28 items-end gap-1.5">
+            {perHour.map(({ h, parts }) => {
+              const total = parts.reduce((a, p) => a + p.n, 0);
+              return (
+                <div key={h} title={`${h}h: ${total}${parts.length > 1 ? " (" + parts.map((p) => `${p.name.split(" ")[0]} ${p.n}`).join(", ") + ")" : ""}`} className="flex flex-1 flex-col-reverse overflow-hidden rounded-t" style={{ height: `${Math.max(2, (total / maxHour) * 100)}%`, background: total ? undefined : "var(--line)" }}>
+                  {parts.map((p) => <span key={p.uid} style={{ flex: p.n, background: p.hex }} />)}
+                </div>
+              );
+            })}
+          </div>
           <div className="mt-1 flex gap-1.5">{hoursRange.map((h) => <span key={h} className="flex-1 text-center text-[11px] text-muted">{h}h</span>)}</div>
+          {d.ranking.length > 1 && <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">{d.ranking.map((r) => <span key={r.id} className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: bubbleHex(r.accent, r.id, r.roles) }} />{r.name.split(" ")[0]}</span>)}</div>}
         </Block>
       )}
 
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="panel-grid">
         {can("panel.meios") && (
           <Block icon={MessagesSquare} title="Meios de contato">
             {d.meios.length ? d.meios.map((m) => <Bar key={m.channel} label={m.label} value={m.n} max={d.meios[0].n} color={m.color} right={`${m.n} · ${pct(m.q, m.n)} qualif.`} />) : <p className="text-sm text-muted">Sem contatos no período.</p>}
@@ -114,7 +127,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         )}
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="panel-grid">
         {can("panel.alertas") && (
           <Block icon={AlertTriangle} title="Alertas">
             <ul className="space-y-2 text-sm">

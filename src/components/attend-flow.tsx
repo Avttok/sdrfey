@@ -11,6 +11,7 @@ import { fmtCnpj, fmtDate, fmtMoney, fmtPhone } from "@/lib/format";
 import { addChannelAction, discardAction, heartbeatAction, markWrongAction, refreshInfoAction, releaseAction, removeChannelAction, resetLeadAction, saveAction, skipAction, startAction, startedAction } from "@/modules/leads/actions";
 import { mailtoLink, renderTemplate } from "@/modules/email/render";
 import type { LeadView, TagCatalog } from "@/modules/leads/view";
+import type { Goals } from "@/modules/settings/goals";
 
 type Template = { id: number; name: string; subject: string; body: string };
 const STEPS = ["Contatos", "E-mail", "WhatsApp", "Ligação", "Resultado"] as const;
@@ -24,7 +25,7 @@ const copy = async (text: string, toast: ReturnType<typeof useToast>) => {
   }
 };
 
-export function AttendFlow({ lead, catalog, templates, myName, doneToday, goal }: { lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; doneToday: number; goal: number }) {
+export function AttendFlow({ lead, catalog, templates, myName, doneToday, scheduledToday, goals }: { lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; doneToday: number; scheduledToday: number; goals: Goals }) {
   const toast = useToast();
   const [pending, start] = useTransition();
   useBusyWhile(pending);
@@ -96,7 +97,10 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, goal }
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="display text-2xl sm:text-3xl">{lead.tradeName ?? lead.company}</h1>
         {lead.isTest && <span className="rounded-md bg-sunk px-2 py-0.5 text-xs font-semibold">MODO TESTE</span>}
-        <span className="ml-auto text-sm text-muted">Hoje: <b className="figure text-ink">{doneToday}</b> / {goal}</span>
+        <span className="ml-auto flex flex-wrap gap-x-5 text-sm text-muted">
+          {goals.attended.on && <span>Atendidos hoje: <b className="figure text-ink">{doneToday}</b> / {goals.attended.qty}</span>}
+          {goals.scheduled.on && <span>Agendados hoje: <b className="figure text-ink">{scheduledToday}</b> / {goals.scheduled.qty}</span>}
+        </span>
       </div>
       <ol className="flex flex-wrap gap-1.5" aria-label="Passos do atendimento">
         {STEPS.map((s, i) => (
@@ -111,12 +115,9 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, goal }
 
       <div className={`${panelCls} p-5 sm:p-6`}>
         {step === 0 && (
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="space-y-3">
-              <LeadInfoPanel lead={lead} />
-            </div>
-
-            <div className="space-y-6">
+          <div className="space-y-6">
+            <LeadInfoPanel lead={lead} wide />
+            <div className="grid gap-6 border-t border-line pt-5 lg:grid-cols-2">
             <section className="space-y-3">
               <h2 className="display text-xl">Contatos</h2>
               <ul className="space-y-1.5">
@@ -141,6 +142,18 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, goal }
               {lead.tags.length ? <div className="flex flex-wrap gap-1.5">{lead.tags.map((t) => <TagChip key={t.id} label={t.label} color={t.color} />)}</div> : <p className="text-sm text-muted">Nenhuma tag ainda.</p>}
             </section>
             </div>
+          </div>
+        )}
+
+        {step > 0 && (
+          <div className="mb-5 grid gap-x-6 gap-y-1.5 rounded-xl bg-sunk p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <p><span className="text-muted">Empresa</span><br /><b>{lead.tradeName ?? lead.company}</b></p>
+            <p><span className="text-muted">CNPJ</span><br />{fmtCnpj(lead.cnpj)}</p>
+            <p><span className="text-muted">Situação</span><br />{lead.registrationStatus ? <b className={lead.registrationStatus.toUpperCase() === "ATIVA" ? "text-ok" : "text-danger"}>{lead.registrationStatus.toUpperCase()}</b> : <span className="text-warn">Sem informação</span>}</p>
+            <p><span className="text-muted">Cidade</span><br />{lead.city ? `${lead.city}/${lead.uf}` : <span className="text-warn">Sem informação</span>}</p>
+            <p className="sm:col-span-2"><span className="text-muted">Atividade</span><br />{lead.info?.activity ? `${lead.info.cnae ? `${lead.info.cnae} - ` : ""}${lead.info.activity}` : <span className="text-warn">Sem informação</span>}</p>
+            <p><span className="text-muted">Representante</span><br />{lead.rep ? `${lead.rep.repName ?? "—"} · ${lead.rep.km} km` : <span className="text-warn">Sem informação</span>}</p>
+            <p><span className="text-muted">Contato principal</span><br />{goodPhones[0] ? fmtPhone(goodPhones[0].value) : goodEmails[0]?.value ?? <span className="text-warn">Sem contato</span>}</p>
           </div>
         )}
 

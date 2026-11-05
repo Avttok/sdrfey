@@ -1,3 +1,4 @@
+import type { SettingKey } from "@/modules/settings/get";
 import type { Role } from "@/config/roles";
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -18,7 +19,7 @@ export const periodDays = (p: Period) => Math.round((dayStart(p.to).getTime() - 
 
 const ids = (list: number[]) => sql.join(list.map((i) => sql`${i}`), sql`, `);
 
-export async function getDashboard(period: Period, userIds: number[], globalGoal: number) {
+export async function getDashboard(period: Period, userIds: number[], gs: Record<SettingKey, number>) {
   if (userIds.length === 0) userIds = [-1];
   const from = sql`${dayStart(period.from).toISOString()}::timestamptz`;
   const to = sql`${dayEnd(period.to).toISOString()}::timestamptz`;
@@ -32,9 +33,9 @@ export async function getDashboard(period: Period, userIds: number[], globalGoal
         percentile_cont(0.5) within group (order by extract(epoch from (s.saved_at - coalesce(s.started_at, s.shown_at)))) as med
       from users u left join attendance_sessions s on s.user_id = u.id and s.outcome = 'saved' and not s.is_test and s.saved_at between ${from} and ${to}
       where u.id in (${U}) group by u.id order by n desc, u.name`),
-    db.execute<{ h: number; n: number }>(sql`
-      select extract(hour from s.saved_at at time zone ${TZ})::int as h, count(*)::int as n from attendance_sessions s
-      where s.outcome = 'saved' and not s.is_test and s.user_id in (${U}) and s.saved_at between ${from} and ${to} group by 1 order by 1`),
+    db.execute<{ h: number; uid: number; n: number }>(sql`
+      select extract(hour from s.saved_at at time zone ${TZ})::int as h, s.user_id as uid, count(*)::int as n from attendance_sessions s
+      where s.outcome = 'saved' and not s.is_test and s.user_id in (${U}) and s.saved_at between ${from} and ${to} group by 1, 2 order by 1, 2`),
     db.execute<{ channel: string; label: string; color: string; n: number; q: number }>(sql`
       select i.channel, t.label, t.color, count(*)::int as n,
         count(*) filter (where exists (select 1 from lead_tags lt join tags qt on qt.id = lt.tag_id where lt.lead_id = i.lead_id and qt.key = 'qualificado'))::int as q
@@ -46,7 +47,10 @@ export async function getDashboard(period: Period, userIds: number[], globalGoal
       join lead_tags lt on lt.lead_id = s.lead_id join tags t on t.id = lt.tag_id and t.key = 'qualificado'
       where s.outcome = 'saved' and not s.is_test and s.user_id in (${U}) and s.saved_at between ${from} and ${to}`),
     db.execute<{ n: number }>(sql`select count(*)::int as n from visits v join leads l on l.id = v.lead_id where not l.is_test and v.canceled_at is null and v.user_id in (${U}) and v.created_at between ${from} and ${to}`),
-    db.execute<{ goal: number }>(sql`select coalesce(sum(coalesce(u.daily_goal, ${globalGoal})), 0)::int as goal from users u where u.id in (${U})`),
+    db.execute<{ goal: number; goal_s: number }>(sql`select
+        coalesce(sum(case when coalesce(u.goal_attended_on, ${gs.goal_attended_on}::int = 1) then coalesce(u.daily_goal, ${gs.daily_goal}::int) else 0 end), 0)::int as goal,
+        coalesce(sum(case when coalesce(u.goal_scheduled_on, ${gs.goal_scheduled_on}::int = 1) then coalesce(u.daily_goal_scheduled, ${gs.daily_goal_scheduled}::int) else 0 end), 0)::int as goal_s
+        from users u where u.id in (${U})`),
     db.execute<{ conversando: number }>(sql`select count(distinct s.lead_id)::int as conversando from attendance_sessions s
       join lead_tags lt on lt.lead_id = s.lead_id join tags t on t.id = lt.tag_id and t.key = 'conversando'
       where s.outcome = 'saved' and not s.is_test and s.user_id in (${U}) and s.saved_at between ${from} and ${to}`),
@@ -71,11 +75,12 @@ export async function getDashboard(period: Period, userIds: number[], globalGoal
 
   const contacts = per.reduce((a, r) => a + r.n, 0);
   const goal = (goals[0]?.goal ?? 0) * days;
+  const goalScheduled = (goals[0]?.goal_s ?? 0) * days;
   const timed = per.filter((r) => r.n > 0 && r.avg != null);
   const avg = timed.length ? timed.reduce((a, r) => a + Number(r.avg) * r.n, 0) / timed.reduce((a, r) => a + r.n, 0) : null;
   const meds = timed.map((r) => Number(r.med)).sort((a, b) => a - b);
   return {
-    days, contacts, goal, avgSeconds: avg, medianSeconds: meds.length ? meds[Math.floor(meds.length / 2)] : null,
+    days, contacts, goal, goalScheduled, avgSeconds: avg, medianSeconds: meds.length ? meds[Math.floor(meds.length / 2)] : null,
     qualified: quals[0]?.n ?? 0, scheduled: visitsN[0]?.n ?? 0, conversing: funnel[0]?.conversando ?? 0,
     ranking: [...per].map((r) => ({ id: r.user_id, name: r.name, accent: r.accent, roles: r.roles as Role[], n: r.n, avgSeconds: r.avg == null ? null : Number(r.avg) })),
     hours: [...hours], meios: [...meios], temp: [...temp], stock: stock[0] ?? { novos: 0, trabalhados: 0, fora: 0, clientes: 0 },

@@ -4,10 +4,11 @@ import { and, eq, sql } from "drizzle-orm";
 import { AttendFlow } from "@/components/attend-flow";
 import { SubmitButton } from "@/components/submit-button";
 import { panelCls } from "@/components/ui";
-import { attendanceSessions, db, leads } from "@/db";
+import { attendanceSessions, db, leads, visits } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
 import { startAction } from "@/modules/leads/actions";
 import { getSettings } from "@/modules/settings/get";
+import { effectiveGoals } from "@/modules/settings/goals";
 import { getActiveTemplates, getLeadView, getTagCatalog } from "@/modules/leads/view";
 
 export const metadata: Metadata = { title: "Shufflar" };
@@ -32,7 +33,7 @@ export default async function AttendPage() {
     );
   }
 
-  const [catalog, templates, settings, [done]] = await Promise.all([
+  const [catalog, templates, settings, [done], [sched]] = await Promise.all([
     getTagCatalog(),
     getActiveTemplates(),
     getSettings(),
@@ -40,6 +41,7 @@ export default async function AttendPage() {
       .select({ n: sql<number>`count(*)::int` })
       .from(attendanceSessions)
       .where(and(eq(attendanceSessions.userId, me.id), eq(attendanceSessions.outcome, "saved"), eq(attendanceSessions.isTest, false), sql`${attendanceSessions.savedAt} >= (date_trunc('day', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo')`)),
+    db.select({ n: sql<number>`count(*)::int` }).from(visits).where(and(eq(visits.userId, me.id), sql`${visits.canceledAt} is null`, sql`${visits.createdAt} >= (date_trunc('day', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo')`)),
   ]);
-  return <AttendFlow lead={lead} catalog={catalog} templates={templates} myName={me.name} doneToday={done?.n ?? 0} goal={me.dailyGoal ?? settings.daily_goal} />;
+  return <AttendFlow lead={lead} catalog={catalog} templates={templates} myName={me.name} doneToday={done?.n ?? 0} scheduledToday={sched?.n ?? 0} goals={effectiveGoals(me, settings)} />;
 }

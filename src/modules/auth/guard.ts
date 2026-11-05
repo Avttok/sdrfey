@@ -19,6 +19,9 @@ export type CurrentUser = {
   permissions: PermissionMap;
   canManageGoals: boolean;
   dailyGoal: number | null;
+  dailyGoalScheduled: number | null;
+  goalAttendedOn: boolean | null;
+  goalScheduledOn: boolean | null;
 };
 
 /** Grava o cookie de login. */
@@ -54,6 +57,9 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     permissions,
     canManageGoals: u.canManageGoals,
     dailyGoal: u.dailyGoal,
+    dailyGoalScheduled: u.dailyGoalScheduled,
+    goalAttendedOn: u.goalAttendedOn,
+    goalScheduledOn: u.goalScheduledOn,
     id: u.id,
     username: u.username,
     name: u.name,

@@ -1,45 +1,88 @@
 "use client";
 
+import { CalendarCheck, PhoneCall, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { useRun } from "@/components/use-run";
 import { btnPrimary, inputCls, panelCls } from "@/components/ui";
-import { saveGoalsAction } from "@/modules/admin/goals";
+import { saveGoalsAction, type PersonGoalInput } from "@/modules/admin/goals";
 
-export function GoalsForm({ global, people, canEdit }: { global: number; people: { id: number; name: string; goal: number | null; today: number }[]; canEdit: boolean }) {
-  const [g, setG] = useState(global);
-  const [per, setPer] = useState<Record<number, number | null>>(Object.fromEntries(people.map((p) => [p.id, p.goal])));
-  const { run, pending } = useRun();
+type Kind = "attended" | "scheduled";
+export type GoalPerson = { id: number; name: string; today: Record<Kind, number>; own: Record<Kind, PersonGoalInput> };
+type Global = Record<Kind, { on: boolean; qty: number }>;
+
+const KINDS: { k: Kind; title: string; sub: string; Icon: LucideIcon }[] = [
+  { k: "attended", title: "Meta de atendidos", sub: "Leads atendidos e salvos por dia, por pessoa", Icon: PhoneCall },
+  { k: "scheduled", title: "Meta de agendados", sub: "Visitas agendadas por dia, por pessoa", Icon: CalendarCheck },
+];
+
+function Switch({ on, onChange, label, disabled }: { on: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
   return (
-    <div className="max-w-3xl space-y-4">
-      <section className={`${panelCls} flex flex-wrap items-end justify-between gap-4 p-5`}>
-        <div>
-          <h2 className="display text-xl">Meta global</h2>
-          <p className="mt-1 text-sm text-muted">Contatos por dia, por pessoa. Vale para quem não tem meta própria.</p>
-        </div>
-        <input type="number" min={0} aria-label="Meta global" disabled={!canEdit} className={`${inputCls} !w-32 text-center`} value={g} onChange={(e) => setG(Number(e.target.value))} />
-      </section>
+    <button type="button" role="switch" aria-checked={on} aria-label={label} disabled={disabled} onClick={() => onChange(!on)} className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-60 ${on ? "bg-ok" : "bg-line"}`}>
+      <span className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-all ${on ? "left-[1.375rem]" : "left-0.5"}`} />
+    </button>
+  );
+}
+
+export function GoalsForm({ global, people, canEdit }: { global: Global; people: GoalPerson[]; canEdit: boolean }) {
+  const [g, setG] = useState<Global>(global);
+  const [per, setPer] = useState<Record<number, Record<Kind, PersonGoalInput>>>(Object.fromEntries(people.map((p) => [p.id, p.own])));
+  const { run, pending } = useRun();
+  const upd = (id: number, k: Kind, patch: Partial<PersonGoalInput>) => setPer({ ...per, [id]: { ...per[id], [k]: { ...per[id][k], ...patch } } });
+  /** Liga/desliga que a pessoa vê: o dela, senão o global. */
+  const effOn = (id: number, k: Kind) => per[id][k].on ?? g[k].on;
+  const effQty = (id: number, k: Kind) => per[id][k].qty ?? g[k].qty;
+
+  const save = () => run(() => saveGoalsAction({
+    global: g,
+    // se a pessoa ficou igual ao global, não guarda ajuste próprio (assim ela acompanha mudanças futuras da meta global)
+    perUser: Object.fromEntries(people.map((p) => [p.id, Object.fromEntries(KINDS.map(({ k }) => [k, { on: per[p.id][k].on === g[k].on ? null : per[p.id][k].on, qty: per[p.id][k].qty }])) as Record<Kind, PersonGoalInput>])),
+  }));
+
+  return (
+    <div className="max-w-5xl space-y-5">
+      <div className="panel-grid">
+        {KINDS.map(({ k, title, sub, Icon }) => (
+          <section key={k} className={`${panelCls} p-5 transition-opacity ${g[k].on ? "" : "opacity-60"}`}>
+            <div className="flex items-start gap-3">
+              <span className="flex size-10 items-center justify-center rounded-xl" style={{ background: "color-mix(in srgb, var(--accent) 16%, transparent)", color: "var(--accent)" }}><Icon size={20} aria-hidden /></span>
+              <div className="flex-1"><h2 className="display text-xl">{title}</h2><p className="text-sm text-muted">{sub}. Vale para quem não tem meta própria.</p></div>
+              <Switch on={g[k].on} disabled={!canEdit} label={`${title} ativa`} onChange={(on) => setG({ ...g, [k]: { ...g[k], on } })} />
+            </div>
+            <label className="mt-4 flex items-center gap-3 text-sm">Quantidade por dia
+              <input type="number" min={0} aria-label={`${title}: quantidade global`} disabled={!canEdit || !g[k].on} className={`${inputCls} !w-28 text-center`} value={g[k].qty} onChange={(e) => setG({ ...g, [k]: { ...g[k], qty: Number(e.target.value) } })} />
+            </label>
+          </section>
+        ))}
+      </div>
 
       <section className={`${panelCls} p-5`}>
-        <h2 className="display mb-3 text-xl">Meta de cada pessoa</h2>
+        <h2 className="display mb-1 text-xl">Meta de cada pessoa</h2>
+        <p className="mb-3 text-sm text-muted">Deixe a quantidade vazia para seguir a global. Desligar uma meta aqui tira só aquela pessoa dela.</p>
         <ul className="divide-y divide-line">
-          {people.map((p) => {
-            const goal = per[p.id] ?? g;
-            const pct = goal ? Math.min(100, Math.round((p.today / goal) * 100)) : 0;
-            return (
-              <li key={p.id} className="grid grid-cols-[8rem_1fr_8rem] items-center gap-4 py-3 max-sm:grid-cols-1">
-                <span className="font-medium">{p.name}</span>
-                <div>
-                  <div className="h-2 overflow-hidden rounded-full bg-sunk"><div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} /></div>
-                  <p className="mt-1 text-xs text-muted">Hoje: <b className="figure text-ink">{p.today}</b> de {goal}</p>
-                </div>
-                <input type="number" min={0} aria-label={`Meta de ${p.name}`} disabled={!canEdit} className={`${inputCls} text-center`} placeholder={`Global (${g})`} value={per[p.id] ?? ""} onChange={(e) => setPer({ ...per, [p.id]: e.target.value === "" ? null : Number(e.target.value) })} />
-              </li>
-            );
-          })}
+          {people.map((p) => (
+            <li key={p.id} className="grid items-start gap-x-6 gap-y-3 py-4 lg:grid-cols-[7rem_1fr_1fr]">
+              <span className="font-medium">{p.name}</span>
+              {KINDS.map(({ k, title }) => {
+                const on = effOn(p.id, k), qty = effQty(p.id, k);
+                const pct = on && qty ? Math.min(100, Math.round((p.today[k] / qty) * 100)) : 0;
+                return (
+                  <div key={k} className={on ? "" : "opacity-50"}>
+                    <div className="mb-1.5 flex items-center gap-2.5">
+                      <Switch on={on} disabled={!canEdit} label={`${title} de ${p.name} ativa`} onChange={(v) => upd(p.id, k, { on: v })} />
+                      <span className="flex-1 text-sm">{k === "attended" ? "Atendidos" : "Agendados"}</span>
+                      <input type="number" min={0} aria-label={`${title} de ${p.name}`} disabled={!canEdit || !on} className={`${inputCls} !w-24 text-center`} placeholder={String(g[k].qty)} title="Vazio = meta global" value={per[p.id][k].qty ?? ""} onChange={(e) => upd(p.id, k, { qty: e.target.value === "" ? null : Number(e.target.value) })} />
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-sunk"><div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} /></div>
+                    <p className="mt-1 text-xs text-muted">{on ? <>Hoje: <b className="figure text-ink">{p.today[k]}</b> de {qty}</> : "Meta desligada"}</p>
+                  </div>
+                );
+              })}
+            </li>
+          ))}
         </ul>
       </section>
 
-      {canEdit ? <button type="button" className={btnPrimary} disabled={pending} onClick={() => run(() => saveGoalsAction({ global: g, perUser: per }))}>Salvar metas</button> : <p className="text-sm text-muted">Você pode ver as metas, mas só quem recebeu essa permissão do Adm pode alterar.</p>}
+      {canEdit ? <button type="button" className={btnPrimary} disabled={pending} onClick={save}>Salvar metas</button> : <p className="text-sm text-muted">Você pode ver as metas, mas só quem recebeu essa permissão do Adm pode alterar.</p>}
     </div>
   );
 }

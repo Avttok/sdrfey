@@ -117,6 +117,9 @@ export const SETTINGS_SEED: Record<string, unknown> = {
   lock_minutes: 30,
   /** Meta diária de contatos por pessoa. */
   daily_goal: 35,
+  daily_goal_scheduled: 5,
+  goal_attended_on: 1,
+  goal_scheduled_on: 1,
   /** Horas que um lead pulado fica escondido só para quem pulou. */
   skip_hours: 24,
   /** Dias até "Sem contato" voltar ao sorteio. */

@@ -9,7 +9,7 @@ export default async function Page() {
   const all = await db.select().from(tags).orderBy(asc(tags.sort), asc(tags.label));
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted">Crie, renomeie, mude a cor ou desative qualquer tag. “Tira do sorteio” esconde o lead do sorteio; “Volta em X dias” o traz de volta. Use as setas para mudar a ordem em que as tags aparecem para todos (ex.: Morno antes de Frio). Porte e capital nascem sozinhos na importação.</p>
+      <p className="text-sm text-muted">Crie, renomeie, mude a cor ou desative qualquer tag. “Tira do sorteio” esconde o lead do sorteio; “Volta em X dias” o traz de volta. Arraste pela alça ⠿ para mudar a ordem em que as tags aparecem para todos (ex.: Morno antes de Frio) e clique em “Salvar ordem”. Porte e capital nascem sozinhos na importação.</p>
       <TagsAdmin groups={groups.map((g) => ({ key: g.key, name: g.name, tags: all.filter((t) => t.groupKey === g.key).map((t) => ({ id: t.id, groupKey: t.groupKey, label: t.label, color: t.color, blocksSorting: t.blocksSorting, cooldownDays: t.cooldownDays, active: t.active, autoOnly: t.autoOnly })) }))} />
     </div>
   );

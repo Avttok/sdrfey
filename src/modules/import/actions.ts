@@ -2,7 +2,7 @@
 
 import { plural } from "@/lib/format";
 import { revalidatePath } from "next/cache";
-import { requirePerm } from "@/modules/auth/guard";
+import { requireAdmin } from "@/modules/auth/guard";
 import { decodeCsv, parseCsv } from "./csv";
 import { applyLeadDrafts } from "./leads-apply";
 import { parseLeadRows, type ImportReport } from "./leads-parse";
@@ -32,7 +32,7 @@ async function readFile(formData: FormData) {
 
 /** 1º passo: mostra o que vai acontecer, sem gravar nada. */
 export async function previewImportAction(formData: FormData): Promise<ImportPreview> {
-  await requirePerm("tab.importar");
+  await requireAdmin();
   const f = await readFile(formData);
   if (f.error !== undefined) return { ok: false, message: f.error };
   if (f.kind === "leads") {
@@ -47,7 +47,7 @@ export async function previewImportAction(formData: FormData): Promise<ImportPre
 
 /** 2º passo: grava. Leads novos entram; CNPJs que já existem nunca são sobrescritos. */
 export async function applyImportAction(formData: FormData): Promise<ImportResult> {
-  const me = await requirePerm("tab.importar");
+  const me = await requireAdmin();
   const f = await readFile(formData);
   if (f.error !== undefined) return { ok: false, message: f.error };
   if (f.kind === "leads") {
