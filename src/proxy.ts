@@ -10,9 +10,8 @@ export async function proxy(req: NextRequest) {
   if (!session && pathname !== "/login") {
     return NextResponse.redirect(new URL("/login", req.url));
   }
-  if (session && pathname === "/login") {
-    return NextResponse.redirect(new URL("/painel", req.url));
-  }
+  // /login com cookie válido NÃO é redirecionado aqui: o cookie pode ser de um usuário bloqueado,
+  // apagado ou com cargo/senha alterados (a página de login confere no banco). Redirecionar causava loop.
   return NextResponse.next();
 }
 
