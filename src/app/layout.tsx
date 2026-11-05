@@ -1,7 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import type { CSSProperties } from "react";
 import "@fontsource-variable/archivo/wdth.css";
+import "@fontsource-variable/inter";
+import "@fontsource-variable/manrope";
+import "@fontsource-variable/space-grotesk";
+import "@fontsource-variable/lexend";
 import "./globals.css";
+import { fontCss } from "@/config/fonts";
 import { resolveAccent } from "@/config/theme";
 import { getCurrentUser } from "@/modules/auth/guard";
 
@@ -23,7 +28,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html
       lang="pt-BR"
       suppressHydrationWarning
-      style={{ "--accent": accent.hex, "--on-accent": accent.onAccent } as CSSProperties}
+      style={{ "--accent": accent.hex, "--on-accent": accent.onAccent, "--app-font": fontCss(user?.font) } as CSSProperties}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />

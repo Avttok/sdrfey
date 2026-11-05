@@ -2,10 +2,11 @@
 
 import { PersonBubble } from "@/components/person-bubble";
 
-import { ArrowLeft, Ban, Copy, MapPin, Pencil, Phone, Plus, Tag, Trash2, UnlockKeyhole, Users } from "lucide-react";
+import { ArrowLeft, Ban, Copy, MapPin, Pencil, Phone, Plus, Tag, Trash2, RotateCcw, UnlockKeyhole, Users } from "lucide-react";
 import Link from "next/link";
 import { SectionCard } from "@/components/section-card";
 import { useState } from "react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { AttendButton } from "@/components/attend-button";
 import { LeadInfoPanel } from "@/components/lead-info-panel";
 import { TagChip } from "@/components/tag-chip";
@@ -14,7 +15,7 @@ import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { fmtCnpj, fmtDate, fmtPhone } from "@/lib/format";
 import { addChannelAction, markWrongAction, removeChannelAction } from "@/modules/leads/actions";
-import { addPersonAction, cancelVisitAction, changeTagAction, forceReleaseAction, removePersonAction, updateLeadAction } from "@/modules/leads/edit";
+import { addPersonAction, cancelVisitAction, changeTagAction, forceReleaseAction, removePersonAction, resetLeadFromPageAction, updateLeadAction } from "@/modules/leads/edit";
 import type { LeadView, TagCatalog } from "@/modules/leads/view";
 
 export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedBy }: { lead: LeadView; catalog: TagCatalog; owners: { id: number; name: string }[]; canEdit: boolean; canRelease: boolean; lockedBy: { name: string; hex: string } | null }) {
@@ -26,6 +27,7 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
   const [f, setF] = useState({ company: lead.company, tradeName: lead.tradeName ?? "", city: lead.city ?? "", uf: lead.uf ?? "", ownerId: lead.ownerId, notes: lead.notes ?? "" });
   const [on, setOn] = useState(new Set(lead.tags.map((t) => `${t.groupKey}:${t.key}`)));
   const [newCh, setNewCh] = useState("");
+  const [confirmReset, setConfirmReset] = useState(false);
   const [p, setP] = useState({ name: "", roleTitle: "", extension: "" });
 
   const toggleTag = (g: string, k: string, exclusive: boolean) => {
@@ -59,11 +61,16 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {lockedBy ? <PersonBubble name={lockedBy.name} hex={lockedBy.hex} prefix="Em atendimento" /> : <AttendButton leadId={lead.id} />}
+            {canEdit && !lockedBy && <button type="button" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => setConfirmReset(true)}><RotateCcw size={15} aria-hidden /> Resetar lead</button>}
             {lockedBy && canRelease && <button type="button" className={btnGhost} disabled={pending} onClick={() => run(() => forceReleaseAction(lead.id))}><UnlockKeyhole size={15} aria-hidden /> Liberar lead</button>}
           </div>
         </div>
       </header>
 
+      <ConfirmDialog open={confirmReset} tone="danger" icon={RotateCcw} busy={pending} title="Resetar este lead?" confirmLabel="Sim, resetar" cancelLabel="Cancelar" onCancel={() => setConfirmReset(false)}
+        onConfirm={() => { setConfirmReset(false); run(() => resetLeadFromPageAction(lead.id)); }}>
+        Apaga tags (menos porte e capital), observação, interações e visitas, e devolve o lead ao estoque como novo. Os dados da empresa continuam salvos. Fica tudo registrado.
+      </ConfirmDialog>
       <div className={`${panelCls} p-5 sm:p-6`}><LeadInfoPanel lead={lead} wide /></div>
 
       <div className="grid items-start gap-5 lg:grid-cols-2">

@@ -51,9 +51,13 @@ html {
 
 body {
   min-height: 100dvh;
-  background: var(--bg);
+  background:
+    radial-gradient(70rem 32rem at 0% -8%, color-mix(in srgb, var(--accent) 11%, transparent), transparent 70%),
+    radial-gradient(52rem 28rem at 100% 0%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
   color: var(--ink);
-  font-family: var(--font-sans);
+  font-family: var(--app-font, var(--font-sans));
   font-stretch: 100%;
   -webkit-font-smoothing: antialiased;
 }
@@ -93,3 +97,50 @@ body {
 /* A cor escolhida em “Minha conta” também vale para caixas de seleção, seleção de texto e barras. */
 input[type="checkbox"], input[type="radio"], input[type="range"] { accent-color: var(--accent); }
 ::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+
+/* ───────────── Degradês: sempre derivados da cor de destaque de cada pessoa ───────────── */
+@utility bg-grad { background-image: linear-gradient(135deg, color-mix(in oklab, var(--accent) 80%, white), var(--accent) 48%, color-mix(in oklab, var(--accent) 80%, black)); }
+@utility bg-grad-soft { background-image: linear-gradient(135deg, color-mix(in srgb, var(--accent) 24%, transparent), color-mix(in srgb, var(--accent) 8%, transparent)); }
+@utility bg-grad-panel { background-image: linear-gradient(135deg, color-mix(in srgb, var(--accent) 9%, var(--panel)), var(--panel) 55%); }
+@utility text-grad { background-image: linear-gradient(90deg, var(--accent), color-mix(in oklab, var(--accent) 55%, #a855f7)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+@utility bg-grad-danger { background-image: linear-gradient(135deg, #f87171, #dc2626 55%, #b91c1c); }
+
+/* ───────────── Cursor de mão em tudo que é clicável ───────────── */
+button:not(:disabled), [role="button"]:not([aria-disabled="true"]), a[href], summary, select, label[for], input[type="checkbox"], input[type="radio"], input[type="range"], input[type="file"], input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; }
+button:disabled, [aria-disabled="true"] { cursor: not-allowed; }
+
+/* ───────────── Caixas de marcar viram interruptores (switch) ───────────── */
+input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none;
+  position: relative; flex-shrink: 0; display: inline-block; vertical-align: middle;
+  width: 2.5rem; height: 1.5rem; margin: 0; border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 35%, var(--sunk));
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.18);
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+input[type="checkbox"]::after {
+  content: ""; position: absolute; top: 0.1875rem; left: 0.1875rem; width: 1.125rem; height: 1.125rem; border-radius: 999px;
+  background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / 0.35); transition: transform 0.2s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+input[type="checkbox"]:checked { background-image: linear-gradient(135deg, color-mix(in oklab, var(--accent) 80%, white), var(--accent) 55%, color-mix(in oklab, var(--accent) 82%, black)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent), 0 0 12px color-mix(in srgb, var(--accent) 35%, transparent); }
+input[type="checkbox"]:checked::after { transform: translateX(1rem); }
+input[type="checkbox"]:disabled { opacity: 0.5; }
+input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ───────────── Meta batida: barra dourada, brilho e confete ───────────── */
+.gold-bar { background-image: linear-gradient(90deg, #b8860b, #f5c542 30%, #fff1a8 50%, #f5c542 70%, #b8860b); background-size: 200% 100%; animation: gold-flow 2.4s linear infinite; box-shadow: 0 0 14px rgb(245 197 66 / 0.65); position: relative; overflow: hidden; }
+.gold-bar::after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.75) 50%, transparent 70%); transform: translateX(-100%); animation: gold-shine 2.2s ease-in-out infinite; }
+@keyframes gold-flow { to { background-position: -200% 0; } }
+@keyframes gold-shine { 60%, 100% { transform: translateX(100%); } }
+@keyframes trophy-pop { 0% { transform: scale(0) rotate(-25deg); opacity: 0; } 60% { transform: scale(1.25) rotate(8deg); opacity: 1; } 100% { transform: scale(1) rotate(0); } }
+@keyframes trophy-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes confetti { 0% { transform: translate(0, 0) rotate(0) scale(1); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.6); opacity: 0; } }
+@keyframes sparkle { 0%, 100% { transform: scale(0); opacity: 0; } 50% { transform: scale(1); opacity: 1; } }
+.confetti { position: absolute; left: 50%; top: 50%; width: 0.5rem; height: 0.9rem; border-radius: 2px; animation: confetti 1.6s cubic-bezier(0.1, 0.7, 0.3, 1) forwards; }
+
+/* Arrastar e soltar sem tremedeira: o texto não é selecionado e nada reflui durante o arrasto. */
+[draggable="true"] { user-select: none; -webkit-user-select: none; touch-action: none; }
+body.dragging, body.dragging * { user-select: none !important; cursor: grabbing !important; }
+
+.pop-in { animation: pop-in 0.16s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; transform-origin: top right; }
+@keyframes pop-in { from { opacity: 0; transform: translateY(-6px) scale(0.96); } to { opacity: 1; transform: none; } }

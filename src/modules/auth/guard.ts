@@ -17,6 +17,8 @@ export type CurrentUser = {
   accent: string | null;
   navLayout: "top" | "side";
   navOrder: string[];
+  navCollapsed: boolean;
+  font: string;
   mustChangePassword: boolean;
   permissions: PermissionMap;
   canManageGoals: boolean;
@@ -69,6 +71,8 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     accent: u.accent,
     navLayout: u.navLayout === "side" ? "side" : "top",
     navOrder: u.navOrder ?? [],
+    navCollapsed: !!u.navCollapsed,
+    font: u.font ?? "archivo",
     mustChangePassword: u.mustChangePassword,
   };
 });

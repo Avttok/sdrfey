@@ -115,7 +115,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
 function Stat({ icon, label, value, hint }: { icon: React.ReactNode; label: string; value: string; hint?: string }) {
   return (
     <div className={`${panelCls} flex items-center gap-3 p-4`}>
-      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent">{icon}</span>
+      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-grad-soft text-accent">{icon}</span>
       <div className="min-w-0"><p className="text-xs text-muted">{label}</p><p className="figure text-2xl font-bold leading-tight">{value}</p>{hint && <p className="text-xs text-muted">{hint}</p>}</div>
     </div>
   );

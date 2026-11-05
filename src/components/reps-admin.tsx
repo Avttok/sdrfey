@@ -1,7 +1,7 @@
 "use client";
 
 import { MapPin, Pencil, Plus, Trash2, UserRound, Users, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { deleteRepAction, saveRepAction } from "@/modules/reps/actions";
@@ -20,7 +20,7 @@ function Editor({ r, canEdit, isAdmin, onClose }: { r: RepRow; canEdit: boolean;
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label={isNew ? "Novo representante" : `Representante ${r.repName}`} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className={`${panelCls} max-h-[90vh] w-full max-w-2xl space-y-5 overflow-y-auto p-6 shadow-2xl`}>
         <div className="flex items-start gap-3">
-          <span className="grid size-11 place-items-center rounded-2xl bg-accent/15 text-accent">{isNew ? <Plus size={20} aria-hidden /> : <UserRound size={20} aria-hidden />}</span>
+          <span className="grid size-11 place-items-center rounded-2xl bg-grad-soft text-accent">{isNew ? <Plus size={20} aria-hidden /> : <UserRound size={20} aria-hidden />}</span>
           <div className="flex-1"><h2 className="display text-xl">{isNew ? "Novo representante" : r.repName}</h2>{!isNew && <p className="text-xs text-muted">SAP {r.sapCode}</p>}</div>
           <button type="button" aria-label="Fechar" className="rounded-lg p-1.5 hover:bg-sunk" onClick={onClose}><X size={18} /></button>
         </div>
@@ -47,9 +47,13 @@ function Editor({ r, canEdit, isAdmin, onClose }: { r: RepRow; canEdit: boolean;
 
 export function RepsAdmin({ rows, canEdit, isAdmin = false }: { rows: RepRow[]; canEdit: boolean; isAdmin?: boolean }) {
   const [edit, setEdit] = useState<RepRow | null>(null);
+  useEffect(() => {
+    const open = () => setEdit(EMPTY);
+    window.addEventListener("rep:new", open);
+    return () => window.removeEventListener("rep:new", open);
+  }, []);
   return (
     <>
-      {canEdit && <div className="flex justify-end"><button type="button" className={btnPrimary} onClick={() => setEdit(EMPTY)}><Plus size={16} aria-hidden /> Novo representante</button></div>}
       <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {rows.map((r) => (
           <li key={r.id} className={`${panelCls} flex flex-col gap-3 p-4 transition hover:border-accent/50 hover:shadow-md ${r.active ? "" : "opacity-70"}`}>
@@ -72,4 +76,9 @@ export function RepsAdmin({ rows, canEdit, isAdmin = false }: { rows: RepRow[]; 
       {edit && <Editor key={edit.id ?? "novo"} r={edit} canEdit={canEdit} isAdmin={isAdmin} onClose={() => setEdit(null)} />}
     </>
   );
+}
+
+/** Botão do cabeçalho da página: abre a janela de novo representante. */
+export function NewRepButton() {
+  return <button type="button" className={`${btnPrimary} shadow-md`} onClick={() => window.dispatchEvent(new Event("rep:new"))}><Plus size={17} aria-hidden /> Novo representante</button>;
 }

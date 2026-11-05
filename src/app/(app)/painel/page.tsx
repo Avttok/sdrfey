@@ -31,7 +31,7 @@ function Bar({ label, value, max, color, right }: { label: string; value: number
 }
 const Block = ({ icon: I, title, children }: { icon: typeof Clock; title: string; children: React.ReactNode }) => (
   <section className={`${panelCls} p-5`}>
-    <h2 className="mb-4 flex items-center gap-2.5 text-[15px] font-semibold"><span className="grid size-8 place-items-center rounded-lg bg-accent/15 text-accent"><I size={16} aria-hidden /></span> {title}</h2>
+    <h2 className="mb-4 flex items-center gap-2.5 text-[15px] font-semibold"><span className="grid size-8 place-items-center rounded-lg bg-grad-soft text-accent"><I size={16} aria-hidden /></span> {title}</h2>
     {children}
   </section>
 );
@@ -81,7 +81,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           {kpis.filter((x) => can(`panel.kpi.${x.k}`)).map(({ I, t, v, s: sub, bar }) => (
             <div key={t} className={`${panelCls} relative overflow-hidden p-4 transition hover:border-accent/50 hover:shadow-md`}>
-              <div className="flex items-center justify-between"><p className="text-xs font-medium text-muted">{t}</p><span className="grid size-8 place-items-center rounded-lg bg-accent/15 text-accent"><I size={15} aria-hidden /></span></div>
+              <div className="flex items-center justify-between"><p className="text-xs font-medium text-muted">{t}</p><span className="grid size-8 place-items-center rounded-lg bg-grad-soft text-accent"><I size={15} aria-hidden /></span></div>
               <p className="figure mt-2 text-3xl font-bold leading-none">{v}</p>
               <p className="mt-1.5 text-xs text-muted">{sub}</p>
               {bar !== undefined && <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-sunk"><div className={`h-full rounded-full ${bar >= 100 ? "bg-ok" : "bg-accent"}`} style={{ width: `${Math.min(100, bar)}%` }} /></div>}

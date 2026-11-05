@@ -2,6 +2,7 @@
 
 import { MapPin, RefreshCw } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { CopyVal } from "@/components/copy-val";
 import { Spinner } from "@/components/spinner";
 import { useBusyWhile, useToast } from "@/components/toast";
@@ -19,6 +20,7 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false }: { lead:
   const [pending, start] = useTransition();
   const [state, setState] = useState<Search>(autoSearch && lead.enrichedAt === null ? "searching" : "idle");
   const [all, setAll] = useState(false);
+  const [confirmRefresh, setConfirmRefresh] = useState(false);
   useBusyWhile(pending, "Pesquisando…");
 
   const search = () => {
@@ -72,9 +74,12 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false }: { lead:
       </dl>
       {lead.enrichedAt && <p className="text-xs text-muted">Consulta salva em {fmtDate(lead.enrichedAt)}. Use “Atualizar informações” para buscar de novo.</p>}
       <div className="flex flex-wrap gap-2 pt-1">
-        <button type="button" disabled={pending} className={btnGhost} onClick={() => search()}>{pending ? <Spinner size={15} /> : <RefreshCw size={15} aria-hidden />} Atualizar informações</button>
+        <button type="button" disabled={pending} className={btnGhost} onClick={() => setConfirmRefresh(true)}>{pending ? <Spinner size={15} /> : <RefreshCw size={15} aria-hidden />} Atualizar informações</button>
         <button type="button" className={btnGhost} onClick={() => setAll(!all)}>{all ? "Ocultar informações" : "Ver todas as informações"}</button>
       </div>
+      <ConfirmDialog open={confirmRefresh} icon={RefreshCw} title="Atualizar as informações?" confirmLabel="Sim, atualizar" cancelLabel="Não" onCancel={() => setConfirmRefresh(false)} onConfirm={() => { setConfirmRefresh(false); search(); }}>
+        Vamos consultar o CNPJ de novo e substituir os dados salvos desta empresa. Tem certeza?
+      </ConfirmDialog>
 
     </div>
   );

@@ -144,9 +144,9 @@ export async function addChannel(userId: number, leadId: number, kind: "phone" |
  * observação, interações e visitas) e devolve o lead ao estoque como novo. Os dados do lead (CNPJ, contatos,
  * consultas, porte e capital) continuam salvos. Tudo é registrado no Registro.
  */
-export async function resetLead(userId: number, leadId: number): Promise<void> {
+export async function resetLead(userId: number, leadId: number, opts: { fromLeadPage?: boolean } = {}): Promise<void> {
   await db.transaction(async (tx) => {
-    const lead = await assertMine(tx as unknown as typeof db, userId, leadId);
+    const lead = opts.fromLeadPage ? await loadUnlockedForReset(tx as unknown as typeof db, leadId) : await assertMine(tx as unknown as typeof db, userId, leadId);
     const current = await tx
       .select({ group: tags.groupKey, key: tags.key })
       .from(leadTags)
@@ -168,4 +168,12 @@ export async function resetLead(userId: number, leadId: number): Promise<void> {
       meta: { interacoes: gone.length, visitasCanceladas: canceled.length, observacaoApagada: !!lead.notes },
     });
   });
+}
+
+/** Reset pela página do lead: vale para qualquer lead que não esteja sendo atendido por outra pessoa. */
+async function loadUnlockedForReset(tx: typeof db, leadId: number) {
+  const [lead] = await tx.select().from(leads).where(eq(leads.id, leadId));
+  if (!lead) throw new Error("Lead não encontrado.");
+  if (lead.lockedBy) throw new Error("Este lead está em atendimento. Libere-o antes de resetar.");
+  return lead;
 }

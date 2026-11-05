@@ -1,5 +1,6 @@
 "use server";
 
+import { resetLead } from "@/modules/leads/attend";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -68,4 +69,14 @@ export async function forceReleaseAction(id: number): Promise<ActionResult> {
   await logAudit(db, { userId: me.id, leadId: id, entity: "lead", action: "liberou o lead", field: "Em atendimento por", oldValue: b?.by ?? null, newValue: null });
   revalidatePath(`/leads/${id}`);
   return { ok: true, message: "Lead liberado." };
+}
+
+/** Zera o atendimento do lead (tags, observação, interações e visitas) pela página do lead. */
+export async function resetLeadFromPageAction(id: number): Promise<ActionResult> {
+  const me = await requirePerm("lead.edit");
+  try { await resetLead(me.id, id, { fromLeadPage: true }); }
+  catch (e) { return { ok: false, message: e instanceof Error ? e.message : "Não foi possível resetar." }; }
+  revalidatePath(`/leads/${id}`);
+  revalidatePath("/leads");
+  return { ok: true, message: "Lead resetado: tags, observação, interações e visitas apagadas." };
 }

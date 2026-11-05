@@ -29,7 +29,7 @@ export function DashboardFilters({ preset, from, to, people }: { preset: string;
           <div className="flex gap-1.5">
             {([["hoje", "Hoje"], ["7", "7 dias"], ["30", "30 dias"]] as const).map(([k, l]) => (
               <button key={k} type="button" aria-pressed={preset === k} onClick={() => push((p) => { p.delete("from"); p.delete("to"); p.set("p", k); })}
-                className={`h-11 rounded-lg border px-4 text-[15px] font-medium transition ${preset === k ? "border-accent bg-accent text-on-accent" : "border-line bg-panel hover:bg-sunk"}`}>{l}</button>
+                className={`h-11 rounded-lg border px-4 text-[15px] font-medium transition ${preset === k ? "border-accent bg-grad text-on-accent" : "border-line bg-panel hover:bg-sunk"}`}>{l}</button>
             ))}
           </div>
         </div>

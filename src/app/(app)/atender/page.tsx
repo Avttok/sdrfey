@@ -34,7 +34,7 @@ export default async function AttendPage() {
         <div aria-hidden className="pointer-events-none absolute -left-20 -top-20 size-72 rounded-full bg-accent/15 blur-3xl" />
         <div aria-hidden className="pointer-events-none absolute -bottom-24 -right-16 size-72 rounded-full bg-accent/10 blur-3xl" />
         <div className="relative space-y-6">
-          <span className="mx-auto grid size-16 place-items-center rounded-2xl bg-accent text-on-accent shadow-lg shadow-accent/30"><Shuffle size={30} aria-hidden /></span>
+          <span className="mx-auto grid size-16 place-items-center rounded-2xl bg-grad text-on-accent shadow-lg shadow-accent/30"><Shuffle size={30} aria-hidden /></span>
           <div>
             <h1 className="display text-3xl sm:text-4xl">Pronto para o próximo lead?</h1>
             <p className="mx-auto mt-2 max-w-md text-muted">O sistema escolhe um lead livre para você. Se quiser um específico, use ATENDER na aba Leads ou no seu histórico.</p>

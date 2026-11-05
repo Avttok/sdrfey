@@ -12,6 +12,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "tab.comecar", label: "Aba Shuffler", group: "Abas", defaults: ["user", "manager"] },
   { key: "tab.leads", label: "Aba Leads", group: "Abas", defaults: ["user", "manager"] },
   { key: "tab.historico", label: "Aba Meu histórico", group: "Abas", defaults: ["user", "manager"] },
+  { key: "tab.visitas", label: "Aba Visitas", group: "Abas", defaults: ["user", "manager"] },
   { key: "tab.registro", label: "Aba Registro de atividades", group: "Abas", defaults: ["manager"] },
   { key: "tab.metas", label: "Aba Metas", group: "Abas", defaults: ["manager"] },
   { key: "tab.representantes", label: "Aba Representantes", group: "Abas", defaults: ["manager"] },
@@ -35,6 +36,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "panel.alertas", label: "Alertas", group: "Painel", defaults: ["manager"] },
   { key: "panel.agendamentos", label: "Agendamentos recentes", group: "Painel", defaults: ["user", "manager"] },
 
+  { key: "visits.team", label: "Ver as visitas agendadas por toda a equipe (sem isso, só as próprias)", group: "Funções", defaults: ["manager"] },
   { key: "lead.edit", label: "Editar qualquer dado de um lead", group: "Funções", defaults: ["manager"] },
   { key: "lead.release", label: "Liberar lead que está com outra pessoa", group: "Funções", defaults: ["manager"] },
   { key: "rep.edit", label: "Criar e editar representantes", group: "Funções", defaults: ["manager"] },

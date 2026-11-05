@@ -1,8 +1,9 @@
 "use client";
 
-import { Ban, Building2, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Plus, RotateCcw, SkipForward, Trash2, X } from "lucide-react";
+import { Ban, Building2, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Plus, RotateCcw, SkipForward, Square, TriangleAlert, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { GoalBar } from "@/components/goal-bar";
 import { CopyVal } from "@/components/copy-val";
 import { LeadInfoPanel } from "@/components/lead-info-panel";
@@ -45,6 +46,10 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const router = useRouter();
+  /** Lead com situação cadastral diferente de ATIVA: pergunta antes de seguir (uma vez por lead). */
+  const [statusAck, setStatusAck] = useState<number | null>(null);
+  const status = lead.registrationStatus?.trim().toUpperCase() ?? null;
+  const inactive = !!status && status !== "ATIVA" && statusAck !== lead.id;
 
   const phones = lead.channels.filter((c) => c.kind === "phone");
   const emails = lead.channels.filter((c) => c.kind === "email");
@@ -133,6 +138,10 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
 
   return (
     <div className="space-y-5">
+      <ConfirmDialog open={inactive} tone="warn" icon={TriangleAlert} busy={pending} title={`Situação cadastral: ${status}`} confirmLabel="Buscar outro lead" cancelLabel="Atender mesmo assim"
+        onCancel={() => setStatusAck(lead.id)} onConfirm={() => run(async () => { const r = await skipAction(lead.id); if (r.ok) await startAction(); return r; })}>
+        <b className="text-ink">{lead.company}</b> não está com a situação ATIVA na Receita, então provavelmente não consegue negociar. Quer atender mesmo assim ou procurar um novo lead? Se buscar outro, este some só para você por 24 h e não conta na meta.
+      </ConfirmDialog>
       {/* topo: empresa, metas do dia e passos */}
       <header className={`${panelCls} relative overflow-hidden p-5 sm:p-6`}>
         <div aria-hidden className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-accent/10 blur-2xl" />
@@ -151,7 +160,7 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
           {STEPS.map((st, i) => (
             <li key={st} className={`flex items-center ${i < STEPS.length - 1 ? "flex-1" : ""}`}>
               <button type="button" onClick={() => go(i)} aria-current={i === step ? "step" : undefined} className="group flex flex-col items-center gap-1">
-                <span className={`grid size-9 place-items-center rounded-full text-sm font-bold transition-all ${i === step ? "scale-110 bg-accent text-on-accent shadow-lg shadow-accent/30" : i < step ? "bg-accent/20 text-accent" : "bg-sunk text-muted group-hover:bg-line"}`}>{i < step ? <Check size={16} aria-hidden /> : i + 1}</span>
+                <span className={`grid size-9 place-items-center rounded-full text-sm font-bold transition-all ${i === step ? "scale-110 bg-grad text-on-accent shadow-lg shadow-accent/30" : i < step ? "bg-accent/20 text-accent" : "bg-sunk text-muted group-hover:bg-line"}`}>{i < step ? <Check size={16} aria-hidden /> : i + 1}</span>
                 <span className={`text-xs font-medium ${i === step ? "text-ink" : "text-muted"}`}>{st}</span>
               </button>
               {i < STEPS.length - 1 && <span aria-hidden className={`mx-1 mb-5 h-0.5 flex-1 rounded transition-colors ${i < step ? "bg-accent/50" : "bg-line"}`} />}
@@ -230,7 +239,7 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
                 <p className="text-xs text-muted">Para manter negrito, cores e imagens: abra um e-mail novo, cole o assunto e use “Copiar e-mail formatado” para colar o corpo. O botão “Abrir e-mail” preenche só o texto simples.</p>
               </>
             )}
-            <UsedToggle on={used.has("email")} onClick={() => toggle(used, "email", setUsed)} label="Usei e-mail neste lead" />
+            <UsedToggle on={used.has("email")} onClick={() => toggle(used, "email", setUsed)} label="Email Enviado" />
           </section>
         )}
 
@@ -246,7 +255,7 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
               ))}
               {goodPhones.length === 0 && <li className="text-sm text-muted">Sem telefone válido.</li>}
             </ul>
-            <UsedToggle on={used.has("whatsapp")} onClick={() => toggle(used, "whatsapp", setUsed)} label="Usei WhatsApp neste lead" />
+            <UsedToggle on={used.has("whatsapp")} onClick={() => toggle(used, "whatsapp", setUsed)} label="WhatsApp Enviado" />
           </section>
         )}
 
@@ -258,7 +267,7 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
               {goodPhones.map((p) => <li key={p.id} className="flex items-center gap-3 rounded-lg bg-sunk px-3 py-2"><span className="figure text-lg">{fmtPhone(p.value)}</span><button type="button" className={btnGhost} onClick={() => { void copy(p.value, toast); setUsed(new Set(used).add("ligacao")); }}><Copy size={15} aria-hidden /> Copiar</button></li>)}
               {goodPhones.length === 0 && <li className="text-sm text-muted">Sem telefone válido.</li>}
             </ul>
-            <UsedToggle on={used.has("ligacao")} onClick={() => toggle(used, "ligacao", setUsed)} label="Usei ligação neste lead" />
+            <UsedToggle on={used.has("ligacao")} onClick={() => toggle(used, "ligacao", setUsed)} label="Ligação feita" />
           </section>
         )}
 
@@ -294,7 +303,7 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
         {step < STEPS.length - 1 && <button type="button" className={btnPrimary} onClick={() => go(step + 1)}>Avançar <ChevronRight size={16} aria-hidden /></button>}
         <span className="flex-1" />
         <button type="button" className={btnGhost} disabled={pending} title="Esconde este lead só de você por 24 h e não conta na meta" onClick={() => run(async () => { const r = await skipAction(lead.id); if (r.ok) await startAction(); return r; })}><SkipForward size={16} aria-hidden /> Pular</button>
-        <button type="button" className={btnGhost} disabled={pending} onClick={() => run(() => releaseAction(lead.id))}>Liberar e sair</button>
+        <button type="button" className={`${btnPrimary} !bg-grad-danger !text-white`} disabled={pending} onClick={() => run(() => releaseAction(lead.id))}><Square size={15} aria-hidden /> Parar atendimento</button>
       </div>
     </div>
   );

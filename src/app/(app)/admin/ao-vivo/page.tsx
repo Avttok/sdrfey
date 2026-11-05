@@ -1,6 +1,10 @@
 import { desc, eq } from "drizzle-orm";
 import { Radio } from "lucide-react";
+import { DisconnectButton, LiveToolbar } from "@/components/admin/live-actions";
 import { LiveRefresh } from "@/components/admin/live-refresh";
+import { RoleBadge } from "@/components/role-badge";
+import { topRole } from "@/config/roles";
+import { requireAdmin } from "@/modules/auth/guard";
 import { PageHead } from "@/components/page-head";
 import { panelCls } from "@/components/ui";
 import { bubbleHex } from "@/config/theme";
@@ -10,6 +14,7 @@ import { fmtDateTime } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
+  const me = await requireAdmin();
   const rows = await db
     .select({ name: users.name, accent: users.accent, roles: users.roles, uid: users.id, last: presence.lastSeenAt, activity: presence.activity, company: leads.company })
     .from(presence).innerJoin(users, eq(users.id, presence.userId)).leftJoin(leads, eq(leads.id, presence.leadId))
@@ -19,7 +24,7 @@ export default async function Page() {
   return (
     <div className="space-y-5">
       <LiveRefresh />
-      <PageHead icon={Radio} size="md" title="Ao vivo" subtitle={`${list.filter((r) => r.online).length} online agora · online = atividade nos últimos 90 s · atualiza sozinho a cada 30 s`} />
+      <PageHead icon={Radio} size="md" title="Ao vivo" subtitle={`${list.filter((r) => r.online).length} de ${list.length} online agora · atualiza sozinho a cada 30 s`}><LiveToolbar /></PageHead>
       <ul className="grid gap-3 md:grid-cols-2">
         {list.map((r) => {
           const hex = bubbleHex(r.accent, r.uid, r.roles);
@@ -30,9 +35,10 @@ export default async function Page() {
                 <span className={`absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full border-2 border-panel ${r.online ? "animate-pulse bg-ok" : "bg-muted/50"}`} />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">{r.name}</p>
-                <p className="truncate text-sm text-muted">{r.online ? (r.activity ?? "Online") : `Offline · visto ${fmtDateTime(r.last)}`}</p>
+                <p className="flex items-center gap-2 truncate font-semibold">{r.name}<RoleBadge role={topRole(r.roles)} /></p>
+                <p className={`truncate text-sm ${r.online ? "text-ok" : "text-muted"}`}>{r.online ? (r.activity ?? "Online") : `Offline · visto ${fmtDateTime(r.last)}`}</p>
               </div>
+              {r.uid !== me.id && <DisconnectButton id={r.uid} name={r.name} />}
             </li>
           );
         })}

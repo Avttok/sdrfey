@@ -30,6 +30,10 @@ export const users = pgTable("users", {
   navLayout: text("nav_layout").notNull().default("top"),
   /** Ordem preferida dos itens do menu (hrefs). Vazio = ordem padrão. */
   navOrder: text("nav_order").array().notNull().default(sql`ARRAY[]::text[]`),
+  /** Barra lateral recolhida (só ícones). */
+  navCollapsed: boolean("nav_collapsed").notNull().default(false),
+  /** Fonte preferida (ver config/fonts.ts). */
+  font: text("font").notNull().default("archivo"),
   mustChangePassword: boolean("must_change_password").notNull().default(true),
   active: boolean("active").notNull().default(true),
   /** Gestor responsável. Nulo = visível para todos os gestores. */

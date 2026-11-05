@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, users } from "@/db";
 import { NAV } from "@/config/nav";
+import { isFontKey } from "@/config/fonts";
 import { isChoosableAccent } from "@/config/theme";
 import { logAudit } from "@/modules/audit/log";
 import { requireUser } from "@/modules/auth/guard";
@@ -49,4 +50,22 @@ export async function setNavPrefsAction(input: { layout: "top" | "side"; order: 
   await logAudit(db, { userId: me.id, entity: "user", action: "alterou", field: "barra de navegação", oldValue: `${me.navLayout} · ${me.navOrder.join(",")}`, newValue: `${layout} · ${order.join(",")}` });
   revalidatePath("/", "layout");
   return { ok: true, message: "Barra de navegação salva." };
+}
+
+/** Recolhe ou expande a barra lateral (só ícones quando recolhida). */
+export async function setNavCollapsedAction(collapsed: boolean): Promise<void> {
+  const me = await requireUser();
+  if (me.navCollapsed === collapsed) return;
+  await db.update(users).set({ navCollapsed: collapsed }).where(eq(users.id, me.id));
+}
+
+/** Fonte preferida da pessoa para todo o app. */
+export async function setFontAction(font: string): Promise<{ ok: boolean; message?: string }> {
+  const me = await requireUser();
+  if (!isFontKey(font)) return { ok: false, message: "Fonte inválida." };
+  if (font === me.font) return { ok: true };
+  await db.update(users).set({ font }).where(eq(users.id, me.id));
+  await logAudit(db, { userId: me.id, entity: "user", action: "alterou", field: "fonte", oldValue: me.font, newValue: font });
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Fonte atualizada." };
 }

@@ -67,7 +67,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
                 {l.locked_by_name && <PersonBubble name={l.locked_by_name} hex={bubbleHex(l.locked_by_accent, l.locked_by_id ?? 0, l.locked_roles ?? undefined)} prefix="Atendendo" />}
-                {l.owner_name && <PersonBubble name={l.owner_name} hex={bubbleHex(l.owner_accent, l.owner_id ?? 0, l.owner_roles ?? undefined)} prefix="Responsável" />}
+                {l.owner_name && <PersonBubble name={l.owner_name} hex={bubbleHex(l.owner_accent, l.owner_id ?? 0, l.owner_roles ?? undefined)} />}
                 {!l.owner_name && !l.locked_by_name && <span className="rounded-full border border-line px-2.5 py-0.5 text-xs text-muted">Livre</span>}
                 {!l.locked_by_name && <AttendButton leadId={l.id} compact />}
               </div>

@@ -22,7 +22,7 @@ function Stat({ label, value, tone }: { label: string; value: number; tone?: "ok
 function StepTitle({ n, children, done }: { n: number; children: React.ReactNode; done?: boolean }) {
   return (
     <h2 className="mb-3 flex items-center gap-2.5 text-lg font-semibold">
-      <span className={`flex size-7 items-center justify-center rounded-full text-sm ${done ? "bg-ok text-white" : "bg-accent text-on-accent"}`}>{done ? "✓" : n}</span>
+      <span className={`flex size-7 items-center justify-center rounded-full text-sm ${done ? "bg-ok text-white" : "bg-grad text-on-accent"}`}>{done ? "✓" : n}</span>
       {children}
     </h2>
   );
@@ -70,9 +70,9 @@ export function ImportForm() {
       <section className={`${panelCls} p-5`}>
         <StepTitle n={2} done={!!prev?.ok}>Escolha o arquivo CSV</StepTitle>
         <div
-          onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
+          onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDrag(false); }}
           onDrop={(e) => { e.preventDefault(); setDrag(false); pick(e.dataTransfer.files?.[0]); }}
-          className={`flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center transition ${drag ? "border-accent bg-sunk" : "border-line"}`}>
+          className={`flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center transition-colors ${drag ? "border-accent bg-sunk [&_*]:pointer-events-none" : "border-line"}`}>
           {file ? (
             <>
               <FileSpreadsheet size={36} className="text-accent" aria-hidden />

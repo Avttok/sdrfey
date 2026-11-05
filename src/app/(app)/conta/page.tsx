@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { FontPicker } from "@/components/font-picker";
 import { NavPrefsForm } from "@/components/nav-prefs-form";
 import { orderNav, visibleNav } from "@/config/nav";
 import { PageHead } from "@/components/page-head";
@@ -66,6 +67,12 @@ export default async function AccountPage() {
 
           <p className="mb-2 mt-8 text-sm font-medium">Tema</p>
           <ThemeToggle withLabels />
+        </section>
+
+        <section className={`${panelCls} p-6 lg:col-span-2`}>
+          <h2 className="display mb-1 text-xl">Fonte</h2>
+          <p className="mb-4 text-sm text-muted">A letra usada em todo o sistema, só para você.</p>
+          <FontPicker current={user.font} />
         </section>
 
         <section className={`${panelCls} p-6 lg:col-span-2`}>

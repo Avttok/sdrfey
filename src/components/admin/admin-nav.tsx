@@ -35,7 +35,7 @@ export function AdminNav() {
               return (
                 <li key={href}>
                   <Link href={href} aria-current={on ? "page" : undefined}
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 transition-colors ${on ? "bg-accent text-on-accent shadow-sm" : "hover:bg-sunk"}`}>
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2 transition-colors ${on ? "bg-grad text-on-accent shadow-sm" : "hover:bg-sunk"}`}>
                     <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${on ? "bg-white/20" : "bg-sunk"}`}><Icon size={17} aria-hidden /></span>
                     <span className="min-w-0 leading-tight"><span className="block text-sm font-medium">{label}</span><span className={`block truncate text-xs ${on ? "opacity-80" : "text-muted"}`}>{hint}</span></span>
                   </Link>

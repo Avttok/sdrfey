@@ -1,3 +1,4 @@
+import { describeMeta } from "@/lib/audit-meta";
 import type { Metadata } from "next";
 import { PageHead } from "@/components/page-head";
 import { ScrollText, ArrowRight, Download, ExternalLink, FileText, Gauge, Settings2, Tag, Target, Upload, User, UserRound, Users } from "lucide-react";
@@ -18,7 +19,7 @@ export const metadata: Metadata = { title: "Registro" };
 export const dynamic = "force-dynamic";
 
 const ICON: Record<string, typeof User> = { lead: Users, visit: Users, user: UserRound, tag: Tag, setting: Settings2, import: Upload, rep: Users, template: FileText, session: Gauge, goal: Target };
-const TONE: Record<string, string> = { lead: "bg-accent/15 text-accent", visit: "bg-accent/15 text-accent", user: "bg-warn/15 text-warn", tag: "bg-ok/15 text-ok", setting: "bg-sunk text-muted", import: "bg-ok/15 text-ok", rep: "bg-accent/15 text-accent", template: "bg-sunk text-ink", session: "bg-accent/15 text-accent", goal: "bg-warn/15 text-warn" };
+const TONE: Record<string, string> = { lead: "bg-grad-soft text-accent", visit: "bg-grad-soft text-accent", user: "bg-warn/15 text-warn", tag: "bg-ok/15 text-ok", setting: "bg-sunk text-muted", import: "bg-ok/15 text-ok", rep: "bg-grad-soft text-accent", template: "bg-sunk text-ink", session: "bg-grad-soft text-accent", goal: "bg-warn/15 text-warn" };
 const dayFmt = new Intl.DateTimeFormat("en-CA", { timeZone: TZ });
 const hourFmt = new Intl.DateTimeFormat("pt-BR", { timeZone: TZ, hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
@@ -47,8 +48,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
       </PageHead>
 
       <div className="flex flex-wrap gap-1.5" aria-label="Filtro rápido por tipo">
-        <Link href={typeHref("")} className={`rounded-full border px-3 py-1 text-xs font-medium ${!f.type ? "border-accent bg-accent text-on-accent" : "border-line hover:bg-sunk"}`}>Tudo</Link>
-        {types.map(([k, l]) => <Link key={k} href={typeHref(k)} className={`rounded-full border px-3 py-1 text-xs font-medium ${f.type === k ? "border-accent bg-accent text-on-accent" : "border-line hover:bg-sunk"}`}>{l}</Link>)}
+        <Link href={typeHref("")} className={`rounded-full border px-3 py-1 text-xs font-medium ${!f.type ? "border-accent bg-grad text-on-accent" : "border-line hover:bg-sunk"}`}>Tudo</Link>
+        {types.map(([k, l]) => <Link key={k} href={typeHref(k)} className={`rounded-full border px-3 py-1 text-xs font-medium ${f.type === k ? "border-accent bg-grad text-on-accent" : "border-line hover:bg-sunk"}`}>{l}</Link>)}
       </div>
       <Suspense fallback={null}><AuditFilters people={people} types={types} /></Suspense>
 
@@ -88,7 +89,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
                                 <span className="max-w-full break-words rounded-md bg-ok/10 px-2 py-0.5 text-ok">{r.newValue ?? "vazio"}</span>
                               </p>
                             )}
-                            {r.meta ? <p className="break-words text-xs text-muted">{JSON.stringify(r.meta)}</p> : null}
+                            {describeMeta(r.meta).length > 0 && <p className="flex flex-wrap gap-1.5 text-xs">{describeMeta(r.meta).map((m) => <span key={m.label} className="rounded-md bg-sunk px-2 py-0.5 text-muted"><span className="font-medium text-ink">{m.label}:</span> {m.value}</span>)}</p>}
                           </div>
                           <div className="flex flex-wrap gap-2">
                             {r.leadId && <Link className={btnGhost} href={`/leads/${r.leadId}`}><ExternalLink size={14} aria-hidden /> Abrir lead</Link>}
