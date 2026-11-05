@@ -12,7 +12,7 @@ describe("datas em Brasília", () => {
     expect(dayStart("2026-11-04").toISOString()).toBe("2026-11-04T03:00:00.000Z");
     expect(dayEnd("2026-11-04").toISOString()).toBe("2026-11-05T02:59:59.999Z");
   });
-  it("duração", () => expect(fmtDuration(125)).toBe("2m05s"));
+  it("duração", () => expect(fmtDuration(125)).toBe("2m 05s"));
 });
 
 describe("modelos de e-mail", () => {

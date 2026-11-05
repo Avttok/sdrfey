@@ -1,5 +1,6 @@
 "use server";
 
+import { plural } from "@/lib/format";
 import { revalidatePath } from "next/cache";
 import { requirePerm } from "@/modules/auth/guard";
 import { decodeCsv, parseCsv } from "./csv";
@@ -53,10 +54,10 @@ export async function applyImportAction(formData: FormData): Promise<ImportResul
     const { drafts } = parseLeadRows(f.headers, f.rows);
     const r = await applyLeadDrafts(drafts, { importedBy: me.id, sourceName: f.name });
     revalidatePath("/leads");
-    return { ok: true, message: `${r.inserted} lead(s) novo(s) importado(s); ${r.skippedExisting} já existiam e foram mantidos.`, details: [...r.unknownOwners.map((o) => `Responsável desconhecido ignorado: ${o}`), ...r.unknownTags.map((t) => `Tag desconhecida ignorada: ${t}`)] };
+    return { ok: true, message: `${plural(r.inserted, "lead novo importado", "leads novos importados")}; ${r.skippedExisting} já ${r.skippedExisting === 1 ? "existia e foi mantido" : "existiam e foram mantidos"}.`, details: [...r.unknownOwners.map((o) => `Responsável desconhecido ignorado: ${o}`), ...r.unknownTags.map((t) => `Tag desconhecida ignorada: ${t}`)] };
   }
   const { drafts } = parseRepRows(f.headers, f.rows);
   const r = await applyRepDrafts(drafts, { importedBy: me.id, sourceName: f.name });
   revalidatePath("/representantes");
-  return { ok: true, message: `${r.total} representante(s) importado(s)/atualizado(s).`, details: r.withoutCoords ? [`${r.withoutCoords} sem coordenadas (cidade não encontrada).`] : [] };
+  return { ok: true, message: `${plural(r.total, "representante importado/atualizado", "representantes importados/atualizados")}.`, details: r.withoutCoords ? [`${r.withoutCoords} sem coordenadas (cidade não encontrada).`] : [] };
 }

@@ -1,19 +1,19 @@
 "use client";
 
-import { Ban, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, Mail, MapPin, MessageCircle, Phone, Plus, RefreshCw, SkipForward, Trash2, X } from "lucide-react";
+import { Ban, Check, RotateCcw, ChevronLeft, ChevronRight, Copy, ExternalLink, Mail, MapPin, MessageCircle, Phone, Plus, RefreshCw, SkipForward, Trash2, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { LeadInfoPanel } from "@/components/lead-info-panel";
 import { TagChip } from "@/components/tag-chip";
 import { useBusyWhile, useToast } from "@/components/toast";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { fmtCnpj, fmtDate, fmtMoney, fmtPhone } from "@/lib/format";
-import { addChannelAction, discardAction, heartbeatAction, markWrongAction, refreshInfoAction, releaseAction, removeChannelAction, saveAction, skipAction, startAction, startedAction } from "@/modules/leads/actions";
+import { addChannelAction, discardAction, heartbeatAction, markWrongAction, refreshInfoAction, releaseAction, removeChannelAction, resetLeadAction, saveAction, skipAction, startAction, startedAction } from "@/modules/leads/actions";
 import { mailtoLink, renderTemplate } from "@/modules/email/render";
 import type { LeadView, TagCatalog } from "@/modules/leads/view";
 
 type Template = { id: number; name: string; subject: string; body: string };
 const STEPS = ["Contatos", "E-mail", "WhatsApp", "Ligação", "Resultado"] as const;
-const MEIOS = [["ligacao", "Ligação"], ["whatsapp", "WhatsApp"], ["email", "Email"], ["pessoalmente", "Pessoalmente"], ["representante", "Representante"]] as const;
 
 const copy = async (text: string, toast: ReturnType<typeof useToast>) => {
   try {
@@ -41,6 +41,8 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, goal }
   const [emailTo, setEmailTo] = useState("");
   const [phoneSel, setPhoneSel] = useState("");
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const router = useRouter();
 
   const phones = lead.channels.filter((c) => c.kind === "phone");
   const emails = lead.channels.filter((c) => c.kind === "email");
@@ -112,9 +114,9 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, goal }
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="space-y-3">
               <LeadInfoPanel lead={lead} />
-              <div className="flex flex-wrap gap-1.5">{lead.tags.map((t) => <TagChip key={t.id} label={t.label} color={t.color} />)}</div>
             </div>
 
+            <div className="space-y-6">
             <section className="space-y-3">
               <h2 className="display text-xl">Contatos</h2>
               <ul className="space-y-1.5">
@@ -134,6 +136,11 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, goal }
                 <button type="submit" className={btnGhost} disabled={pending}><Plus size={15} aria-hidden /> Adicionar</button>
               </form>
             </section>
+            <section className="space-y-2">
+              <h2 className="display text-xl">Tags do lead</h2>
+              {lead.tags.length ? <div className="flex flex-wrap gap-1.5">{lead.tags.map((t) => <TagChip key={t.id} label={t.label} color={t.color} />)}</div> : <p className="text-sm text-muted">Nenhuma tag ainda.</p>}
+            </section>
+            </div>
           </div>
         )}
 
@@ -182,10 +189,10 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, goal }
         {step === 4 && (
           <section className="space-y-5">
             <h2 className="display text-xl">Resultado</h2>
-            <Group title="Meios de contato usados">{MEIOS.map(([k, l]) => <TagChip key={k} small={false} label={l} color={groups.meio?.tags.find((t) => t.key === k)?.color ?? "#64748b"} on={used.has(k)} onClick={() => toggle(used, k, setUsed)} />)}</Group>
-            <Group title="Temperatura">{groups.temperatura?.tags.map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={temperature === t.key} onClick={() => setTemperature(temperature === t.key ? null : t.key)} />)}</Group>
-            <Group title="Qualificação">{groups.qualificacao?.tags.map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={qualification === t.key} onClick={() => setQualification(qualification === t.key ? null : (t.key as "qualificado"))} />)}</Group>
-            <Group title="Situação">{groups.situacao?.tags.filter((t) => !t.autoOnly).map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={situations.has(t.key)} onClick={() => toggle(situations, t.key, setSituations)} />)}</Group>
+            <Group title={groups.meio?.name ?? "Meios de contato usados"}>{groups.meio?.tags.filter((t) => !t.autoOnly).map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={used.has(t.key)} onClick={() => toggle(used, t.key, setUsed)} />)}</Group>
+            <Group title={groups.temperatura?.name ?? "Temperatura"}>{groups.temperatura?.tags.map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={temperature === t.key} onClick={() => setTemperature(temperature === t.key ? null : t.key)} />)}</Group>
+            <Group title={groups.qualificacao?.name ?? "Qualificação"}>{groups.qualificacao?.tags.map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={qualification === t.key} onClick={() => setQualification(qualification === t.key ? null : (t.key as "qualificado"))} />)}</Group>
+            <Group title={groups.situacao?.name ?? "Situação"}>{groups.situacao?.tags.filter((t) => !t.autoOnly).map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={situations.has(t.key)} onClick={() => toggle(situations, t.key, setSituations)} />)}</Group>
             <div>
               <button type="button" className={btnGhost} onClick={() => setShowVisit(!showVisit)}>{showVisit ? "Sem agendamento" : "Agendar visita"}</button>
               {showVisit && <div className="mt-2 max-w-xs"><input className={inputCls} placeholder="Código da visita (V-12345)" value={visit} onChange={(e) => setVisit(e.target.value)} /><p className="mt-1 text-xs text-muted">Agendar visita qualifica o lead automaticamente.</p></div>}
@@ -194,6 +201,19 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, goal }
             <div className="flex flex-wrap justify-center gap-2">
               <button type="button" disabled={pending} className={btnPrimary} onClick={() => save()}><Check size={17} aria-hidden /> Salvar e próximo</button>
               <button type="button" disabled={pending} className={btnGhost} onClick={() => save("sem_contato")}>Sem contato (salvar)</button>
+              {confirmReset ? (
+                <span className="flex flex-wrap items-center gap-2 rounded-lg border border-danger/50 px-3 py-1.5 text-sm">
+                  <span className="font-medium text-danger">Apagar tags, observação e interações deste lead? Os dados continuam salvos.</span>
+                  <button type="button" disabled={pending} className={`${btnGhost} !border-danger !bg-danger !text-white`} onClick={() => run(async () => {
+                    const r = await resetLeadAction(lead.id);
+                    if (r.ok) { setUsed(new Set()); setTemperature(null); setQualification(null); setSituations(new Set()); setNote(""); setVisit(""); setShowVisit(false); setConfirmReset(false); setStep(0); router.refresh(); }
+                    return r;
+                  })}>Sim, resetar</button>
+                  <button type="button" className={btnGhost} onClick={() => setConfirmReset(false)}>Cancelar</button>
+                </span>
+              ) : (
+                <button type="button" disabled={pending} className={btnGhost} onClick={() => setConfirmReset(true)}><RotateCcw size={16} aria-hidden /> Resetar lead</button>
+              )}
               {confirmDiscard ? (
                 <span className="flex flex-wrap items-center gap-2 rounded-lg border border-danger/50 px-3 py-1.5 text-sm">
                   <span className="font-medium text-danger">Descartar este lead? Ele sai do sorteio.</span>
@@ -223,5 +243,10 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
   return <div><p className="mb-1.5 text-sm font-medium">{title}</p><div className="flex flex-wrap gap-2">{children}</div></div>;
 }
 function UsedToggle({ on, onClick, label }: { on: boolean; onClick: () => void; label: string }) {
-  return <button type="button" onClick={onClick} aria-pressed={on} className={`${btnGhost} mt-6 ${on ? "border-accent bg-sunk" : ""}`}>{on ? <Check size={15} aria-hidden /> : null} {label}</button>;
+  return (
+    <label className="mt-6 flex w-fit cursor-pointer items-center gap-2.5 rounded-lg border border-line bg-sunk px-3.5 py-2.5 text-sm font-medium">
+      <input type="checkbox" checked={on} onChange={onClick} className="size-5 cursor-pointer" />
+      {label}
+    </label>
+  );
 }

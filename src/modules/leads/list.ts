@@ -1,3 +1,4 @@
+import type { Role } from "@/config/roles";
 import { and, desc, sql, type SQL } from "drizzle-orm";
 import { db, leads } from "@/db";
 import { dayEnd, dayStart } from "@/lib/format";
@@ -65,8 +66,8 @@ function where(f: LeadFilters): SQL | undefined {
 export async function listLeads(f: LeadFilters) {
   const w = where(f);
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(leads).where(w);
-  const rows = await db.execute<{ id: number; company: string; trade_name: string | null; cnpj: string; city: string | null; uf: string | null; owner_name: string | null; owner_accent: string | null; owner_id: number | null; locked_by_name: string | null; locked_by_accent: string | null; locked_by_id: number | null; tags: { label: string; color: string; group: string }[] }>(sql`
-    select leads.id, leads.company, leads.trade_name, leads.cnpj, leads.city, leads.uf, o.name as owner_name, o.accent as owner_accent, leads.owner_id as owner_id, lk.name as locked_by_name, lk.accent as locked_by_accent, lk.id as locked_by_id,
+  const rows = await db.execute<{ id: number; company: string; trade_name: string | null; cnpj: string; city: string | null; uf: string | null; owner_name: string | null; owner_accent: string | null; owner_id: number | null; owner_roles: Role[] | null; locked_roles: Role[] | null; locked_by_name: string | null; locked_by_accent: string | null; locked_by_id: number | null; tags: { label: string; color: string; group: string }[] }>(sql`
+    select leads.id, leads.company, leads.trade_name, leads.cnpj, leads.city, leads.uf, o.name as owner_name, o.accent as owner_accent, leads.owner_id as owner_id, o.roles as owner_roles, lk.roles as locked_roles, lk.name as locked_by_name, lk.accent as locked_by_accent, lk.id as locked_by_id,
       coalesce((select json_agg(json_build_object('label', t.label, 'color', t.color, 'group', t.group_key) order by g.sort, t.sort)
                 from lead_tags lt join tags t on t.id = lt.tag_id join tag_groups g on g.key = t.group_key where lt.lead_id = leads.id and t.group_key in ('temperatura','meio','qualificacao','agenda','situacao')), '[]'::json) as tags
     from leads left join users o on o.id = leads.owner_id left join users lk on lk.id = leads.locked_by

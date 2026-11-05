@@ -13,7 +13,7 @@ export function AppHeader({ user }: { user: CurrentUser }) {
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-panel/90 backdrop-blur">
       <div className="mx-auto flex w-full max-w-7xl items-center gap-x-6 px-4 py-2.5 sm:px-6">
-        <Link href="/painel" aria-label="SDR Fey, ir para o início"><Logo /></Link>
+        <Link href="/painel" aria-label="SDR FEY, ir para o início"><Logo /></Link>
         <div className="min-w-0 flex-1"><NavLinks hrefs={hrefs} /></div>
         <UserMenu name={user.name} hex={accent.hex} onHex={accent.onAccent} role={topRole(user.roles)} />
       </div>

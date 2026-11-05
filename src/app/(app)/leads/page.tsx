@@ -1,3 +1,4 @@
+import { PersonBubble } from "@/components/person-bubble";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { asc, eq, sql } from "drizzle-orm";
@@ -15,10 +16,6 @@ import { getTagCatalog } from "@/modules/leads/view";
 
 export const metadata: Metadata = { title: "Leads" };
 export const dynamic = "force-dynamic";
-
-function Bubble({ name, hex, prefix }: { name: string; hex: string; prefix: string }) {
-  return <span title={`${prefix}: ${name}`} className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium" style={{ background: `color-mix(in srgb, ${hex} 22%, transparent)`, color: `color-mix(in srgb, ${hex} 75%, var(--ink))`, border: `1px solid color-mix(in srgb, ${hex} 45%, transparent)` }}><span className="opacity-70">{prefix}:</span> {name.split(" ")[0]}</span>;
-}
 
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   await requirePerm("tab.leads");
@@ -48,7 +45,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
       <p className="text-sm font-medium">{new Intl.NumberFormat("pt-BR").format(total)} lead(s)</p>
       <ul className="space-y-2">
         {rows.map((l) => {
-          const accent = l.owner_name ? { hex: bubbleHex(l.owner_accent, l.owner_id ?? 0) } : null;
+          const accent = l.owner_name ? { hex: bubbleHex(l.owner_accent, l.owner_id ?? 0, l.owner_roles ?? undefined) } : null;
           return (
             <li key={l.id} className={`${panelCls} flex flex-wrap items-center gap-3 p-4`}>
               <div className="min-w-0 flex-1">
@@ -59,8 +56,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                 </div>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
-                {l.locked_by_name && <Bubble name={l.locked_by_name} hex={bubbleHex(l.locked_by_accent, l.locked_by_id ?? 0)} prefix="Atendendo" />}
-                {accent && <Bubble name={l.owner_name!} hex={accent.hex} prefix="Responsável" />}
+                {l.locked_by_name && <PersonBubble name={l.locked_by_name} hex={bubbleHex(l.locked_by_accent, l.locked_by_id ?? 0, l.locked_roles ?? undefined)} prefix="Atendendo" />}
+                {accent && <PersonBubble name={l.owner_name!} hex={accent.hex} prefix="Responsável" />}
                 {!accent && !l.locked_by_name && <span className="rounded-full border border-line px-2.5 py-0.5 text-xs text-muted">Sem responsável</span>}
                 {!l.locked_by_name && <AttendButton leadId={l.id} compact />}
               </div>

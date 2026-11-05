@@ -24,7 +24,8 @@ export const fmtDateTimeSec = (d: Date | string | number | null | undefined) => 
 export function fmtDuration(seconds: number | null | undefined): string {
   if (seconds == null || !Number.isFinite(seconds)) return "—";
   const s = Math.max(0, Math.round(seconds));
-  return `${Math.floor(s / 60)}m${String(s % 60).padStart(2, "0")}s`;
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  return h ? `${h}h ${String(m).padStart(2, "0")}m ${String(sec).padStart(2, "0")}s` : `${m}m ${String(sec).padStart(2, "0")}s`;
 }
 
 /** Início do dia (00:00 de Brasília) de uma data "AAAA-MM-DD" vinda de <input type="date">, como Date em UTC. */
@@ -44,7 +45,7 @@ export const fmtCnpj = (d: string) => d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\
 export const fmtMoney = (n: number | null | undefined) =>
   n == null ? "—" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(n);
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+export const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /** Tempo desde a abertura da empresa: "1 ano e 3 meses", "2 anos", "10 meses", "menos de 1 mês". Só meses cheios contam. */
 export function fmtAge(openedIso: string | null | undefined, now: Date = new Date()): string | null {
@@ -67,3 +68,4 @@ export function fmtCnae(code: string | number | null | undefined): string | null
   const d = String(code ?? "").replace(/\D/g, "");
   return d.length === 7 ? `${d.slice(0, 4)}-${d[4]}/${d.slice(5)}` : d || null;
 }
+

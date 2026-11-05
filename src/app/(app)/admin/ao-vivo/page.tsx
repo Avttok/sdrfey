@@ -1,3 +1,5 @@
+import { PersonBubble } from "@/components/person-bubble";
+import { bubbleHex } from "@/config/theme";
 import { desc, eq } from "drizzle-orm";
 import { LiveRefresh } from "@/components/admin/live-refresh";
 import { panelCls } from "@/components/ui";
@@ -8,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Page() {
   const rows = await db
-    .select({ name: users.name, last: presence.lastSeenAt, activity: presence.activity, company: leads.company })
+    .select({ name: users.name, accent: users.accent, roles: users.roles, uid: users.id, last: presence.lastSeenAt, activity: presence.activity, company: leads.company })
     .from(presence).innerJoin(users, eq(users.id, presence.userId)).leftJoin(leads, eq(leads.id, presence.leadId))
     .orderBy(desc(presence.lastSeenAt));
   const now = Date.now();
@@ -23,7 +25,7 @@ export default async function Page() {
           return (
             <li key={r.name} className={`${panelCls} flex flex-wrap items-center gap-3 p-4`}>
               <span className={`size-2.5 rounded-full ${online ? "bg-ok" : "bg-muted/50"}`} aria-hidden />
-              <span className="font-medium">{r.name}</span>
+              <PersonBubble name={r.name} hex={bubbleHex(r.accent, r.uid, r.roles)} />
               <span className="text-sm text-muted">{online ? (r.activity ?? "Online") : `Offline · visto ${fmtDateTime(r.last)}`}</span>
             </li>
           );

@@ -46,7 +46,8 @@ function readableOn(hex: string): string {
 }
 
 /** Cor da bolha de uma pessoa: a que ela escolheu; sem escolha, uma cor fixa da paleta (nunca amarelo/vermelho, que são dos cargos). */
-export function bubbleHex(accent: string | null | undefined, userId: number): string {
+export function bubbleHex(accent: string | null | undefined, userId: number, roles?: readonly Role[]): string {
+  if (roles) return resolveAccent(accent, roles).hex;
   if (isChoosableAccent(accent)) return CHOOSABLE_ACCENTS.find((a) => a.key === accent)!.hex;
   return CHOOSABLE_ACCENTS[userId % CHOOSABLE_ACCENTS.length].hex;
 }

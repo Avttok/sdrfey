@@ -1,5 +1,6 @@
 "use server";
 
+import { plural } from "@/lib/format";
 import { asc, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -67,7 +68,7 @@ export async function saveTagAction(input: z.input<typeof tagInput>): Promise<Ac
     await db.insert(tags).values({ groupKey: d.groupKey, key, label: d.label, color: d.color, blocksSorting: d.blocksSorting, cooldownDays: d.cooldownDays, active: d.active });
     await logAudit(db, { userId: me.id, entity: "tag", action: "criou tag", field: d.groupKey, newValue: d.label });
   }
-  revalidatePath("/admin/tags");
+  revalidatePath("/", "layout");
   return { ok: true, message: "Tag salva." };
 }
 
@@ -80,12 +81,12 @@ export async function deleteTagAction(id: number): Promise<ActionResult> {
   if ((u?.n ?? 0) > 0) {
     await db.update(tags).set({ active: false }).where(eq(tags.id, id));
     await logAudit(db, { userId: me.id, entity: "tag", action: "desativou tag", field: t.label, oldValue: "ativa", newValue: "inativa", meta: { leads: u.n } });
-    revalidatePath("/admin/tags");
-    return { ok: true, message: `A tag está em ${u.n} lead(s), então foi desativada em vez de apagada.` };
+    revalidatePath("/", "layout");
+    return { ok: true, message: `A tag está em ${plural(u.n, "lead", "leads")}, então foi desativada em vez de apagada.` };
   }
   await db.delete(tags).where(eq(tags.id, id));
   await logAudit(db, { userId: me.id, entity: "tag", action: "excluiu tag", field: t.label });
-  revalidatePath("/admin/tags");
+  revalidatePath("/", "layout");
   return { ok: true, message: "Tag excluída." };
 }
 
@@ -148,6 +149,6 @@ export async function moveTagAction(id: number, dir: "up" | "down"): Promise<Act
     for (const [pos, row] of list.entries()) if (row.sort !== pos) await tx.update(tags).set({ sort: pos }).where(eq(tags.id, row.id));
   });
   await logAudit(db, { userId: me.id, entity: "tag", action: "reordenou tags", field: t.groupKey, oldValue: String(i + 1), newValue: String(j + 1), meta: { tag: t.label } });
-  revalidatePath("/admin/tags");
+  revalidatePath("/", "layout");
   return { ok: true, message: `${t.label} agora é a ${j + 1}ª tag do grupo.` };
 }

@@ -1,3 +1,4 @@
+import { plural } from "@/lib/format";
 import type { Metadata } from "next";
 import { asc, eq } from "drizzle-orm";
 import Link from "next/link";
@@ -6,7 +7,7 @@ import { Suspense } from "react";
 import { DashboardFilters } from "@/components/dashboard-filters";
 import { panelCls } from "@/components/ui";
 import { bubbleHex } from "@/config/theme";
-import { db, users } from "@/db";
+import { db, tags, users } from "@/db";
 import { fmtDateTime, fmtDuration } from "@/lib/format";
 import { requirePerm } from "@/modules/auth/guard";
 import { getDashboard, resolvePeriod } from "@/modules/dashboard/stats";
@@ -15,7 +16,7 @@ import { getSettings } from "@/modules/settings/get";
 export const metadata: Metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
 const nf = new Intl.NumberFormat("pt-BR");
-const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : "0%");
+const pct = (a: number, b: number) => (b ? `${Math.min(100, Math.round((a / b) * 100))}%` : "0%");
 
 function Bar({ label, value, max, color, right }: { label: string; value: number; max: number; color: string; right?: string }) {
   return (
@@ -39,9 +40,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const team = !!me.permissions["panel.equipe"];
 
   const all = await db.select().from(users).where(eq(users.active, true)).orderBy(asc(users.name));
-  const people = all.map((u) => ({ id: u.id, name: u.name, hex: bubbleHex(u.accent, u.id) }));
+  const people = all.map((u) => ({ id: u.id, name: u.name, hex: bubbleHex(u.accent, u.id, u.roles) }));
   const picked = (Array.isArray(sp.u) ? sp.u : sp.u ? [sp.u] : []).map(Number).filter((id) => people.some((p) => p.id === id));
   const scope = team ? (picked.length ? picked : people.map((p) => p.id)) : [me.id];
+  const tagColor = Object.fromEntries((await db.select({ key: tags.key, color: tags.color }).from(tags)).map((t) => [t.key, t.color]));
   const settings = await getSettings();
   const d = await getDashboard(period, scope, settings.daily_goal);
   const can = (k: string) => !!me.permissions[k];
@@ -50,7 +52,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const totalStock = d.stock.novos + d.stock.trabalhados + d.stock.fora + d.stock.clientes || 1;
 
   const kpis = [
-    { I: PhoneCall, t: "Contatos", v: nf.format(d.contacts), s: `${d.days} dia(s)` },
+    { I: PhoneCall, t: "Contatos", v: nf.format(d.contacts), s: plural(d.days, "dia", "dias") },
     { I: Target, t: "Meta atingida", v: pct(d.contacts, d.goal), s: `de ${nf.format(d.goal)}` },
     { I: CircleCheck, t: "Qualificados", v: nf.format(d.qualified), s: "no período" },
     { I: CalendarCheck, t: "Agendados", v: nf.format(d.scheduled), s: "visitas marcadas" },
@@ -78,15 +80,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <div className="grid gap-3 lg:grid-cols-2">
         {can("panel.ranking") && (
           <Block icon={Trophy} title="Ranking da equipe">
-            {d.ranking.map((r) => <Bar key={r.id} label={r.name.split(" ")[0]} value={r.n} max={Math.max(1, settings.daily_goal * d.days)} color={bubbleHex(r.accent, r.id)} right={`${r.n} · ${fmtDuration(r.avgSeconds)}`} />)}
+            {d.ranking.map((r) => <Bar key={r.id} label={r.name.split(" ")[0]} value={r.n} max={Math.max(1, settings.daily_goal * d.days)} color={bubbleHex(r.accent, r.id, r.roles)} right={`${r.n} · ${fmtDuration(r.avgSeconds)}`} />)}
           </Block>
         )}
         {can("panel.funil") && (
           <Block icon={FunnelIcon} title="Funil">
             <Bar label="Trabalhados" value={d.contacts} max={d.contacts} color="#888780" />
-            <Bar label="Conversando" value={d.conversing} max={d.contacts} color="#378ADD" right={`${d.conversing} · ${pct(d.conversing, d.contacts)}`} />
-            <Bar label="Qualificados" value={d.qualified} max={d.contacts} color="#1D9E75" right={`${d.qualified} · ${pct(d.qualified, d.contacts)}`} />
-            <Bar label="Agendados" value={d.scheduled} max={d.contacts} color="#7F77DD" right={`${d.scheduled} · ${pct(d.scheduled, d.contacts)}`} />
+            <Bar label="Conversando" value={d.conversing} max={d.contacts} color={tagColor.conversando ?? "#378ADD"} right={`${d.conversing} · ${pct(d.conversing, d.contacts)}`} />
+            <Bar label="Qualificados" value={d.qualified} max={d.contacts} color={tagColor.qualificado ?? "#1D9E75"} right={`${d.qualified} · ${pct(d.qualified, d.contacts)}`} />
+            <Bar label="Agendados" value={d.scheduled} max={d.contacts} color={tagColor.agendado ?? "#7F77DD"} right={`${d.scheduled} · ${pct(d.scheduled, d.contacts)}`} />
           </Block>
         )}
       </div>
@@ -116,8 +118,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         {can("panel.alertas") && (
           <Block icon={AlertTriangle} title="Alertas">
             <ul className="space-y-2 text-sm">
-              <li className="flex items-center gap-2"><Flame size={16} className="text-danger" aria-hidden /><span className="flex-1">{nf.format(d.alerts.hot)} lead(s) quente(s) sem contato há mais de 3 dias</span><Link className="underline" href="/leads?tag=temperatura:quente">Ver</Link></li>
-              <li className="flex items-center gap-2"><Database size={16} aria-hidden /><span className="flex-1">{nf.format(d.alerts.noInfo)} lead(s) ainda sem consulta de CNPJ</span></li>
+              <li className="flex items-center gap-2"><Flame size={16} className="text-danger" aria-hidden /><span className="flex-1">{d.alerts.hot === 1 ? "1 lead quente sem contato" : `${nf.format(d.alerts.hot)} leads quentes sem contato`} há mais de 3 dias</span><Link className="underline" href="/leads?tag=temperatura:quente">Ver</Link></li>
+              <li className="flex items-center gap-2"><Database size={16} aria-hidden /><span className="flex-1">{plural(d.alerts.noInfo, "lead ainda sem", "leads ainda sem")} consulta de CNPJ</span></li>
             </ul>
           </Block>
         )}

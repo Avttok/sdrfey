@@ -44,9 +44,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <BusyCtx.Provider value={busyApi}>
         {children}
         {busy > 0 && (
-          <div role="status" aria-live="polite" className="pointer-events-none fixed inset-x-0 top-16 z-50 flex justify-center">
-            <div className="flex items-center gap-2 rounded-full border border-line bg-panel px-4 py-2 text-sm font-medium shadow-lg">
-              <Spinner size={16} className="text-accent" /> Carregando…
+          <div role="status" aria-live="polite" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+            <div className="flex items-center gap-3 rounded-2xl border border-line bg-panel px-8 py-5 text-lg font-semibold shadow-2xl">
+              <Spinner size={28} className="text-accent" /> Carregando…
             </div>
           </div>
         )}

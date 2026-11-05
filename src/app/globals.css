@@ -86,3 +86,7 @@ body {
     transition: none !important;
   }
 }
+
+/* A cor escolhida em “Minha conta” também vale para caixas de seleção, seleção de texto e barras. */
+input[type="checkbox"], input[type="radio"], input[type="range"] { accent-color: var(--accent); }
+::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }

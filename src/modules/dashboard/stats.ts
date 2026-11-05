@@ -1,3 +1,4 @@
+import type { Role } from "@/config/roles";
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { TZ, dayEnd, dayStart } from "@/lib/format";
@@ -39,8 +40,11 @@ export async function getDashboard(period: Period, userIds: number[], globalGoal
         count(*) filter (where exists (select 1 from lead_tags lt join tags qt on qt.id = lt.tag_id where lt.lead_id = i.lead_id and qt.key = 'qualificado'))::int as q
       from interactions i join tags t on t.group_key = 'meio' and t.key = i.channel
       where not i.is_test and i.user_id in (${U}) and i.at between ${from} and ${to} group by 1, 2, 3 order by n desc`),
-    db.execute<{ n: number }>(sql`select count(distinct lt.lead_id)::int as n from lead_tags lt join tags t on t.id = lt.tag_id join leads l on l.id = lt.lead_id
-      where t.key = 'qualificado' and not l.is_test and lt.applied_by in (${U}) and lt.applied_at between ${from} and ${to}`),
+    /* Qualificados = leads atendidos (e salvos) no período por essa equipe que hoje têm a tag Qualificado.
+       Tags vindas de importação não contam: só trabalho real, para a taxa nunca passar de 100%. */
+    db.execute<{ n: number }>(sql`select count(distinct s.lead_id)::int as n from attendance_sessions s
+      join lead_tags lt on lt.lead_id = s.lead_id join tags t on t.id = lt.tag_id and t.key = 'qualificado'
+      where s.outcome = 'saved' and not s.is_test and s.user_id in (${U}) and s.saved_at between ${from} and ${to}`),
     db.execute<{ n: number }>(sql`select count(*)::int as n from visits v join leads l on l.id = v.lead_id where not l.is_test and v.canceled_at is null and v.user_id in (${U}) and v.created_at between ${from} and ${to}`),
     db.execute<{ goal: number }>(sql`select coalesce(sum(coalesce(u.daily_goal, ${globalGoal})), 0)::int as goal from users u where u.id in (${U})`),
     db.execute<{ conversando: number }>(sql`select count(distinct s.lead_id)::int as conversando from attendance_sessions s
@@ -73,7 +77,7 @@ export async function getDashboard(period: Period, userIds: number[], globalGoal
   return {
     days, contacts, goal, avgSeconds: avg, medianSeconds: meds.length ? meds[Math.floor(meds.length / 2)] : null,
     qualified: quals[0]?.n ?? 0, scheduled: visitsN[0]?.n ?? 0, conversing: funnel[0]?.conversando ?? 0,
-    ranking: [...per].map((r) => ({ id: r.user_id, name: r.name, accent: r.accent, roles: r.roles, n: r.n, avgSeconds: r.avg == null ? null : Number(r.avg) })),
+    ranking: [...per].map((r) => ({ id: r.user_id, name: r.name, accent: r.accent, roles: r.roles as Role[], n: r.n, avgSeconds: r.avg == null ? null : Number(r.avg) })),
     hours: [...hours], meios: [...meios], temp: [...temp], stock: stock[0] ?? { novos: 0, trabalhados: 0, fora: 0, clientes: 0 },
     recentVisits: recentVisits.map((v) => ({ code: v.code, at: v.at.toString(), company: v.company, name: v.name })),
     alerts: { hot: hot[0]?.n ?? 0, noInfo: noInfo[0]?.n ?? 0 },

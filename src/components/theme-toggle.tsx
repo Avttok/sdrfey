@@ -1,35 +1,28 @@
 "use client";
 
-import { Monitor, Moon, Sun } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 
-type Mode = "light" | "dark" | "system";
+type Mode = "light" | "dark";
 const OPTIONS: { mode: Mode; label: string; Icon: typeof Sun }[] = [
   { mode: "light", label: "Claro", Icon: Sun },
-  { mode: "system", label: "Automático", Icon: Monitor },
   { mode: "dark", label: "Noturno", Icon: Moon },
 ];
 
 function apply(mode: Mode) {
-  const dark = mode === "dark" || (mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+  const dark = mode === "dark";
   document.documentElement.classList.toggle("dark", dark);
 }
 
-/** Alterna claro / automático / noturno e lembra a escolha neste navegador. */
+/** Alterna claro / noturno e lembra a escolha neste navegador. */
 export function ThemeToggle({ withLabels = false }: { withLabels?: boolean }) {
-  const [mode, setMode] = useState<Mode>("system");
+  const [mode, setMode] = useState<Mode>("light");
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem("theme") as Mode | null;
-      if (saved) setMode(saved);
+      if (saved === "dark" || saved === "light") setMode(saved);
     } catch {}
-    const media = matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => {
-      if ((localStorage.getItem("theme") ?? "system") === "system") apply("system");
-    };
-    media.addEventListener("change", onChange);
-    return () => media.removeEventListener("change", onChange);
   }, []);
 
   function choose(next: Mode) {

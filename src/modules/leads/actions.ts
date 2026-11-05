@@ -1,5 +1,6 @@
 "use server";
 
+import { plural } from "@/lib/format";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -7,7 +8,7 @@ import { db, leadChannels, presence } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { requirePerm, requireUser } from "@/modules/auth/guard";
 import { enrichLead } from "@/modules/enrich/enrich";
-import { addChannel, discardLead, markStarted, saveAttendance, type SaveInput } from "./attend";
+import { addChannel, discardLead, markStarted, resetLead, saveAttendance, type SaveInput } from "./attend";
 import { attendLead, claimNext, releaseLead, skipLead, touchLock, UserError } from "./sorter";
 
 export type ActionResult = { ok: true; message?: string } | { ok: false; message: string };
@@ -75,6 +76,16 @@ export async function discardAction(leadId: number, reason: string): Promise<Act
   });
 }
 
+export async function resetLeadAction(leadId: number): Promise<ActionResult> {
+  const me = await requirePerm("tab.comecar");
+  return guard(async () => {
+    await resetLead(me.id, leadId);
+    revalidatePath("/atender");
+    revalidatePath("/leads");
+    return { ok: true, message: "Lead resetado: tags, observação e interações apagadas." };
+  });
+}
+
 export async function startedAction(leadId: number): Promise<void> {
   const me = await requirePerm("tab.comecar");
   await markStarted(me.id, leadId);
@@ -120,7 +131,7 @@ export async function refreshInfoAction(leadId: number): Promise<ActionResult> {
     revalidatePath(`/leads/${leadId}`);
     if (r.state === "unavailable") return { ok: false, message: "Consulta indisponível agora. Tente atualizar de novo em instantes." };
     const extra = r.newPhones + r.newEmails;
-    return { ok: true, message: extra ? `Dados atualizados: ${r.newPhones} telefone(s) e ${r.newEmails} e-mail(s) novos.` : "Dados atualizados. Nenhum contato novo." };
+    return { ok: true, message: extra ? `Dados atualizados: ${plural(r.newPhones, "telefone novo", "telefones novos")} e ${plural(r.newEmails, "e-mail novo", "e-mails novos")}.` : "Dados atualizados. Nenhum contato novo." };
   });
 }
 

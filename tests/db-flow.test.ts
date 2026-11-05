@@ -99,4 +99,19 @@ describe.skipIf(!HAS_DB)("sorteio e atendimento (banco real)", () => {
       expect(r.added).toEqual(["Temperatura: Morno"]);
     });
   });
+  it("resetar lead apaga tags, observação e interações, mantém os dados e registra", async () => {
+    const id = (await m.sorter.claimNext(u2, { test: true }))!;
+    await m.attend.saveAttendance(u2, { leadId: id, channels: ["email"], temperature: "frio", situations: [], note: "teste reset" });
+    await m.sorter.attendLead(u2, id);
+    await m.attend.resetLead(u2, id);
+    const { db, leads, leadTags, interactions, auditLog } = m.db;
+    const [l] = await db.select().from(leads).where(eq(leads.id, id));
+    expect(l.notes).toBeNull();
+    expect(l.company).toMatch(/^ZZTESTE/);
+    expect(l.timesWorked).toBe(0);
+    expect(await db.select().from(leadTags).where(eq(leadTags.leadId, id))).toHaveLength(0);
+    expect(await db.select().from(interactions).where(eq(interactions.leadId, id))).toHaveLength(0);
+    const log = await db.select().from(auditLog).where(eq(auditLog.leadId, id));
+    expect(log.some((r) => r.action === "resetou lead" && r.oldValue === "teste reset")).toBe(true);
+  });
 });

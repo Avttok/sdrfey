@@ -94,15 +94,11 @@ export function LeadInfoPanel({ lead, autoSearch = true }: { lead: LeadView; aut
         {rep ? (
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
             <dt className="text-muted">Representante</dt><dd>{val(rep.repName)}</dd>
-            <dt className="text-muted">Código SAP</dt><dd>{val(rep.sapCode)}</dd>
-            <dt className="text-muted">ESC</dt><dd>{val(rep.esc)}</dd>
-            <dt className="text-muted">Gestor</dt><dd>{val(rep.managerName)}</dd>
             <dt className="text-muted">Equipe</dt><dd>{val(rep.team)}</dd>
-            <dt className="text-muted">CNPJ</dt><dd>{val(rep.cnpj ? fmtCnpj(rep.cnpj.replace(/\D/g, "")) : null)}</dd>
-            <dt className="text-muted">Endereço</dt><dd>{val(rep.address)}</dd>
-            <dt className="text-muted">CEP</dt><dd>{val(rep.cep)}</dd>
-            <dt className="text-muted">Cidade</dt><dd>{val(rep.city ? `${rep.city}/${rep.uf}` : null)}</dd>
-            <dt className="text-muted">Distância</dt><dd>~{rep.km} km em linha reta</dd>
+            <dt className="text-muted">Cidade/UF</dt><dd>{val(rep.city ? `${rep.city}/${rep.uf}` : null)}</dd>
+            <dt className="text-muted">Distância</dt><dd>{rep.km} km</dd>
+            <dt className="text-muted">Gestor</dt><dd>{val(rep.managerName)}</dd>
+            <dt className="text-muted">Código SAP</dt><dd>{val(rep.sapCode)}</dd>
           </dl>
         ) : <p>{missing}{!lead.city && !searching ? <span className="ml-1 text-xs text-muted">(cidade do lead desconhecida)</span> : null}</p>}
       </div>

@@ -22,7 +22,7 @@ export async function getLeadView(leadId: number) {
   const [lead] = await db.select().from(leads).where(eq(leads.id, leadId));
   if (!lead) return null;
   const [tagRows, channels, people, visitRows] = await Promise.all([
-    db.select({ id: tags.id, groupKey: tags.groupKey, key: tags.key, label: tags.label, color: tags.color }).from(leadTags).innerJoin(tags, eq(tags.id, leadTags.tagId)).where(eq(leadTags.leadId, leadId)),
+    db.select({ id: tags.id, groupKey: tags.groupKey, key: tags.key, label: tags.label, color: tags.color }).from(leadTags).innerJoin(tags, eq(tags.id, leadTags.tagId)).innerJoin(tagGroups, eq(tagGroups.key, tags.groupKey)).where(eq(leadTags.leadId, leadId)).orderBy(asc(tagGroups.sort), asc(tags.sort), asc(tags.label)),
     db.select().from(leadChannels).where(eq(leadChannels.leadId, leadId)).orderBy(asc(leadChannels.id)),
     db.select().from(leadPeople).where(eq(leadPeople.leadId, leadId)).orderBy(asc(leadPeople.id)),
     db.select().from(visits).where(eq(visits.leadId, leadId)).orderBy(asc(visits.id)),

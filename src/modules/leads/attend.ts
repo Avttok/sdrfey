@@ -138,3 +138,34 @@ export async function addChannel(userId: number, leadId: number, kind: "phone" |
   if (inserted.length) await logAudit(db, { userId, leadId, entity: "lead", action: kind === "phone" ? "adicionou telefone" : "adicionou e-mail", field: kind === "phone" ? "Telefones" : "E-mails", oldValue: null, newValue: value });
   return inserted.length > 0;
 }
+
+/**
+ * RESETAR LEAD: apaga o que foi feito no atendimento (tags de contato, temperatura, qualificação, situação,
+ * observação, interações e visitas) e devolve o lead ao estoque como novo. Os dados do lead (CNPJ, contatos,
+ * consultas, porte e capital) continuam salvos. Tudo é registrado no Registro.
+ */
+export async function resetLead(userId: number, leadId: number): Promise<void> {
+  await db.transaction(async (tx) => {
+    const lead = await assertMine(tx as unknown as typeof db, userId, leadId);
+    const current = await tx
+      .select({ group: tags.groupKey, key: tags.key })
+      .from(leadTags)
+      .innerJoin(tags, eq(tags.id, leadTags.tagId))
+      .where(eq(leadTags.leadId, leadId));
+    const keep = new Set<string>([TAG.group.porte, TAG.group.capital]);
+    await setLeadTags(tx, { leadId, userId, remove: current.filter((t) => !keep.has(t.group)).map((t) => ({ group: t.group, key: t.key })), reason: "Lead resetado" });
+    const gone = await tx.delete(interactions).where(eq(interactions.leadId, leadId)).returning({ id: interactions.id });
+    const canceled = await tx.update(visits).set({ canceledAt: new Date() }).where(and(eq(visits.leadId, leadId), sql`${visits.canceledAt} is null`)).returning({ id: visits.id });
+    await tx.update(leads).set({ notes: null, returnAt: null, nextEligibleAt: null, timesWorked: 0, ownerId: null }).where(eq(leads.id, leadId));
+    await logAudit(tx, {
+      userId,
+      leadId,
+      entity: "lead",
+      action: "resetou lead",
+      field: "atendimento",
+      oldValue: lead.notes,
+      newValue: "zerado",
+      meta: { interacoes: gone.length, visitasCanceladas: canceled.length, observacaoApagada: !!lead.notes },
+    });
+  });
+}
