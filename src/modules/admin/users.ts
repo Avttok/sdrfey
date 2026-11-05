@@ -3,6 +3,7 @@
 import { and, eq, ne, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { isAccentKey } from "@/config/theme";
 import { PERMISSION_KEYS } from "@/config/permissions";
 import { ROLES, type Role } from "@/config/roles";
 import { db, users } from "@/db";
@@ -40,7 +41,7 @@ export async function updateUserAction(id: number, input: UserPatch): Promise<Ac
   const p = z.object({
     name: z.string().trim().min(2, "Informe o nome."), roles: roleList, active: z.boolean(),
     dailyGoal: z.number().int().min(0).max(1000).nullable(), canManageGoals: z.boolean(), inMetrics: z.boolean(),
-    permissions: z.record(z.string(), z.boolean()),
+    permissions: z.record(z.string(), z.boolean()), accent: z.string().nullable().optional(),
   }).safeParse(input);
   if (!p.success) return fail(p.error.issues[0].message);
   const [before] = await db.select().from(users).where(eq(users.id, id));
@@ -50,14 +51,16 @@ export async function updateUserAction(id: number, input: UserPatch): Promise<Ac
   if (loses && (await otherActiveAdmins(id)) === 0) return fail("Este é o último Adm ativo: ele não pode perder o cargo nem ser bloqueado.");
   if (id === me.id && !p.data.active) return fail("Você não pode bloquear a si mesmo.");
 
+  if (p.data.accent && !isAccentKey(p.data.accent)) return fail("Cor inválida.");
+  const accent = p.data.accent === undefined ? before.accent : p.data.accent || null;
   const permissions = Object.fromEntries(Object.entries(p.data.permissions).filter(([k]) => PERMISSION_KEYS.includes(k)));
-  const next = { name: p.data.name, roles: p.data.roles, active: p.data.active, dailyGoal: p.data.dailyGoal, canManageGoals: p.data.canManageGoals, inMetrics: p.data.inMetrics, permissions };
+  const next = { name: p.data.name, roles: p.data.roles, active: p.data.active, dailyGoal: p.data.dailyGoal, canManageGoals: p.data.canManageGoals, inMetrics: p.data.inMetrics, permissions, accent };
   const kill = before.active !== next.active || before.roles.join() !== next.roles.join();
   await db.transaction(async (tx) => {
     await tx.update(users).set({ ...next, ...(kill ? { sessionVersion: sql`${users.sessionVersion} + 1` } : {}) }).where(eq(users.id, id));
-    await logAudit(tx, diffToAudit({ userId: me.id, entity: "user", meta: { usuario: before.username } }, { name: before.name, roles: before.roles, active: before.active, dailyGoal: before.dailyGoal, canManageGoals: before.canManageGoals, inMetrics: before.inMetrics, permissions: JSON.stringify(before.permissions) } as Record<string, unknown>, { ...next, permissions: JSON.stringify(permissions) } as Record<string, unknown>, { name: "Nome", roles: "Cargos", active: "Ativo", dailyGoal: "Meta diária", canManageGoals: "Pode gerenciar metas", inMetrics: "Aparece nas métricas", permissions: "Permissões individuais" }));
+    await logAudit(tx, diffToAudit({ userId: me.id, entity: "user", meta: { usuario: before.username } }, { name: before.name, roles: before.roles, active: before.active, dailyGoal: before.dailyGoal, canManageGoals: before.canManageGoals, inMetrics: before.inMetrics, permissions: JSON.stringify(before.permissions), accent: before.accent } as Record<string, unknown>, { ...next, permissions: JSON.stringify(permissions) } as Record<string, unknown>, { name: "Nome", roles: "Cargos", active: "Ativo", dailyGoal: "Meta diária", canManageGoals: "Pode gerenciar metas", inMetrics: "Aparece nas métricas", permissions: "Permissões individuais", accent: "Cor" }));
   });
-  revalidatePath("/admin/usuarios");
+  revalidatePath("/", "layout");
   return { ok: true, message: "Usuário salvo." };
 }
 

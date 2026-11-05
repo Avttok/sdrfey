@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { NavPrefsForm } from "@/components/nav-prefs-form";
+import { orderNav, visibleNav } from "@/config/nav";
 import { PageHead } from "@/components/page-head";
 import { Check, UserRound } from "lucide-react";
 import { DisplayNameForm } from "@/components/display-name-form";
@@ -15,6 +17,7 @@ export const metadata: Metadata = { title: "Minha conta" };
 export default async function AccountPage() {
   const user = await requireUser();
   const current = resolveAccent(user.accent, user.roles);
+  const navHrefs = orderNav(visibleNav(user.permissions, user.roles.includes("admin")).filter((i) => i.href !== "/conta"), user.navOrder).map((i) => i.href);
 
   return (
     <div className="space-y-6">
@@ -63,6 +66,11 @@ export default async function AccountPage() {
 
           <p className="mb-2 mt-8 text-sm font-medium">Tema</p>
           <ThemeToggle withLabels />
+        </section>
+
+        <section className={`${panelCls} p-6 lg:col-span-2`}>
+          <h2 className="display mb-5 text-xl">Barra de navegação</h2>
+          <NavPrefsForm layout={user.navLayout} hrefs={navHrefs} />
         </section>
       </div>
     </div>

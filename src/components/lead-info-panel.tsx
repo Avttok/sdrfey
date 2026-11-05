@@ -5,7 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 import { CopyVal } from "@/components/copy-val";
 import { Spinner } from "@/components/spinner";
 import { useBusyWhile, useToast } from "@/components/toast";
-import { btnGhost, panelCls } from "@/components/ui";
+import { btnGhost } from "@/components/ui";
 import { cleanRole, fmtAge, fmtCnpj, fmtDate, fmtMoney } from "@/lib/format";
 import { selectedRows } from "@/modules/enrich/flatten";
 import { refreshInfoAction } from "@/modules/leads/actions";
@@ -102,21 +102,24 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false }: { lead:
     </>
   );
   const repBlock = (
-    <>
-      <div className={`${panelCls} p-3 text-sm`}>
-        <p className="mb-2 font-semibold">Representante mais próximo</p>
-        {rep ? (
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-            <dt className="text-muted">Representante</dt><dd>{rep.repName ? (rep.repName) : missing}</dd>
-            <dt className="text-muted">Equipe</dt><dd>{rep.team ? (rep.team) : missing}</dd>
-            <dt className="text-muted">Cidade/UF</dt><dd>{rep.city ? (`${rep.city}/${rep.uf}`) : missing}</dd>
-            <dt className="text-muted">Distância</dt><dd>{rep.km} km</dd>
-            <dt className="text-muted">Gestor</dt><dd>{rep.managerName ? (rep.managerName) : missing}</dd>
-            <dt className="text-muted">Código SAP</dt><dd>{rep.sapCode ? (rep.sapCode) : missing}</dd>
-          </dl>
-        ) : <p>{missing}{!lead.city && !searching ? <span className="ml-1 text-xs text-muted">(cidade do lead desconhecida)</span> : null}</p>}
-      </div>
-    </>
+    <div className="space-y-3">
+      <h2 className="display text-xl">Representante mais próximo</h2>
+      {rep ? (
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+          <dt className="text-muted">Representante</dt><dd>{rep.repName ? (rep.repName) : missing}</dd>
+          <dt className="text-muted">Equipe</dt><dd>{rep.team ? (rep.team) : missing}</dd>
+          <dt className="text-muted">Cidade/UF</dt><dd>{rep.city ? (`${rep.city}/${rep.uf}`) : missing}</dd>
+          <dt className="text-muted">Distância</dt><dd>{rep.km} km</dd>
+          <dt className="text-muted">Gestor</dt><dd>{rep.managerName ? (rep.managerName) : missing}</dd>
+          <dt className="text-muted">Código SAP</dt><dd>{rep.sapCode ? (rep.sapCode) : missing}</dd>
+        </dl>
+      ) : <p className="text-sm">{missing}{!lead.city && !searching ? <span className="ml-1 text-xs text-muted">(cidade do lead desconhecida)</span> : null}</p>}
+      {(a?.street || lead.city) && (
+        <div className="overflow-hidden rounded-xl border border-line">
+          <iframe title={`Mapa de ${lead.tradeName ?? lead.company}`} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="block h-60 w-full" src={`https://www.google.com/maps?q=${encodeURIComponent(mapsQuery)}&output=embed`} />
+        </div>
+      )}
+    </div>
   );
 
   if (wide) {
@@ -124,7 +127,7 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false }: { lead:
       <section className="space-y-4">
         <div className="grid gap-x-8 gap-y-4 lg:grid-cols-2">
           {companyBlock}
-          <div className="space-y-3">{repBlock}</div>
+          {repBlock}
         </div>
         {allBlock}
       </section>

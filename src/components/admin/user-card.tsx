@@ -1,13 +1,14 @@
 "use client";
 
-import { Clock, KeyRound, Pencil, ShieldCheck, Trash2, X } from "lucide-react";
+import { Check, Clock, KeyRound, Pencil, ShieldCheck, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
+import { ACCENTS, resolveAccent } from "@/config/theme";
 import { ROLE_META, ROLES, type Role } from "@/config/roles";
 import { deleteUserAction, resetPasswordAction, updateUserAction } from "@/modules/admin/users";
 
-export type UserRow = { id: number; username: string; name: string; roles: Role[]; active: boolean; dailyGoal: number | null; canManageGoals: boolean; inMetrics: boolean; permissions: Record<string, boolean>; hex: string; lastLoginAt: string | null; online: boolean };
+export type UserRow = { accent: string | null; id: number; username: string; name: string; roles: Role[]; active: boolean; dailyGoal: number | null; canManageGoals: boolean; inMetrics: boolean; permissions: Record<string, boolean>; hex: string; lastLoginAt: string | null; online: boolean };
 
 const ROLE_TONE: Record<Role, string> = { user: "#3b82f6", manager: "#eab308", admin: "#ef4444" };
 
@@ -57,12 +58,21 @@ export function UserCard({ u, isMe }: { u: UserRow; isMe: boolean }) {
                 ); })}
               </div>
             </fieldset>
+            <fieldset>
+              <legend className="mb-1.5 text-sm text-muted">Cor da pessoa (aparece para todos)</legend>
+              <div className="flex flex-wrap gap-2">
+                {ACCENTS.map((a) => (
+                  <button key={a.key} type="button" title={a.label} aria-label={a.label} aria-pressed={f.accent === a.key} onClick={() => setF({ ...f, accent: a.key })} className="grid size-9 place-items-center rounded-full ring-offset-2 ring-offset-panel transition hover:scale-105 aria-pressed:ring-2 aria-pressed:ring-ink" style={{ background: a.hex, color: "#fff" }}>{f.accent === a.key ? <Check size={16} aria-hidden /> : null}</button>
+                ))}
+                <button type="button" aria-pressed={!f.accent} onClick={() => setF({ ...f, accent: null })} className="rounded-full border border-line px-3 text-xs font-medium hover:bg-sunk aria-pressed:border-ink aria-pressed:bg-sunk">Padrão do cargo ({resolveAccent(null, f.roles).hex})</button>
+              </div>
+            </fieldset>
             <div className="space-y-2.5">
               <Toggle on={f.active} disabled={isMe} onChange={(v) => setF({ ...f, active: v })} title="Acesso liberado" hint={isMe ? "Você não pode bloquear a si mesmo." : "Desligar bloqueia o login imediatamente."} />
               <Toggle on={f.inMetrics} onChange={(v) => setF({ ...f, inMetrics: v })} title="Aparece nas métricas" hint="Dashboard, Metas e ranking." />
             </div>
             <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
-              <button type="button" className={btnPrimary} disabled={pending} onClick={() => run(() => updateUserAction(u.id, { name: f.name, roles: f.roles, active: f.active, dailyGoal: u.dailyGoal, canManageGoals: u.canManageGoals, inMetrics: f.inMetrics, permissions: u.permissions }), undefined, () => setOpen(false))}>Salvar</button>
+              <button type="button" className={btnPrimary} disabled={pending} onClick={() => run(() => updateUserAction(u.id, { name: f.name, roles: f.roles, active: f.active, dailyGoal: u.dailyGoal, canManageGoals: u.canManageGoals, inMetrics: f.inMetrics, permissions: u.permissions, accent: f.accent }), undefined, () => setOpen(false))}>Salvar</button>
               <button type="button" className={btnGhost} disabled={pending} onClick={() => { if (confirm(`Redefinir a senha de ${u.name} para a inicial?`)) run(() => resetPasswordAction(u.id)); }}><KeyRound size={15} aria-hidden /> Redefinir senha</button>
               <span className="flex-1" />
               {!isMe && !confirmDelete && <button type="button" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => setConfirmDelete(true)}><Trash2 size={15} aria-hidden /> Excluir</button>}

@@ -26,6 +26,10 @@ export const users = pgTable("users", {
   roles: text("roles").array().$type<Role[]>().notNull().default(sql`ARRAY['user']::text[]`),
   /** Chave da cor escolhida (ver config/theme.ts). Nulo = cor padrão do cargo. */
   accent: text("accent"),
+  /** Barra de navegação: "top" (horizontal) ou "side" (vertical à esquerda). */
+  navLayout: text("nav_layout").notNull().default("top"),
+  /** Ordem preferida dos itens do menu (hrefs). Vazio = ordem padrão. */
+  navOrder: text("nav_order").array().notNull().default(sql`ARRAY[]::text[]`),
   mustChangePassword: boolean("must_change_password").notNull().default(true),
   active: boolean("active").notNull().default(true),
   /** Gestor responsável. Nulo = visível para todos os gestores. */

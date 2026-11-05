@@ -18,6 +18,12 @@ export const NAV: NavItem[] = [
   { href: "/conta", label: "Minha conta", icon: UserRound },
 ];
 
+/** Aplica a ordem escolhida pela pessoa; itens que ela não ordenou vão ao fim na ordem padrão. */
+export function orderNav<T extends { href: string }>(items: T[], order: readonly string[]): T[] {
+  const rank = (h: string) => { const i = order.indexOf(h); return i === -1 ? order.length + NAV.findIndex((n) => n.href === h) : i; };
+  return [...items].sort((a, b) => rank(a.href) - rank(b.href));
+}
+
 export function visibleNav(permissions: Record<string, boolean>, isAdmin: boolean): NavItem[] {
   return NAV.filter((i) => (i.adminOnly ? isAdmin : !i.perm || permissions[i.perm]));
 }

@@ -42,7 +42,6 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
   const [newValue, setNewValue] = useState("");
   const [tplId, setTplId] = useState(templates[0]?.id ?? 0);
   const [emailTo, setEmailTo] = useState("");
-  const [phoneSel, setPhoneSel] = useState("");
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const router = useRouter();
@@ -81,7 +80,6 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
   const tpl = templates.find((t) => t.id === tplId);
   const vars = { meu_nome: myName.split(" ")[0], empresa: lead.tradeName ?? lead.company, cidade: lead.city, representante: lead.rep?.repName, contato: lead.people[0]?.name?.split(" ")[0] };
   const mail = tpl && (emailTo || goodEmails[0]?.value) ? mailtoLink(emailTo || goodEmails[0].value, renderTemplate(tpl.subject, vars), renderTemplate(tpl.body, vars)) : null;
-  const wa = (phoneSel || goodPhones[0]?.value) ? `https://app.chatpro.com.br/add/cloud/55${phoneSel || goodPhones[0].value}` : null;
 
   const payload = () => ({ leadId: lead.id, channels: [...used], temperature, qualification, situations: [...situations], note, visitCode: showVisit ? visit : null });
   /** Salva e sorteia o próximo lead. */
@@ -239,12 +237,15 @@ export function AttendFlow({ lead, catalog, templates, myName, doneToday, schedu
         {step === 2 && (
           <section className="space-y-3">
             <h2 className="display text-xl">WhatsApp</h2>
-            {goodPhones.length === 0 ? <p className="text-sm text-muted">Sem telefone válido.</p> : (
-              <>
-                <label className="block max-w-sm text-sm">Número<select className={inputCls} value={phoneSel} onChange={(e) => setPhoneSel(e.target.value)}>{goodPhones.map((p) => <option key={p.id} value={p.value}>{fmtPhone(p.value)}</option>)}</select></label>
-                {wa && <a href={wa} target="_blank" rel="noreferrer" onClick={() => setUsed(new Set(used).add("whatsapp"))} className={btnPrimary}><MessageCircle size={16} aria-hidden /> Abrir no ChatPro</a>}
-              </>
-            )}
+            <ul className="space-y-1.5">
+              {goodPhones.map((p) => (
+                <li key={p.id} className="flex flex-wrap items-center gap-3 rounded-lg bg-sunk px-3 py-2">
+                  <span className="flex-1"><CopyVal text={p.value}><span className="figure text-lg">{fmtPhone(p.value)}</span></CopyVal></span>
+                  <a href={`https://app.chatpro.com.br/add/cloud/55${p.value}`} target="_blank" rel="noreferrer" onClick={() => setUsed(new Set(used).add("whatsapp"))} className={btnPrimary}><MessageCircle size={16} aria-hidden /> Abrir no ChatPro</a>
+                </li>
+              ))}
+              {goodPhones.length === 0 && <li className="text-sm text-muted">Sem telefone válido.</li>}
+            </ul>
             <UsedToggle on={used.has("whatsapp")} onClick={() => toggle(used, "whatsapp", setUsed)} label="Usei WhatsApp neste lead" />
           </section>
         )}

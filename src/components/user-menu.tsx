@@ -10,7 +10,7 @@ import { logoutAction } from "@/modules/auth/actions";
 import { SubmitButton } from "./submit-button";
 
 /** Bolinha com as iniciais; ao clicar abre Minha conta, Tema e Sair. */
-export function UserMenu({ name, hex, onHex, role }: { name: string; hex: string; onHex: string; role: Role }) {
+export function UserMenu({ name, hex, onHex, role, side = false }: { name: string; hex: string; onHex: string; role: Role; side?: boolean }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -25,10 +25,12 @@ export function UserMenu({ name, hex, onHex, role }: { name: string; hex: string
   return (
     <div ref={box} className="relative">
       <button type="button" onClick={() => setOpen(!open)} aria-haspopup="menu" aria-expanded={open} aria-label={`Menu de ${name}`}
-        className="flex size-10 items-center justify-center rounded-full text-sm font-bold ring-offset-2 ring-offset-panel transition hover:scale-105 aria-expanded:ring-2 aria-expanded:ring-ink"
-        style={{ background: hex, color: onHex }}>{initials}</button>
+        className={side ? "flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-sunk" : "flex size-10 items-center justify-center rounded-full text-sm font-bold ring-offset-2 ring-offset-panel transition hover:scale-105 aria-expanded:ring-2 aria-expanded:ring-ink"}
+        style={side ? undefined : { background: hex, color: onHex }}>
+        {side ? <><span className="flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold" style={{ background: hex, color: onHex }}>{initials}</span><span className="min-w-0 flex-1 leading-tight"><span className="block truncate text-sm font-medium">{name}</span><span className="text-xs text-muted">Minha conta e tema</span></span></> : initials}
+      </button>
       {open && (
-        <div role="menu" className="absolute right-0 top-12 z-30 w-64 space-y-3 rounded-xl border border-line bg-panel p-3 shadow-xl">
+        <div role="menu" className={`absolute z-30 w-64 space-y-3 rounded-xl border border-line bg-panel p-3 shadow-xl ${side ? "bottom-14 left-0" : "right-0 top-12"}`}>
           <div className="flex items-center gap-3 border-b border-line pb-3">
             <span className="flex size-9 items-center justify-center rounded-full text-xs font-bold" style={{ background: hex, color: onHex }}>{initials}</span>
             <div className="leading-tight"><p className="font-medium">{name}</p><div className="mt-1"><RoleBadge role={role} /></div></div>

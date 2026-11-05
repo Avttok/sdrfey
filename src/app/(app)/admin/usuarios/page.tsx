@@ -17,7 +17,7 @@ export default async function Page() {
     db.select({ id: presence.userId }).from(presence).where(gt(presence.lastSeenAt, sql`now() - interval '90 seconds'`)),
   ]);
   const online = new Set(on.map((r) => r.id));
-  const list: UserRow[] = rows.map((u) => ({ id: u.id, username: u.username, name: u.name, roles: u.roles, active: u.active, dailyGoal: u.dailyGoal, canManageGoals: u.canManageGoals, inMetrics: u.inMetrics, permissions: u.permissions, hex: resolveAccent(u.accent, u.roles).hex, lastLoginAt: u.lastLoginAt ? fmtDateTime(u.lastLoginAt) : null, online: online.has(u.id) }));
+  const list: UserRow[] = rows.map((u) => ({ accent: u.accent, id: u.id, username: u.username, name: u.name, roles: u.roles, active: u.active, dailyGoal: u.dailyGoal, canManageGoals: u.canManageGoals, inMetrics: u.inMetrics, permissions: u.permissions, hex: resolveAccent(u.accent, u.roles).hex, lastLoginAt: u.lastLoginAt ? fmtDateTime(u.lastLoginAt) : null, online: online.has(u.id) }));
   return (
     <div className="space-y-5">
       <PageHead icon={Users} size="md" title="Usuários" subtitle={`${plural(list.length, "pessoa", "pessoas")} · ${list.filter((u) => u.online).length} online agora`} />

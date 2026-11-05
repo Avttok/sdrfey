@@ -3,6 +3,7 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, users } from "@/db";
+import { NAV } from "@/config/nav";
 import { isChoosableAccent } from "@/config/theme";
 import { logAudit } from "@/modules/audit/log";
 import { requireUser } from "@/modules/auth/guard";
@@ -36,4 +37,16 @@ export async function setDisplayNameAction(name: string): Promise<{ ok: boolean;
   await logAudit(db, { userId: me.id, entity: "user", action: "alterou", field: "nome de exibição", oldValue: me.name, newValue: next });
   revalidatePath("/", "layout");
   return { ok: true, message: "Nome atualizado." };
+}
+
+/** Preferências da barra de navegação: posição (topo ou lateral) e ordem dos itens. */
+export async function setNavPrefsAction(input: { layout: "top" | "side"; order: string[] }): Promise<{ ok: boolean; message?: string }> {
+  const me = await requireUser();
+  const layout = input.layout === "side" ? "side" : "top";
+  const known = new Set(NAV.map((i) => i.href));
+  const order = [...new Set(input.order.filter((h) => known.has(h)))];
+  await db.update(users).set({ navLayout: layout, navOrder: order }).where(eq(users.id, me.id));
+  await logAudit(db, { userId: me.id, entity: "user", action: "alterou", field: "barra de navegação", oldValue: `${me.navLayout} · ${me.navOrder.join(",")}`, newValue: `${layout} · ${order.join(",")}` });
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Barra de navegação salva." };
 }

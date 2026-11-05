@@ -3,6 +3,7 @@ import { PageHead } from "@/components/page-head";
 import { History, CalendarCheck, CheckCircle2, Clock, Search, Timer } from "lucide-react";
 import Link from "next/link";
 import { AttendButton } from "@/components/attend-button";
+import { DateField } from "@/components/date-field";
 import { TagChip } from "@/components/tag-chip";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { fmtCnpj, fmtDate, fmtDuration, plural, TZ } from "@/lib/format";
@@ -72,10 +73,10 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
       )}
 
       <form method="get" className={`${panelCls} grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr_auto]`}>
-        <label className="text-sm sm:col-span-2 lg:col-span-1">Buscar<span className="relative block"><Search size={15} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" /><input name="q" defaultValue={f.q} placeholder="Empresa, CNPJ, cidade ou observação" className={`${inputCls} pl-9`} /></span></label>
-        <label className="text-sm">De<input type="date" name="from" defaultValue={f.from} className={inputCls} /></label>
-        <label className="text-sm">Até<input type="date" name="to" defaultValue={f.to} className={inputCls} /></label>
-        <label className="text-sm">Qualificação
+        <label className="text-sm sm:col-span-2 lg:col-span-1"><span className="mb-1 block text-muted">Buscar</span><span className="relative block"><Search size={15} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" /><input name="q" defaultValue={f.q} placeholder="Empresa, CNPJ, cidade ou observação" className={`${inputCls} pl-9`} /></span></label>
+        <div className="text-sm"><span className="mb-1 block text-muted">De</span><DateField name="from" label="De" defaultValue={f.from} /></div>
+        <div className="text-sm"><span className="mb-1 block text-muted">Até</span><DateField name="to" label="Até" defaultValue={f.to} /></div>
+        <label className="text-sm"><span className="mb-1 block text-muted">Qualificação</span>
           <select name="qual" defaultValue={f.qual ?? ""} className={inputCls}>
             <option value="">Todas</option><option value="qualificado">Qualificado</option><option value="desqualificado">Desqualificado</option><option value="sem">Sem qualificação</option>
           </select>
