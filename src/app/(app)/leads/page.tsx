@@ -1,9 +1,10 @@
+import { visibleUsers } from "@/modules/auth/visibility";
 import { PersonBubble } from "@/components/person-bubble";
 import type { Metadata } from "next";
 import { PageHead } from "@/components/page-head";
 import { Mail, MapPin, Phone, Users } from "lucide-react";
 import Link from "next/link";
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { Suspense } from "react";
 import { AttendButton } from "@/components/attend-button";
 import { LeadFilters } from "@/components/lead-filters";
@@ -29,7 +30,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const filters = { ...parseFilters(sp), sellerScope: sellerView ? me.id : undefined };
   const [catalog, people, ufRows, { total, rows, pages }] = await Promise.all([
     getTagCatalog(),
-    db.select({ id: users.id, name: users.name }).from(users).where(eq(users.active, true)).orderBy(asc(users.name)),
+    db.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.active, true), visibleUsers(me))).orderBy(asc(users.name)),
     db.selectDistinct({ uf: leads.uf }).from(leads).where(sql`${leads.uf} is not null`).orderBy(asc(leads.uf)),
     listLeads(filters),
   ]);

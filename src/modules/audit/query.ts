@@ -4,7 +4,7 @@ import { dayEnd, dayStart } from "@/lib/format";
 
 export const ENTITY_LABEL: Record<string, string> = { lead: "Lead", visit: "Lead", user: "Usuário", tag: "Tag", setting: "Configuração", import: "Importação", rep: "Representante", template: "Modelo de e-mail", session: "Atendimento", goal: "Meta" };
 
-export type AuditFilters = { from?: string; to?: string; user?: string; type?: string; q?: string; page: number };
+export type AuditFilters = { from?: string; to?: string; user?: string; type?: string; q?: string; page: number; viewer?: { id: number; roles: string[] } };
 export const AUDIT_PAGE = 50;
 
 export function parseAuditFilters(sp: Record<string, string | string[] | undefined>): AuditFilters {
@@ -21,6 +21,7 @@ export async function listAudit(f: AuditFilters) {
   else if (f.user && /^\d+$/.test(f.user)) c.push(eq(auditLog.userId, Number(f.user)));
   if (f.type) c.push(f.type === "lead" ? sql`${auditLog.entity} in ('lead','visit')` : eq(auditLog.entity, f.type));
   if (f.q) { const like = `%${f.q.replace(/[%_]/g, "")}%`; c.push(sql`(${auditLog.action} ilike ${like} or ${auditLog.field} ilike ${like} or ${auditLog.oldValue} ilike ${like} or ${auditLog.newValue} ilike ${like} or ${leads.company} ilike ${like})`); }
+  if (f.viewer && !f.viewer.roles.includes("admin")) c.push(sql`(${auditLog.userId} is null or ${auditLog.userId} = ${f.viewer.id} or ${auditLog.userId} not in (select id from users where not in_metrics))`);
   const where = c.length ? and(...c) : undefined;
   const base = db.select({ id: auditLog.id, at: auditLog.at, entity: auditLog.entity, action: auditLog.action, field: auditLog.field, oldValue: auditLog.oldValue, newValue: auditLog.newValue, meta: auditLog.meta, leadId: auditLog.leadId, userId: auditLog.userId, userName: users.name, userAccent: users.accent, userRoles: users.roles, company: leads.company })
     .from(auditLog).leftJoin(users, eq(users.id, auditLog.userId)).leftJoin(leads, eq(leads.id, auditLog.leadId));

@@ -1,9 +1,10 @@
+import { visibleUsers } from "@/modules/auth/visibility";
 import { describeMeta } from "@/lib/audit-meta";
 import type { Metadata } from "next";
 import { PageHead } from "@/components/page-head";
 import { ScrollText, ArrowRight, Download, ExternalLink, FileText, Gauge, Settings2, Tag, Target, Upload, User, UserRound, Users } from "lucide-react";
 import Link from "next/link";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { Suspense } from "react";
 import { AuditFilters } from "@/components/audit-filters";
 import { PersonBubble } from "@/components/person-bubble";
@@ -27,7 +28,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const me = await requirePerm("tab.registro");
   const sp = await searchParams;
   const f = parseAuditFilters(sp);
-  const [people, { total, rows, pages }] = await Promise.all([db.select({ id: users.id, name: users.name }).from(users).where(eq(users.active, true)).orderBy(asc(users.name)), listAudit(f)]);
+  const [people, { total, rows, pages }] = await Promise.all([db.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.active, true), visibleUsers(me))).orderBy(asc(users.name)), listAudit({ ...f, viewer: me })]);
   const types: [string, string][] = [["lead", "Lead"], ["user", "Usuário"], ["tag", "Tag"], ["setting", "Configuração"], ["import", "Importação"], ["rep", "Representante"], ["template", "Modelo de e-mail"], ["session", "Atendimento"], ["goal", "Meta"]];
   const href = (n: number) => { const p = new URLSearchParams(); for (const [k, v] of Object.entries(sp)) if (typeof v === "string" && k !== "page") p.set(k, v); p.set("page", String(n)); return `/registro?${p}`; };
   const typeHref = (t: string) => { const p = new URLSearchParams(); for (const [k, v] of Object.entries(sp)) if (typeof v === "string" && k !== "page" && k !== "type") p.set(k, v); if (t) p.set("type", t); return `/registro?${p}`; };

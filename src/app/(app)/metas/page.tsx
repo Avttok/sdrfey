@@ -1,3 +1,4 @@
+import { visibleUsers } from "@/modules/auth/visibility";
 import { Target } from "lucide-react";
 import { PageHead } from "@/components/page-head";
 import type { Metadata } from "next";
@@ -23,7 +24,7 @@ export default async function Page() {
   const s = await getSettings();
   const sellerOnly = isSellerOnly(me.roles);
 
-  const sellers = await db.select().from(users).where(and(eq(users.active, true), sql`'seller' = any(${users.roles})`, sellerOnly ? eq(users.id, me.id) : undefined)).orderBy(asc(users.name));
+  const sellers = await db.select().from(users).where(and(eq(users.active, true), sql`'seller' = any(${users.roles})`, sellerOnly ? eq(users.id, me.id) : undefined, visibleUsers(me))).orderBy(asc(users.name));
   const gset = await getSellerGoalSettings();
   const views = await Promise.all(sellers.map(async (u) => {
     const m = await getSellerMonth(u.id);
@@ -44,7 +45,7 @@ export default async function Page() {
   }
 
   const [list, done, sched] = await Promise.all([
-    db.select().from(users).where(and(eq(users.active, true), eq(users.inMetrics, true), sql`not (${users.roles} = array['seller']::text[])`)).orderBy(asc(users.name)),
+    db.select().from(users).where(and(eq(users.active, true), eq(users.inMetrics, true), sql`not (${users.roles} = array['seller']::text[])`, visibleUsers(me))).orderBy(asc(users.name)),
     db.select({ id: attendanceSessions.userId, n: sql<number>`count(*)::int` }).from(attendanceSessions)
       .where(sql`${attendanceSessions.outcome} = 'saved' and not ${attendanceSessions.isTest} and ${attendanceSessions.savedAt} >= ${today}`).groupBy(attendanceSessions.userId),
     db.execute<{ id: number; n: number }>(sql`select u as id, count(*)::int as n from (

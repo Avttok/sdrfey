@@ -1,3 +1,4 @@
+import { visibleUsers } from "@/modules/auth/visibility";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { and, asc, eq, sql } from "drizzle-orm";
@@ -29,7 +30,7 @@ export default async function VisitsPage({ searchParams }: { searchParams: Promi
   const period = resolvePeriod({ p: one("p") ?? (one("from") || one("to") ? undefined : "30"), from: iso("from"), to: iso("to") });
   const team = !!me.permissions["visits.team"];
 
-  const all = await db.select().from(users).where(and(eq(users.active, true))).orderBy(asc(users.name));
+  const all = await db.select().from(users).where(and(eq(users.active, true), visibleUsers(me))).orderBy(asc(users.name));
   const people = all.map((u) => ({ id: u.id, name: u.name, hex: bubbleHex(u.accent, u.id, u.roles) }));
   const picked = (Array.isArray(sp.u) ? sp.u : sp.u ? [sp.u] : []).map(Number).filter((id) => people.some((p) => p.id === id));
   const scope = team ? (picked.length ? picked : null) : [me.id];

@@ -1,3 +1,4 @@
+import { visibleUsers } from "@/modules/auth/visibility";
 import type { Metadata } from "next";
 import { Play, Shuffle } from "lucide-react";
 import { and, eq, sql } from "drizzle-orm";
@@ -54,7 +55,7 @@ export default async function AttendPage() {
     );
   }
 
-  const [catalog, templates, sellers] = await Promise.all([getTagCatalog(), getActiveTemplates(), db.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.active, true), sql`'seller' = any(${users.roles})`)).orderBy(users.name)]);
+  const [catalog, templates, sellers] = await Promise.all([getTagCatalog(), getActiveTemplates(), db.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.active, true), sql`'seller' = any(${users.roles})`, visibleUsers(me))).orderBy(users.name)]);
   const [prev] = await db.execute<{ at: Date; name: string | null; channels: string[] | null; note: string | null }>(sql`
     select s.saved_at as at, u.name, l.notes as note,
       (select array_agg(distinct i.channel) from interactions i where i.lead_id = s.lead_id and i.user_id = s.user_id and i.at between coalesce(s.started_at, s.shown_at) and s.saved_at + interval '2 minutes') as channels

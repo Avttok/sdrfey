@@ -1,7 +1,8 @@
+import { visibleUsers } from "@/modules/auth/visibility";
 import { leftPortfolio } from "@/modules/deals/portfolio";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { LeadEditor } from "@/components/lead-editor";
 import { bubbleHex } from "@/config/theme";
 import { db, users } from "@/db";
@@ -31,7 +32,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const [anyDeal] = await db.execute<{ id: number }>(sql`select id from deals where lead_id = ${id} limit 1`);
   const [catalog, owners, locker] = await Promise.all([
     getTagCatalog(),
-    db.select({ id: users.id, name: users.name }).from(users).where(eq(users.active, true)).orderBy(asc(users.name)),
+    db.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.active, true), visibleUsers(me))).orderBy(asc(users.name)),
     lead.lockedBy ? db.select({ name: users.name, accent: users.accent, roles: users.roles, id: users.id }).from(users).where(eq(users.id, lead.lockedBy)) : Promise.resolve([]),
   ]);
   return <LeadEditor sellerView={sellerView} dealId={dealId} meId={me.id} showMap={me.mapMode === "map"} lead={lead} catalog={catalog} owners={owners} canEdit={!!me.permissions["lead.edit"] || ownDeal} inDeal={!!anyDeal} canRelease={!!me.permissions["lead.release"]} lockedBy={locker[0] ? { name: locker[0].name, hex: bubbleHex(locker[0].accent, locker[0].id, locker[0].roles) } : null} />;
