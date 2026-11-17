@@ -28,3 +28,13 @@ export function hasRole(roles: readonly Role[], needed: Role): boolean {
 export function isSellerOnly(roles: readonly Role[]): boolean {
   return roles.includes("seller") && !roles.some((r) => r !== "seller");
 }
+
+/** Tem a parte de SDR (atendimento): qualquer cargo que não seja só Vendedor. Cargos se somam: SDR + Vendedor vê as duas partes. */
+export function hasSdrPart(roles: readonly Role[]): boolean {
+  return !isSellerOnly(roles);
+}
+
+/** Tem a parte de vendas própria (negociações dele). */
+export function hasSellerPart(roles: readonly Role[]): boolean {
+  return roles.includes("seller");
+}

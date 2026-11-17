@@ -13,6 +13,12 @@ export const SETTING_DEFAULTS = {
   sem_contato_days: 3,
   /** Dias até um lead já trabalhado (sem outra regra) poder ser sorteado de novo. */
   rework_days: 30,
+  /** Dias parado para um lead quente ou uma visita pendente virar alerta no dashboard. */
+  alert_days: 3,
+  /** Período que o dashboard abre por padrão: 1 (hoje), 7 ou 30 dias. */
+  dash_default_days: 1,
+  /** 1 = contas com mais de um cargo veem as abas em grupos (SDR, Vendedor, Gestor, Adm). */
+  nav_group: 1,
 } as const;
 export type SettingKey = keyof typeof SETTING_DEFAULTS;
 

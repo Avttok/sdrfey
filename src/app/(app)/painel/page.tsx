@@ -11,7 +11,7 @@ import { DashboardFilters } from "@/components/dashboard-filters";
 import { panelCls } from "@/components/ui";
 import { bubbleHex } from "@/config/theme";
 import { SalesDashboard } from "@/components/deals/sales-dashboard";
-import { isSellerOnly } from "@/config/roles";
+import { hasSellerPart, isSellerOnly } from "@/config/roles";
 import { db, tags, users } from "@/db";
 import { getSalesStats } from "@/modules/deals/stats";
 import { sql } from "drizzle-orm";
@@ -46,7 +46,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const sp = await searchParams;
   const one = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : undefined);
   const iso = (k: string) => (/^\d{4}-\d{2}-\d{2}$/.test(one(k) ?? "") ? one(k) : undefined);
-  const period = resolvePeriod({ p: one("p"), from: iso("from"), to: iso("to") });
+  const dflt = (await getSettings()).dash_default_days;
+  const period = resolvePeriod({ p: one("p") ?? (one("from") || one("to") ? undefined : dflt === 30 ? "30" : dflt === 7 ? "7" : undefined), from: iso("from"), to: iso("to") });
   const team = !!me.permissions["panel.equipe"];
 
   if (isSellerOnly(me.roles)) {
@@ -78,6 +79,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const maxHour = Math.max(1, ...perHour.map((x) => x.parts.reduce((a, p) => a + p.n, 0)));
   const sellersAll = can("panel.vendas") ? await db.select({ id: users.id }).from(users).where(and(eq(users.active, true), sql`'seller' = any(${users.roles})`, visibleUsers(me))) : [];
   const teamSales = can("panel.vendas") ? await getSalesStats(period, sellersAll.map((x) => x.id)) : null;
+  /** Cargos se somam: quem é SDR e Vendedor vê também as próprias vendas (a da equipe já inclui a dele). */
+  const mySales = hasSellerPart(me.roles) && !teamSales ? await getSalesStats(period, [me.id]) : null;
   const totalStock = d.stock.novos + d.stock.trabalhados + d.stock.fora + d.stock.clientes || 1;
 
   const kpis: { k: string; I: typeof Clock; t: string; v: string; s: string; bar?: number }[] = [
@@ -176,6 +179,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </Block>
         )}
       </div>
+      {mySales && (
+        <section className="space-y-3">
+          <h2 className="display text-2xl">Minhas vendas</h2>
+          <SalesDashboard s={mySales} showRanking={false} />
+        </section>
+      )}
       {teamSales && (
         <section className="space-y-3">
           <h2 className="display text-2xl">Vendas da equipe</h2>

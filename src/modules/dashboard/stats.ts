@@ -68,10 +68,10 @@ export async function getDashboard(period: Period, userIds: number[], gs: Record
              count(*) filter (where b.cliente)::int as clientes
       from leads l left join b on b.lead_id = l.id where not l.is_test`),
     db.execute<{ n: number }>(sql`select count(*)::int as n from leads l join lead_tags lt on lt.lead_id = l.id join tags t on t.id = lt.tag_id and t.key = 'quente'
-      where not l.is_test and l.updated_at < now() - interval '3 days'
+      where not l.is_test and l.updated_at < now() - make_interval(days => ${gs.alert_days})
         and not exists (select 1 from lead_tags x join tags tx on tx.id = x.tag_id where x.lead_id = l.id and tx.blocks_sorting)`),
     db.execute<{ n: number }>(sql`select count(*)::int as n from leads where not is_test and enriched_at is null`),
-    db.execute<{ n: number }>(sql`select count(*)::int as n from visits v join leads l on l.id = v.lead_id where not l.is_test and v.status = 'pendente' and v.canceled_at is null and v.created_at < now() - interval '3 days' and v.user_id in (${U})`),
+    db.execute<{ n: number }>(sql`select count(*)::int as n from visits v join leads l on l.id = v.lead_id where not l.is_test and v.status = 'pendente' and v.canceled_at is null and v.created_at < now() - make_interval(days => ${gs.alert_days}) and v.user_id in (${U})`),
   ]);
 
   const contacts = per.reduce((a, r) => a + r.n, 0);

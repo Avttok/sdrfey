@@ -29,6 +29,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     dealId = r[0].id;
     ownDeal = r[0].seller_id === me.id;
   }
+  else if (me.roles.includes("seller")) {
+    // SDR + Vendedor: além do atendimento, vê o atalho para a própria negociação.
+    const r = await db.execute<{ id: number }>(sql`select id from deals where lead_id = ${id} and seller_id = ${me.id} and not ${leftPortfolio(sql`${id}`)} order by created_at desc limit 1`);
+    if (r[0]) { dealId = r[0].id; ownDeal = true; }
+  }
   const [anyDeal] = await db.execute<{ id: number }>(sql`select id from deals where lead_id = ${id} limit 1`);
   const [catalog, owners, locker] = await Promise.all([
     getTagCatalog(),

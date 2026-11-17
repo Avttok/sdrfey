@@ -13,6 +13,12 @@ const FIELDS: { key: SettingKey; label: string; hint: string }[] = [
   { key: "rework_days", label: "Dias até um lead já trabalhado voltar ao sorteio", hint: "Quando nenhuma situação define outro prazo. Dias corridos." },
 ];
 
+const SYSTEM: { key: SettingKey; label: string; hint: string; kind: "number" | "toggle" | "period" }[] = [
+  { key: "alert_days", label: "Dias para um lead quente ou visita pendente virar alerta", hint: "Aparece no bloco Alertas do dashboard.", kind: "number" },
+  { key: "dash_default_days", label: "Período que o dashboard abre por padrão", hint: "Cada pessoa ainda pode trocar o filtro na hora.", kind: "period" },
+  { key: "nav_group", label: "Agrupar as abas por cargo", hint: "Quem tem mais de um cargo vê as abas em grupos (SDR, Vendedor, Gestor, Adm) em vez de uma lista só.", kind: "toggle" },
+];
+
 export function SettingsForm({ initial }: { initial: Record<SettingKey, number> }) {
   const [v, setV] = useState(initial);
   const { run, pending } = useRun();
@@ -24,6 +30,17 @@ export function SettingsForm({ initial }: { initial: Record<SettingKey, number> 
           <label key={f.key} className="grid items-center gap-x-6 gap-y-1 py-3 text-sm sm:grid-cols-[1fr_8rem]">
             <span><span className="block font-medium">{f.label}</span><span className="mt-0.5 block text-xs text-muted">{f.hint}</span></span>
             <input type="number" min={0} className={`${inputCls} text-center`} value={v[f.key]} onChange={(e) => setV({ ...v, [f.key]: Number(e.target.value) })} />
+          </label>
+        ))}
+      </div>
+      <h2 className="display pt-2 text-xl">Painel e menu</h2>
+      <div className="divide-y divide-line">
+        {SYSTEM.map((f) => (
+          <label key={f.key} className="grid items-center gap-x-6 gap-y-1 py-3 text-sm sm:grid-cols-[1fr_8rem]">
+            <span><span className="block font-medium">{f.label}</span><span className="mt-0.5 block text-xs text-muted">{f.hint}</span></span>
+            {f.kind === "number" && <input type="number" min={1} className={`${inputCls} text-center`} value={v[f.key]} onChange={(e) => setV({ ...v, [f.key]: Number(e.target.value) })} />}
+            {f.kind === "period" && <select className={inputCls} value={v[f.key]} onChange={(e) => setV({ ...v, [f.key]: Number(e.target.value) })}><option value={1}>Hoje</option><option value={7}>7 dias</option><option value={30}>30 dias</option></select>}
+            {f.kind === "toggle" && <select className={inputCls} value={v[f.key]} onChange={(e) => setV({ ...v, [f.key]: Number(e.target.value) })}><option value={1}>Ligado</option><option value={0}>Desligado</option></select>}
           </label>
         ))}
       </div>

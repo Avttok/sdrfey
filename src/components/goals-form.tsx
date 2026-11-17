@@ -23,7 +23,8 @@ function Switch({ on, onChange, label, disabled }: { on: boolean; onChange: (v: 
   );
 }
 
-export function GoalsForm({ global, people, canGlobal, editableIds }: { global: Global; people: GoalPerson[]; canGlobal: boolean; editableIds: number[] }) {
+/** `showGlobal`: só gestão/Adm vê o padrão da equipe. Quem só vê o seu recebe um cartão "Minha meta". */
+export function GoalsForm({ global, people, canGlobal, editableIds, showGlobal = canGlobal }: { global: Global; people: GoalPerson[]; canGlobal: boolean; editableIds: number[]; showGlobal?: boolean }) {
   const [g, setG] = useState<Global>(global);
   const [per, setPer] = useState<Record<number, Record<Kind, PersonGoalInput>>>(Object.fromEntries(people.map((p) => [p.id, p.own])));
   const { run, pending } = useRun();
@@ -42,7 +43,7 @@ export function GoalsForm({ global, people, canGlobal, editableIds }: { global: 
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
-      <div className="panel-grid">
+      {showGlobal && <div className="panel-grid">
         {KINDS.map(({ k, title, sub, Icon }) => (
           <section key={k} className={`${panelCls} p-5 transition-opacity ${g[k].on ? "" : "opacity-60"}`}>
             <div className="flex items-start gap-3">
@@ -55,15 +56,15 @@ export function GoalsForm({ global, people, canGlobal, editableIds }: { global: 
             </label>
           </section>
         ))}
-      </div>
+      </div>}
 
       <section className={`${panelCls} p-5`}>
-        <h2 className="display mb-1 text-xl">Meta de cada pessoa</h2>
-        <p className="mb-3 text-sm text-muted">Deixe a quantidade vazia para seguir a global. Desligar uma meta aqui tira só aquela pessoa dela.</p>
+        <h2 className="display mb-1 text-xl">{showGlobal ? "Meta de cada pessoa" : "Minha meta de hoje"}</h2>
+        <p className="mb-3 text-sm text-muted">{showGlobal ? "Deixe a quantidade vazia para seguir a global. Desligar uma meta aqui tira só aquela pessoa dela." : "Deixe a quantidade vazia para seguir a meta da equipe."}</p>
         <ul className="divide-y divide-line">
           {people.map((p) => (
-            <li key={p.id} className="grid items-start gap-x-6 gap-y-3 py-4 lg:grid-cols-[7rem_1fr_1fr]">
-              <span className="flex items-center gap-2 font-medium"><span aria-hidden className="size-3 rounded-full" style={{ background: p.hex }} />{p.name}</span>
+            <li key={p.id} className={`grid items-start gap-x-6 gap-y-3 py-4 ${showGlobal ? "lg:grid-cols-[7rem_1fr_1fr]" : "sm:grid-cols-2"}`}>
+              {showGlobal && <span className="flex items-center gap-2 font-medium"><span aria-hidden className="size-3 rounded-full" style={{ background: p.hex }} />{p.name}</span>}
               {KINDS.map(({ k, title }) => {
                 const on = effOn(p.id, k), qty = effQty(p.id, k);
                 const pct = on && qty ? Math.min(100, Math.round((p.today[k] / qty) * 100)) : 0;

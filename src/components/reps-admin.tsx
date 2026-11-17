@@ -1,13 +1,32 @@
 "use client";
 
-import { MapPin, Pencil, Plus, Trash2, UserRound, Users, X } from "lucide-react";
+import { Eye, ExternalLink, MapPin, Pencil, Plus, Trash2, UserRound, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { CopyVal } from "@/components/copy-val";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { deleteRepAction, saveRepAction } from "@/modules/reps/actions";
 
-export type RepRow = { id?: number; sapCode: string; repName: string; managerName: string; team: string; cnpj: string; address: string; cep: string; city: string; uf: string; active: boolean };
+export type RepRow = { id?: number; sapCode: string; repName: string; managerName: string; team: string; cnpj: string; address: string; cep: string; city: string; uf: string; active: boolean; visits?: number; lastVisit?: string | null };
 const EMPTY: RepRow = { sapCode: "", repName: "", managerName: "", team: "", cnpj: "", address: "", cep: "", city: "", uf: "", active: true };
+
+/** Visão só de leitura: tudo do representante, com copiar e mapa. */
+function ReadOnly({ r }: { r: RepRow }) {
+  const item = (label: string, v: string | null | undefined, copy = false) => <div className="rounded-xl bg-sunk px-3.5 py-2.5"><dt className="text-xs text-muted">{label}</dt><dd className="mt-0.5 text-sm font-medium">{v ? (copy ? <CopyVal text={v}>{v}</CopyVal> : v) : <span className="font-normal text-muted">—</span>}</dd></div>;
+  const addr = [r.address, r.cep, r.city && `${r.city}/${r.uf}`].filter(Boolean).join(", ");
+  return (
+    <div className="space-y-3">
+      <dl className="grid gap-2 sm:grid-cols-2">
+        {item("Código SAP", r.sapCode, true)}{item("CNPJ", r.cnpj, true)}{item("Gestor", r.managerName)}{item("Equipe", r.team)}
+        {item("Cidade / UF", r.city ? `${r.city}/${r.uf}` : "")}{item("CEP", r.cep, true)}
+        <div className="sm:col-span-2">{item("Endereço", r.address, true)}</div>
+        {item("Situação", r.active ? "Ativo (pode ser o mais próximo de um lead)" : "Inativo (não aparece como mais próximo)")}
+        {item("Visitas agendadas com ele", `${r.visits ?? 0}${r.lastVisit ? ` · última em ${new Date(r.lastVisit).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}` : ""}`)}
+      </dl>
+      {addr && <a className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline" target="_blank" rel="noopener noreferrer" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`}><ExternalLink size={14} aria-hidden /> Ver no mapa</a>}
+    </div>
+  );
+}
 
 /** Janela de edição/criação de representante. */
 function Editor({ r, canEdit, isAdmin, onClose }: { r: RepRow; canEdit: boolean; isAdmin: boolean; onClose: () => void }) {
@@ -24,10 +43,11 @@ function Editor({ r, canEdit, isAdmin, onClose }: { r: RepRow; canEdit: boolean;
           <div className="flex-1"><h2 className="display text-xl">{isNew ? "Novo representante" : r.repName}</h2>{!isNew && <p className="text-xs text-muted">SAP {r.sapCode}</p>}</div>
           <button type="button" aria-label="Fechar" className="rounded-lg p-1.5 hover:bg-sunk" onClick={onClose}><X size={18} /></button>
         </div>
+        {!canEdit && !isNew ? <ReadOnly r={r} /> : <>
         <div className="grid gap-3 sm:grid-cols-2">
           {field("repName", "Representante")}{field("sapCode", "Código SAP")}{field("managerName", "Gestor")}{field("team", "Equipe")}{field("cnpj", "CNPJ")}{field("cep", "CEP")}{field("address", "Endereço", "sm:col-span-2")}{field("city", "Cidade")}{field("uf", "UF")}
         </div>
-        <label className="flex items-center gap-2.5 rounded-xl bg-sunk px-3.5 py-2.5 text-sm"><input type="checkbox" className="size-4" disabled={!canEdit} checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} /> <span><b className="font-medium">Ativo</b> <span className="text-muted">· inativos não aparecem como “mais próximo”</span></span></label>
+        <label className="flex items-center gap-2.5 rounded-xl bg-sunk px-3.5 py-2.5 text-sm"><input type="checkbox" className="size-4" disabled={!canEdit} checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} /> <span><b className="font-medium">Ativo</b> <span className="text-muted">· inativos não aparecem como “mais próximo”</span></span></label></>}
         <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
           {canEdit && <button type="button" className={btnPrimary} disabled={pending} onClick={() => run(() => saveRepAction({ ...f, id: r.id, managerName: f.managerName || null, team: f.team || null, cnpj: f.cnpj || null, address: f.address || null, cep: f.cep || null }), undefined, onClose)}>{isNew ? "Criar representante" : "Salvar"}</button>}
           <span className="flex-1" />
@@ -63,7 +83,7 @@ export function RepsAdmin({ rows, canEdit, isAdmin = false }: { rows: RepRow[]; 
                 <p className="truncate font-semibold">{r.repName}</p>
                 <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted"><span className="figure rounded-md bg-sunk px-1.5 py-0.5">SAP {r.sapCode}</span>{!r.active && <span className="rounded-full bg-danger/15 px-2 py-0.5 font-medium text-danger">inativo</span>}</p>
               </div>
-              {canEdit ? <button type="button" aria-label={`Editar ${r.repName}`} className="rounded-lg p-2 text-muted hover:bg-sunk hover:text-accent" onClick={() => setEdit(r)}><Pencil size={16} /></button> : null}
+              <button type="button" aria-label={canEdit ? `Editar ${r.repName}` : `Ver detalhes de ${r.repName}`} title={canEdit ? "Editar" : "Ver detalhes"} className="rounded-lg p-2 text-muted hover:bg-sunk hover:text-accent" onClick={() => setEdit(r)}>{canEdit ? <Pencil size={16} /> : <Eye size={16} />}</button>
             </div>
             <dl className="space-y-1 text-sm">
               <div className="flex items-center gap-2"><MapPin size={14} className="shrink-0 text-muted" aria-hidden /><dd className="truncate">{r.city ? `${r.city}/${r.uf}` : "—"}</dd></div>

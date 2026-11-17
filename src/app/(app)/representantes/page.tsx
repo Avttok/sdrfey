@@ -7,7 +7,7 @@ import { PageHead } from "@/components/page-head";
 import { RepFilters } from "@/components/rep-filters";
 import { NewRepButton, RepsAdmin } from "@/components/reps-admin";
 import { btnGhost, panelCls } from "@/components/ui";
-import { db, reps } from "@/db";
+import { db, reps, visits } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
 
 export const metadata: Metadata = { title: "Representantes" };
@@ -37,6 +37,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
     db.select({ n: sql<number>`count(*)::int`, ativos: sql<number>`count(*) filter (where ${reps.active})::int`, ufs: sql<number>`count(distinct ${reps.uf})::int` }).from(reps),
     distinct(reps.uf), distinct(reps.team), distinct(reps.managerName),
   ]);
+  const saps = rows.map((r) => r.sapCode);
+  const vis = saps.length ? await db.select({ sap: visits.repSap, n: sql<number>`count(*)::int`, last: sql<string | null>`max(${visits.createdAt})::text` }).from(visits).where(and(sql`${visits.repSap} in (${sql.join(saps.map((x) => sql`${x}`), sql`, `)})`, sql`${visits.canceledAt} is null`)).groupBy(visits.repSap) : [];
   const pages = Math.max(1, Math.ceil(n / PAGE));
   const href = (p: number) => { const u = new URLSearchParams(); for (const [k, v] of Object.entries(sp)) if (typeof v === "string" && k !== "page") u.set(k, v); u.set("page", String(p)); return `/representantes?${u}`; };
   const nf = new Intl.NumberFormat("pt-BR");
@@ -50,7 +52,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
       </div>
       <Suspense fallback={null}><RepFilters ufs={ufs} teams={teams} managers={managers} /></Suspense>
       <p className="text-sm font-medium text-muted">{nf.format(n)} {n === 1 ? "representante" : "representantes"}{c.length ? " com esses filtros" : ""}</p>
-      <RepsAdmin isAdmin={me.roles.includes("admin")} canEdit={!!me.permissions["rep.edit"]} rows={rows.map((r) => ({ id: r.id, sapCode: r.sapCode, repName: r.repName ?? "", managerName: r.managerName ?? "", team: r.team ?? "", cnpj: r.cnpj ?? "", address: r.address ?? "", cep: r.cep ?? "", city: r.city ?? "", uf: r.uf ?? "", active: r.active }))} />
+      <RepsAdmin isAdmin={me.roles.includes("admin")} canEdit={!!me.permissions["rep.edit"]} rows={rows.map((r) => ({ id: r.id, sapCode: r.sapCode, repName: r.repName ?? "", managerName: r.managerName ?? "", team: r.team ?? "", cnpj: r.cnpj ?? "", address: r.address ?? "", cep: r.cep ?? "", city: r.city ?? "", uf: r.uf ?? "", active: r.active, visits: vis.find((v) => v.sap === r.sapCode)?.n ?? 0, lastVisit: vis.find((v) => v.sap === r.sapCode)?.last ?? null }))} />
       {pages > 1 && <nav className="flex items-center justify-center gap-3 text-sm" aria-label="Páginas">{page > 1 && <Link className={btnGhost} href={href(page - 1)}>Anterior</Link>}<span>Página {page} de {pages}</span>{page < pages && <Link className={btnGhost} href={href(page + 1)}>Próxima</Link>}</nav>}
     </div>
   );

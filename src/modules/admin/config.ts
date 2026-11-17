@@ -17,13 +17,14 @@ const fail = (message: string): ActionResult => ({ ok: false, message });
 const slug = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 
 /* ───── Parâmetros globais ───── */
-const PARAM_KEYS = ["lock_minutes", "skip_hours", "sem_contato_days", "rework_days"] as const;
+const PARAM_KEYS = ["lock_minutes", "skip_hours", "sem_contato_days", "rework_days", "alert_days", "dash_default_days", "nav_group"] as const;
 /** As metas ficam na aba Metas; aqui só as regras do sorteio. */
 export async function saveSettingsAction(values: Record<(typeof PARAM_KEYS)[number], number>): Promise<ActionResult> {
   const me = await requireAdmin();
   const p = z.object({
     lock_minutes: z.number().int().min(1).max(600),
     skip_hours: z.number().int().min(0).max(720), sem_contato_days: z.number().int().min(0).max(365), rework_days: z.number().int().min(0).max(3650),
+    alert_days: z.number().int().min(1).max(60), dash_default_days: z.union([z.literal(1), z.literal(7), z.literal(30)]), nav_group: z.union([z.literal(0), z.literal(1)]),
   }).safeParse(values);
   if (!p.success) return fail("Confira os valores: precisam ser números inteiros dentro de limites razoáveis.");
   const before = await getSettings();
@@ -33,6 +34,7 @@ export async function saveSettingsAction(values: Record<(typeof PARAM_KEYS)[numb
     await logAudit(db, { userId: me.id, entity: "setting", action: "alterou parâmetro", field: k, oldValue: before[k], newValue: p.data[k] });
   }
   revalidatePath("/admin/parametros");
+  revalidatePath("/", "layout");
   return { ok: true, message: "Parâmetros salvos." };
 }
 
