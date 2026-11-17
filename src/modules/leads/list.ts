@@ -1,3 +1,4 @@
+import { leftPortfolio } from "@/modules/deals/portfolio";
 import type { Role } from "@/config/roles";
 import { and, desc, sql, type SQL } from "drizzle-orm";
 import { db, leads } from "@/db";
@@ -62,7 +63,7 @@ function where(f: LeadFilters): SQL | undefined {
   if (f.from) c.push(sql`${leads.updatedAt} >= ${dayStart(f.from).toISOString()}::timestamptz`);
   if (f.to) c.push(sql`${leads.updatedAt} <= ${dayEnd(f.to).toISOString()}::timestamptz`);
   if (f.visit) c.push(sql`exists (select 1 from visits v where v.lead_id = ${leads.id} and v.code ilike ${`%${f.visit}%`})`);
-  if (f.sellerScope) c.push(sql`exists (select 1 from deals d where d.lead_id = ${leads.id} and (d.seller_id = ${f.sellerScope} or d.seller_id is null))`);
+  if (f.sellerScope) c.push(sql`exists (select 1 from deals d where d.lead_id = ${leads.id} and (d.seller_id = ${f.sellerScope} or d.seller_id is null)) and not ${leftPortfolio(sql`${leads.id}`)}`);
   return and(...c);
 }
 

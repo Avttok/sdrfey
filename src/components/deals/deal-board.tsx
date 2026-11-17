@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, Phone, UserPlus } from "lucide-react";
+import { FileText, MapPin, Phone, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRun } from "@/components/use-run";
@@ -16,26 +16,33 @@ type Filter = "todas" | "minhas" | "grupo" | "avisos" | "fechadas";
 function Card({ d, meId, canClaim }: { d: DealRow; meId: number; canClaim: boolean }) {
   const { run, pending } = useRun();
   const danger = d.alerts.some((a) => a.tone === "danger");
+  const value = d.realValueCents ?? d.closedValueCents ?? d.valueCents;
+  const bar = d.color ?? STAGE_META[d.stage].color;
   return (
-    <li className={`${panelCls} group relative overflow-hidden transition hover:border-accent/50 hover:shadow-md ${danger ? "border-danger/50" : ""}`} style={d.color ? { background: `color-mix(in srgb, ${d.color} 12%, var(--panel))` } : undefined}>
-      <span aria-hidden className={`absolute inset-y-0 left-0 ${d.color ? "w-2" : "w-1"}`} style={{ background: d.color ?? STAGE_META[d.stage].color }} />
-      <div className="space-y-2.5 p-3.5 pl-4">
-        <Link href={`/negociacoes/${d.id}`} className="block space-y-1 outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-accent/50">
-          <p className="truncate font-semibold leading-tight">{d.company}</p>
-          <p className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted">
-            {d.city && <span className="inline-flex items-center gap-1"><MapPin size={12} aria-hidden />{d.city}/{d.uf}</span>}
-            {d.phone && <span className="inline-flex items-center gap-1"><Phone size={12} aria-hidden />{fmtPhone(d.phone)}</span>}
-          </p>
-        </Link>
-        {d.alerts.length > 0 && <div className="flex flex-wrap gap-1.5">{d.alerts.map((a) => <AlertChip key={a.kind} a={a} />)}</div>}
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
-          <span className="truncate">{d.sellerName ? <>Vendedor: <b className="font-semibold text-ink">{d.sellerId === meId ? "você" : d.sellerName}</b></> : "Sem vendedor"}{d.sdrName ? <> · SDR {d.sdrName}</> : null}</span>
-          {d.quoteNumber && <span className="figure">Cot. {d.quoteNumber}</span>}{(d.closedValueCents ?? d.valueCents) ? <b className="figure text-sm text-ink">{fmtBRL(d.closedValueCents ?? d.valueCents)}</b> : null}
-        </div>
-        {!d.sellerId && canClaim && d.stage !== "ganho" && d.stage !== "perdido" && (
-          <button type="button" disabled={pending} onClick={() => run(() => claimDealAction(d.id))} className={`${btnPrimary} relative z-10 w-full !py-2 !text-sm`}><UserPlus size={15} aria-hidden /> Assumir</button>
+    <li className={`${panelCls} group relative flex flex-col overflow-hidden transition hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-md ${danger ? "border-danger/50" : ""} ${d.expired ? "opacity-70" : ""}`} style={d.color ? { background: `color-mix(in srgb, ${d.color} 12%, var(--panel))` } : undefined}>
+      <span aria-hidden className={`absolute inset-y-0 left-0 ${d.color ? "w-2" : "w-1"}`} style={{ background: bar }} />
+      <Link href={`/negociacoes/${d.id}`} className="flex flex-1 flex-col gap-2 p-3.5 pl-5 outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-accent/50">
+        <p className="line-clamp-2 h-9 text-[14px] font-semibold leading-[18px]" title={d.company}>{d.company}</p>
+        <p className="flex min-h-4 flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted">
+          {d.city && <span className="inline-flex items-center gap-1"><MapPin size={12} aria-hidden />{d.city}/{d.uf}</span>}
+          {d.phone && <span className="inline-flex items-center gap-1"><Phone size={12} aria-hidden />{fmtPhone(d.phone)}</span>}
+          {d.quoteNumber && <span className="figure inline-flex items-center gap-1"><FileText size={12} aria-hidden />Cot. {d.quoteNumber}</span>}
+          {!d.city && !d.phone && !d.quoteNumber && <span>Sem dados de contato</span>}
+        </p>
+        {(d.alerts.length > 0 || d.expired) && (
+          <span className="flex flex-wrap gap-1.5">
+            {d.expired && <span className="inline-flex items-center rounded-full bg-sunk px-2.5 py-0.5 text-xs font-semibold text-muted">Fora da carteira</span>}
+            {d.alerts.map((a) => <AlertChip key={a.kind} a={a} />)}
+          </span>
         )}
+      </Link>
+      <div className="mt-auto flex items-center justify-between gap-2 border-t border-line/70 px-3.5 py-2.5 pl-5 text-xs text-muted">
+        <span className="min-w-0 truncate" title={d.sdrName ? `SDR ${d.sdrName}` : undefined}>{d.sellerName ? <b className="font-semibold text-ink">{d.sellerId === meId ? "Você" : d.sellerName}</b> : "Sem vendedor"}</span>
+        <span className="flex shrink-0 items-center gap-2">{value ? <b className="figure text-sm text-ink">{fmtBRL(value)}</b> : null}</span>
       </div>
+      {!d.sellerId && canClaim && d.stage !== "ganho" && d.stage !== "perdido" && (
+        <div className="px-3.5 pb-3.5 pl-5"><button type="button" disabled={pending} onClick={() => run(() => claimDealAction(d.id))} className={`${btnPrimary} relative z-10 w-full !py-2 !text-sm`}><UserPlus size={15} aria-hidden /> Assumir</button></div>
+      )}
     </li>
   );
 }
@@ -57,17 +64,19 @@ export function DealBoard({ deals, meId, canClaim, team }: { deals: DealRow[]; m
         ))}
       </div>
       {filter === "fechadas" || filter === "avisos" || filter === "grupo" ? (
-        shown.length ? <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{shown.map((d) => <Card key={d.id} d={d} meId={meId} canClaim={canClaim} />)}</ul> : <Empty text={filter === "grupo" ? "Nenhuma negociação esperando vendedor." : filter === "avisos" ? "Tudo em dia: nenhum aviso." : "Nenhuma negociação encerrada ainda."} />
+        shown.length ? <ul className="grid items-stretch gap-3 [grid-template-columns:repeat(auto-fill,minmax(17rem,1fr))]">{shown.map((d) => <Card key={d.id} d={d} meId={meId} canClaim={canClaim} />)}</ul> : <Empty text={filter === "grupo" ? "Nenhuma negociação esperando vendedor." : filter === "avisos" ? "Tudo em dia: nenhum aviso." : "Nenhuma negociação encerrada ainda."} />
       ) : shown.length === 0 ? <Empty text="Nenhuma negociação por aqui. Quando um SDR repassar um lead, ele aparece nesta tela na hora." /> : (
-        <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(14.5rem,1fr))]">
           {OPEN_STAGES.map((st) => {
             const col = shown.filter((d) => d.stage === st);
             return (
-              <section key={st} className="min-w-0 space-y-3">
-                <header className="flex items-center justify-between gap-2 px-1">
-                  <StageChip stage={st} /><span className="figure text-sm text-muted">{col.length}</span>
+              <section key={st} className="min-w-0 space-y-3 rounded-2xl border border-line bg-sunk/50 p-2.5">
+                <header className="flex items-center justify-between gap-2 px-1.5 pt-1">
+                  <span className="whitespace-nowrap"><StageChip stage={st} /></span>
+                  <span className="figure whitespace-nowrap text-sm text-muted">{col.length}</span>
                 </header>
-                <ul className="space-y-3">{col.map((d) => <Card key={d.id} d={d} meId={meId} canClaim={canClaim} />)}{col.length === 0 && <li className="rounded-xl border border-dashed border-line p-4 text-center text-xs text-muted">Vazio</li>}</ul>
+                {col.some((x) => x.valueCents) && <p className="figure -mt-1 px-1.5 text-xs text-muted">{fmtBRL(col.reduce((a, x) => a + (x.valueCents ?? 0), 0))} em cotações</p>}
+                <ul className="space-y-2.5">{col.map((d) => <Card key={d.id} d={d} meId={meId} canClaim={canClaim} />)}{col.length === 0 && <li className="rounded-xl border border-dashed border-line p-5 text-center text-xs text-muted">Vazio</li>}</ul>
               </section>
             );
           })}

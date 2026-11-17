@@ -1,3 +1,4 @@
+import { leftPortfolio } from "@/modules/deals/portfolio";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
@@ -21,7 +22,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const sellerView = isSellerOnly(me.roles);
   let dealId: number | null = null;
   if (sellerView) {
-    const r = await db.execute<{ id: number }>(sql`select id from deals where lead_id = ${id} and (seller_id = ${me.id} or seller_id is null) order by created_at desc limit 1`);
+    const r = await db.execute<{ id: number }>(sql`select id from deals where lead_id = ${id} and (seller_id = ${me.id} or seller_id is null) and not ${leftPortfolio(sql`${id}`)} order by created_at desc limit 1`);
     if (!r[0]) notFound();
     dealId = r[0].id;
   }

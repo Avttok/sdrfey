@@ -7,11 +7,11 @@ export const inputCls =
 export const labelCls = "mb-1.5 block text-sm font-medium text-ink";
 
 export const btnPrimary =
-  "inline-flex items-center justify-center gap-2 rounded-lg bg-grad px-4 py-2.5 text-[15px] font-semibold " +
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-grad px-4 py-2 text-[15px] font-semibold " +
   "text-on-accent transition active:scale-[0.98] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60";
 
 export const btnGhost =
-  "inline-flex items-center justify-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-medium " +
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line px-4 py-2 text-[15px] font-medium " +
   "text-ink transition-colors hover:bg-sunk";
 
 export const panelCls = "rounded-xl border border-line bg-panel bg-grad-panel";

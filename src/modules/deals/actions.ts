@@ -8,6 +8,7 @@ import { desc } from "drizzle-orm";
 import { TAG } from "@/config/tags";
 import { enrichLead } from "@/modules/enrich/enrich";
 import { isValidCnpj, normalizeCnpj } from "@/modules/import/normalize";
+import { leftPortfolio } from "./portfolio";
 import { setLeadTags } from "@/modules/tags/apply";
 import type { QuoteItem } from "@/modules/quotes/parse";
 import { db } from "@/db";
@@ -215,7 +216,7 @@ const FREIGHTS = ["CIF", "FOB", "RED"] as const;
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 export type DealDataInput = {
   freight?: string | null; sapCode?: string | null; orderNumber?: string | null; quoteNumber?: string | null;
-  quoteDate?: string | null; closedOn?: string | null; quoteValue?: string | null; closedValue?: string | null;
+  quoteDate?: string | null; closedOn?: string | null; quoteValue?: string | null; closedValue?: string | null; realValue?: string | null;
   paymentTerms?: string | null; isReactivation?: boolean;
 };
 
@@ -238,7 +239,7 @@ function dataPatch(input: DealDataInput): { patch: Partial<typeof deals.$inferIn
     if (v && !isoDate.safeParse(v).success) return { patch, error: `${label} inválida.` };
     patch[k] = v || null;
   }
-  for (const [k, label, col] of [["quoteValue", "Valor da cotação", "valueCents"], ["closedValue", "Valor fechado", "closedValueCents"]] as const) {
+  for (const [k, label, col] of [["quoteValue", "Valor da cotação", "valueCents"], ["closedValue", "Valor fechado", "closedValueCents"], ["realValue", "Valor real (após impostos)", "realValueCents"]] as const) {
     if (input[k] === undefined) continue;
     const v = (input[k] ?? "").trim();
     if (!v) { patch[col] = null; continue; }
@@ -250,7 +251,7 @@ function dataPatch(input: DealDataInput): { patch: Partial<typeof deals.$inferIn
   return { patch };
 }
 
-const DATA_LABEL: Record<string, string> = { freight: "Frete", sapCode: "Código SAP", orderNumber: "Nº do pedido", quoteNumber: "Nº da cotação", quoteDate: "Data da cotação", closedOn: "Data fechada", valueCents: "Valor da cotação", closedValueCents: "Valor fechado", paymentTerms: "Condição de pagamento", isReactivation: "Reativação" };
+const DATA_LABEL: Record<string, string> = { freight: "Frete", sapCode: "Código SAP", orderNumber: "Nº do pedido", quoteNumber: "Nº da cotação", quoteDate: "Data da cotação", closedOn: "Data fechada", valueCents: "Valor da cotação", closedValueCents: "Valor fechado", realValueCents: "Valor real (após impostos)", paymentTerms: "Condição de pagamento", isReactivation: "Reativação" };
 
 /** Grava os campos comerciais e registra no histórico o que mudou. Código SAP também vai para o cadastro do cliente. */
 async function applyData(tx: Parameters<Parameters<typeof db.transaction>[0]>[0], me: CurrentUser, deal: typeof deals.$inferSelect, patch: Partial<typeof deals.$inferInsert>) {
@@ -301,7 +302,7 @@ export type CnpjLookup =
   | { ok: false; message: string }
   | { ok: true; cnpj: string; found: false }
   | { ok: true; cnpj: string; found: true; lead: { id: number; company: string; tradeName: string | null; city: string | null; uf: string | null; contactName: string | null; phones: string[]; email: string | null; sapCode: string | null; status: string | null };
-      openDeal: { id: number; sellerName: string | null } | null; attendance: { at: string; by: string | null; channel: string; note: string | null }[]; deals: number };
+      openDeal: { id: number; sellerName: string | null } | null; leftPortfolio: boolean; attendance: { at: string; by: string | null; channel: string; note: string | null }[]; deals: number };
 
 /** Procura um CNPJ no nosso banco: traz o cadastro e o que os SDRs já fizeram com ele. */
 export async function lookupCnpjAction(raw: string): Promise<CnpjLookup> {
@@ -321,6 +322,7 @@ export async function lookupCnpjAction(raw: string): Promise<CnpjLookup> {
     ok: true, cnpj, found: true,
     lead: { id: l.id, company: l.company, tradeName: l.tradeName, city: l.city, uf: l.uf, contactName: l.contactName, phones: l.phones, email: l.email, sapCode: l.sapCode, status: l.registrationStatus },
     openDeal: open ? { id: open.id, sellerName: open.sellerName } : null,
+    leftPortfolio: !!(await db.execute<{ x: boolean }>(sql`select ${leftPortfolio(sql`${l.id}`)} as x`))[0]?.x,
     attendance: att.map((a) => ({ at: a.at.toISOString(), by: a.by, channel: a.label ?? a.channel, note: a.note })),
     deals: ds.length,
   };
@@ -346,6 +348,8 @@ export async function createDealManualAction(input: NewDealInput): Promise<Actio
   let [lead] = await db.select().from(leads).where(eq(leads.cnpj, cnpj));
   const isNew = !lead;
   if (lead) {
+    const [gone] = await db.execute<{ x: boolean }>(sql`select ${leftPortfolio(sql`${lead.id}`)} as x`);
+    if (gone?.x) return fail("Este cliente já comprou em mês anterior e saiu da carteira (vendas futuras). Não dá para abrir nova negociação.");
     const [open] = await db.select({ id: deals.id }).from(deals).where(and(eq(deals.leadId, lead.id), sql`${deals.stage} not in ('ganho','perdido')`));
     if (open) return fail("Este cliente já tem uma negociação aberta. Abra-a na lista.");
   } else {

@@ -81,7 +81,7 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
       </ConfirmDialog>
       <div className={`${panelCls} p-5 sm:p-6`}><LeadInfoPanel lead={lead} wide showMap={showMap} /></div>
 
-      <div className={`grid items-start gap-5 ${sellerView ? "" : "lg:grid-cols-2"}`}>
+      <div className={`grid items-start gap-5 lg:grid-cols-2`}>
       {!sellerView && <div className="space-y-5">
       <SectionCard icon={Pencil} title="Editar dados">
         <div className="grid gap-3 sm:grid-cols-2">
@@ -100,14 +100,14 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
         ))}
       </SectionCard>
       </div>}
-      <div className={`space-y-5 ${sellerView ? "mx-auto w-full max-w-3xl" : ""}`}>
-      <SectionCard icon={Link2} title="Perfis do cliente">
-        <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); run(() => saveLeadLinksAction(lead.id, { salesforceUrl: links.sf, eoxUrl: links.eox })); }}>
+      <div className={sellerView ? "grid items-start gap-5 lg:col-span-2 lg:grid-cols-2" : "space-y-5"}>
+      <div className={sellerView ? "lg:col-span-2" : ""}><SectionCard icon={Link2} title="Perfis do cliente">
+        <form className={`grid gap-3 ${sellerView ? "sm:grid-cols-[1fr_1fr_auto] sm:items-end" : "sm:grid-cols-2"}`} onSubmit={(e) => { e.preventDefault(); run(() => saveLeadLinksAction(lead.id, { salesforceUrl: links.sf, eoxUrl: links.eox })); }}>
           <label className="block text-sm"><span className="mb-1 block text-muted">Perfil no Salesforce</span><input className={inputCls} placeholder="https://…" value={links.sf} onChange={(e) => setLinks({ ...links, sf: e.target.value })} /></label>
           <label className="block text-sm"><span className="mb-1 block text-muted">Perfil no CRM (EOX)</span><input className={inputCls} placeholder="https://…" value={links.eox} onChange={(e) => setLinks({ ...links, eox: e.target.value })} /></label>
-          <div className="sm:col-span-2"><button type="submit" className={btnPrimary} disabled={pending}>Salvar links</button></div>
+          <div className={sellerView ? "" : "sm:col-span-2"}><button type="submit" className={btnPrimary} disabled={pending}>Salvar links</button></div>
         </form>
-      </SectionCard>
+      </SectionCard></div>
 
       <SectionCard icon={Phone} title="Contatos">
         <ul className="space-y-1.5">

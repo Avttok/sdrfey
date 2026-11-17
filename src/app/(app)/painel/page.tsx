@@ -13,9 +13,6 @@ import { SalesDashboard } from "@/components/deals/sales-dashboard";
 import { isSellerOnly } from "@/config/roles";
 import { db, tags, users } from "@/db";
 import { getSalesStats } from "@/modules/deals/stats";
-import { getSellerGoalSettings, getSellerMonth } from "@/modules/deals/goals";
-import { SellerGoalPanel } from "@/components/deals/seller-goal-panel";
-import { resolveSellerGoals } from "@/config/seller-goals";
 import { sql } from "drizzle-orm";
 import { fmtDate, fmtDateTime, fmtDuration } from "@/lib/format";
 import { requirePerm } from "@/modules/auth/guard";
@@ -52,15 +49,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const team = !!me.permissions["panel.equipe"];
 
   if (isSellerOnly(me.roles)) {
-    const [stats, month, gset, [self]] = await Promise.all([getSalesStats(period, [me.id]), getSellerMonth(me.id), getSellerGoalSettings(), db.select().from(users).where(eq(users.id, me.id))]);
-    const { targets, weights } = resolveSellerGoals(gset, self.sellerGoals ?? {});
+    const stats = await getSalesStats(period, [me.id]);
     return (
       <div className="space-y-5">
         <PageHead icon={LayoutDashboard} title="Dashboard" subtitle={`Suas vendas · ${period.preset === "hoje" ? "Hoje" : period.preset === "custom" ? `${fmtDate(period.from)} a ${fmtDate(period.to)}` : `Últimos ${period.preset} dias`}`} />
         <div className={`${panelCls} p-4`}><Suspense fallback={null}>
           <DashboardFilters preset={period.preset} from={period.preset === "custom" ? period.from : ""} to={period.preset === "custom" ? period.to : ""} people={[]} selected={[me.id]} />
         </Suspense></div>
-        <SellerGoalPanel actual={month.actual} targets={targets} weights={weights} bonusReais={month.bonusReais} bonusSales={month.bonusSales} monthLabel={month.monthLabel} />
         <SalesDashboard s={stats} showRanking={false} />
       </div>
     );

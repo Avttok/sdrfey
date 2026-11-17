@@ -1,3 +1,4 @@
+import { plural } from "@/lib/format";
 import { CircleDollarSign, FileText, History, PhoneCall, Search, Trophy } from "lucide-react";
 import Link from "next/link";
 import { DateField } from "@/components/date-field";
@@ -45,7 +46,7 @@ export async function SellerHistory({ userId, sp }: { userId: number; sp: Record
               <span aria-hidden className="h-10 w-1 shrink-0 rounded-full" style={{ background: STAGE_META[r.stage].color }} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold group-hover:text-accent">{r.company}</span>
-                <span className="block text-xs text-muted">{r.city ? `${r.city}/${r.uf} · ` : ""}recebida em {fmtDate(r.createdAt)} · {r.contacts} contatos · {r.quotes} cotações{r.stage === "perdido" && r.lostReason ? ` · ${r.lostReason}` : ""}</span>
+                <span className="block text-xs text-muted">{r.city ? `${r.city}/${r.uf} · ` : ""}recebida em {fmtDate(r.createdAt)} · {plural(r.contacts, "contato", "contatos")} · {plural(r.quotes, "cotação", "cotações")}{r.stage === "perdido" && r.lostReason ? ` · ${r.lostReason}` : ""}</span>
               </span>
               {r.valueCents ? <b className="figure inline-flex items-center gap-1 text-sm"><CircleDollarSign size={14} className="text-muted" aria-hidden />{fmtBRL(r.valueCents)}</b> : null}
               <StageChip stage={r.stage} />

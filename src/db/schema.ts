@@ -413,6 +413,8 @@ export const deals = pgTable(
     closedOn: date("closed_on"),
     /** Valor fechado em centavos. `valueCents` é o valor da cotação. */
     closedValueCents: integer("closed_value_cents"),
+    /** Valor real (após impostos): é o que conta na meta do vendedor. */
+    realValueCents: integer("real_value_cents"),
     paymentTerms: text("payment_terms"),
     /** Cor que o vendedor escolheu para reconhecer o cliente (#rrggbb). */
     color: text("color"),

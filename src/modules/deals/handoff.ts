@@ -1,6 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { dealEvents, deals, users, type Db } from "@/db";
 import { logAudit, type DbOrTx } from "@/modules/audit/log";
+import { leftPortfolio } from "./portfolio";
 import { UserError } from "@/modules/leads/sorter";
 
 type Tx = DbOrTx | Db;
@@ -16,6 +17,8 @@ export async function createDealTx(tx: Tx, o: { leadId: number; sdrId: number; s
     if (!s || !s.active || !s.roles.includes("seller")) throw new UserError("Vendedor inválido.");
     sellerId = s.id;
   }
+  const [gone] = await tx.execute<{ x: boolean }>(sql`select ${leftPortfolio(sql`${o.leadId}`)} as x`);
+  if (gone?.x) throw new UserError("Este cliente já comprou em mês anterior e saiu da carteira (vendas futuras). Não é possível abrir nova negociação.");
   const open = await tx.select({ id: deals.id }).from(deals).where(and(eq(deals.leadId, o.leadId), sql`${deals.stage} not in ('ganho','perdido')`));
   if (open.length) throw new UserError("Este lead já está em negociação com os vendedores.");
   const note = o.note?.trim() || null;

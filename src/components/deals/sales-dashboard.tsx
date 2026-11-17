@@ -31,7 +31,7 @@ const Block = ({ icon: I, title, children }: { icon: typeof Wallet; title: strin
 export function SalesDashboard({ s, showRanking }: { s: SalesStats; showRanking: boolean }) {
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi I={Handshake} t="Em andamento" v={nf.format(s.open)} s="negociações abertas" />
         <Kpi I={FileText} t="Cotações abertas" v={nf.format(s.quotesOpen)} s={s.quotesOpenValue ? fmtBRL(s.quotesOpenValue) : "aguardando resposta"} />
         <Kpi I={Trophy} t="Vendas fechadas" v={nf.format(s.won)} s={s.wonValue ? fmtBRL(s.wonValue) : "no período"} />

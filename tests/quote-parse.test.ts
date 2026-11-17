@@ -63,3 +63,16 @@ describe("metas de vendedor", () => {
   });
   it("meta própria vence a global", () => { expect(resolveSellerGoals({ calls: 500 }, { calls: 300 }).targets.calls).toBe(300); });
 });
+
+import { soldBeforeThisMonth } from "@/modules/deals/portfolio";
+describe("carteira mensal", () => {
+  const now = new Date("2026-12-01T12:00:00-03:00");
+  it("venda de mês anterior sai da carteira no dia 1º", () => {
+    expect(soldBeforeThisMonth({ stage: "ganho", closedOn: "2026-11-06", closedAt: null }, now)).toBe(true);
+    expect(soldBeforeThisMonth({ stage: "ganho", closedOn: "2026-12-01", closedAt: null }, now)).toBe(false);
+  });
+  it("só vale para vendas fechadas", () => {
+    expect(soldBeforeThisMonth({ stage: "perdido", closedOn: "2026-11-06", closedAt: null }, now)).toBe(false);
+    expect(soldBeforeThisMonth({ stage: "ganho", closedOn: null, closedAt: "2026-11-30T23:30:00-03:00" }, now)).toBe(true);
+  });
+});

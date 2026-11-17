@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, FileUp, Package, CalendarClock, Check, ExternalLink, FileText, Link2, Mail, MessageCircle, NotebookPen, Phone, PhoneCall, RotateCcw, Trophy, UserPlus, XCircle } from "lucide-react";
+import { Building2, Plus, FileUp, Package, CalendarClock, Check, ExternalLink, FileText, Link2, Mail, MessageCircle, NotebookPen, Phone, PhoneCall, RotateCcw, Trophy, UserPlus, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -10,7 +10,7 @@ import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { DEAL_EVENT_LABEL, fmtBRL, OPEN_STAGES, STAGE_META } from "@/config/deals";
 import type { DealStage } from "@/db/schema";
-import { fmtDateTime, fmtPhone } from "@/lib/format";
+import { chatproUrl, fmtDateTime, fmtPhone } from "@/lib/format";
 import { claimDealAction, closeDealAction, logContactAction, reassignDealAction, reopenDealAction, saveDealDataAction, saveLeadLinksAction, sendQuoteAction, setDealColorAction, setStageAction } from "@/modules/deals/actions";
 import { readQuotePdfAction } from "@/modules/quotes/read";
 import type { QuoteItem } from "@/modules/quotes/parse";
@@ -25,6 +25,9 @@ type Tab = "contato" | "cotacao" | "nota" | "encerrar";
 const EV_ICON: Record<string, typeof Phone> = { ligacao: PhoneCall, whatsapp: MessageCircle, email: Mail, cotacao: FileText, nota: NotebookPen, ganho: Trophy, perdido: XCircle, retorno: CalendarClock, criado: UserPlus, assumido: UserPlus };
 
 type SavedItem = QuoteItem & { id: number; quoteNumber: string | null };
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return <div className="flex min-w-0 flex-col gap-1"><span className="text-xs font-medium text-muted">{label}</span>{children}{hint && <span className="text-[11px] text-muted">{hint}</span>}</div>;
+}
 const brl = (c: number | null) => (c == null ? "" : (c / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 const nf = new Intl.NumberFormat("pt-BR");
 
@@ -47,7 +50,7 @@ export function DealPanel({ deal, events, items, phones, meId, team, canClaim, s
   const toast = useToast();
   const [f, setF] = useState({
     freight: deal.freight ?? "", sapCode: deal.sapCode ?? "", orderNumber: deal.orderNumber ?? "", quoteNumber: deal.quoteNumber ?? "", quoteDate: deal.quoteDate ?? "",
-    closedOn: deal.closedOn ?? "", quoteValue: brl(deal.valueCents), closedValue: brl(deal.closedValueCents), paymentTerms: deal.paymentTerms ?? "", isReactivation: deal.isReactivation,
+    closedOn: deal.closedOn ?? "", quoteValue: brl(deal.valueCents), closedValue: brl(deal.closedValueCents), realValue: brl(deal.realValueCents), paymentTerms: deal.paymentTerms ?? "", isReactivation: deal.isReactivation,
   });
   const [pdfItems, setPdfItems] = useState<QuoteItem[]>([]);
   const [reading, setReading] = useState(false);
@@ -66,7 +69,6 @@ export function DealPanel({ deal, events, items, phones, meId, team, canClaim, s
     const other = q.cnpj && q.cnpj !== deal.cnpj;
     toast(other ? "bad" : "ok", other ? "Atenção: o CNPJ do PDF é diferente do cliente desta negociação. Confira antes de registrar." : `PDF lido: cotação ${q.quoteNumber ?? "?"}, ${q.items.length} ${q.items.length === 1 ? "item" : "itens"}. Confira e registre.`);
   };
-  const wa = (d: string) => `https://wa.me/${d.length <= 11 ? "55" : ""}${d}`;
   const list = phones.length ? phones.map((p) => p.value) : deal.phone ? [deal.phone] : [];
   const reset = () => { setNote(""); setNextAt(""); setNextNote(""); setReason(""); };
 
@@ -77,7 +79,7 @@ export function DealPanel({ deal, events, items, phones, meId, team, canClaim, s
           <div className="flex flex-wrap items-start gap-3">
             <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-grad-soft text-accent"><Building2 size={22} aria-hidden /></span>
             <div className="min-w-0 flex-1">
-              <h1 className="display break-words text-2xl leading-tight">{deal.company}</h1>
+              <h1 className="display break-words text-xl leading-tight sm:text-[22px]">{deal.company}</h1>
               <p className="text-sm text-muted">{[deal.city && `${deal.city}/${deal.uf}`, deal.contactName].filter(Boolean).join(" · ") || "Sem dados de contato"}</p>
             </div>
             <StageChip stage={deal.stage} />
@@ -91,16 +93,17 @@ export function DealPanel({ deal, events, items, phones, meId, team, canClaim, s
               {list.map((p) => (
                 <p key={p} className="flex flex-wrap items-center gap-2">
                   <a href={`tel:+55${p}`} className="figure font-medium hover:text-accent">{fmtPhone(p)}</a>
-                  <a href={wa(p)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full bg-ok/15 px-2 py-0.5 text-xs font-semibold text-ok hover:brightness-110"><MessageCircle size={12} aria-hidden /> WhatsApp</a>
+                  <a href={chatproUrl(p)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full bg-ok/15 px-2 py-0.5 text-xs font-semibold text-ok hover:brightness-110"><MessageCircle size={12} aria-hidden /> WhatsApp</a>
                 </p>
               ))}
               {deal.email && <p className="flex items-center gap-2 pt-1"><Mail size={14} className="text-muted" aria-hidden /><a href={`mailto:${deal.email}`} className="truncate hover:text-accent">{deal.email}</a></p>}
             </div>
             <div className="space-y-1.5">
               <p className="flex items-center justify-between text-xs font-medium text-muted">Perfis do cliente <button type="button" className="font-medium text-accent hover:underline" onClick={() => setEditLinks(!editLinks)}>{editLinks ? "Fechar" : "Editar links"}</button></p>
-              {!editLinks && <div className="flex flex-wrap gap-2">
-                {deal.salesforceUrl ? <a href={deal.salesforceUrl} target="_blank" rel="noreferrer" className={btnGhost}><ExternalLink size={14} aria-hidden /> Salesforce</a> : <span className="text-muted">Sem link do Salesforce</span>}
-                {deal.eoxUrl ? <a href={deal.eoxUrl} target="_blank" rel="noreferrer" className={btnGhost}><ExternalLink size={14} aria-hidden /> CRM (EOX)</a> : <span className="text-muted">Sem link do EOX</span>}
+              {!editLinks && <div className="grid grid-cols-2 gap-2">
+                {([["Salesforce", deal.salesforceUrl], ["CRM (EOX)", deal.eoxUrl]] as const).map(([label, url]) => url
+                  ? <a key={label} href={url} target="_blank" rel="noreferrer" className={`${btnGhost} w-full`}><ExternalLink size={15} aria-hidden /> {label}</a>
+                  : <button key={label} type="button" onClick={() => setEditLinks(true)} className={`${btnGhost} w-full border-dashed !text-muted hover:!text-ink`}><Plus size={15} aria-hidden /> {label}</button>)}
               </div>}
               {editLinks && (
                 <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); run(() => saveLeadLinksAction(deal.leadId, { salesforceUrl: sf, eoxUrl: eox }), undefined, () => setEditLinks(false)); }}>
@@ -181,9 +184,10 @@ export function DealPanel({ deal, events, items, phones, meId, team, canClaim, s
                   <div className="space-y-2 rounded-xl border border-ok/40 p-4">
                     <p className="flex items-center gap-2 font-semibold text-ok"><Trophy size={16} aria-hidden /> Venda fechada</p>
                     <input className={inputCls} inputMode="decimal" placeholder="Valor fechado (R$)" aria-label="Valor fechado" value={f.closedValue} onChange={(e) => set("closedValue", e.target.value)} />
+                    <input className={inputCls} inputMode="decimal" placeholder="Valor real após impostos (R$)" aria-label="Valor real após impostos" value={f.realValue} onChange={(e) => set("realValue", e.target.value)} />
                     <DateInput label="Data fechada" value={f.closedOn} onChange={(v) => set("closedOn", v)} />
                     <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.isReactivation} onChange={(e) => set("isReactivation", e.target.checked)} /> Cliente reativado (voltou a comprar)</label>
-                    <button type="button" className={`${btnPrimary} w-full`} disabled={pending} onClick={() => run(() => closeDealAction(deal.id, { won: true, value: f.closedValue || f.quoteValue, closedOn: f.closedOn || null, data: { isReactivation: f.isReactivation, orderNumber: f.orderNumber } }))}>Fechar venda</button>
+                    <button type="button" className={`${btnPrimary} w-full`} disabled={pending} onClick={() => run(() => closeDealAction(deal.id, { won: true, value: f.closedValue || f.quoteValue, closedOn: f.closedOn || null, data: { isReactivation: f.isReactivation, orderNumber: f.orderNumber, realValue: f.realValue } }))}>Fechar venda</button>
                   </div>
                   <div className="space-y-2 rounded-xl border border-danger/40 p-4">
                     <p className="flex items-center gap-2 font-semibold text-danger"><XCircle size={16} aria-hidden /> Negócio perdido</p>
@@ -206,19 +210,21 @@ export function DealPanel({ deal, events, items, phones, meId, team, canClaim, s
 
         {(mine && deal.sellerId) && (
           <SectionCard icon={Package} title="Dados da negociação">
-            <form className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3" onSubmit={(e) => { e.preventDefault(); run(() => saveDealDataAction(deal.id, f)); }}>
-              <label className="block"><span className="mb-1 block text-muted">Frete</span>
-                <select className={inputCls} value={f.freight} onChange={(e) => set("freight", e.target.value)}><option value="">—</option><option value="CIF">CIF (por conta do vendedor)</option><option value="FOB">FOB (por conta do cliente)</option><option value="RED">RED (redespacho)</option></select></label>
-              <label className="block"><span className="mb-1 block text-muted">Código SAP</span><input className={inputCls} value={f.sapCode} onChange={(e) => set("sapCode", e.target.value)} /></label>
-              <label className="block"><span className="mb-1 block text-muted">Nº do pedido</span><input className={inputCls} value={f.orderNumber} onChange={(e) => set("orderNumber", e.target.value)} /></label>
-              <label className="block"><span className="mb-1 block text-muted">Nº da cotação</span><input className={inputCls} value={f.quoteNumber} onChange={(e) => set("quoteNumber", e.target.value)} /></label>
-              <div><span className="mb-1 block text-muted">Data da cotação</span><DateInput label="Data da cotação" value={f.quoteDate} onChange={(v) => set("quoteDate", v)} /></div>
-              <label className="block"><span className="mb-1 block text-muted">Valor da cotação (R$)</span><input className={inputCls} inputMode="decimal" value={f.quoteValue} onChange={(e) => set("quoteValue", e.target.value)} /></label>
-              <label className="block"><span className="mb-1 block text-muted">Condição de pagamento</span><input className={inputCls} value={f.paymentTerms} onChange={(e) => set("paymentTerms", e.target.value)} /></label>
-              <label className="block"><span className="mb-1 block text-muted">Valor fechado (R$)</span><input className={inputCls} inputMode="decimal" value={f.closedValue} onChange={(e) => set("closedValue", e.target.value)} /></label>
-              <div><span className="mb-1 block text-muted">Data fechada</span><DateInput label="Data fechada" value={f.closedOn} onChange={(v) => set("closedOn", v)} /></div>
-              <label className="flex items-center gap-2 sm:col-span-2"><input type="checkbox" checked={f.isReactivation} onChange={(e) => set("isReactivation", e.target.checked)} /> Cliente reativado (conta na meta de reativados)</label>
-              <div className="flex items-end sm:justify-end"><button className={btnPrimary} disabled={pending}><Check size={16} aria-hidden /> Salvar dados</button></div>
+            <form className="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2 xl:grid-cols-3" onSubmit={(e) => { e.preventDefault(); run(() => saveDealDataAction(deal.id, f)); }}>
+              <Field label="Frete"><select className={inputCls} value={f.freight} onChange={(e) => set("freight", e.target.value)}><option value="">—</option><option value="CIF">CIF (por conta do vendedor)</option><option value="FOB">FOB (por conta do cliente)</option><option value="RED">RED (redespacho)</option></select></Field>
+              <Field label="Código SAP"><input className={inputCls} value={f.sapCode} onChange={(e) => set("sapCode", e.target.value)} /></Field>
+              <Field label="Condição de pagamento"><input className={inputCls} value={f.paymentTerms} onChange={(e) => set("paymentTerms", e.target.value)} /></Field>
+              <Field label="Nº da cotação"><input className={inputCls} value={f.quoteNumber} onChange={(e) => set("quoteNumber", e.target.value)} /></Field>
+              <Field label="Data da cotação"><DateInput label="Data da cotação" value={f.quoteDate} onChange={(v) => set("quoteDate", v)} /></Field>
+              <Field label="Valor da cotação (R$)"><input className={inputCls} inputMode="decimal" value={f.quoteValue} onChange={(e) => set("quoteValue", e.target.value)} /></Field>
+              <Field label="Nº do pedido"><input className={inputCls} value={f.orderNumber} onChange={(e) => set("orderNumber", e.target.value)} /></Field>
+              <Field label="Data fechada"><DateInput label="Data fechada" value={f.closedOn} onChange={(v) => set("closedOn", v)} /></Field>
+              <Field label="Valor fechado (R$)"><input className={inputCls} inputMode="decimal" value={f.closedValue} onChange={(e) => set("closedValue", e.target.value)} /></Field>
+              <Field label="Valor real, após impostos (R$)" hint="É este valor que conta na sua meta."><input className={inputCls} inputMode="decimal" value={f.realValue} onChange={(e) => set("realValue", e.target.value)} /></Field>
+              <div className="flex items-center justify-between gap-3 border-t border-line pt-3 sm:col-span-2 xl:col-span-3">
+                <label className="flex items-center gap-2"><input type="checkbox" checked={f.isReactivation} onChange={(e) => set("isReactivation", e.target.checked)} /> Cliente reativado (conta na meta de reativados)</label>
+                <button className={btnPrimary} disabled={pending}><Check size={16} aria-hidden /> Salvar dados</button>
+              </div>
             </form>
           </SectionCard>
         )}
@@ -227,7 +233,7 @@ export function DealPanel({ deal, events, items, phones, meId, team, canClaim, s
           <SectionCard icon={Package} title={`Itens da cotação (${items.length})`}>
             <div className="overflow-x-auto">
               <table className="w-full text-[13px]">
-                <thead><tr className="text-left text-xs text-muted"><th className="pb-2 pr-2 font-medium">Cód.</th><th className="pb-2 font-medium">Descrição</th><th className="hidden pb-2 font-medium sm:table-cell">Tipo</th><th className="pb-2 text-right font-medium">Qtd</th><th className="pb-2 text-right font-medium">Unitário</th><th className="pb-2 text-right font-medium">Total</th></tr></thead>
+                <thead><tr className="text-left text-xs text-muted"><th className="pb-2 pr-2 font-medium">Cód.</th><th className="pb-2 font-medium">Descrição</th><th className="hidden pb-2 font-medium sm:table-cell">Tipo</th><th className="pb-2 text-right font-medium">Qtd</th><th className="pb-2 pl-3 text-right font-medium">Unitário</th><th className="pb-2 text-right font-medium">Total</th></tr></thead>
                 <tbody className="divide-y divide-line">
                   {items.map((i) => (
                     <tr key={i.id}>
@@ -235,7 +241,7 @@ export function DealPanel({ deal, events, items, phones, meId, team, canClaim, s
                       <td className="py-2 pr-3">{i.description}{i.clientRef && <span className="block text-xs text-muted">{i.clientRef}</span>}</td>
                       <td className="hidden py-2 pr-3 text-xs capitalize text-muted sm:table-cell">{i.kind?.toLowerCase() ?? "—"}</td>
                       <td className="figure whitespace-nowrap py-2 text-right">{nf.format(i.qty)}{i.unit ? ` ${i.unit}` : ""}</td>
-                      <td className="figure py-2 text-right">{brl(i.unitCents)}</td>
+                      <td className="figure py-2 pl-3 text-right">{brl(i.unitCents)}</td>
                       <td className="figure py-2 pl-3 text-right font-medium">{brl(i.totalCents)}</td>
                     </tr>
                   ))}

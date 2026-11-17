@@ -1,0 +1,1 @@
+ALTER TABLE "deals" ADD COLUMN "real_value_cents" integer;

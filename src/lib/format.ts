@@ -79,3 +79,9 @@ export function cleanRole(role: string | null | undefined): string | null {
   const t = r === r.toUpperCase() ? r.toLowerCase() : r;
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
+
+/** Abre a conversa no ChatPro (WhatsApp do sistema). `digits` = DDD + número; o 55 entra sozinho. */
+export function chatproUrl(digits: string): string {
+  const d = digits.replace(/\D/g, "");
+  return `https://app.chatpro.com.br/add/cloud/${d.length <= 11 ? "55" : ""}${d}`;
+}

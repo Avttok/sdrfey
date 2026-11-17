@@ -3,7 +3,8 @@
 import { Check, FileUp, History, Plus, Search, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { DateInput } from "@/components/date-input";
 import { useToast } from "@/components/toast";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
@@ -28,6 +29,15 @@ export function NewDeal() {
   const [items, setItems] = useState<QuoteItem[]>([]);
   const [look, setLook] = useState<CnpjLookup | null>(null);
   const [busy, start] = useTransition();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    if (!open) return;
+    const k = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    document.addEventListener("keydown", k);
+    return () => document.removeEventListener("keydown", k);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   const [reading, setReading] = useState(false);
   const set = (k: keyof typeof EMPTY, v: string | boolean) => setF((p) => ({ ...p, [k]: v }));
   const close = () => { setOpen(false); setF(EMPTY); setItems([]); setLook(null); setColor(null); };
@@ -59,11 +69,11 @@ export function NewDeal() {
     if (r.id) router.push(`/negociacoes/${r.id}`);
   });
 
-  if (!open) return <button type="button" className={btnPrimary} onClick={() => setOpen(true)}><Plus size={16} aria-hidden /> Nova negociação</button>;
   const found = look?.ok && look.found ? look : null;
-  const blocked = !!found?.openDeal;
-  return (
-    <section className={`${panelCls} w-full space-y-4 p-5`} aria-label="Nova negociação">
+  const blocked = !!found?.openDeal || !!found?.leftPortfolio;
+  const panel = (
+    <div className="fixed inset-0 z-[60] overflow-y-auto bg-black/45 p-4" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
+    <section role="dialog" aria-modal="true" style={{ backgroundImage: "none" }} className={`${panelCls} mx-auto my-6 w-full max-w-3xl space-y-4 p-5 shadow-2xl sm:p-6`} aria-label="Nova negociação">
       <div className="flex items-center gap-3">
         <h2 className="display flex-1 text-xl">Nova negociação</h2>
         <label className={`${btnGhost} cursor-pointer`}><FileUp size={16} aria-hidden /> {reading ? "Lendo…" : "Começar por um PDF de cotação"}<input type="file" accept="application/pdf" className="sr-only" disabled={reading} onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ""; if (file) void readPdf(file); }} /></label>
@@ -82,6 +92,7 @@ export function NewDeal() {
             <p className="text-xs text-muted">{[found.lead.tradeName, found.lead.city && `${found.lead.city}/${found.lead.uf}`, found.lead.contactName, found.lead.sapCode && `SAP ${found.lead.sapCode}`, found.lead.status].filter(Boolean).join(" · ")}</p>
             {found.lead.phones.length > 0 && <p className="figure text-xs text-muted">{found.lead.phones.map(fmtPhone).join(" · ")}</p>}
           </div>
+          {found.leftPortfolio && <p className="rounded-lg bg-danger/12 px-3 py-2 text-danger">Este cliente já comprou em mês anterior e saiu da carteira (vendas futuras). Não dá para abrir nova negociação.</p>}
           {found.openDeal && <p className="rounded-lg bg-warn/15 px-3 py-2 text-warn">Já existe negociação aberta{found.openDeal.sellerName ? ` com ${found.openDeal.sellerName}` : " (sem vendedor)"}. <Link href={`/negociacoes/${found.openDeal.id}`} className="font-semibold underline">Abrir</Link></p>}
           <div>
             <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted"><History size={13} aria-hidden /> Atendimento do SDR {found.deals > 0 && <span>· {found.deals} {found.deals === 1 ? "negociação anterior" : "negociações anteriores"}</span>}</p>
@@ -100,10 +111,10 @@ export function NewDeal() {
             <label className="block"><span className="mb-1 block text-muted">Telefone (com DDD)</span><input className={inputCls} inputMode="tel" value={f.phone} onChange={(e) => set("phone", e.target.value)} /></label>
             <label className="block"><span className="mb-1 block text-muted">Frete</span><select className={inputCls} value={f.freight} onChange={(e) => set("freight", e.target.value)}><option value="">—</option><option>CIF</option><option>FOB</option><option>RED</option></select></label>
             <label className="block"><span className="mb-1 block text-muted">Código SAP</span><input className={inputCls} value={f.sapCode} onChange={(e) => set("sapCode", e.target.value)} /></label>
+            <label className="block"><span className="mb-1 block text-muted">Condição de pagamento</span><input className={inputCls} value={f.paymentTerms} onChange={(e) => set("paymentTerms", e.target.value)} /></label>
             <label className="block"><span className="mb-1 block text-muted">Nº da cotação</span><input className={inputCls} value={f.quoteNumber} onChange={(e) => set("quoteNumber", e.target.value)} /></label>
             <div><span className="mb-1 block text-muted">Data da cotação</span><DateInput label="Data da cotação" value={f.quoteDate} onChange={(v) => set("quoteDate", v)} /></div>
             <label className="block"><span className="mb-1 block text-muted">Valor da cotação (R$)</span><input className={inputCls} inputMode="decimal" value={f.quoteValue} onChange={(e) => set("quoteValue", e.target.value)} /></label>
-            <label className="block"><span className="mb-1 block text-muted">Condição de pagamento</span><input className={inputCls} value={f.paymentTerms} onChange={(e) => set("paymentTerms", e.target.value)} /></label>
             <label className="block"><span className="mb-1 block text-muted">Nº do pedido</span><input className={inputCls} value={f.orderNumber} onChange={(e) => set("orderNumber", e.target.value)} /></label>
             <label className="flex items-center gap-2 pt-6"><input type="checkbox" checked={f.isReactivation} onChange={(e) => set("isReactivation", e.target.checked)} /> Cliente reativado</label>
           </div>
@@ -116,5 +127,12 @@ export function NewDeal() {
         </>
       )}
     </section>
+    </div>
+  );
+  return (
+    <>
+      <button type="button" className={btnPrimary} onClick={() => setOpen(true)}><Plus size={16} aria-hidden /> Nova negociação</button>
+      {open && mounted && createPortal(panel, document.body)}
+    </>
   );
 }

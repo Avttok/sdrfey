@@ -2,6 +2,7 @@ import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { dealEvents, dealQuoteItems, deals, db, leadChannels, leads, users, type DealStage } from "@/db";
 import { ALERT_RULES } from "@/config/deals";
+import { soldBeforeThisMonth } from "./portfolio";
 
 export type DealAlertKind = "pool" | "novo" | "retorno" | "cobrar" | "parado";
 export type DealAlert = { kind: DealAlertKind; tone: "danger" | "warn" | "info"; text: string };
@@ -13,7 +14,7 @@ export type DealRow = {
   valueCents: number | null; createdAt: string; claimedAt: string | null; quoteSentAt: string | null; lastContactAt: string | null;
   nextActionAt: string | null; nextActionNote: string | null; lostReason: string | null; closedAt: string | null;
   freight: "CIF" | "FOB" | "RED" | null; sapCode: string | null; orderNumber: string | null; quoteNumber: string | null; quoteDate: string | null; closedOn: string | null;
-  cnpj: string; closedValueCents: number | null; paymentTerms: string | null; color: string | null; isReactivation: boolean;
+  cnpj: string; closedValueCents: number | null; realValueCents: number | null; expired: boolean; paymentTerms: string | null; color: string | null; isReactivation: boolean;
   alerts: DealAlert[];
 };
 
@@ -63,17 +64,19 @@ export async function listDeals(meId: number, team: boolean, opts: { includeTest
     .where(and(team ? undefined : sql`(${deals.sellerId} = ${meId} or ${deals.sellerId} is null)`, opts.includeTest ? undefined : eq(deals.isTest, false)))
     .orderBy(desc(deals.updatedAt));
   const iso = (v: Date | null) => (v ? v.toISOString() : null);
-  return rows.map(({ d, ...x }) => {
+  const out = rows.map(({ d, ...x }) => {
     const row = {
       id: d.id, leadId: d.leadId, stage: d.stage, company: x.company, city: x.city, uf: x.uf, contactName: x.contactName, phone: x.phones?.[0] ?? null, email: x.email,
       salesforceUrl: x.salesforceUrl, eoxUrl: x.eoxUrl, sellerId: d.sellerId, sellerName: x.sellerName, sdrName: x.sdrName, handoffNote: d.handoffNote,
       valueCents: d.valueCents, createdAt: d.createdAt.toISOString(), claimedAt: iso(d.claimedAt), quoteSentAt: iso(d.quoteSentAt), lastContactAt: iso(d.lastContactAt),
       nextActionAt: iso(d.nextActionAt), nextActionNote: d.nextActionNote, lostReason: d.lostReason, closedAt: iso(d.closedAt),
       freight: d.freight, sapCode: d.sapCode ?? x.leadSap, orderNumber: d.orderNumber, quoteNumber: d.quoteNumber, quoteDate: d.quoteDate, closedOn: d.closedOn,
-      cnpj: x.leadCnpj, closedValueCents: d.closedValueCents, paymentTerms: d.paymentTerms, color: d.color, isReactivation: d.isReactivation,
+      cnpj: x.leadCnpj, closedValueCents: d.closedValueCents, realValueCents: d.realValueCents, expired: soldBeforeThisMonth({ stage: d.stage, closedOn: d.closedOn, closedAt: iso(d.closedAt) }), paymentTerms: d.paymentTerms, color: d.color, isReactivation: d.isReactivation,
     };
     return { ...row, alerts: dealAlerts(row) };
   });
+  /* Quem vendeu em mês anterior saiu da carteira do vendedor; só gestor/admin ainda enxerga. */
+  return team ? out : out.filter((d) => !d.expired);
 }
 
 export async function getDeal(id: number) {
