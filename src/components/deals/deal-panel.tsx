@@ -216,23 +216,24 @@ export function DealPanel({ deal, events, quotes, tags, terms, canDelete, phones
         )}
 
         {team && !closed && (
-          <div className={`${panelCls} flex flex-wrap items-center gap-3 p-4 text-sm`}>
-            <span className="font-medium">Trocar vendedor</span>
-            <select className={`${inputCls} !w-auto`} value={deal.sellerId ?? ""} disabled={pending} onChange={(e) => run(() => reassignDealAction(deal.id, e.target.value ? Number(e.target.value) : null))}>
+          <SectionCard icon={UserPlus} title="Vendedor responsável">
+            <select aria-label="Trocar vendedor" className={inputCls} value={deal.sellerId ?? ""} disabled={pending} onChange={(e) => run(() => reassignDealAction(deal.id, e.target.value ? Number(e.target.value) : null))}>
               <option value="">Devolver ao grupo</option>
               {sellers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
-          </div>
+          </SectionCard>
+        )}
+        {canDelete && (
+          <SectionCard icon={Trash2} title="Gestão da negociação">
+            <p className="text-sm text-muted">Resetar volta ao início (apaga cotações e histórico). Apagar remove tudo. Nos dois casos fica um registro completo na auditoria do admin.</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button type="button" className={`${btnGhost} w-full`} disabled={pending} onClick={() => setConfirm("reset")}><RotateCcw size={15} aria-hidden /> Resetar negociação</button>
+              <button type="button" className={`${btnGhost} w-full !border-danger text-danger`} disabled={pending} onClick={() => setConfirm("delete")}><Trash2 size={15} aria-hidden /> Apagar negociação</button>
+            </div>
+          </SectionCard>
         )}
       </div>
 
-      {canDelete && (
-        <div className={`${panelCls} flex flex-wrap items-center gap-3 border-danger/30 p-4 text-sm lg:col-span-2`}>
-          <span className="flex-1 font-medium">Gestão · tudo fica registrado na auditoria do admin</span>
-          <button type="button" className={btnGhost} disabled={pending} onClick={() => setConfirm("reset")}><RotateCcw size={15} aria-hidden /> Resetar negociação</button>
-          <button type="button" className={`${btnGhost} !border-danger text-danger`} disabled={pending} onClick={() => setConfirm("delete")}><Trash2 size={15} aria-hidden /> Apagar negociação</button>
-        </div>
-      )}
       <aside className={`${panelCls} p-5`}>
         <h2 className="mb-4 text-[15px] font-semibold">Histórico da negociação</h2>
         <ol className="relative space-y-4 border-l border-line pl-5">
