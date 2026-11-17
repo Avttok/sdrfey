@@ -24,7 +24,7 @@ export default async function DealsPage() {
   const attention = open.filter((d) => d.alerts.length && (team || d.sellerId === me.id || !d.sellerId));
   const pool = open.filter((d) => !d.sellerId);
   const quotes = open.filter((d) => d.stage === "cotacao");
-  const quotesValue = quotes.reduce((a, d) => a + (d.valueCents ?? 0), 0);
+  const quotesValue = quotes.reduce((a, d) => a + (d.mainCents ?? 0), 0);
   const stats = [
     { I: Handshake, t: "Em andamento", v: String(team ? open.length : mine.length), s: team ? "negociações abertas" : "suas negociações abertas" },
     { I: UserPlus, t: "Sem vendedor", v: String(pool.length), s: pool.length ? "esperando alguém assumir" : "grupo em dia", hot: pool.length > 0 },

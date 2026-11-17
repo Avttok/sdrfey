@@ -415,6 +415,8 @@ export const deals = pgTable(
     closedValueCents: integer("closed_value_cents"),
     /** Valor real (após impostos): é o que conta na meta do vendedor. */
     realValueCents: integer("real_value_cents"),
+    /** Valor sem impostos da última cotação (espelho). */
+    netValueCents: integer("net_value_cents"),
     paymentTerms: text("payment_terms"),
     /** Cor que o vendedor escolheu para reconhecer o cliente (#rrggbb). */
     color: text("color"),
@@ -462,6 +464,10 @@ export const dealQuotes = pgTable(
     /** Total dos produtos, sem IPI. */
     productsCents: integer("products_cents"),
     ipiCents: integer("ipi_cents"),
+    /** ICMS embutido nos preços dos itens. */
+    icmsCents: integer("icms_cents"),
+    /** Valor sem impostos: total − IPI − ICMS. É o que vale para o vendedor. */
+    netCents: integer("net_cents"),
     freightCents: integer("freight_cents"),
     freight: text("freight").$type<"CIF" | "FOB" | "RED">(),
     paymentTerms: text("payment_terms"),

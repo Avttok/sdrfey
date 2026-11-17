@@ -22,7 +22,7 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
   if (!extra) notFound();
   const sellers = team ? await db.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.active, true), sql`'seller' = any(${users.roles})`)).orderBy(asc(users.name)) : [];
   return (
-    <div className="mx-auto max-w-5xl space-y-4">
+    <div className="space-y-4">
       <Link href="/negociacoes" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink"><ArrowLeft size={15} aria-hidden /> Negociações</Link>
       <DealPanel deal={row} events={extra.events} quotes={extra.quotes} tags={extra.tags} terms={extra.terms} canDelete={!!me.permissions["deals.delete"]} phones={extra.phones} meId={me.id} team={team} canClaim={me.roles.includes("seller") || team} sellers={sellers} />
     </div>

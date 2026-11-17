@@ -59,7 +59,7 @@ export function DealPanel({ deal, events, quotes, tags, terms, canDelete, phones
   const reset = () => { setNote(""); setNextAt(""); setNextNote(""); setReason(""); };
 
   return (
-    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="space-y-4">
       <div className="min-w-0 space-y-4">
         <section className={`${panelCls} space-y-4 p-5`} style={deal.color ? { borderLeft: `6px solid ${deal.color}`, background: `color-mix(in srgb, ${deal.color} 7%, var(--panel))` } : undefined}>
           <div className="flex flex-wrap items-start gap-3">
@@ -89,8 +89,8 @@ export function DealPanel({ deal, events, quotes, tags, terms, canDelete, phones
             <div className="space-y-1.5">
               <p className="flex items-center justify-between text-xs font-medium text-muted">Perfis do cliente <button type="button" className="font-medium text-accent hover:underline" onClick={() => setEditLinks(!editLinks)}>{editLinks ? "Fechar" : "Editar links"}</button></p>
               {!editLinks && <div className="grid grid-cols-2 gap-2">
-                {([["Salesforce", deal.salesforceUrl], ["CRM (EOX)", deal.eoxUrl]] as const).map(([label, url]) => url
-                  ? <a key={label} href={url} target="_blank" rel="noreferrer" className={`${btnGhost} w-full`}><ExternalLink size={15} aria-hidden /> {label}</a>
+                {([["Salesforce", deal.salesforceUrl, "#0070d2"], ["CRM (EOX)", deal.eoxUrl, "#692E81"]] as const).map(([label, url, brand]) => url
+                  ? <a key={label} href={url} target="_blank" rel="noreferrer" style={{ background: brand, borderColor: brand }} className={`${btnGhost} w-full !text-white hover:brightness-110`}><ExternalLink size={15} aria-hidden /> {label}</a>
                   : <button key={label} type="button" onClick={() => setEditLinks(true)} className={`${btnGhost} w-full border-dashed !text-muted hover:!text-ink`}><Plus size={15} aria-hidden /> {label}</button>)}
               </div>}
               {editLinks && (
@@ -103,17 +103,24 @@ export function DealPanel({ deal, events, quotes, tags, terms, canDelete, phones
             </div>
           </div>
           {deal.handoffNote && <p className="rounded-lg bg-sunk px-3 py-2 text-sm"><span className="text-xs font-medium text-muted">Recado do SDR{deal.sdrName ? ` (${deal.sdrName})` : ""}</span><br />{deal.handoffNote}</p>}
-          <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-            <Link href={`/leads/${deal.leadId}`} className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1 font-medium text-ink hover:bg-sunk"><Link2 size={13} aria-hidden /> Ver lead completo</Link>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line/70 pt-3 text-sm text-muted">
+            <Link href={`/leads/${deal.leadId}`} className={`${btnGhost} !min-h-9 !px-3.5 !text-sm`}><Link2 size={15} aria-hidden /> Ver lead completo</Link>
             <span>Vendedor: <b className="text-ink">{deal.sellerName ?? "ninguém ainda"}</b></span>
             {deal.nextActionAt && !closed ? <span>Próximo passo: <b className="text-ink">{fmtDateTime(deal.nextActionAt).slice(0, 10)}{deal.nextActionNote ? ` · ${deal.nextActionNote}` : ""}</b></span> : null}
-          </p>
+          </div>
         </section>
 
         {!deal.sellerId && !closed && (
           <div className={`${panelCls} flex flex-wrap items-center justify-between gap-3 border-accent/50 p-4`}>
             <p className="text-sm">Esta negociação está no grupo dos vendedores. <b>Quem assumir primeiro fica com ela.</b></p>
             {canClaim && <button type="button" className={btnPrimary} disabled={pending} onClick={() => run(() => claimDealAction(deal.id))}><UserPlus size={16} aria-hidden /> Assumir e ligar</button>}
+          </div>
+        )}
+
+        {closed && (
+          <div className={`${panelCls} flex flex-wrap items-center justify-between gap-3 p-4 ${deal.stage === "ganho" ? "border-ok/50" : "border-danger/40"}`}>
+            <p className="text-sm">{deal.stage === "ganho" ? <>Venda fechada por <b>{fmtBRL(deal.mainCents)}</b>.</> : <>Negócio perdido{deal.lostReason ? <>: <b>{deal.lostReason}</b></> : ""}.</>}</p>
+            {mine && <button type="button" className={btnGhost} disabled={pending} onClick={() => run(() => reopenDealAction(deal.id))}><RotateCcw size={15} aria-hidden /> Reabrir</button>}
           </div>
         )}
 
@@ -125,6 +132,12 @@ export function DealPanel({ deal, events, quotes, tags, terms, canDelete, phones
                   className={`rounded-full border-2 px-3.5 py-1.5 text-sm font-semibold transition ${deal.stage === s ? "text-on-accent" : "border-line hover:bg-sunk"}`} style={deal.stage === s ? { background: STAGE_META[s].color, borderColor: STAGE_META[s].color } : undefined}>{STAGE_META[s].label}</button>
               ))}
             </div>
+          </>
+        )}
+
+        <div className="grid items-start gap-4 xl:grid-cols-2">
+        {mine && deal.sellerId && !closed && (
+          <>
             <SectionCard icon={NotebookPen} title="Registrar andamento">
               <div role="tablist" className="flex flex-wrap gap-2">
                 {([["contato", "Contato feito", PhoneCall], ["nota", "Anotação", NotebookPen], ["encerrar", "Encerrar", Trophy]] as const).map(([k, l, I]) => (
@@ -174,34 +187,30 @@ export function DealPanel({ deal, events, quotes, tags, terms, canDelete, phones
           </>
         )}
 
-        {closed && (
-          <div className={`${panelCls} flex flex-wrap items-center justify-between gap-3 p-4 ${deal.stage === "ganho" ? "border-ok/50" : "border-danger/40"}`}>
-            <p className="text-sm">{deal.stage === "ganho" ? <>Venda fechada por <b>{fmtBRL(deal.closedValueCents ?? deal.valueCents)}</b>.</> : <>Negócio perdido{deal.lostReason ? <>: <b>{deal.lostReason}</b></> : ""}.</>}</p>
-            {mine && <button type="button" className={btnGhost} disabled={pending} onClick={() => run(() => reopenDealAction(deal.id))}><RotateCcw size={15} aria-hidden /> Reabrir</button>}
-          </div>
-        )}
 
 
         {(mine && deal.sellerId) && (
           <SectionCard icon={Package} title="Dados da negociação">
-            <form className="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2 xl:grid-cols-3" onSubmit={(e) => { e.preventDefault(); run(() => saveDealDataAction(deal.id, f)); }}>
+            <form className="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); run(() => saveDealDataAction(deal.id, f)); }}>
               <Field label="Frete"><select className={inputCls} value={f.freight} onChange={(e) => set("freight", e.target.value)}><option value="">—</option><option>CIF</option><option>FOB</option><option>RED</option></select></Field>
               <Field label="Código SAP"><input className={inputCls} value={f.sapCode} onChange={(e) => set("sapCode", e.target.value)} /></Field>
               <Field label="Condição de pagamento"><select className={inputCls} value={f.paymentTerms} onChange={(e) => set("paymentTerms", e.target.value)}><option value="">—</option>{[...new Set([...(f.paymentTerms ? [f.paymentTerms] : []), ...termList])].map((t) => <option key={t}>{t}</option>)}</select></Field>
-              <Field label="Nº da cotação" hint="Vem das cotações abaixo."><input className={`${inputCls} opacity-70`} readOnly value={f.quoteNumber} /></Field>
+              <Field label="Nº da cotação"><input className={`${inputCls} opacity-70`} readOnly value={f.quoteNumber} /></Field>
               <Field label="Data da cotação"><input className={`${inputCls} opacity-70`} readOnly value={f.quoteDate ? f.quoteDate.split("-").reverse().join("/") : ""} /></Field>
-              <Field label="Valor da cotação (R$)"><input className={`${inputCls} opacity-70`} readOnly value={f.quoteValue} /></Field>
+              <Field label="Valor sem impostos (R$)" hint="Total − IPI − ICMS da última cotação."><input className={`${inputCls} opacity-70`} readOnly value={brl(deal.netValueCents)} /></Field>
+              <Field label="Total com impostos (R$)"><input className={`${inputCls} opacity-70`} readOnly value={f.quoteValue} /></Field>
               <Field label="Nº do pedido"><input className={inputCls} value={f.orderNumber} onChange={(e) => set("orderNumber", e.target.value)} /></Field>
               <Field label="Data fechada"><DateInput label="Data fechada" value={f.closedOn} onChange={(v) => set("closedOn", v)} /></Field>
               <Field label="Valor fechado (R$)"><input className={inputCls} inputMode="decimal" value={f.closedValue} onChange={(e) => set("closedValue", e.target.value)} /></Field>
-              <Field label="Valor real, após impostos (R$)" hint="É este valor que conta na sua meta."><input className={inputCls} inputMode="decimal" value={f.realValue} onChange={(e) => set("realValue", e.target.value)} /></Field>
-              <div className="flex items-center justify-between gap-3 border-t border-line pt-3 sm:col-span-2 xl:col-span-3">
+              <Field label="Valor real (R$)" hint="Opcional. Se vazio, conta o valor sem impostos."><input className={inputCls} inputMode="decimal" value={f.realValue} onChange={(e) => set("realValue", e.target.value)} /></Field>
+              <div className="flex items-center justify-between gap-3 border-t border-line pt-3 sm:col-span-2">
                 <label className="flex items-center gap-2"><input type="checkbox" checked={f.isReactivation} onChange={(e) => set("isReactivation", e.target.checked)} /> Cliente reativado (conta na meta de reativados)</label>
                 <button className={btnPrimary} disabled={pending}><Check size={16} aria-hidden /> Salvar dados</button>
               </div>
             </form>
           </SectionCard>
         )}
+        </div>
 
         {mine && deal.sellerId && (
           <SectionCard icon={FileText} title={`Cotações${quotes.length ? ` (${quotes.length})` : ""}`}>

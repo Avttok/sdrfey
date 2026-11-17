@@ -1,10 +1,10 @@
 "use client";
 
-import { FileText, MapPin, Phone, UserPlus } from "lucide-react";
+import { FileText, MapPin, Phone, Search, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRun } from "@/components/use-run";
-import { btnPrimary, panelCls } from "@/components/ui";
+import { btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { fmtBRL, OPEN_STAGES, STAGE_META } from "@/config/deals";
 import { fmtPhone } from "@/lib/format";
 import { claimDealAction } from "@/modules/deals/actions";
@@ -16,7 +16,7 @@ type Filter = "todas" | "minhas" | "grupo" | "avisos" | "fechadas";
 function Card({ d, meId, canClaim }: { d: DealRow; meId: number; canClaim: boolean }) {
   const { run, pending } = useRun();
   const danger = d.alerts.some((a) => a.tone === "danger");
-  const value = d.realValueCents ?? d.closedValueCents ?? d.valueCents;
+  const value = d.mainCents;
   const bar = d.color ?? STAGE_META[d.stage].color;
   return (
     <li className={`${panelCls} group relative flex flex-col overflow-hidden transition hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-md ${danger ? "border-danger/50" : ""} ${d.expired ? "opacity-70" : ""}`} style={d.color ? { background: `color-mix(in srgb, ${d.color} 12%, var(--panel))` } : undefined}>
@@ -49,13 +49,21 @@ function Card({ d, meId, canClaim }: { d: DealRow; meId: number; canClaim: boole
 
 export function DealBoard({ deals, meId, canClaim, team }: { deals: DealRow[]; meId: number; canClaim: boolean; team: boolean }) {
   const [filter, setFilter] = useState<Filter>("todas");
+  const [q, setQ] = useState("");
+  const norm = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const needle = norm(q.trim());
+  const digits = q.replace(/\D/g, "");
   const open = useMemo(() => deals.filter((d) => OPEN_STAGES.includes(d.stage)), [deals]);
   const closed = useMemo(() => deals.filter((d) => !OPEN_STAGES.includes(d.stage)), [deals]);
   const counts = { todas: open.length, minhas: open.filter((d) => d.sellerId === meId).length, grupo: open.filter((d) => !d.sellerId).length, avisos: open.filter((d) => d.alerts.length).length, fechadas: closed.length };
-  const shown = (filter === "fechadas" ? closed : open).filter((d) => filter === "minhas" ? d.sellerId === meId : filter === "grupo" ? !d.sellerId : filter === "avisos" ? d.alerts.length > 0 : true);
+  const shown = (filter === "fechadas" ? closed : open).filter((d) => !needle || norm(`${d.company} ${d.contactName ?? ""} ${d.city ?? ""} ${d.sellerName ?? ""} ${d.quoteNumber ?? ""}`).includes(needle) || (digits.length >= 3 && d.cnpj.includes(digits))).filter((d) => filter === "minhas" ? d.sellerId === meId : filter === "grupo" ? !d.sellerId : filter === "avisos" ? d.alerts.length > 0 : true);
   const chips: [Filter, string][] = [["todas", team ? "Todas abertas" : "Abertas"], ["minhas", "Minhas"], ["grupo", "Sem vendedor"], ["avisos", "Com aviso"], ["fechadas", "Encerradas"]];
   return (
     <div className="space-y-4">
+      <div className="relative">
+        <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" aria-hidden />
+        <input type="search" aria-label="Buscar negociação" placeholder="Buscar por empresa, contato, cidade, vendedor, CNPJ ou nº da cotação" className={`${inputCls} !pl-10`} value={q} onChange={(e) => setQ(e.target.value)} />
+      </div>
       <div role="tablist" aria-label="Filtrar negociações" className="flex flex-wrap gap-2">
         {chips.map(([k, label]) => (
           <button key={k} type="button" role="tab" aria-selected={filter === k} onClick={() => setFilter(k)} className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${filter === k ? "border-transparent bg-grad text-on-accent" : "border-line hover:bg-sunk"}`}>
@@ -64,8 +72,8 @@ export function DealBoard({ deals, meId, canClaim, team }: { deals: DealRow[]; m
         ))}
       </div>
       {filter === "fechadas" || filter === "avisos" || filter === "grupo" ? (
-        shown.length ? <ul className="grid items-stretch gap-3 [grid-template-columns:repeat(auto-fill,minmax(17rem,1fr))]">{shown.map((d) => <Card key={d.id} d={d} meId={meId} canClaim={canClaim} />)}</ul> : <Empty text={filter === "grupo" ? "Nenhuma negociação esperando vendedor." : filter === "avisos" ? "Tudo em dia: nenhum aviso." : "Nenhuma negociação encerrada ainda."} />
-      ) : shown.length === 0 ? <Empty text="Nenhuma negociação por aqui. Quando um SDR repassar um lead, ele aparece nesta tela na hora." /> : (
+        shown.length ? <ul className="grid items-stretch gap-3 [grid-template-columns:repeat(auto-fill,minmax(17rem,1fr))]">{shown.map((d) => <Card key={d.id} d={d} meId={meId} canClaim={canClaim} />)}</ul> : <Empty text={needle ? "Nenhuma negociação com essa busca." : filter === "grupo" ? "Nenhuma negociação esperando vendedor." : filter === "avisos" ? "Tudo em dia: nenhum aviso." : "Nenhuma negociação encerrada ainda."} />
+      ) : shown.length === 0 ? <Empty text={needle ? "Nenhuma negociação com essa busca." : "Nenhuma negociação por aqui. Quando um SDR repassar um lead, ele aparece nesta tela na hora."} /> : (
         <div className="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(14.5rem,1fr))]">
           {OPEN_STAGES.map((st) => {
             const col = shown.filter((d) => d.stage === st);
@@ -75,7 +83,7 @@ export function DealBoard({ deals, meId, canClaim, team }: { deals: DealRow[]; m
                   <span className="whitespace-nowrap"><StageChip stage={st} /></span>
                   <span className="figure whitespace-nowrap text-sm text-muted">{col.length}</span>
                 </header>
-                {col.some((x) => x.valueCents) && <p className="figure -mt-1 px-1.5 text-xs text-muted">{fmtBRL(col.reduce((a, x) => a + (x.valueCents ?? 0), 0))} em cotações</p>}
+                {col.some((x) => x.mainCents) && <p className="figure -mt-1 px-1.5 text-xs text-muted">{fmtBRL(col.reduce((a, x) => a + (x.valueCents ?? 0), 0))} em cotações</p>}
                 <ul className="space-y-2.5">{col.map((d) => <Card key={d.id} d={d} meId={meId} canClaim={canClaim} />)}{col.length === 0 && <li className="rounded-xl border border-dashed border-line p-5 text-center text-xs text-muted">Vazio</li>}</ul>
               </section>
             );

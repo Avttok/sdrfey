@@ -11,7 +11,7 @@ export type DealRow = {
   id: number; leadId: number; stage: DealStage; company: string; city: string | null; uf: string | null; contactName: string | null;
   phone: string | null; email: string | null; salesforceUrl: string | null; eoxUrl: string | null;
   sellerId: number | null; sellerName: string | null; sdrName: string | null; handoffNote: string | null;
-  valueCents: number | null; createdAt: string; claimedAt: string | null; quoteSentAt: string | null; lastContactAt: string | null;
+  valueCents: number | null; netValueCents: number | null; mainCents: number | null; createdAt: string; claimedAt: string | null; quoteSentAt: string | null; lastContactAt: string | null;
   nextActionAt: string | null; nextActionNote: string | null; lostReason: string | null; closedAt: string | null;
   freight: "CIF" | "FOB" | "RED" | null; sapCode: string | null; orderNumber: string | null; quoteNumber: string | null; quoteDate: string | null; closedOn: string | null;
   cnpj: string; closedValueCents: number | null; realValueCents: number | null; expired: boolean; paymentTerms: string | null; color: string | null; isReactivation: boolean;
@@ -68,7 +68,7 @@ export async function listDeals(meId: number, team: boolean, opts: { includeTest
     const row = {
       id: d.id, leadId: d.leadId, stage: d.stage, company: x.company, city: x.city, uf: x.uf, contactName: x.contactName, phone: x.phones?.[0] ?? null, email: x.email,
       salesforceUrl: x.salesforceUrl, eoxUrl: x.eoxUrl, sellerId: d.sellerId, sellerName: x.sellerName, sdrName: x.sdrName, handoffNote: d.handoffNote,
-      valueCents: d.valueCents, createdAt: d.createdAt.toISOString(), claimedAt: iso(d.claimedAt), quoteSentAt: iso(d.quoteSentAt), lastContactAt: iso(d.lastContactAt),
+      valueCents: d.valueCents, netValueCents: d.netValueCents, mainCents: d.realValueCents ?? d.netValueCents ?? d.closedValueCents ?? d.valueCents, createdAt: d.createdAt.toISOString(), claimedAt: iso(d.claimedAt), quoteSentAt: iso(d.quoteSentAt), lastContactAt: iso(d.lastContactAt),
       nextActionAt: iso(d.nextActionAt), nextActionNote: d.nextActionNote, lostReason: d.lostReason, closedAt: iso(d.closedAt),
       freight: d.freight, sapCode: d.sapCode ?? x.leadSap, orderNumber: d.orderNumber, quoteNumber: d.quoteNumber, quoteDate: d.quoteDate, closedOn: d.closedOn,
       cnpj: x.leadCnpj, closedValueCents: d.closedValueCents, realValueCents: d.realValueCents, expired: soldBeforeThisMonth({ stage: d.stage, closedOn: d.closedOn, closedAt: iso(d.closedAt) }), paymentTerms: d.paymentTerms, color: d.color, isReactivation: d.isReactivation,
@@ -113,7 +113,7 @@ export async function sellerHistory(userId: number, f: SellerHistFilters): Promi
   if (f.from) c.push(sql`d.updated_at >= ${new Date(`${f.from}T00:00:00-03:00`).toISOString()}::timestamptz`);
   if (f.to) c.push(sql`d.updated_at <= ${new Date(`${f.to}T23:59:59.999-03:00`).toISOString()}::timestamptz`);
   const rows = await db.execute<{ id: number; lead_id: number; company: string; city: string | null; uf: string | null; stage: DealStage; value: number | null; created_at: Date; closed_at: Date | null; last_at: Date; contacts: number; quotes: number; lost: string | null }>(sql`
-    select d.id, d.lead_id, l.company, l.city, l.uf, d.stage, d.value_cents as value, d.created_at, d.closed_at, d.updated_at as last_at, d.lost_reason as lost,
+    select d.id, d.lead_id, l.company, l.city, l.uf, d.stage, coalesce(d.real_value_cents, d.net_value_cents, d.closed_value_cents, d.value_cents) as value, d.created_at, d.closed_at, d.updated_at as last_at, d.lost_reason as lost,
       (select count(*)::int from deal_events e where e.deal_id = d.id and e.kind in ('ligacao','whatsapp','email')) as contacts,
       (select count(*)::int from deal_events e where e.deal_id = d.id and e.kind = 'cotacao') as quotes
     from deals d join leads l on l.id = d.lead_id where ${sql.join(c, sql` and `)} order by d.updated_at desc limit 400`);

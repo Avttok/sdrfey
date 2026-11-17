@@ -99,6 +99,13 @@
       "when": 1794926897135,
       "tag": "0013_cotacoes_catalogo",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794931785893,
+      "tag": "0014_valor_sem_impostos",
+      "breakpoints": true
     }
   ]
 }

@@ -3,6 +3,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { fetchCnpjInfo } from "@/modules/enrich/enrich";
 import { normalizeItem, syncDealFromQuotes, totalsOf, upsertPaymentTerm, upsertProducts } from "@/modules/quotes/db";
 import { dealEvents, dealQuoteItems, dealQuotes, deals, paymentTerms, interactions, leads, tags, users, type DealStage } from "@/db";
 import { desc } from "drizzle-orm";
@@ -268,8 +269,21 @@ export async function setDealColorAction(id: number, color: string | null): Prom
 export type CnpjLookup =
   | { ok: false; message: string }
   | { ok: true; cnpj: string; found: false }
-  | { ok: true; cnpj: string; found: true; lead: { id: number; company: string; tradeName: string | null; city: string | null; uf: string | null; contactName: string | null; phones: string[]; email: string | null; sapCode: string | null; status: string | null };
+  | { ok: true; cnpj: string; found: true; lead: { id: number; company: string; tradeName: string | null; city: string | null; uf: string | null; contactName: string | null; phones: string[]; email: string | null; sapCode: string | null; status: string | null; enriched: boolean };
       openDeal: { id: number; sellerName: string | null } | null; leftPortfolio: boolean; attendance: { at: string; by: string | null; channel: string; note: string | null }[]; deals: number };
+
+export type CnpjConsult = { ok: true; info: { name: string | null; tradeName: string | null; city: string | null; uf: string | null; status: string | null; phones: string[]; email: string | null } | null } | { ok: false; message: string };
+
+/** Consulta a Receita para um CNPJ ainda não pesquisado (não grava nada; o cadastro é salvo ao criar a negociação). */
+export async function consultCnpjAction(raw: string): Promise<CnpjConsult> {
+  await requirePerm("tab.negociacoes");
+  const { cnpj } = normalizeCnpj(raw);
+  if (!cnpj || !isValidCnpj(cnpj)) return { ok: false, message: "CNPJ inválido." };
+  try {
+    const i = await fetchCnpjInfo(cnpj);
+    return { ok: true, info: i ? { name: i.legalName, tradeName: i.tradeName, city: i.city, uf: i.uf, status: i.status, phones: i.phones.slice(0, 3), email: i.emails[0] ?? null } : null };
+  } catch { return { ok: true, info: null }; }
+}
 
 /** Procura um CNPJ no nosso banco: traz o cadastro e o que os SDRs já fizeram com ele. */
 export async function lookupCnpjAction(raw: string): Promise<CnpjLookup> {
@@ -287,7 +301,7 @@ export async function lookupCnpjAction(raw: string): Promise<CnpjLookup> {
   const open = ds.find((d) => !closed(d.stage));
   return {
     ok: true, cnpj, found: true,
-    lead: { id: l.id, company: l.company, tradeName: l.tradeName, city: l.city, uf: l.uf, contactName: l.contactName, phones: l.phones, email: l.email, sapCode: l.sapCode, status: l.registrationStatus },
+    lead: { id: l.id, company: l.company, tradeName: l.tradeName, city: l.city, uf: l.uf, contactName: l.contactName, phones: l.phones, email: l.email, sapCode: l.sapCode, status: l.registrationStatus, enriched: !!l.enrichedAt },
     openDeal: open ? { id: open.id, sellerName: open.sellerName } : null,
     leftPortfolio: !!(await db.execute<{ x: boolean }>(sql`select ${leftPortfolio(sql`${l.id}`)} as x`))[0]?.x,
     attendance: att.map((a) => ({ at: a.at.toISOString(), by: a.by, channel: a.label ?? a.channel, note: a.note })),
@@ -349,9 +363,9 @@ export async function createDealManualAction(input: NewDealInput): Promise<Actio
       if (cents) await tx.insert(dealEvents).values({ dealId: d.id, userId: me.id, kind: "cotacao", valueCents: cents, note: dp.patch.quoteNumber ? `Cotação ${dp.patch.quoteNumber}` : null });
       if (cents || items.length) {
         const list = items.map((i, n) => ({ ...normalizeItem(i), seq: (n + 1) * 10 }));
-        const t = list.length ? totalsOf(list, 0) : { productsCents: null, ipiCents: null, totalCents: cents };
+        const t = list.length ? totalsOf(list, 0) : { productsCents: null, ipiCents: null, icmsCents: null, netCents: cents, totalCents: cents };
         const term = await upsertPaymentTerm(tx, dp.patch.paymentTerms);
-        const [q] = await tx.insert(dealQuotes).values({ dealId: d.id, createdBy: me.id, number: dp.patch.quoteNumber ?? null, quoteDate: dp.patch.quoteDate ?? null, totalCents: t.totalCents ?? cents, productsCents: t.productsCents, ipiCents: t.ipiCents, freight: dp.patch.freight ?? null, paymentTerms: term }).returning({ id: dealQuotes.id });
+        const [q] = await tx.insert(dealQuotes).values({ dealId: d.id, createdBy: me.id, number: dp.patch.quoteNumber ?? null, quoteDate: dp.patch.quoteDate ?? null, totalCents: t.totalCents ?? cents, productsCents: t.productsCents, ipiCents: t.ipiCents, icmsCents: t.icmsCents, netCents: t.netCents, freight: dp.patch.freight ?? null, paymentTerms: term }).returning({ id: dealQuotes.id });
         if (list.length) { await tx.insert(dealQuoteItems).values(list.map((i) => ({ ...i, dealId: d.id, quoteId: q.id, quoteNumber: dp.patch.quoteNumber ?? null }))); await upsertProducts(tx, list); }
         await syncDealFromQuotes(tx, d.id);
       }
@@ -360,6 +374,7 @@ export async function createDealManualAction(input: NewDealInput): Promise<Actio
       await logAudit(tx, { userId: me.id, leadId, entity: "deal", action: "abriu negociação", field: "Negociação", newValue: isNew ? "novo lead" : "lead existente", meta: { negociacao: d.id, itens: items.length } });
       return d.id;
     });
+    if (!isNew && !lead.enrichedAt) { try { await enrichLead(leadId, me.id); } catch { /* sem internet/APIs: segue sem a consulta */ } }
     revalidatePath("/negociacoes"); revalidatePath("/painel"); revalidatePath("/leads");
     return { ok: true, message: "Negociação criada.", id };
   } catch (e) {
@@ -401,7 +416,7 @@ export async function resetDealAction(id: number): Promise<ActionResult> {
   await db.transaction(async (tx) => {
     await tx.delete(dealQuotes).where(eq(dealQuotes.dealId, id));
     await tx.delete(dealEvents).where(eq(dealEvents.dealId, id));
-    await tx.update(deals).set({ stage: "novo", valueCents: null, closedValueCents: null, realValueCents: null, freight: null, orderNumber: null, quoteNumber: null, quoteDate: null, closedOn: null, paymentTerms: null, isReactivation: false,
+    await tx.update(deals).set({ stage: "novo", valueCents: null, netValueCents: null, closedValueCents: null, realValueCents: null, freight: null, orderNumber: null, quoteNumber: null, quoteDate: null, closedOn: null, paymentTerms: null, isReactivation: false,
       quoteSentAt: null, lastContactAt: null, nextActionAt: null, nextActionNote: null, lostReason: null, closedAt: null, updatedAt: new Date() }).where(eq(deals.id, id));
     await tx.insert(dealEvents).values({ dealId: id, userId: me.id, kind: "criado", note: "Negociação resetada pela gestão" });
     await logAudit(tx, { userId: me.id, leadId: s.d.leadId, entity: "deal", action: "resetou negociação", field: "Negociação", oldValue: `${s.snap.empresa} · ${s.snap.etapa}`, newValue: "Novo", meta: { negociacao: id, ...s.snap } });

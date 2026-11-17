@@ -1,6 +1,6 @@
 /** Chip de tag com a cor própria dela (a cor do cargo nunca aparece aqui). */
 export function TagChip({ label, color, on, onClick, small = true }: { label: string; color: string; on?: boolean; onClick?: () => void; small?: boolean }) {
-  const base = `inline-flex items-center gap-1 rounded-md border ${small ? "px-2 py-0.5 text-xs" : "px-3 py-1.5 text-sm"} font-medium`;
+  const base = `inline-flex items-center gap-1 rounded-md border ${small ? "px-2 py-0.5 text-xs" : "px-3 py-1.5 text-sm"} font-semibold uppercase tracking-wide`;
   const style = {
     background: `color-mix(in srgb, ${color} ${on ? 42 : 16}%, transparent)`,
     borderColor: `color-mix(in srgb, ${color} ${on ? 100 : 45}%, transparent)`,

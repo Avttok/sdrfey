@@ -6,8 +6,8 @@ import { resolveSellerGoals, SALE_BONUS_REAIS, type SellerActuals, type SellerGo
 const SP = "America/Sao_Paulo";
 /** Data (dia) em que a venda foi fechada: a informada pelo vendedor ou a do fechamento. */
 export const closedDay = sql`coalesce(d.closed_on, (d.closed_at at time zone ${SP})::date)`;
-/** Valor da venda que conta na meta: valor real (após impostos); sem ele, o fechado; sem ele, o da cotação. */
-export const soldCents = sql`coalesce(d.real_value_cents, d.closed_value_cents, d.value_cents, 0)`;
+/** Valor da venda que conta na meta: valor real informado; sem ele, o da última cotação sem impostos (total − IPI − ICMS); depois o fechado e o total. */
+export const soldCents = sql`coalesce(d.real_value_cents, d.net_value_cents, d.closed_value_cents, d.value_cents, 0)`;
 
 export async function getSellerGoalSettings(): Promise<SellerGoalSettings> {
   const [r] = await db.select().from(settings).where(eq(settings.key, "seller_goals"));
@@ -25,8 +25,8 @@ export async function getSellerMonth(userId: number, month?: string): Promise<Se
   const [calls, engaged, quotes, sold, react, bonus] = await Promise.all([
     db.execute<{ n: number }>(sql`select count(*)::int as n from deal_events e join deals d on d.id = e.deal_id where not d.is_test and e.user_id = ${userId} and e.kind = 'ligacao' and ${evMonth}`),
     db.execute<{ n: number }>(sql`select count(distinct d.lead_id)::int as n from deal_events e join deals d on d.id = e.deal_id where not d.is_test and e.user_id = ${userId} and e.kind in ('ligacao','whatsapp','email') and ${evMonth}`),
-    // cotações: por negociação, vale o valor real (após impostos) quando o vendedor informou; senão a soma das cotações enviadas
-    db.execute<{ v: number }>(sql`select coalesce(sum(coalesce(x.real, x.total)),0)::bigint as v from (select d.id, max(d.real_value_cents) as real, sum(e.value_cents) as total from deal_events e join deals d on d.id = e.deal_id where not d.is_test and e.user_id = ${userId} and e.kind = 'cotacao' and ${evMonth} group by d.id) x`),
+    // cotações: por negociação, vale o valor real quando o vendedor informou; senão a soma das cotações do mês, sem impostos
+    db.execute<{ v: number }>(sql`select coalesce(sum(coalesce(x.real, x.net)),0)::bigint as v from (select d.id, max(d.real_value_cents) as real, sum(coalesce(q.net_cents, q.total_cents)) as net from deal_quotes q join deals d on d.id = q.deal_id where not d.is_test and q.created_by = ${userId} and (q.created_at at time zone ${SP})::date >= ${first}::date and (q.created_at at time zone ${SP})::date < (${first}::date + interval '1 month') group by d.id) x`),
     db.execute<{ v: number }>(sql`select coalesce(sum(${soldCents}),0)::bigint as v from deals d where not d.is_test and d.seller_id = ${userId} and d.stage = 'ganho' and ${dMonth}`),
     db.execute<{ n: number }>(sql`select count(*)::int as n from deals d where not d.is_test and d.seller_id = ${userId} and d.stage = 'ganho' and d.is_reactivation and ${dMonth}`),
     // bônus: só a primeira venda de cada cliente (a mais antiga de todas) e só se for deste vendedor, neste mês

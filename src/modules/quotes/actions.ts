@@ -48,12 +48,12 @@ export async function saveQuoteAction(dealId: number, quoteId: number | null, in
   if (f && !["CIF", "FOB", "RED"].includes(f)) return fail("Frete deve ser CIF, FOB ou RED.");
   const freightCents = input.freightValue.trim() ? parseMoneyToCents(input.freightValue) : 0;
   if (freightCents === null) return fail("Frete negociado inválido.");
-  let t = { productsCents: null as number | null, ipiCents: null as number | null, totalCents: null as number | null };
+  let t = { productsCents: null as number | null, ipiCents: null as number | null, icmsCents: null as number | null, netCents: null as number | null, totalCents: null as number | null };
   if (list.length) t = totalsOf(list, freightCents);
   else {
     const v = parseMoneyToCents(input.totalValue);
     if (v === null || v <= 0) return fail("Informe o valor da cotação (ex.: 12.500,00) ou adicione os itens.");
-    t.totalCents = v;
+    t.totalCents = v; t.netCents = v;
   }
   const term = input.paymentTerms.trim() ? normTerm(input.paymentTerms) : null;
   if (term) {
@@ -65,7 +65,7 @@ export async function saveQuoteAction(dealId: number, quoteId: number | null, in
     if (dup.length) return fail(`Já existe a cotação ${number} nesta negociação. Cada cotação é única: edite a existente.`);
   }
   const days = input.followupDays && Number.isInteger(input.followupDays) && input.followupDays >= 1 && input.followupDays <= 30 ? input.followupDays : ALERT_RULES.defaultFollowupDays;
-  const values = { number, quoteDate: date || null, totalCents: t.totalCents, productsCents: t.productsCents, ipiCents: t.ipiCents, freightCents: list.length ? freightCents : null, freight: (f || null) as "CIF" | "FOB" | "RED" | null, paymentTerms: term, validityDays: input.validityDays && input.validityDays > 0 ? Math.min(input.validityDays, 365) : null, note: input.note.trim().slice(0, 2000) || null };
+  const values = { number, quoteDate: date || null, totalCents: t.totalCents, productsCents: t.productsCents, ipiCents: t.ipiCents, icmsCents: t.icmsCents, netCents: t.netCents, freightCents: list.length ? freightCents : null, freight: (f || null) as "CIF" | "FOB" | "RED" | null, paymentTerms: term, validityDays: input.validityDays && input.validityDays > 0 ? Math.min(input.validityDays, 365) : null, note: input.note.trim().slice(0, 2000) || null };
   const id = await db.transaction(async (tx) => {
     let qid = quoteId;
     if (qid) {

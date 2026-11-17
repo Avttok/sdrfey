@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, FileUp, History, Plus, Search, X } from "lucide-react";
+import { Check, FileUp, Loader2, History, Plus, Search, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -10,7 +10,7 @@ import { useToast } from "@/components/toast";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { fmtBRL } from "@/config/deals";
 import { fmtDateTime, fmtPhone } from "@/lib/format";
-import { createDealManualAction, lookupCnpjAction, type CnpjLookup } from "@/modules/deals/actions";
+import { consultCnpjAction, createDealManualAction, lookupCnpjAction, type CnpjConsult, type CnpjLookup } from "@/modules/deals/actions";
 import type { QuoteItem } from "@/modules/quotes/parse";
 import { readQuotePdfAction } from "@/modules/quotes/read";
 import { ColorPicker } from "./color-picker";
@@ -28,6 +28,8 @@ export function NewDeal({ terms }: { terms: string[] }) {
   const [color, setColor] = useState<string | null>(null);
   const [items, setItems] = useState<QuoteItem[]>([]);
   const [look, setLook] = useState<CnpjLookup | null>(null);
+  const [consult, setConsult] = useState<CnpjConsult | null>(null);
+  const [phase, setPhase] = useState<"idle" | "db" | "receita">("idle");
   const [busy, start] = useTransition();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -40,13 +42,27 @@ export function NewDeal({ terms }: { terms: string[] }) {
   }, [open]);
   const [reading, setReading] = useState(false);
   const set = (k: keyof typeof EMPTY, v: string | boolean) => setF((p) => ({ ...p, [k]: v }));
-  const close = () => { setOpen(false); setF(EMPTY); setItems([]); setLook(null); setColor(null); };
+  const close = () => { setOpen(false); setF(EMPTY); setItems([]); setLook(null); setConsult(null); setPhase("idle"); setColor(null); };
 
-  const search = (cnpj = f.cnpj) => start(async () => {
-    const r = await lookupCnpjAction(cnpj);
+  /** Busca no banco e, se o CNPJ é novo (ou nunca foi consultado), já consulta a Receita sozinho. */
+  const search = async (cnpj = f.cnpj) => {
+    setConsult(null); setLook(null); setPhase("db");
+    const r = await lookupCnpjAction(cnpj).catch(() => ({ ok: false as const, message: "Não consegui pesquisar agora. Tente de novo." }));
     setLook(r);
-    if (!r.ok) toast("bad", r.message);
-  });
+    if (!r.ok) { setPhase("idle"); return toast("bad", r.message); }
+    if (r.found && r.lead.enriched) return setPhase("idle");
+    setPhase("receita");
+    const c = await consultCnpjAction(cnpj).catch(() => ({ ok: true as const, info: null }));
+    setConsult(c); setPhase("idle");
+    if (c.ok && c.info) {
+      const i = c.info;
+      setF((p) => ({ ...p, company: p.company || i.tradeName || i.name || "", phone: p.phone || i.phones[0] || "" }));
+    }
+  };
+  useEffect(() => {
+    if (open && f.cnpj.replace(/\D/g, "").length === 14 && phase === "idle" && !look) void search(f.cnpj);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [f.cnpj, open]);
   const readPdf = async (file: File) => {
     setReading(true);
     const fd = new FormData(); fd.set("file", file);
@@ -79,12 +95,18 @@ export function NewDeal({ terms }: { terms: string[] }) {
         <label className={`${btnGhost} cursor-pointer`}><FileUp size={16} aria-hidden /> {reading ? "Lendo…" : "Começar por um PDF de cotação"}<input type="file" accept="application/pdf" className="sr-only" disabled={reading} onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ""; if (file) void readPdf(file); }} /></label>
         <button type="button" aria-label="Fechar" className="grid size-9 place-items-center rounded-lg text-muted hover:bg-sunk" onClick={close}><X size={18} aria-hidden /></button>
       </div>
-      <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); search(); }}>
-        <label className="block min-w-64 flex-1 text-sm"><span className="mb-1 block text-muted">CNPJ do cliente (obrigatório)</span><input className={inputCls} inputMode="numeric" placeholder="00.000.000/0000-00" value={f.cnpj} onChange={(e) => { set("cnpj", maskCnpj(e.target.value)); setLook(null); }} /></label>
-        <button className={btnGhost} disabled={busy || f.cnpj.replace(/\D/g, "").length < 14}><Search size={16} aria-hidden /> Buscar no banco</button>
+      <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); void search(); }}>
+        <label className="block min-w-64 flex-1 text-sm"><span className="mb-1 block text-muted">CNPJ do cliente (obrigatório)</span><input className={inputCls} inputMode="numeric" placeholder="00.000.000/0000-00" value={f.cnpj} onChange={(e) => { set("cnpj", maskCnpj(e.target.value)); setLook(null); setConsult(null); setPhase("idle"); }} /></label>
+        <button className={btnGhost} disabled={phase !== "idle" || f.cnpj.replace(/\D/g, "").length < 14}><Search size={16} aria-hidden /> Pesquisar de novo</button>
       </form>
+      {phase !== "idle" && <p role="status" className="flex items-center gap-2 rounded-lg bg-sunk px-3 py-2.5 text-sm"><Loader2 size={16} className="animate-spin text-accent" aria-hidden />{phase === "db" ? "Pesquisando no sistema…" : "CNPJ ainda não consultado: carregando dados da Receita Federal…"}</p>}
 
-      {look?.ok && !look.found && <p className="rounded-lg bg-sunk px-3 py-2 text-sm">CNPJ novo: vamos cadastrar o cliente e consultar a Receita para salvar o perfil.</p>}
+      {look?.ok && !look.found && phase === "idle" && (
+        consult?.ok && consult.info
+          ? <div className="space-y-0.5 rounded-xl border border-ok/40 bg-ok/8 p-4 text-sm"><p className="text-xs font-medium text-ok">CNPJ novo · dados da Receita</p><p className="font-semibold">{consult.info.name}</p><p className="text-xs text-muted">{[consult.info.tradeName, consult.info.city && `${consult.info.city}/${consult.info.uf}`, consult.info.status].filter(Boolean).join(" · ")}</p></div>
+          : <p className="rounded-lg bg-sunk px-3 py-2 text-sm">CNPJ novo{consult ? ": a Receita não respondeu agora, digite o nome da empresa. O cadastro é completado depois." : "."} Vamos cadastrar o cliente ao criar a negociação.</p>
+      )}
+      {found && !found.lead.enriched && phase === "idle" && consult?.ok && consult.info && <p className="rounded-lg bg-sunk px-3 py-2 text-xs text-muted">Este cliente ainda não tinha consulta à Receita: {consult.info.status ?? "dados carregados"}. Ela é salva ao criar a negociação.</p>}
       {found && (
         <div className="space-y-3 rounded-xl border border-accent/40 p-4 text-sm">
           <div>

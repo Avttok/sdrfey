@@ -140,3 +140,12 @@ export async function enrichLead(leadId: number, userId: number | null = null): 
   });
   return result;
 }
+
+/** Consulta a Receita (ReceitaWS e BrasilAPI) sem gravar nada: serve para pré-preencher um cadastro novo. */
+export async function fetchCnpjInfo(cnpj: string): Promise<CnpjInfo | null> {
+  const { data: rw } = await getJson(`https://receitaws.com.br/v1/cnpj/${cnpj}`);
+  const b = parseReceitaWs(rw);
+  let rb: unknown | null = null;
+  if (!b) ({ data: rb } = await getJson(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`));
+  return mergeInfo(parseBrasilApi(rb), b);
+}
