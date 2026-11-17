@@ -21,16 +21,15 @@ export type EnrichResult = {
 
 const UA = "Mozilla/5.0 (compatible; SDRFEY/1.0; +https://sdr-fey.vercel.app)";
 
-/** Consulta com identificação, tempo maior e até 3 tentativas (a BrasilAPI às vezes demora ou limita). */
-async function getJson(url: string): Promise<{ data: unknown | null; why?: string }> {
+/** Consulta com identificação e tempo limite curto (a pessoa está esperando). Falhou? Quem chama decide se tenta de novo. */
+async function getJson(url: string): Promise<{ data: unknown | null; why?: string; final?: boolean }> {
   let why = "sem resposta";
-  for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt) await new Promise((r) => setTimeout(r, 800 * attempt));
+  for (let attempt = 0; attempt < 1; attempt++) {
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(15_000), headers: { accept: "application/json", "user-agent": UA }, cache: "no-store" });
+      const res = await fetch(url, { signal: AbortSignal.timeout(7_000), headers: { accept: "application/json", "user-agent": UA }, cache: "no-store" });
       if (res.ok) return { data: await res.json() };
       why = `HTTP ${res.status}`;
-      if (res.status === 404 || res.status === 400) break; // CNPJ inexistente: repetir não adianta
+      if (res.status === 404 || res.status === 400) return { data: null, why, final: true }; // CNPJ inexistente: repetir não adianta
     } catch (e) {
       why = e instanceof Error && e.name === "TimeoutError" ? "tempo esgotado" : "falha de conexão";
     }
@@ -55,12 +54,17 @@ export async function enrichLead(leadId: number, userId: number | null = null): 
   const [lead] = await db.select().from(leads).where(eq(leads.id, leadId));
   if (!lead) throw new Error("Lead não encontrado.");
 
-  /* ReceitaWS primeiro; a BrasilAPI só é consultada se a ReceitaWS falhar ou não trouxer dados (mais rápido) */
-  const { data: rw, why: whyW } = await getJson(`https://receitaws.com.br/v1/cnpj/${lead.cnpj}`);
+  /* As duas fontes ao mesmo tempo (antes uma esperava a outra, e as falhas somavam até 1 minuto). Se nenhuma responder, uma segunda rodada. */
+  const rwUrl = `https://receitaws.com.br/v1/cnpj/${lead.cnpj}`;
+  const bUrl = `https://brasilapi.com.br/api/cnpj/v1/${lead.cnpj}`;
+  let [rwRes, bRes] = await Promise.all([getJson(rwUrl), getJson(bUrl)]);
+  if (!parseReceitaWs(rwRes.data) && !parseBrasilApi(bRes.data) && !(rwRes.final && bRes.final)) {
+    await new Promise((r) => setTimeout(r, 600));
+    const [rw2, b2] = await Promise.all([rwRes.final ? rwRes : getJson(rwUrl), bRes.final ? bRes : getJson(bUrl)]);
+    rwRes = rw2; bRes = b2;
+  }
+  const rw = rwRes.data, whyW = rwRes.why, rb = bRes.data, whyB = bRes.why;
   const b = parseReceitaWs(rw);
-  let rb: unknown | null = null;
-  let whyB: string | undefined;
-  if (!b) ({ data: rb, why: whyB } = await getJson(`https://brasilapi.com.br/api/cnpj/v1/${lead.cnpj}`));
   const a = parseBrasilApi(rb);
   const info = mergeInfo(a, b);
   const result: EnrichResult = {

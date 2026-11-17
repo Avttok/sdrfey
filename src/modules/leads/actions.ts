@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import { db, leadChannels, presence } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { requirePerm, requireUser } from "@/modules/auth/guard";
-import { enrichLead } from "@/modules/enrich/enrich";
+import { refreshInfo } from "@/modules/enrich/refresh";
 import { addChannel, discardLead, markStarted, resetLead, saveAttendance, type SaveInput } from "./attend";
 import { attendLead, claimNext, releaseLead, skipLead, touchLock, UserError } from "./sorter";
 
@@ -126,13 +126,10 @@ export async function refreshInfoAction(leadId: number): Promise<ActionResult> {
   const me = await requireUser();
   if (!me.permissions["tab.comecar"] && !me.permissions["tab.leads"]) return { ok: false, message: "Sem permissão." };
   return guard(async () => {
-    const r = await enrichLead(leadId, me.id);
+    const r = await refreshInfo(leadId, me.id);
     revalidatePath("/atender");
     revalidatePath(`/leads/${leadId}`);
-    const falhas = [r.why.brasilapi && `BrasilAPI: ${r.why.brasilapi}`, r.why.receitaws && `ReceitaWS: ${r.why.receitaws}`].filter(Boolean).join(" · ");
-    if (r.state === "unavailable") return { ok: false, message: `Consulta indisponível agora (${falhas}). Tente atualizar de novo em instantes.` };
-    const extra = r.newPhones + r.newEmails;
-    return { ok: true, message: extra ? `Dados atualizados: ${plural(r.newPhones, "telefone novo", "telefones novos")} e ${plural(r.newEmails, "e-mail novo", "e-mails novos")}.` : `Dados atualizados. Nenhum contato novo.${falhas ? ` Atenção — ${falhas}.` : ""}` };
+    return r.ok ? { ok: true, message: r.message } : { ok: false, message: r.message };
   });
 }
 

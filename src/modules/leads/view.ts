@@ -22,14 +22,14 @@ export async function getTagCatalog(): Promise<TagCatalog> {
 export async function getLeadView(leadId: number) {
   const [lead] = await db.select().from(leads).where(eq(leads.id, leadId));
   if (!lead) return null;
-  const [tagRows, channels, people, visitRows] = await Promise.all([
+  const [tagRows, channels, people, visitRows, rep] = await Promise.all([
     db.select({ id: tags.id, groupKey: tags.groupKey, key: tags.key, label: tags.label, color: tags.color }).from(leadTags).innerJoin(tags, eq(tags.id, leadTags.tagId)).innerJoin(tagGroups, eq(tagGroups.key, tags.groupKey)).where(and(eq(leadTags.leadId, leadId), eq(tags.active, true))).orderBy(asc(tagGroups.sort), asc(tags.sort), asc(tags.label)),
     db.select().from(leadChannels).where(eq(leadChannels.leadId, leadId)).orderBy(asc(leadChannels.id)),
     db.select().from(leadPeople).where(eq(leadPeople.leadId, leadId)).orderBy(asc(leadPeople.id)),
     db.select({ id: visits.id, code: visits.code, createdAt: visits.createdAt, visitDate: visits.visitDate, link: visits.link, repName: visits.repName, repSap: visits.repSap, repCity: visits.repCity, repKm: visits.repKm, userId: visits.userId, canceledAt: visits.canceledAt, status: visits.status, confirmedAt: visits.confirmedAt, by: users.name, byId: users.id, byAccent: users.accent, byRoles: users.roles }).from(visits).leftJoin(users, eq(users.id, visits.userId)).where(eq(visits.leadId, leadId)).orderBy(desc(visits.id)),
+    nearestRep(lead.city, lead.uf),
   ]);
   const info = mergeInfo(parseBrasilApi(lead.brasilApiData), parseReceitaWs(lead.receitaWsData));
-  const rep = await nearestRep(lead.city, lead.uf);
   return {
     id: lead.id,
     cnpj: lead.cnpj,

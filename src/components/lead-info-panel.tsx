@@ -1,6 +1,7 @@
 "use client";
 
 import { MapPin, RefreshCw } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { CopyVal } from "@/components/copy-val";
@@ -9,7 +10,6 @@ import { useBusyWhile, useToast } from "@/components/toast";
 import { btnGhost } from "@/components/ui";
 import { cleanRole, fmtAge, fmtCnpj, fmtDate, fmtMoney } from "@/lib/format";
 import { selectedRows } from "@/modules/enrich/flatten";
-import { refreshInfoAction } from "@/modules/leads/actions";
 import type { LeadView } from "@/modules/leads/view";
 
 type Search = "idle" | "searching" | "failed";
@@ -17,19 +17,28 @@ type Search = "idle" | "searching" | "failed";
 /** Dados da empresa + representante mais próximo. Usado no atendimento e no editor do lead. */
 export function LeadInfoPanel({ lead, autoSearch = true, wide = false, showMap = true }: { lead: LeadView; autoSearch?: boolean; wide?: boolean; showMap?: boolean }) {
   const toast = useToast();
+  const router = useRouter();
   const [pending, start] = useTransition();
   const [state, setState] = useState<Search>(autoSearch && lead.enrichedAt === null ? "searching" : "idle");
   const [all, setAll] = useState(false);
   const [confirmRefresh, setConfirmRefresh] = useState(false);
-  useBusyWhile(pending, "Pesquisando…");
+  const [manual, setManual] = useState(false);
+  // A pesquisa automática ao abrir o lead NÃO trava a tela (só mostra "Pesquisando…" no painel); o botão Atualizar trava.
+  useBusyWhile(pending && manual, "Pesquisando…");
 
-  const search = () => {
+  const search = (isManual = false) => {
+    setManual(isManual);
     setState("searching");
     start(async () => {
-      const r = await refreshInfoAction(lead.id);
+      let r: { ok: boolean; message?: string } = { ok: false, message: "Não consegui consultar agora." };
+      try {
+        const res = await fetch("/api/enrich", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ leadId: lead.id }) });
+        r = await res.json();
+      } catch { /* sem rede: mantém a mensagem padrão */ }
       setState(r.ok ? "idle" : "failed");
-      if (!r.ok) toast("warn", r.message);
+      if (!r.ok) toast("warn", r.message ?? "Consulta indisponível.");
       else if (r.message) toast("ok", r.message);
+      if (r.ok) router.refresh();
     });
   };
   useEffect(() => { if (autoSearch && lead.enrichedAt === null) search(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [lead.id]);
@@ -77,7 +86,7 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false, showMap =
         <button type="button" disabled={pending} className={btnGhost} onClick={() => setConfirmRefresh(true)}>{pending ? <Spinner size={15} /> : <RefreshCw size={15} aria-hidden />} Atualizar informações</button>
         <button type="button" className={btnGhost} onClick={() => setAll(!all)}>{all ? "Ocultar informações" : "Ver todas as informações"}</button>
       </div>
-      <ConfirmDialog open={confirmRefresh} icon={RefreshCw} title="Atualizar as informações?" confirmLabel="Sim, atualizar" cancelLabel="Não" onCancel={() => setConfirmRefresh(false)} onConfirm={() => { setConfirmRefresh(false); search(); }}>
+      <ConfirmDialog open={confirmRefresh} icon={RefreshCw} title="Atualizar as informações?" confirmLabel="Sim, atualizar" cancelLabel="Não" onCancel={() => setConfirmRefresh(false)} onConfirm={() => { setConfirmRefresh(false); search(true); }}>
         Vamos consultar o CNPJ de novo e substituir os dados salvos desta empresa. Tem certeza?
       </ConfirmDialog>
 
