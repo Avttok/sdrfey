@@ -64,6 +64,13 @@
       "when": 1794919691669,
       "tag": "0008_visit_extras",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794921142746,
+      "tag": "0009_vendedores",
+      "breakpoints": true
     }
   ]
 }

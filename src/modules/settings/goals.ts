@@ -11,3 +11,8 @@ export function effectiveGoals(u: U, s: Record<SettingKey, number>): Goals {
     scheduled: { on: u.goalScheduledOn ?? s.goal_scheduled_on === 1, qty: u.dailyGoalScheduled ?? s.daily_goal_scheduled },
   };
 }
+
+/** Metas do vendedor: contatos por dia e vendas por mês (a própria ou a global). */
+export function effectiveSellerGoals(u: { sellerGoalContacts: number | null; sellerGoalSales: number | null }, s: Record<SettingKey, number>) {
+  return { contactsPerDay: u.sellerGoalContacts ?? s.seller_goal_contacts, salesPerMonth: u.sellerGoalSales ?? s.seller_goal_sales };
+}

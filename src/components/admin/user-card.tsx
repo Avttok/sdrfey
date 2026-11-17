@@ -10,7 +10,7 @@ import { deleteUserAction, resetPasswordAction, updateUserAction } from "@/modul
 
 export type UserRow = { accent: string | null; id: number; username: string; name: string; roles: Role[]; active: boolean; dailyGoal: number | null; canManageGoals: boolean; inMetrics: boolean; permissions: Record<string, boolean>; hex: string; lastLoginAt: string | null; online: boolean };
 
-const ROLE_TONE: Record<Role, string> = { user: "#3b82f6", manager: "#eab308", admin: "#ef4444" };
+const ROLE_TONE: Record<Role, string> = { user: "#3b82f6", seller: "#22c55e", manager: "#eab308", admin: "#ef4444" };
 
 /** Cartão da pessoa; “Editar” abre uma janela só com o que é configurado aqui: nome, cargos, acesso e senha. */
 export function UserCard({ u, isMe }: { u: UserRow; isMe: boolean }) {

@@ -5,7 +5,7 @@ import { AttendFlow } from "@/components/attend-flow";
 import { GoalBar } from "@/components/goal-bar";
 import { SubmitButton } from "@/components/submit-button";
 import { panelCls } from "@/components/ui";
-import { attendanceSessions, db, leads, visits } from "@/db";
+import { attendanceSessions, db, leads, users, visits } from "@/db";
 import { plural } from "@/lib/format";
 import { requirePerm } from "@/modules/auth/guard";
 import { startAction } from "@/modules/leads/actions";
@@ -24,7 +24,7 @@ export default async function AttendPage() {
   const [settings, [done], [sched]] = await Promise.all([
     getSettings(),
     db.select({ n: sql<number>`count(*)::int` }).from(attendanceSessions).where(and(eq(attendanceSessions.userId, me.id), eq(attendanceSessions.outcome, "saved"), eq(attendanceSessions.isTest, false), sql`${attendanceSessions.savedAt} >= ${today}`)),
-    db.select({ n: sql<number>`count(*)::int` }).from(visits).where(and(eq(visits.userId, me.id), sql`${visits.canceledAt} is null`, sql`${visits.createdAt} >= ${today}`)),
+    db.select({ n: sql<number>`((select count(*) from visits v where v.user_id = ${me.id} and v.canceled_at is null and v.created_at >= ${today}) + (select count(*) from deals d where d.sdr_id = ${me.id} and not d.is_test and d.created_at >= ${today}))::int` }).from(sql`(select 1) x`),
   ]);
   const goals = effectiveGoals(me, settings);
 
@@ -54,7 +54,7 @@ export default async function AttendPage() {
     );
   }
 
-  const [catalog, templates] = await Promise.all([getTagCatalog(), getActiveTemplates()]);
+  const [catalog, templates, sellers] = await Promise.all([getTagCatalog(), getActiveTemplates(), db.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.active, true), sql`'seller' = any(${users.roles})`)).orderBy(users.name)]);
   const [prev] = await db.execute<{ at: Date; name: string | null; channels: string[] | null; note: string | null }>(sql`
     select s.saved_at as at, u.name, l.notes as note,
       (select array_agg(distinct i.channel) from interactions i where i.lead_id = s.lead_id and i.user_id = s.user_id and i.at between coalesce(s.started_at, s.shown_at) and s.saved_at + interval '2 minutes') as channels
@@ -62,5 +62,5 @@ export default async function AttendPage() {
     where s.lead_id = ${lead.id} and s.outcome = 'saved' and not s.is_test and s.saved_at is not null and exists (select 1 from interactions x where x.lead_id = s.lead_id)
     order by s.saved_at desc limit 1`);
   const previous = prev ? { by: prev.name ?? "Outra pessoa", at: new Date(prev.at).toISOString(), channels: prev.channels ?? [], note: prev.note } : null;
-  return <AttendFlow lead={lead} catalog={catalog} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={previous} doneToday={done?.n ?? 0} scheduledToday={sched?.n ?? 0} goals={goals} />;
+  return <AttendFlow lead={lead} catalog={catalog} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={previous} doneToday={done?.n ?? 0} scheduledToday={sched?.n ?? 0} goals={goals} sellers={sellers} />;
 }

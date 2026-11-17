@@ -52,6 +52,9 @@ export const users = pgTable("users", {
   dailyGoal: integer("daily_goal"),
   /** Meta de agendados por dia (nulo = meta global). */
   dailyGoalScheduled: integer("daily_goal_scheduled"),
+  /** Metas do vendedor (nulo = meta global): contatos por dia e vendas por mês. */
+  sellerGoalContacts: integer("seller_goal_contacts"),
+  sellerGoalSales: integer("seller_goal_sales"),
   /** Liga/desliga cada meta só para esta pessoa (nulo = segue a global). */
   goalAttendedOn: boolean("goal_attended_on"),
   goalScheduledOn: boolean("goal_scheduled_on"),
@@ -115,6 +118,9 @@ export const leads = pgTable(
     notes: text("notes"),
     /** Texto da coluna VISITA da planilha antiga. */
     legacyVisit: text("legacy_visit"),
+    /** Link do perfil do cliente no Salesforce e no CRM (EOX). */
+    salesforceUrl: text("salesforce_url"),
+    eoxUrl: text("eox_url"),
 
     ownerId: integer("owner_id").references(() => users.id, { onDelete: "set null" }),
     lockedBy: integer("locked_by").references(() => users.id, { onDelete: "set null" }),
@@ -188,6 +194,10 @@ export const visits = pgTable(
     repCity: text("rep_city"),
     repKm: integer("rep_km"),
     canceledAt: timestamp("canceled_at", { withTimezone: true }),
+    /** Visita de representante leva dias para ser confirmada: pendente → confirmada → realizada (ou cancelada). */
+    status: text("status").$type<"pendente" | "confirmada" | "realizada" | "cancelada">().notNull().default("pendente"),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    confirmedBy: integer("confirmed_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: now(),
   },
   (t) => [index("visits_lead_idx").on(t.leadId)],
@@ -362,3 +372,59 @@ export const emailTemplates = pgTable("email_templates", {
   sort: integer("sort").notNull().default(0),
   createdAt: now(),
 });
+
+/* ───────────── Vendas: lead repassado a um vendedor ───────────── */
+
+export const DEAL_STAGES = ["novo", "contato", "cotacao", "negociacao", "ganho", "perdido"] as const;
+export type DealStage = (typeof DEAL_STAGES)[number];
+
+/**
+ * Negociação: nasce quando o SDR repassa um lead aos vendedores. Sem `sellerId` ela está no grupo
+ * (qualquer vendedor pode assumir); o SDR também pode já indicar um vendedor.
+ */
+export const deals = pgTable(
+  "deals",
+  {
+    id: serial("id").primaryKey(),
+    leadId: integer("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
+    /** SDR que repassou. */
+    sdrId: integer("sdr_id").references(() => users.id, { onDelete: "set null" }),
+    sellerId: integer("seller_id").references(() => users.id, { onDelete: "set null" }),
+    stage: text("stage").$type<DealStage>().notNull().default("novo"),
+    handoffNote: text("handoff_note"),
+    /** Valor da cotação / venda em centavos. */
+    valueCents: integer("value_cents"),
+    quoteSentAt: timestamp("quote_sent_at", { withTimezone: true }),
+    lastContactAt: timestamp("last_contact_at", { withTimezone: true }),
+    /** Próximo passo combinado (gera aviso quando vence). */
+    nextActionAt: timestamp("next_action_at", { withTimezone: true }),
+    nextActionNote: text("next_action_note"),
+    lostReason: text("lost_reason"),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    isTest: boolean("is_test").notNull().default(false),
+    createdAt: now(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("deals_lead_idx").on(t.leadId),
+    index("deals_seller_idx").on(t.sellerId, t.stage),
+    uniqueIndex("deals_one_open_per_lead").on(t.leadId).where(sql`stage not in ('ganho','perdido')`),
+  ],
+);
+
+/** Cada passo da negociação: contato, cotação, anotação, mudança de etapa... */
+export const dealEvents = pgTable(
+  "deal_events",
+  {
+    id: serial("id").primaryKey(),
+    dealId: integer("deal_id").notNull().references(() => deals.id, { onDelete: "cascade" }),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    /** criado | assumido | ligacao | whatsapp | email | cotacao | nota | etapa | retorno | ganho | perdido | reaberto */
+    kind: text("kind").notNull(),
+    note: text("note"),
+    valueCents: integer("value_cents"),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("deal_events_deal_idx").on(t.dealId), index("deal_events_at_idx").on(t.at)],
+);

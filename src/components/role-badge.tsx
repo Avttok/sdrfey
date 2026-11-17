@@ -1,6 +1,6 @@
 import { ROLE_META, type Role } from "@/config/roles";
 
-const DOT: Record<Role, string> = { user: "#3b82f6", manager: "#eab308", admin: "#ef4444" };
+const DOT: Record<Role, string> = { user: "#3b82f6", seller: "#22c55e", manager: "#eab308", admin: "#ef4444" };
 
 export function RoleBadge({ role }: { role: Role }) {
   return (

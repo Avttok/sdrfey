@@ -10,4 +10,6 @@ export const SEED_USERS: { username: string; name: string; roles: Role[] }[] = [
   { username: "suane.oliveira", name: "Suane", roles: ["user"] },
   { username: "jaisson.dias", name: "Jaisson", roles: ["user"] },
   { username: "rejeane.uler", name: "Rejeane", roles: ["user", "manager"] },
+  { username: "thais.pacheco", name: "Thais Pacheco", roles: ["seller"] },
+  { username: "daniele.silva", name: "Daniele Silva", roles: ["seller"] },
 ];

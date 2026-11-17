@@ -7,6 +7,8 @@ import { DateField } from "@/components/date-field";
 import { TagChip } from "@/components/tag-chip";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { fmtCnpj, fmtDate, fmtDuration, plural, TZ } from "@/lib/format";
+import { SellerHistory } from "@/components/deals/seller-history";
+import { isSellerOnly } from "@/config/roles";
 import { requirePerm } from "@/modules/auth/guard";
 import { parseHistFilters, userHistoryRich, type HistRow } from "@/modules/leads/history";
 
@@ -19,6 +21,7 @@ const dayKey = (d: string) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ })
 export default async function HistoryPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const me = await requirePerm("tab.historico");
   const sp = await searchParams;
+  if (isSellerOnly(me.roles)) return <SellerHistory userId={me.id} sp={sp} />;
   const f = parseHistFilters(sp);
   const rows = await userHistoryRich(me.id, f);
 

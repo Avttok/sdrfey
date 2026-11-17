@@ -5,6 +5,7 @@ import { TAG } from "@/config/tags";
 import { diffToAudit, logAudit } from "@/modules/audit/log";
 import { getSettings } from "@/modules/settings/get";
 import { setLeadTags, type TagChange } from "@/modules/tags/apply";
+import { createDealTx } from "@/modules/deals/handoff";
 import { UserError } from "./sorter";
 
 export type SaveInput = {
@@ -22,6 +23,8 @@ export type SaveInput = {
   visitDate?: string | null;
   /** Link da visita no Salesforce (opcional). */
   visitLink?: string | null;
+  /** Para onde o lead vai ao fim do atendimento: vendedores (negociação imediata) ou representante (visita). */
+  handoff?: { to: "sellers" | "reps" | "none"; sellerId?: number | null; note?: string | null } | null;
 };
 
 const VISIT_RE = /^V-\d{3,}$/i;
@@ -36,7 +39,8 @@ async function assertMine(tx: typeof db, userId: number, leadId: number) {
 
 export async function saveAttendance(userId: number, input: SaveInput): Promise<void> {
   if (input.channels.length === 0) throw new UserError("Marque ao menos um meio de contato usado.");
-  const visitCode = input.visitCode?.trim().toUpperCase() || null;
+  const toSellers = input.handoff?.to === "sellers";
+  const visitCode = toSellers ? null : input.visitCode?.trim().toUpperCase() || null;
   if (visitCode && !VISIT_RE.test(visitCode)) throw new UserError("Código da visita inválido. Exemplo: V-12345.");
   const visitDate = input.visitDate && /^\d{4}-\d{2}-\d{2}$/.test(input.visitDate) ? input.visitDate : null;
   if (visitCode && !visitDate) throw new UserError("Informe a data da visita.");
@@ -52,7 +56,7 @@ export async function saveAttendance(userId: number, input: SaveInput): Promise<
     for (const c of input.channels) add.push({ group: TAG.group.meio, key: c });
     if (input.temperature) add.push({ group: TAG.group.temperatura, key: input.temperature });
     if (input.qualification && !visitCode) add.push({ group: TAG.group.qualificacao, key: input.qualification });
-    if (visitCode) {
+    if (visitCode || toSellers) {
       add.push({ group: TAG.group.agenda, key: TAG.agendado }, { group: TAG.group.qualificacao, key: TAG.qualificado });
     }
 
@@ -72,6 +76,8 @@ export async function saveAttendance(userId: number, input: SaveInput): Promise<
       await tx.insert(visits).values({ leadId: lead.id, userId, code: visitCode, visitDate, link: visitLink, ...repSnapshot(rep) });
       await logAudit(tx, { userId, leadId: lead.id, entity: "visit", action: "agendou visita", field: "Agenda", oldValue: null, newValue: visitCode, meta: { dataDaVisita: visitDate, representante: rep?.repName ?? null, km: rep?.km ?? null } });
     }
+
+    if (toSellers) await createDealTx(tx, { leadId: lead.id, sdrId: userId, sellerId: input.handoff?.sellerId ?? null, note: input.handoff?.note ?? input.note ?? null, isTest: lead.isTest });
 
     await tx.insert(interactions).values(
       input.channels.map((channel) => ({ leadId: lead.id, userId, channel, note: input.note ?? null, isTest: lead.isTest })),

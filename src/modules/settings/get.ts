@@ -13,6 +13,9 @@ export const SETTING_DEFAULTS = {
   sem_contato_days: 3,
   /** Dias até um lead já trabalhado (sem outra regra) poder ser sorteado de novo. */
   rework_days: 30,
+  /** Metas do vendedor: contatos por dia e vendas por mês. */
+  seller_goal_contacts: 20,
+  seller_goal_sales: 5,
 } as const;
 export type SettingKey = keyof typeof SETTING_DEFAULTS;
 

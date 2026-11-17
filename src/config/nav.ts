@@ -1,4 +1,4 @@
-import { Gauge, History, Play, CalendarCheck, ScrollText, ShieldCheck, Target, UserRound, Users, MapPin, type LucideIcon } from "lucide-react";
+import { Gauge, History, Play, CalendarCheck, ScrollText, ShieldCheck, Target, UserRound, Users, MapPin, Handshake, type LucideIcon } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: string; adminOnly?: boolean };
 
@@ -11,6 +11,7 @@ export const NAV: NavItem[] = [
   { href: "/atender", label: "Shuffler", icon: Play, perm: "tab.comecar" },
   { href: "/leads", label: "Leads", icon: Users, perm: "tab.leads" },
   { href: "/historico", label: "Histórico", icon: History, perm: "tab.historico" },
+  { href: "/negociacoes", label: "Negociações", icon: Handshake, perm: "tab.negociacoes" },
   { href: "/visitas", label: "Visitas", icon: CalendarCheck, perm: "tab.visitas" },
   { href: "/metas", label: "Metas", icon: Target, perm: "tab.metas" },
   { href: "/registro", label: "Registro", icon: ScrollText, perm: "tab.registro" },

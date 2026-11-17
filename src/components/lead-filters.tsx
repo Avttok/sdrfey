@@ -14,7 +14,7 @@ type Person = { id: number; name: string };
 const LABEL: Record<string, string> = { owner: "Responsável", uf: "Estado", city: "Cidade", phone: "Telefone", email: "E-mail", status: "Situação cadastral", from: "Alterado de", to: "Alterado até", visit: "Visita" };
 
 /** Filtros da aba Leads: busca grande, filtros em seções e as escolhas ativas como bolhas removíveis. */
-export function LeadFilters({ catalog, people, ufs }: { catalog: TagCatalog; people: Person[]; ufs: string[] }) {
+export function LeadFilters({ catalog, people, ufs, sellerView }: { sellerView?: boolean; catalog: TagCatalog; people: Person[]; ufs: string[] }) {
   const router0 = useRouter();
   const [navPending, startNav] = useTransition();
   useBusyWhile(navPending);
@@ -93,7 +93,7 @@ export function LeadFilters({ catalog, people, ufs }: { catalog: TagCatalog; peo
           </Section>
           <Section icon={Building2} title="Empresa e contato">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {field("Responsável", <select className={inputCls} value={sp.get("owner") ?? ""} onChange={(e) => set("owner", e.target.value)}><option value="">Todos</option><option value="-">Sem responsável</option>{people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>)}
+              {!sellerView && field("Responsável", <select className={inputCls} value={sp.get("owner") ?? ""} onChange={(e) => set("owner", e.target.value)}><option value="">Todos</option><option value="-">Sem responsável</option>{people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>)}
               {field("Estado", <select className={inputCls} value={sp.get("uf") ?? ""} onChange={(e) => set("uf", e.target.value)}><option value="">Todos</option>{ufs.map((u) => <option key={u}>{u}</option>)}</select>)}
               {field("Cidade", <input className={inputCls} defaultValue={sp.get("city") ?? ""} onBlur={(e) => set("city", e.target.value.trim())} />)}
               {field("Situação cadastral", <select className={inputCls} value={sp.get("status") ?? ""} onChange={(e) => set("status", e.target.value)}><option value="">Todas</option>{["ATIVA", "BAIXADA", "INAPTA", "SUSPENSA", "NULA"].map((s) => <option key={s}>{s}</option>)}</select>)}

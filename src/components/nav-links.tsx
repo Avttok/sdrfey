@@ -11,7 +11,7 @@ function Pending({ Icon }: { Icon: React.ComponentType<{ size?: number; "aria-hi
 }
 
 /** Itens do menu, na ordem recebida. `vertical` = barra lateral. */
-export function NavLinks({ hrefs, vertical = false, collapsed = false }: { hrefs: string[]; vertical?: boolean; collapsed?: boolean }) {
+export function NavLinks({ hrefs, vertical = false, collapsed = false, badges = {} }: { hrefs: string[]; vertical?: boolean; collapsed?: boolean; badges?: Record<string, number> }) {
   const pathname = usePathname();
   const items = hrefs.map((h) => NAV.find((n) => n.href === h)).filter((n): n is (typeof NAV)[number] => !!n);
   return (
@@ -21,8 +21,12 @@ export function NavLinks({ hrefs, vertical = false, collapsed = false }: { hrefs
         return (
           <Link key={href} href={href} aria-current={active ? "page" : undefined} aria-label={collapsed ? label : undefined} title={collapsed ? label : undefined}
             className={`flex items-center whitespace-nowrap rounded-xl text-sm font-medium transition-all ${collapsed ? "justify-center px-0 py-3" : `gap-2.5 px-3 ${vertical ? "py-2.5" : "py-2"}`} ${active ? "bg-grad-soft text-accent shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_30%,transparent)]" : "text-muted hover:bg-sunk/70 hover:text-ink"}`}>
-            <Pending Icon={Icon} />
+            <span className="relative grid place-items-center">
+              <Pending Icon={Icon} />
+              {badges[href] ? <span aria-hidden className="absolute -right-1.5 -top-1.5 size-2.5 rounded-full border-2 border-panel bg-danger" /> : null}
+            </span>
             {!collapsed && label}
+            {!collapsed && badges[href] ? <span className="figure ml-auto rounded-full bg-danger px-1.5 text-[11px] font-bold leading-5 text-white" aria-label={`${badges[href]} avisos`}>{badges[href]}</span> : null}
           </Link>
         );
       })}

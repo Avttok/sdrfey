@@ -16,6 +16,8 @@ export type LeadFilters = {
   from?: string; // AAAA-MM-DD
   to?: string;
   visit?: string;
+  /** Vendedor: só os leads com negociação dele ou ainda sem vendedor. */
+  sellerScope?: number;
   page: number;
 };
 
@@ -60,14 +62,15 @@ function where(f: LeadFilters): SQL | undefined {
   if (f.from) c.push(sql`${leads.updatedAt} >= ${dayStart(f.from).toISOString()}::timestamptz`);
   if (f.to) c.push(sql`${leads.updatedAt} <= ${dayEnd(f.to).toISOString()}::timestamptz`);
   if (f.visit) c.push(sql`exists (select 1 from visits v where v.lead_id = ${leads.id} and v.code ilike ${`%${f.visit}%`})`);
+  if (f.sellerScope) c.push(sql`exists (select 1 from deals d where d.lead_id = ${leads.id} and (d.seller_id = ${f.sellerScope} or d.seller_id is null))`);
   return and(...c);
 }
 
 export async function listLeads(f: LeadFilters) {
   const w = where(f);
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(leads).where(w);
-  const rows = await db.execute<{ status: string | null; phones: number; emails: number; updated_at: string; id: number; company: string; trade_name: string | null; cnpj: string; city: string | null; uf: string | null; owner_name: string | null; owner_accent: string | null; owner_id: number | null; owner_roles: Role[] | null; locked_roles: Role[] | null; locked_by_name: string | null; locked_by_accent: string | null; locked_by_id: number | null; tags: { label: string; color: string; group: string }[] }>(sql`
-    select leads.registration_status as status, leads.updated_at, (select count(*)::int from lead_channels c where c.lead_id = leads.id and c.kind = 'phone' and not c.wrong) as phones, (select count(*)::int from lead_channels c where c.lead_id = leads.id and c.kind = 'email' and not c.wrong) as emails, leads.id, leads.company, leads.trade_name, leads.cnpj, leads.city, leads.uf, o.name as owner_name, o.accent as owner_accent, leads.owner_id as owner_id, o.roles as owner_roles, lk.roles as locked_roles, lk.name as locked_by_name, lk.accent as locked_by_accent, lk.id as locked_by_id,
+  const rows = await db.execute<{ deal_stage: string | null; deal_id: number | null; status: string | null; phones: number; emails: number; updated_at: string; id: number; company: string; trade_name: string | null; cnpj: string; city: string | null; uf: string | null; owner_name: string | null; owner_accent: string | null; owner_id: number | null; owner_roles: Role[] | null; locked_roles: Role[] | null; locked_by_name: string | null; locked_by_accent: string | null; locked_by_id: number | null; tags: { label: string; color: string; group: string }[] }>(sql`
+    select (select d.stage from deals d where d.lead_id = leads.id order by d.created_at desc limit 1) as deal_stage, (select d.id from deals d where d.lead_id = leads.id order by d.created_at desc limit 1) as deal_id, leads.registration_status as status, leads.updated_at, (select count(*)::int from lead_channels c where c.lead_id = leads.id and c.kind = 'phone' and not c.wrong) as phones, (select count(*)::int from lead_channels c where c.lead_id = leads.id and c.kind = 'email' and not c.wrong) as emails, leads.id, leads.company, leads.trade_name, leads.cnpj, leads.city, leads.uf, o.name as owner_name, o.accent as owner_accent, leads.owner_id as owner_id, o.roles as owner_roles, lk.roles as locked_roles, lk.name as locked_by_name, lk.accent as locked_by_accent, lk.id as locked_by_id,
       coalesce((select json_agg(json_build_object('label', t.label, 'color', t.color, 'group', t.group_key) order by g.sort, t.sort, t.label)
                 from lead_tags lt join tags t on t.id = lt.tag_id join tag_groups g on g.key = t.group_key where lt.lead_id = leads.id and t.active), '[]'::json) as tags
     from leads left join users o on o.id = leads.owner_id left join users lk on lk.id = leads.locked_by

@@ -9,10 +9,15 @@ import { Suspense } from "react";
 import { DashboardFilters } from "@/components/dashboard-filters";
 import { panelCls } from "@/components/ui";
 import { bubbleHex } from "@/config/theme";
+import { SalesDashboard } from "@/components/deals/sales-dashboard";
+import { isSellerOnly } from "@/config/roles";
 import { db, tags, users } from "@/db";
+import { getSalesStats } from "@/modules/deals/stats";
+import { effectiveSellerGoals } from "@/modules/settings/goals";
+import { sql } from "drizzle-orm";
 import { fmtDate, fmtDateTime, fmtDuration } from "@/lib/format";
 import { requirePerm } from "@/modules/auth/guard";
-import { getDashboard, resolvePeriod } from "@/modules/dashboard/stats";
+import { getDashboard, periodDays, resolvePeriod } from "@/modules/dashboard/stats";
 import { getSettings } from "@/modules/settings/get";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -44,7 +49,22 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const period = resolvePeriod({ p: one("p"), from: iso("from"), to: iso("to") });
   const team = !!me.permissions["panel.equipe"];
 
-  const all = await db.select().from(users).where(and(eq(users.active, true), eq(users.inMetrics, true))).orderBy(asc(users.name));
+  if (isSellerOnly(me.roles)) {
+    const s = await getSettings();
+    const [stats] = await Promise.all([getSalesStats(period, [me.id])]);
+    const [self] = await db.select().from(users).where(eq(users.id, me.id));
+    return (
+      <div className="space-y-5">
+        <PageHead icon={LayoutDashboard} title="Dashboard" subtitle={`Suas vendas · ${period.preset === "hoje" ? "Hoje" : period.preset === "custom" ? `${fmtDate(period.from)} a ${fmtDate(period.to)}` : `Últimos ${period.preset} dias`}`} />
+        <div className={`${panelCls} p-4`}><Suspense fallback={null}>
+          <DashboardFilters preset={period.preset} from={period.preset === "custom" ? period.from : ""} to={period.preset === "custom" ? period.to : ""} people={[]} selected={[me.id]} />
+        </Suspense></div>
+        <SalesDashboard s={stats} days={periodDays(period)} goals={effectiveSellerGoals(self, s)} showRanking={false} />
+      </div>
+    );
+  }
+
+  const all = await db.select().from(users).where(and(eq(users.active, true), eq(users.inMetrics, true), sql`not (${users.roles} = array['seller']::text[])`)).orderBy(asc(users.name));
   const people = all.map((u) => ({ id: u.id, name: u.name, hex: bubbleHex(u.accent, u.id, u.roles) }));
   const picked = (Array.isArray(sp.u) ? sp.u : sp.u ? [sp.u] : []).map(Number).filter((id) => people.some((p) => p.id === id));
   const scope = team ? (picked.length ? picked : people.map((p) => p.id)) : [me.id];
@@ -58,6 +78,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const colorOf = new Map(d.ranking.map((r) => [r.id, { hex: bubbleHex(r.accent, r.id, r.roles), name: r.name }]));
   const perHour = hoursRange.map((h) => ({ h, parts: d.hours.filter((x) => x.h === h).map((x) => ({ ...x, ...(colorOf.get(x.uid) ?? { hex: "#888780", name: "?" }) })) }));
   const maxHour = Math.max(1, ...perHour.map((x) => x.parts.reduce((a, p) => a + p.n, 0)));
+  const sellersAll = can("panel.vendas") ? await db.select({ id: users.id }).from(users).where(and(eq(users.active, true), sql`'seller' = any(${users.roles})`)) : [];
+  const teamSales = can("panel.vendas") ? await getSalesStats(period, sellersAll.map((x) => x.id)) : null;
   const totalStock = d.stock.novos + d.stock.trabalhados + d.stock.fora + d.stock.clientes || 1;
 
   const kpis: { k: string; I: typeof Clock; t: string; v: string; s: string; bar?: number }[] = [
@@ -145,6 +167,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <Block icon={AlertTriangle} title="Alertas">
             <ul className="space-y-2 text-sm">
               <li className="flex items-center gap-2"><Flame size={16} className="text-danger" aria-hidden /><span className="flex-1">{d.alerts.hot === 1 ? "1 lead quente sem contato" : `${nf.format(d.alerts.hot)} leads quentes sem contato`} há mais de 3 dias</span><Link className="underline" href="/leads?tag=temperatura:quente">Ver</Link></li>
+              {d.alerts.pendingVisits > 0 && <li className="flex items-center gap-2"><CalendarCheck size={16} className="text-warn" aria-hidden /><span className="flex-1">{plural(d.alerts.pendingVisits, "visita aguardando", "visitas aguardando")} confirmação do representante há mais de 3 dias</span><Link href="/visitas" className="text-xs underline">ver</Link></li>}
               <li className="flex items-center gap-2"><Database size={16} aria-hidden /><span className="flex-1">{plural(d.alerts.noInfo, "lead ainda sem", "leads ainda sem")} consulta de CNPJ</span></li>
             </ul>
           </Block>
@@ -155,6 +178,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </Block>
         )}
       </div>
+      {teamSales && (
+        <section className="space-y-3">
+          <h2 className="display text-2xl">Vendas da equipe</h2>
+          <SalesDashboard s={teamSales} days={d.days} showRanking />
+        </section>
+      )}
     </div>
   );
 }

@@ -12,6 +12,9 @@ import { panelCls } from "@/components/ui";
 import { db, leads, users } from "@/db";
 import { bubbleHex } from "@/config/theme";
 import { fmtCnpj } from "@/lib/format";
+import { isSellerOnly } from "@/config/roles";
+import { StageChip } from "@/components/deals/deal-ui";
+import type { DealStage } from "@/db/schema";
 import { requirePerm } from "@/modules/auth/guard";
 import { listLeads, parseFilters } from "@/modules/leads/list";
 import { getTagCatalog } from "@/modules/leads/view";
@@ -20,9 +23,10 @@ export const metadata: Metadata = { title: "Leads" };
 export const dynamic = "force-dynamic";
 
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  await requirePerm("tab.leads");
+  const me = await requirePerm("tab.leads");
+  const sellerView = isSellerOnly(me.roles);
   const sp = await searchParams;
-  const filters = parseFilters(sp);
+  const filters = { ...parseFilters(sp), sellerScope: sellerView ? me.id : undefined };
   const [catalog, people, ufRows, { total, rows, pages }] = await Promise.all([
     getTagCatalog(),
     db.select({ id: users.id, name: users.name }).from(users).where(eq(users.active, true)).orderBy(asc(users.name)),
@@ -39,11 +43,11 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="space-y-5">
-      <PageHead icon={Users} title="Leads" subtitle="Busque, filtre e abra qualquer lead. ATENDER traz o lead para o seu Shuffler.">
+      <PageHead icon={Users} title="Leads" subtitle={sellerView ? "Clientes repassados pelos SDRs para você e para o grupo de vendedores." : "Busque, filtre e abra qualquer lead. ATENDER traz o lead para o seu Shuffler."}>
         <p className="rounded-full bg-accent/15 px-3.5 py-1.5 text-sm font-semibold text-accent"><span className="figure">{new Intl.NumberFormat("pt-BR").format(total)}</span> {total === 1 ? "lead" : "leads"}</p>
       </PageHead>
       <Suspense fallback={null}>
-        <LeadFilters catalog={catalog} people={people} ufs={ufRows.map((r) => r.uf!).filter(Boolean)} />
+        <LeadFilters sellerView={sellerView} catalog={catalog} people={people} ufs={ufRows.map((r) => r.uf!).filter(Boolean)} />
       </Suspense>
 
       <ul className="space-y-2.5">
@@ -63,13 +67,15 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                   <span className="inline-flex items-center gap-1"><Phone size={12} aria-hidden />{l.phones}</span>
                   <span className="inline-flex items-center gap-1"><Mail size={12} aria-hidden />{l.emails}</span>
                 </p>
-                {l.tags.length > 0 && <div className="flex flex-wrap gap-1.5">{l.tags.map((t) => <TagChip key={t.label} label={t.label} color={t.color} />)}</div>}
+                {!sellerView && l.tags.length > 0 && <div className="flex flex-wrap gap-1.5">{l.tags.map((t) => <TagChip key={t.label} label={t.label} color={t.color} />)}</div>}
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
-                {l.locked_by_name && <PersonBubble name={l.locked_by_name} hex={bubbleHex(l.locked_by_accent, l.locked_by_id ?? 0, l.locked_roles ?? undefined)} prefix="Atendendo" />}
-                {l.owner_name && <PersonBubble name={l.owner_name} hex={bubbleHex(l.owner_accent, l.owner_id ?? 0, l.owner_roles ?? undefined)} />}
-                {!l.owner_name && !l.locked_by_name && <span className="rounded-full border border-line px-2.5 py-0.5 text-xs text-muted">Livre</span>}
-                {!l.locked_by_name && <AttendButton leadId={l.id} compact />}
+                {sellerView ? (l.deal_stage && <StageChip stage={l.deal_stage as DealStage} />) : <>
+                  {l.locked_by_name && <PersonBubble name={l.locked_by_name} hex={bubbleHex(l.locked_by_accent, l.locked_by_id ?? 0, l.locked_roles ?? undefined)} prefix="Atendendo" />}
+                  {l.owner_name && <PersonBubble name={l.owner_name} hex={bubbleHex(l.owner_accent, l.owner_id ?? 0, l.owner_roles ?? undefined)} />}
+                  {!l.owner_name && !l.locked_by_name && <span className="rounded-full border border-line px-2.5 py-0.5 text-xs text-muted">Livre</span>}
+                  {!l.locked_by_name && me.permissions["tab.comecar"] && <AttendButton leadId={l.id} compact />}
+                </>}
               </div>
             </li>
           );

@@ -65,7 +65,7 @@ describe.skipIf(!HAS_DB)("sorteio e atendimento (banco real)", () => {
   it("salvar atendimento: tags, meta, observação, responsável e histórico", async () => {
     const id = (await m.sorter.claimNext(u1, { test: true }))!;
     await expect(m.attend.saveAttendance(u1, { leadId: id, channels: [], situations: [] })).rejects.toThrow(/meio de contato/);
-    await m.attend.saveAttendance(u1, { leadId: id, channels: ["whatsapp", "ligacao"], temperature: "quente", situations: ["conversando"], note: "Pediu retorno", visitCode: "v-12345" });
+    await m.attend.saveAttendance(u1, { leadId: id, channels: ["whatsapp", "ligacao"], temperature: "quente", situations: ["conversando"], note: "Pediu retorno", visitCode: "v-12345", visitDate: "2026-12-01" });
     const { db, leads, auditLog, leadTags, tags } = m.db;
     const [l] = await db.select().from(leads).where(eq(leads.id, id));
     expect(l.lockedBy).toBeNull();

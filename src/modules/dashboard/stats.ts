@@ -26,7 +26,7 @@ export async function getDashboard(period: Period, userIds: number[], gs: Record
   const days = periodDays(period);
   const U = ids(userIds);
 
-  const [per, hours, meios, quals, visitsN, goals, funnel, recentVisits, temp, stock, hot, noInfo] = await Promise.all([
+  const [per, hours, meios, quals, visitsN, goals, funnel, recentVisits, temp, stock, hot, noInfo, pendingVisits] = await Promise.all([
     db.execute<{ user_id: number; name: string; accent: string | null; roles: string[]; n: number; avg: number | null; med: number | null }>(sql`
       select u.id as user_id, u.name, u.accent, u.roles, count(s.id)::int as n,
         avg(extract(epoch from (s.saved_at - coalesce(s.started_at, s.shown_at)))) as avg,
@@ -46,7 +46,7 @@ export async function getDashboard(period: Period, userIds: number[], gs: Record
     db.execute<{ n: number }>(sql`select count(distinct s.lead_id)::int as n from attendance_sessions s
       join lead_tags lt on lt.lead_id = s.lead_id join tags t on t.id = lt.tag_id and t.key = 'qualificado'
       where s.outcome = 'saved' and not s.is_test and s.user_id in (${U}) and s.saved_at between ${from} and ${to}`),
-    db.execute<{ n: number }>(sql`select count(*)::int as n from visits v join leads l on l.id = v.lead_id where not l.is_test and v.canceled_at is null and v.user_id in (${U}) and v.created_at between ${from} and ${to}`),
+    db.execute<{ n: number }>(sql`select ((select count(*) from visits v join leads l on l.id = v.lead_id where not l.is_test and v.canceled_at is null and v.user_id in (${U}) and v.created_at between ${from} and ${to}) + (select count(*) from deals d where not d.is_test and d.sdr_id in (${U}) and d.created_at between ${from} and ${to}))::int as n`),
     db.execute<{ goal: number; goal_s: number }>(sql`select
         coalesce(sum(case when coalesce(u.goal_attended_on, ${gs.goal_attended_on}::int = 1) then coalesce(u.daily_goal, ${gs.daily_goal}::int) else 0 end), 0)::int as goal,
         coalesce(sum(case when coalesce(u.goal_scheduled_on, ${gs.goal_scheduled_on}::int = 1) then coalesce(u.daily_goal_scheduled, ${gs.daily_goal_scheduled}::int) else 0 end), 0)::int as goal_s
@@ -71,6 +71,7 @@ export async function getDashboard(period: Period, userIds: number[], gs: Record
       where not l.is_test and l.updated_at < now() - interval '3 days'
         and not exists (select 1 from lead_tags x join tags tx on tx.id = x.tag_id where x.lead_id = l.id and tx.blocks_sorting)`),
     db.execute<{ n: number }>(sql`select count(*)::int as n from leads where not is_test and enriched_at is null`),
+    db.execute<{ n: number }>(sql`select count(*)::int as n from visits v join leads l on l.id = v.lead_id where not l.is_test and v.status = 'pendente' and v.canceled_at is null and v.created_at < now() - interval '3 days' and v.user_id in (${U})`),
   ]);
 
   const contacts = per.reduce((a, r) => a + r.n, 0);
@@ -85,7 +86,7 @@ export async function getDashboard(period: Period, userIds: number[], gs: Record
     ranking: [...per].map((r) => ({ id: r.user_id, name: r.name, accent: r.accent, roles: r.roles as Role[], n: r.n, avgSeconds: r.avg == null ? null : Number(r.avg) })),
     hours: [...hours], meios: [...meios], temp: [...temp], stock: stock[0] ?? { novos: 0, trabalhados: 0, fora: 0, clientes: 0 },
     recentVisits: recentVisits.map((v) => ({ code: v.code, at: v.at.toString(), company: v.company, name: v.name, uid: v.uid, accent: v.accent, roles: v.roles })),
-    alerts: { hot: hot[0]?.n ?? 0, noInfo: noInfo[0]?.n ?? 0 },
+    alerts: { hot: hot[0]?.n ?? 0, noInfo: noInfo[0]?.n ?? 0, pendingVisits: pendingVisits[0]?.n ?? 0 },
   };
 }
 export type Dashboard = Awaited<ReturnType<typeof getDashboard>>;

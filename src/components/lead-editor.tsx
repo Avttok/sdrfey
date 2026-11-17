@@ -2,7 +2,7 @@
 
 import { PersonBubble } from "@/components/person-bubble";
 
-import { ArrowLeft, Ban, CalendarCheck, Copy, MapPin, Pencil, Phone, Plus, Tag, Trash2, RotateCcw, UnlockKeyhole, Users } from "lucide-react";
+import { ArrowLeft, Ban, CalendarCheck, Copy, ExternalLink, Handshake, Link2, MapPin, Pencil, Phone, Plus, Tag, Trash2, RotateCcw, UnlockKeyhole, Users } from "lucide-react";
 import Link from "next/link";
 import { SectionCard } from "@/components/section-card";
 import { useState } from "react";
@@ -17,10 +17,11 @@ import { VisitRow } from "@/components/visit-row";
 import { DateInput } from "@/components/date-input";
 import { fmtCnpj, fmtDate, fmtDateTime, fmtPhone } from "@/lib/format";
 import { addChannelAction, markWrongAction, removeChannelAction } from "@/modules/leads/actions";
+import { saveLeadLinksAction } from "@/modules/deals/actions";
 import { addPersonAction, addVisitAction, deleteVisitAction, changeTagAction, forceReleaseAction, removePersonAction, resetLeadFromPageAction, updateLeadAction } from "@/modules/leads/edit";
 import type { LeadView, TagCatalog } from "@/modules/leads/view";
 
-export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedBy, showMap, meId }: { showMap: boolean; meId: number; lead: LeadView; catalog: TagCatalog; owners: { id: number; name: string }[]; canEdit: boolean; canRelease: boolean; lockedBy: { name: string; hex: string } | null }) {
+export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedBy, showMap, meId, sellerView, dealId }: { sellerView?: boolean; dealId?: number | null; showMap: boolean; meId: number; lead: LeadView; catalog: TagCatalog; owners: { id: number; name: string }[]; canEdit: boolean; canRelease: boolean; lockedBy: { name: string; hex: string } | null }) {
   const toast = useToast();
   const active = lead.registrationStatus ? lead.registrationStatus.toUpperCase() === "ATIVA" : null;
   const name0 = lead.tradeName ?? lead.company;
@@ -33,6 +34,7 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
   const [vis, setVis] = useState({ code: "", date: "", link: "" });
   const [delVisit, setDelVisit] = useState<number | null>(null);
   const [p, setP] = useState({ name: "", roleTitle: "", extension: "" });
+  const [links, setLinks] = useState({ sf: lead.salesforceUrl ?? "", eox: lead.eoxUrl ?? "" });
 
   const toggleTag = (g: string, k: string, exclusive: boolean) => {
     const ref = `${g}:${k}`;
@@ -64,8 +66,10 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
             {lead.tags.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{lead.tags.map((t) => <TagChip key={t.id} label={t.label} color={t.color} />)}</div>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {lockedBy ? <PersonBubble name={lockedBy.name} hex={lockedBy.hex} prefix="Em atendimento" /> : <AttendButton leadId={lead.id} />}
-            {canEdit && !lockedBy && <button type="button" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => setConfirmReset(true)}><RotateCcw size={15} aria-hidden /> Resetar lead</button>}
+            {lead.salesforceUrl && <a href={lead.salesforceUrl} target="_blank" rel="noreferrer" className={btnGhost}><ExternalLink size={15} aria-hidden /> Salesforce</a>}
+            {lead.eoxUrl && <a href={lead.eoxUrl} target="_blank" rel="noreferrer" className={btnGhost}><ExternalLink size={15} aria-hidden /> CRM (EOX)</a>}
+            {sellerView ? (dealId ? <Link href={`/negociacoes/${dealId}`} className={btnPrimary}><Handshake size={16} aria-hidden /> Abrir negociação</Link> : null) : lockedBy ? <PersonBubble name={lockedBy.name} hex={lockedBy.hex} prefix="Em atendimento" /> : <AttendButton leadId={lead.id} />}
+            {!sellerView && canEdit && !lockedBy && <button type="button" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => setConfirmReset(true)}><RotateCcw size={15} aria-hidden /> Resetar lead</button>}
             {lockedBy && canRelease && <button type="button" className={btnGhost} disabled={pending} onClick={() => run(() => forceReleaseAction(lead.id))}><UnlockKeyhole size={15} aria-hidden /> Liberar lead</button>}
           </div>
         </div>
@@ -77,8 +81,8 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
       </ConfirmDialog>
       <div className={`${panelCls} p-5 sm:p-6`}><LeadInfoPanel lead={lead} wide showMap={showMap} /></div>
 
-      <div className="grid items-start gap-5 lg:grid-cols-2">
-      <div className="space-y-5">
+      <div className={`grid items-start gap-5 ${sellerView ? "" : "lg:grid-cols-2"}`}>
+      {!sellerView && <div className="space-y-5">
       <SectionCard icon={Pencil} title="Editar dados">
         <div className="grid gap-3 sm:grid-cols-2">
           {input("company", "Razão social", true)}{input("tradeName", "Nome fantasia")}{input("city", "Cidade")}{input("uf", "UF")}
@@ -95,8 +99,16 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
             <div className="flex flex-wrap gap-1.5">{g.tags.map((t) => <TagChip key={t.key} label={t.label} color={t.color} on={on.has(`${g.key}:${t.key}`)} onClick={canEdit ? () => toggleTag(g.key, t.key, g.exclusive) : undefined} />)}</div></div>
         ))}
       </SectionCard>
-      </div>
-      <div className="space-y-5">
+      </div>}
+      <div className={`space-y-5 ${sellerView ? "mx-auto w-full max-w-3xl" : ""}`}>
+      <SectionCard icon={Link2} title="Perfis do cliente">
+        <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); run(() => saveLeadLinksAction(lead.id, { salesforceUrl: links.sf, eoxUrl: links.eox })); }}>
+          <label className="block text-sm"><span className="mb-1 block text-muted">Perfil no Salesforce</span><input className={inputCls} placeholder="https://…" value={links.sf} onChange={(e) => setLinks({ ...links, sf: e.target.value })} /></label>
+          <label className="block text-sm"><span className="mb-1 block text-muted">Perfil no CRM (EOX)</span><input className={inputCls} placeholder="https://…" value={links.eox} onChange={(e) => setLinks({ ...links, eox: e.target.value })} /></label>
+          <div className="sm:col-span-2"><button type="submit" className={btnPrimary} disabled={pending}>Salvar links</button></div>
+        </form>
+      </SectionCard>
+
       <SectionCard icon={Phone} title="Contatos">
         <ul className="space-y-1.5">
           {lead.channels.map((c) => (
@@ -117,9 +129,9 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
           {lead.people.map((x) => <li key={x.id} className="flex items-center gap-2 rounded-lg bg-sunk px-3 py-2 text-sm"><span className="flex-1">{x.name}{x.roleTitle ? ` · ${x.roleTitle}` : ""}{x.extension ? ` · ramal ${x.extension}` : ""}</span>{canEdit && <button type="button" aria-label="Remover pessoa" onClick={() => run(() => removePersonAction(lead.id, x.id))}><Trash2 size={15} /></button>}</li>)}
           {lead.people.length === 0 && <li className="text-sm text-muted">Nenhuma pessoa cadastrada.</li>}
         </ul>
-        {canEdit && <form className="grid gap-2 sm:grid-cols-4" onSubmit={(e) => { e.preventDefault(); run(() => addPersonAction(lead.id, { name: p.name, roleTitle: p.roleTitle || null, extension: p.extension || null }), undefined, () => setP({ name: "", roleTitle: "", extension: "" })); }}><input className={inputCls} placeholder="Nome" value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} /><input className={inputCls} placeholder="Cargo" value={p.roleTitle} onChange={(e) => setP({ ...p, roleTitle: e.target.value })} /><input className={inputCls} placeholder="Ramal" value={p.extension} onChange={(e) => setP({ ...p, extension: e.target.value })} /><button type="submit" className={btnGhost} disabled={pending}><Plus size={15} aria-hidden /> Adicionar pessoa</button></form>}
+        {canEdit && <form className="grid gap-2 sm:grid-cols-4" onSubmit={(e) => { e.preventDefault(); run(() => addPersonAction(lead.id, { name: p.name, roleTitle: p.roleTitle || null, extension: p.extension || null }), undefined, () => setP({ name: "", roleTitle: "", extension: "" })); }}><input className={inputCls} placeholder="Nome" value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} /><input className={inputCls} placeholder="Cargo" value={p.roleTitle} onChange={(e) => setP({ ...p, roleTitle: e.target.value })} /><input className={inputCls} placeholder="Ramal" value={p.extension} onChange={(e) => setP({ ...p, extension: e.target.value })} /><button type="submit" className={btnGhost} disabled={pending}><Plus size={15} aria-hidden /> Adicionar</button></form>}
       </SectionCard>
-      <SectionCard icon={CalendarCheck} title={`Visitas${lead.visits.length ? ` (${lead.visits.length})` : ""}`}>
+      {!sellerView && <SectionCard icon={CalendarCheck} title={`Visitas${lead.visits.length ? ` (${lead.visits.length})` : ""}`}>
         <ul className="space-y-2">
           {lead.visits.map((v) => <VisitRow key={v.id} leadId={lead.id} v={v} canManage={canEdit || v.byUserId === meId} onDelete={() => setDelVisit(v.id)} />)}
           {lead.visits.length === 0 && <li className="text-sm text-muted">Nenhuma visita agendada para este lead.</li>}
@@ -132,7 +144,7 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
             <button type="submit" className={btnGhost} disabled={pending}><Plus size={15} aria-hidden /> Adicionar visita</button>
           </form>
         )}
-      </SectionCard>
+      </SectionCard>}
       <ConfirmDialog open={delVisit !== null} tone="danger" icon={Trash2} busy={pending} title="Apagar esta visita?" confirmLabel="Sim, apagar" cancelLabel="Cancelar" onCancel={() => setDelVisit(null)}
         onConfirm={() => { const id = delVisit!; setDelVisit(null); run(() => deleteVisitAction(lead.id, id)); }}>
         O registro da visita é removido do lead e da aba Visitas. A ação fica no Registro de atividades.

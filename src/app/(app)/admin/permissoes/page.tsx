@@ -14,11 +14,11 @@ export default async function Page() {
     db.select().from(users).where(and(eq(users.active, true), sql`not ('admin' = any(${users.roles}))`)).orderBy(asc(users.name)),
   ]);
   const o = (row?.value ?? {}) as RoleOverrides;
-  const initial = (r: "user" | "manager"): PermissionMap => Object.fromEntries(PERMISSIONS.map((p) => [p.key, o[r]?.[p.key] ?? p.defaults.includes(r)]));
+  const initial = (r: "user" | "seller" | "manager"): PermissionMap => Object.fromEntries(PERMISSIONS.map((p) => [p.key, o[r]?.[p.key] ?? p.defaults.includes(r)]));
   return (
     <div className="space-y-5">
       <PageHead icon={KeyRound} size="md" title="Permissões" subtitle="Quem vê e faz o quê: por cargo ou por pessoa." />
-      <PermissionMatrix roles={{ user: initial("user"), manager: initial("manager") }} users={people.map((u) => ({ id: u.id, name: u.name, roles: u.roles, perms: (u.permissions ?? {}) as PermissionMap, hex: resolveAccent(u.accent, u.roles).hex }))} />
+      <PermissionMatrix roles={{ user: initial("user"), seller: initial("seller"), manager: initial("manager") }} users={people.map((u) => ({ id: u.id, name: u.name, roles: u.roles, perms: (u.permissions ?? {}) as PermissionMap, hex: resolveAccent(u.accent, u.roles).hex }))} />
     </div>
   );
 }

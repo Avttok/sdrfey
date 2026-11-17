@@ -9,7 +9,7 @@ import type { Role } from "@/config/roles";
 import { savePermissionMatrixAction } from "@/modules/admin/config";
 
 export type MatrixUser = { id: number; name: string; roles: Role[]; perms: PermissionMap; hex: string };
-type RoleKey = "user" | "manager";
+type RoleKey = "user" | "seller" | "manager";
 type Roles = Record<RoleKey, PermissionMap>;
 type Target = { kind: "role"; role: RoleKey } | { kind: "user"; id: number };
 
@@ -18,7 +18,7 @@ const SECTIONS = [
   { group: "Painel", title: "Blocos do Dashboard", hint: "O que aparece no Dashboard", icon: LayoutDashboard },
   { group: "Funções", title: "Funções", hint: "O que a pessoa pode fazer", icon: MousePointerClick },
 ] as const;
-const ROLE_LABEL: Record<RoleKey, string> = { user: "Usuário", manager: "Gestor" };
+const ROLE_LABEL: Record<RoleKey, string> = { user: "Usuário", seller: "Vendedor", manager: "Gestor" };
 
 /**
  * Escolha quem editar (cargo ou pessoa) e ajuste tudo numa lista só — sem rolagem lateral.
@@ -43,7 +43,7 @@ export function PermissionMatrix({ users, roles: initialRoles }: { users: Matrix
       <section className={`${panelCls} space-y-3 p-4`} aria-label="Quem você quer ajustar">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted">Padrão dos cargos</p>
         <div className="flex flex-wrap gap-2">
-          {(["user", "manager"] as const).map((r) => <button key={r} type="button" aria-pressed={target.kind === "role" && target.role === r} className={chip(target.kind === "role" && target.role === r)} onClick={() => setTarget({ kind: "role", role: r })}>{ROLE_LABEL[r]}</button>)}
+          {(["user", "seller", "manager"] as const).map((r) => <button key={r} type="button" aria-pressed={target.kind === "role" && target.role === r} className={chip(target.kind === "role" && target.role === r)} onClick={() => setTarget({ kind: "role", role: r })}>{ROLE_LABEL[r]}</button>)}
         </div>
         <p className="pt-1 text-xs font-semibold uppercase tracking-wider text-muted">Ajustes só para uma pessoa</p>
         <div className="flex flex-wrap gap-2">

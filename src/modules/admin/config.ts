@@ -156,15 +156,15 @@ export async function reorderTagsAction(groupKey: string, orderedIds: number[]):
 }
 
 /** Grade de permissões: padrão de cada cargo + ajuste de cada pessoa (liberar/bloquear), tudo de uma vez. */
-export async function savePermissionMatrixAction(input: { roles: Record<"user" | "manager", PermissionMap>; users: Record<number, PermissionMap> }): Promise<ActionResult> {
+export async function savePermissionMatrixAction(input: { roles: Record<"user" | "seller" | "manager", PermissionMap>; users: Record<number, PermissionMap> }): Promise<ActionResult> {
   const me = await requireAdmin();
   const clean = (m: PermissionMap) => Object.fromEntries(Object.entries(m ?? {}).filter(([k, v]) => PERMISSION_KEYS.includes(k) && typeof v === "boolean"));
   const [row] = await db.select().from(settings).where(eq(settings.key, "role_permissions"));
   const before = (row?.value ?? {}) as Record<string, PermissionMap>;
-  const next = { ...before, user: clean(input.roles.user), manager: clean(input.roles.manager) };
+  const next = { ...before, user: clean(input.roles.user), seller: clean(input.roles.seller), manager: clean(input.roles.manager) };
   let changed = 0;
   await db.transaction(async (tx) => {
-    for (const role of ["user", "manager"] as const) {
+    for (const role of ["user", "seller", "manager"] as const) {
       if (JSON.stringify(before[role] ?? {}) === JSON.stringify(next[role])) continue;
       changed++;
       await logAudit(tx, { userId: me.id, entity: "setting", action: "alterou permissões do cargo", field: role, oldValue: JSON.stringify(before[role] ?? {}), newValue: JSON.stringify(next[role]) });

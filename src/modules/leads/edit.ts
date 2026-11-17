@@ -119,6 +119,24 @@ export async function updateVisitAction(leadId: number, visitId: number, input: 
   return { ok: true, message: "Visita atualizada." };
 }
 
+/** Confirmação da visita pelo representante: pendente → confirmada → realizada (ou volta a pendente). */
+export async function setVisitStatusAction(leadId: number, visitId: number, status: "pendente" | "confirmada" | "realizada"): Promise<ActionResult> {
+  const { me, v, allowed } = await visitForEditing(leadId, visitId);
+  if (!v) return fail("Visita não encontrada.");
+  if (!allowed) return fail("Só quem agendou a visita (ou quem pode editar leads) pode alterar o andamento.");
+  if (v.canceledAt) return fail("Esta visita foi cancelada.");
+  if (!["pendente", "confirmada", "realizada"].includes(status)) return fail("Andamento inválido.");
+  if (v.status === status) return { ok: true };
+  await db.transaction(async (tx) => {
+    await tx.update(visits).set({ status, confirmedAt: status === "pendente" ? null : v.confirmedAt ?? new Date(), confirmedBy: status === "pendente" ? null : v.confirmedBy ?? me.id }).where(eq(visits.id, visitId));
+    await logAudit(tx, { userId: me.id, leadId, entity: "visit", action: "alterou", field: "Andamento da visita", oldValue: v.status, newValue: status, meta: { visita: v.code } });
+  });
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/visitas");
+  revalidatePath("/painel");
+  return { ok: true, message: status === "confirmada" ? "Visita confirmada." : status === "realizada" ? "Visita marcada como realizada." : "Visita voltou a aguardar confirmação." };
+}
+
 /** Zera o atendimento do lead (tags, observação, interações e visitas) pela página do lead. */
 export async function resetLeadFromPageAction(id: number): Promise<ActionResult> {
   const me = await requirePerm("lead.edit");

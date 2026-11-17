@@ -4,6 +4,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { CalendarCheck, CalendarX2, ExternalLink, MapPin } from "lucide-react";
 import { Suspense } from "react";
 import { DashboardFilters } from "@/components/dashboard-filters";
+import { VisitStatusChip } from "@/components/visit-row";
 import { PageHead } from "@/components/page-head";
 import { PersonBubble } from "@/components/person-bubble";
 import { panelCls } from "@/components/ui";
@@ -17,7 +18,7 @@ import { resolvePeriod } from "@/modules/dashboard/stats";
 export const metadata: Metadata = { title: "Visitas" };
 export const dynamic = "force-dynamic";
 
-type Row = { link: string | null; rep_name: string | null; rep_sap: string | null; rep_city: string | null; rep_km: number | null; visit_date: string | null; id: number; code: string; at: Date; note: string | null; canceled_at: Date | null; lead_id: number; company: string; city: string | null; uf: string | null; uid: number | null; name: string | null; accent: string | null; roles: Role[] | null };
+type Row = { status: "pendente" | "confirmada" | "realizada" | "cancelada"; link: string | null; rep_name: string | null; rep_sap: string | null; rep_city: string | null; rep_km: number | null; visit_date: string | null; id: number; code: string; at: Date; note: string | null; canceled_at: Date | null; lead_id: number; company: string; city: string | null; uf: string | null; uid: number | null; name: string | null; accent: string | null; roles: Role[] | null };
 
 /** Todas as visitas agendadas. Cada pessoa vê as suas; quem tem a permissão vê as da equipe. */
 export default async function VisitsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -37,7 +38,7 @@ export default async function VisitsPage({ searchParams }: { searchParams: Promi
   const to = dayEnd(period.to).toISOString();
   const who = scope ? sql`and v.user_id in (${sql.join(scope.map((i) => sql`${i}`), sql`, `)})` : sql``;
   const rows = await db.execute<Row>(sql`
-    select v.id, v.visit_date::text as visit_date, v.link, v.rep_name, v.rep_sap, v.rep_city, v.rep_km, v.code, v.created_at as at, v.note, v.canceled_at, l.id as lead_id, l.company, l.city, l.uf, u.id as uid, u.name, u.accent, u.roles
+    select v.id, v.visit_date::text as visit_date, v.link, v.rep_name, v.rep_sap, v.rep_city, v.rep_km, v.code, v.created_at as at, v.note, v.canceled_at, v.status, l.id as lead_id, l.company, l.city, l.uf, u.id as uid, u.name, u.accent, u.roles
     from visits v join leads l on l.id = v.lead_id left join users u on u.id = v.user_id
     where not l.is_test and v.created_at between ${from}::timestamptz and ${to}::timestamptz ${who}
     order by v.created_at desc limit 500`);
@@ -64,9 +65,9 @@ export default async function VisitsPage({ searchParams }: { searchParams: Promi
             <li key={v.id}>
               <Link href={`/leads/${v.lead_id}`} className={`${panelCls} group relative block h-full overflow-hidden p-4 transition hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-lg ${v.canceled_at ? "opacity-60" : ""}`}>
                 <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-grad" />
-                <div className="flex items-start justify-between gap-3">
-                  <span className="rounded-md bg-grad px-2 py-0.5 text-xs font-bold text-on-accent">{v.code}</span>
-                  {v.canceled_at ? <span className="rounded-full bg-danger/15 px-2 py-0.5 text-xs font-medium text-danger">Cancelada</span> : <ExternalLink size={15} className="text-muted opacity-0 transition group-hover:opacity-100" aria-hidden />}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="inline-flex h-7 min-w-[5.5rem] items-center justify-center rounded-lg bg-grad px-2.5 font-mono text-[13px] font-bold tracking-wide text-on-accent">{v.code}</span>
+                  <VisitStatusChip status={v.canceled_at ? "cancelada" : v.status} />
                 </div>
                 <p className="mt-3 font-semibold leading-snug">{v.company}</p>
                 {(v.city || v.uf) && <p className="text-sm text-muted">{[v.city, v.uf].filter(Boolean).join(" / ")}</p>}

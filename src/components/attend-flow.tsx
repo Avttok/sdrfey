@@ -30,7 +30,7 @@ const copy = async (text: string, toast: ReturnType<typeof useToast>) => {
   }
 };
 
-export function AttendFlow({ lead, catalog, templates, myName, showMap, previous, doneToday, scheduledToday, goals }: { lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; previous: PreviousAttendance | null; doneToday: number; scheduledToday: number; goals: Goals }) {
+export function AttendFlow({ lead, catalog, templates, myName, showMap, previous, doneToday, scheduledToday, goals, sellers }: { sellers: { id: number; name: string }[]; lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; previous: PreviousAttendance | null; doneToday: number; scheduledToday: number; goals: Goals }) {
   const toast = useToast();
   const [pending, start] = useTransition();
   useBusyWhile(pending);
@@ -44,7 +44,10 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
   const [visitDate, setVisitDate] = useState("");
   const [visitLink, setVisitLink] = useState("");
   const dir = useRef<"fwd" | "back">("fwd");
-  const [showVisit, setShowVisit] = useState(false);
+  /** Para onde o lead vai ao final: ninguém, vendedores (negociação imediata) ou representante (visita). */
+  const [dest, setDest] = useState<"none" | "sellers" | "reps">("none");
+  const [sellerId, setSellerId] = useState<number | null>(null);
+  const showVisit = dest === "reps";
   const [newValue, setNewValue] = useState("");
   const [tplId, setTplId] = useState(templates[0]?.id ?? 0);
   const [emailTo, setEmailTo] = useState("");
@@ -109,7 +112,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
     if (tpl && to) window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(renderTemplate(tpl.subject, vars))}`;
   };
 
-  const payload = () => ({ leadId: lead.id, channels: [...used], temperature, qualification, situations: [...situations], note, visitCode: showVisit ? visit : null, visitDate: showVisit ? visitDate : null, visitLink: showVisit ? visitLink || null : null });
+  const payload = () => ({ leadId: lead.id, channels: [...used], temperature, qualification, situations: [...situations], note, visitCode: showVisit ? visit : null, visitDate: showVisit ? visitDate : null, visitLink: showVisit ? visitLink || null : null, handoff: { to: dest, sellerId: dest === "sellers" ? sellerId : null, note: null } });
   /** Salva e sorteia o próximo lead. */
   const save = () => run(async () => {
     const r = await saveAction(payload());
@@ -134,7 +137,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
   };
   const resetNow = () => run(async () => {
     const r = await resetLeadAction(lead.id);
-    if (r.ok) { setUsed(new Set()); setTemperature(null); setQualification(null); setSituations(new Set()); setNote(""); setVisit(""); setVisitDate(""); setVisitLink(""); setShowVisit(false); setConfirmReset(false); setStep(0); router.refresh(); }
+    if (r.ok) { setUsed(new Set()); setTemperature(null); setQualification(null); setSituations(new Set()); setNote(""); setVisit(""); setVisitDate(""); setVisitLink(""); setDest("none"); setSellerId(null); setConfirmReset(false); setStep(0); router.refresh(); }
     return r;
   });
   const discardNow = () => run(async () => { const r = await discardAction(lead.id, "Descartado no atendimento"); if (r.ok) await startAction(); return r; });
@@ -318,10 +321,27 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
             <Group title={groups.temperatura?.name ?? "Temperatura"}>{groups.temperatura?.tags.map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={temperature === t.key} onClick={() => setTemperature(temperature === t.key ? null : t.key)} />)}</Group>
             <Group title={groups.qualificacao?.name ?? "Qualificação"}>{groups.qualificacao?.tags.map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={qualification === t.key} onClick={() => setQualification(qualification === t.key ? null : (t.key as "qualificado"))} />)}</Group>
             <Group title={groups.situacao?.name ?? "Situação"}>{groups.situacao?.tags.filter((t) => !t.autoOnly).map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={situations.has(t.key)} onClick={() => toggle(situations, t.key, setSituations)} />)}</Group>
-            <div>
-              <button type="button" className={btnGhost} onClick={() => setShowVisit(!showVisit)}>{showVisit ? "Sem agendamento" : "Agendar visita"}</button>
-              {showVisit && (
-                <div className="mt-2 flex flex-wrap items-end gap-3">
+            <div className="space-y-3">
+              <p className="text-sm font-medium">Encaminhar este lead</p>
+              <div role="radiogroup" aria-label="Encaminhar lead" className="grid gap-2 sm:grid-cols-3">
+                {([["none", "Sem encaminhamento", "Só registrar o atendimento"], ["sellers", "Vendedores", "Negociação imediata: o vendedor liga e fecha"], ["reps", "Representante", "Agenda uma visita (leva dias para confirmar)"]] as const).map(([k, t, d]) => (
+                  <button key={k} type="button" role="radio" aria-checked={dest === k} onClick={() => setDest(k)} className={`rounded-xl border-2 px-3 py-2.5 text-left transition ${dest === k ? "border-accent bg-accent/10" : "border-line hover:bg-sunk"}`}>
+                    <span className="block text-sm font-semibold">{t}</span><span className="block text-xs text-muted">{d}</span>
+                  </button>
+                ))}
+              </div>
+              {dest === "sellers" && (
+                <div className="flex flex-wrap items-end gap-3">
+                  <label className="block min-w-60 text-sm"><span className="mb-1 block text-muted">Quem vai atender</span>
+                    <select className={inputCls} value={sellerId ?? ""} onChange={(e) => setSellerId(e.target.value ? Number(e.target.value) : null)}>
+                      <option value="">Grupo dos vendedores (o primeiro a assumir)</option>
+                      {sellers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    </select></label>
+                  <p className="min-w-60 flex-1 text-xs text-muted">Qualifica o lead, cria a negociação na hora e avisa os vendedores. A observação abaixo vai junto para eles.</p>
+                </div>
+              )}
+              {dest === "reps" && (
+                <div className="flex flex-wrap items-end gap-3">
                   <label className="block w-48 text-sm"><span className="mb-1 block text-muted">Código da visita</span><input className={inputCls} placeholder="V-12345" value={visit} onChange={(e) => setVisit(e.target.value)} /></label>
                   <div className="block w-48 text-sm"><span className="mb-1 block text-muted">Data da visita</span><DateInput label="Data da visita" value={visitDate} onChange={setVisitDate} /></div>
                   <label className="block min-w-60 flex-1 text-sm"><span className="mb-1 block text-muted">Link da visita (Salesforce, opcional)</span><input className={inputCls} placeholder="https://…" value={visitLink} onChange={(e) => setVisitLink(e.target.value)} /></label>

@@ -7,7 +7,7 @@ export type AuditEntry = {
   /** Quem fez. Nulo = o sistema (automático / BOT). */
   userId?: number | null;
   leadId?: number | null;
-  entity: "lead" | "user" | "tag" | "setting" | "import" | "visit" | "rep" | "template" | "goal" | "session";
+  entity: "lead" | "user" | "tag" | "setting" | "import" | "visit" | "rep" | "template" | "goal" | "session" | "deal";
   action: string;
   field?: string | null;
   oldValue?: unknown;
