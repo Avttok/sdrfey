@@ -1,5 +1,6 @@
 "use server";
 
+import { invalidateSettings } from "@/modules/settings/get";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, paymentTerms, products, settings } from "@/db";
@@ -84,6 +85,7 @@ export async function saveExtraTaxAction(pct: number): Promise<ActionResult> {
   if (!Number.isFinite(pct) || pct < 0 || pct >= 100) return bad("Informe um percentual entre 0 e 99,99.");
   const old = await getExtraTaxPct();
   await db.insert(settings).values({ key: "net_extra_tax_pct", value: pct, updatedBy: me.id }).onConflictDoUpdate({ target: settings.key, set: { value: pct, updatedAt: new Date(), updatedBy: me.id } });
+  invalidateSettings();
   await logAudit(db, { userId: me.id, entity: "setting", action: "alterou imposto extra do valor sem impostos", field: "PIS/COFINS (%)", oldValue: String(old), newValue: String(pct) });
   return done("Percentual salvo. Vale para cotações novas ou editadas.");
 }

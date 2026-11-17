@@ -1,5 +1,6 @@
 import { desc, eq, sql } from "drizzle-orm";
-import { dealQuotes, deals, db, paymentTerms, products, settings, type Db } from "@/db";
+import { dealQuotes, deals, db, paymentTerms, products, type Db } from "@/db";
+import { settingValue } from "@/modules/settings/get";
 import type { DbOrTx } from "@/modules/audit/log";
 import type { QuoteItem } from "./parse";
 
@@ -8,8 +9,7 @@ type Tx = DbOrTx | Db;
 /** Imposto extra descontado do líquido (PIS/COFINS), em %. Padrão 9,25; o admin muda em Admin → Vendas. */
 export const DEFAULT_EXTRA_TAX_PCT = 9.25;
 export async function getExtraTaxPct(): Promise<number> {
-  const [r] = await db.select().from(settings).where(eq(settings.key, "net_extra_tax_pct"));
-  const v = Number(r?.value);
+  const v = Number(await settingValue("net_extra_tax_pct"));
   return Number.isFinite(v) && v >= 0 && v < 100 ? v : DEFAULT_EXTRA_TAX_PCT;
 }
 

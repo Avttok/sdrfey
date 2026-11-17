@@ -10,8 +10,8 @@ import { requireUser } from "@/modules/auth/guard";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  const groupNav = (await getSettings()).nav_group === 1;
-  const badges = await navBadges(user).catch(() => ({}));
+  const [settings, badges] = await Promise.all([getSettings(), navBadges(user).catch(() => ({}))]);
+  const groupNav = settings.nav_group === 1;
   return (
     <ToastProvider>
       <div className={`min-h-dvh ${user.navLayout === "side" ? "lg:flex" : ""}`}>

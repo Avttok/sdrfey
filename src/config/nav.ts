@@ -1,7 +1,6 @@
-import type { Role } from "./roles";
 import { Gauge, History, Play, CalendarCheck, ScrollText, ShieldCheck, Target, UserRound, Users, MapPin, Handshake, type LucideIcon } from "lucide-react";
 
-export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: string; adminOnly?: boolean; /** Na barra de cima, vai para o menu “Mais” (menos itens na tela). */ more?: boolean; /** Com mais de um cargo, o item entra no grupo desse cargo (SDR, Vendedor, Gestor, Adm). Sem grupo = vale para todos. */ group?: Role };
+export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: string; adminOnly?: boolean; /** Menu a que pertence. Menu com um item só aparece como link solto; sem grupo = link solto. */ group?: string };
 
 /**
  * Menu do sistema. Para criar uma página nova: crie a pasta em src/app/(app)/ e acrescente uma linha aqui.
@@ -9,15 +8,15 @@ export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: st
  */
 export const NAV: NavItem[] = [
   { href: "/painel", label: "Dashboard", icon: Gauge, perm: "tab.painel" },
-  { href: "/atender", label: "Shuffler", icon: Play, perm: "tab.comecar", group: "user" },
-  { href: "/leads", label: "Leads", icon: Users, perm: "tab.leads" },
-  { href: "/historico", label: "Histórico", icon: History, perm: "tab.historico" },
-  { href: "/negociacoes", label: "Negociações", icon: Handshake, perm: "tab.negociacoes", group: "seller" },
-  { href: "/visitas", label: "Visitas", icon: CalendarCheck, perm: "tab.visitas", group: "user" },
-  { href: "/metas", label: "Metas", icon: Target, perm: "tab.metas" },
-  { href: "/registro", label: "Registro", icon: ScrollText, perm: "tab.registro", more: true, group: "manager" },
-  { href: "/representantes", label: "Representantes", icon: MapPin, perm: "tab.representantes", more: true, group: "manager" },
-  { href: "/admin", label: "Admin", icon: ShieldCheck, adminOnly: true, more: true, group: "admin" },
+  { href: "/leads", label: "Leads", icon: Users, perm: "tab.leads", group: "Pessoas" },
+  { href: "/representantes", label: "Representantes", icon: MapPin, perm: "tab.representantes", group: "Pessoas" },
+  { href: "/metas", label: "Metas", icon: Target, perm: "tab.metas", group: "Info" },
+  { href: "/historico", label: "Histórico", icon: History, perm: "tab.historico", group: "Info" },
+  { href: "/atender", label: "Shuffler", icon: Play, perm: "tab.comecar", group: "SDR" },
+  { href: "/visitas", label: "Visitas", icon: CalendarCheck, perm: "tab.visitas", group: "SDR" },
+  { href: "/negociacoes", label: "Vendas", icon: Handshake, perm: "tab.negociacoes" },
+  { href: "/registro", label: "Registro", icon: ScrollText, perm: "tab.registro", group: "Gestão" },
+  { href: "/admin", label: "Adm", icon: ShieldCheck, adminOnly: true, group: "Gestão" },
   { href: "/conta", label: "Minha conta", icon: UserRound },
 ];
 

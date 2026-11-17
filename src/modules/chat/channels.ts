@@ -1,5 +1,6 @@
 import type { Role } from "@/config/roles";
 
+export const REACTION_EMOJIS = ["👍", "❤️", "😂", "🎉", "👀", "🙏"] as const;
 export type ChannelKey = "geral" | "user" | "seller" | "manager";
 export const CHANNELS: { key: ChannelKey; label: string; hint: string }[] = [
   { key: "geral", label: "Geral", hint: "Todos do sistema" },

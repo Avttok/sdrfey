@@ -6,7 +6,7 @@ import { db, users } from "@/db";
 import { hasRole, type Role } from "@/config/roles";
 import type { PermissionMap, RoleOverrides } from "@/config/permissions";
 import { resolvePermissions } from "@/modules/permissions/resolve";
-import { settings } from "@/db";
+import { settingValue } from "@/modules/settings/get";
 import { SESSION_COOKIE, readToken, sessionMaxAge, signToken } from "./token";
 
 export type CurrentUser = {
@@ -54,8 +54,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const [u] = await db.select().from(users).where(eq(users.id, session.uid)).limit(1);
   if (!u || !u.active || u.sessionVersion !== session.v) return null;
 
-  const [ro] = await db.select().from(settings).where(eq(settings.key, "role_permissions")).limit(1);
-  const permissions = resolvePermissions(u.roles, u.permissions, (ro?.value ?? {}) as RoleOverrides);
+  const permissions = resolvePermissions(u.roles, u.permissions, ((await settingValue("role_permissions")) ?? {}) as RoleOverrides);
   if (u.canManageGoals) permissions["goals.edit"] = true;
 
   return {

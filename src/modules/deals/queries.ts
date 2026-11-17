@@ -122,8 +122,20 @@ export async function sellerHistory(userId: number, f: SellerHistFilters): Promi
 }
 
 /** Bolinhas do menu: quantas negociações pedem atenção agora. */
+const badgeCache = new Map<number, { at: number; v: Record<string, number> }>();
+
+/** Aviso nas abas. Guardado 20 s por pessoa na memória: roda em toda página e a conta é pesada. */
 export async function navBadges(user: { id: number; permissions: Record<string, boolean>; roles: string[] }): Promise<Record<string, number>> {
   if (!user.permissions["tab.negociacoes"]) return {};
+  const hit = badgeCache.get(user.id);
+  if (hit && Date.now() - hit.at < 20_000) return hit.v;
+  const v = await computeBadges(user);
+  badgeCache.set(user.id, { at: Date.now(), v });
+  if (badgeCache.size > 200) badgeCache.clear();
+  return v;
+}
+
+async function computeBadges(user: { id: number; permissions: Record<string, boolean>; roles: string[] }): Promise<Record<string, number>> {
   const team = !!user.permissions["deals.team"];
   const rows = await listDeals(user.id, team);
   const n = rows.filter((r) => r.alerts.length && (team || r.sellerId === user.id || (!r.sellerId && user.roles.includes("seller")))).length;

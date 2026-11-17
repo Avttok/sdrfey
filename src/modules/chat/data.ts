@@ -1,12 +1,14 @@
-import { and, desc, eq, gt, isNotNull, lt, sql } from "drizzle-orm";
-import { chatMessages, chatReads, db, users } from "@/db";
+import { and, desc, eq, gt, inArray, isNotNull, lt, sql } from "drizzle-orm";
+import { chatMessages, chatReactions, chatReads, db, users } from "@/db";
+import type { Role } from "@/config/roles";
 import { bubbleHex } from "@/config/theme";
 import type { CurrentUser } from "@/modules/auth/guard";
 import { getSettings } from "@/modules/settings/get";
 import { channelsFor } from "./channels";
 
+export type Reaction = { emoji: string; count: number; mine: boolean; names: string[] };
 export type ChatMsg = {
-  id: number; channel: string; userId: number | null; name: string; hex: string; body: string; at: string;
+  id: number; channel: string; userId: number | null; name: string; roles: Role[]; hex: string; body: string; at: string; reactions: Reaction[];
   share: { kind: "lead" | "deal" | "quote"; id: number; label: string } | null;
   canDelete: boolean;
 };
@@ -27,12 +29,35 @@ export async function listMessages(me: CurrentUser, channel: string, o: { after?
     .orderBy(o.after ? chatMessages.id : desc(chatMessages.id)).limit(limit);
   const list = o.after ? rows : rows.reverse();
   const mod = isMod(me);
+  const rx = await reactionsFor(me, list.map(({ m }) => m.id));
   return list.map(({ m, name, accent, roles }) => ({
-    id: m.id, channel: m.channel, userId: m.userId, name: name ?? "Conta removida", hex: m.userId ? bubbleHex(accent, m.userId, roles ?? undefined) : "#888780",
+    id: m.id, channel: m.channel, userId: m.userId, name: name ?? "Conta removida", roles: (roles ?? []) as Role[], reactions: rx[m.id] ?? [], hex: m.userId ? bubbleHex(accent, m.userId, roles ?? undefined) : "#888780",
     body: m.body, at: m.createdAt.toISOString(),
     share: m.shareKind && m.shareId ? { kind: m.shareKind, id: m.shareId, label: m.shareLabel ?? "" } : null,
     canDelete: mod || m.userId === me.id,
   }));
+}
+
+/** Reações agrupadas por mensagem. */
+export async function reactionsFor(me: CurrentUser, ids: number[]): Promise<Record<number, Reaction[]>> {
+  if (!ids.length) return {};
+  const rows = await db.select({ messageId: chatReactions.messageId, emoji: chatReactions.emoji, userId: chatReactions.userId, name: users.name }).from(chatReactions)
+    .innerJoin(users, eq(users.id, chatReactions.userId)).where(inArray(chatReactions.messageId, ids)).orderBy(chatReactions.messageId);
+  const out: Record<number, Reaction[]> = {};
+  for (const r of rows) {
+    const list = (out[r.messageId] ??= []);
+    let x = list.find((y) => y.emoji === r.emoji);
+    if (!x) { x = { emoji: r.emoji, count: 0, mine: false, names: [] }; list.push(x); }
+    x.count++; x.mine ||= r.userId === me.id; x.names.push(r.name.split(" ")[0]);
+  }
+  return out;
+}
+
+/** Reações de todas as mensagens carregadas na tela (a partir de um id), para atualizar quem já abriu. */
+export async function reactionsSince(me: CurrentUser, channel: string, fromId: number): Promise<Record<number, Reaction[]>> {
+  const ids = (await db.select({ id: chatMessages.id }).from(chatMessages).where(and(eq(chatMessages.channel, channel), gt(chatMessages.id, fromId - 1), sql`${chatMessages.deletedAt} is null`)).limit(150)).map((r) => r.id);
+  const rx = await reactionsFor(me, ids);
+  return Object.fromEntries(ids.map((id) => [id, rx[id] ?? []]));
 }
 
 /** Mensagens apagadas a partir de um ponto (para sumirem na tela de quem já carregou). */

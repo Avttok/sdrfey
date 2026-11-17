@@ -1,5 +1,6 @@
 "use server";
 
+import { invalidateSettings } from "@/modules/settings/get";
 import { plural } from "@/lib/format";
 import { asc, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -31,6 +32,7 @@ export async function saveSettingsAction(values: Record<(typeof PARAM_KEYS)[numb
   for (const k of PARAM_KEYS) {
     if (before[k] === p.data[k]) continue;
     await db.insert(settings).values({ key: k, value: p.data[k], updatedBy: me.id }).onConflictDoUpdate({ target: settings.key, set: { value: p.data[k], updatedAt: new Date(), updatedBy: me.id } });
+    invalidateSettings();
     await logAudit(db, { userId: me.id, entity: "setting", action: "alterou parâmetro", field: k, oldValue: before[k], newValue: p.data[k] });
   }
   revalidatePath("/admin/parametros");
@@ -45,6 +47,7 @@ export async function saveRolePermissionsAction(role: Exclude<Role, "admin">, ma
   const [row] = await db.select().from(settings).where(eq(settings.key, "role_permissions"));
   const all = { ...((row?.value ?? {}) as Record<string, PermissionMap>), [role]: clean };
   await db.insert(settings).values({ key: "role_permissions", value: all, updatedBy: me.id }).onConflictDoUpdate({ target: settings.key, set: { value: all, updatedAt: new Date(), updatedBy: me.id } });
+  invalidateSettings();
   await logAudit(db, { userId: me.id, entity: "setting", action: "alterou permissões do cargo", field: role, oldValue: JSON.stringify((row?.value as Record<string, unknown> | undefined)?.[role] ?? {}), newValue: JSON.stringify(clean) });
   revalidatePath("/admin/permissoes");
   return { ok: true, message: "Permissões do cargo salvas." };
@@ -172,6 +175,7 @@ export async function savePermissionMatrixAction(input: { roles: Record<"user" |
       await logAudit(tx, { userId: me.id, entity: "setting", action: "alterou permissões do cargo", field: role, oldValue: JSON.stringify(before[role] ?? {}), newValue: JSON.stringify(next[role]) });
     }
     await tx.insert(settings).values({ key: "role_permissions", value: next, updatedBy: me.id }).onConflictDoUpdate({ target: settings.key, set: { value: next, updatedAt: new Date(), updatedBy: me.id } });
+    invalidateSettings();
     for (const [idStr, map] of Object.entries(input.users)) {
       const id = Number(idStr);
       const [u] = await tx.select({ name: users.name, permissions: users.permissions }).from(users).where(eq(users.id, id));

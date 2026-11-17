@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
-import { db, settings } from "@/db";
+import { db } from "@/db";
+import { settingValue } from "@/modules/settings/get";
 import { eq } from "drizzle-orm";
 import { resolveSellerGoals, SALE_BONUS_REAIS, type SellerActuals, type SellerGoalSettings } from "@/config/seller-goals";
 
@@ -10,8 +11,7 @@ export const closedDay = sql`coalesce(d.closed_on, (d.closed_at at time zone ${S
 export const soldCents = sql`coalesce(d.real_value_cents, d.net_value_cents, d.closed_value_cents, d.value_cents, 0)`;
 
 export async function getSellerGoalSettings(): Promise<SellerGoalSettings> {
-  const [r] = await db.select().from(settings).where(eq(settings.key, "seller_goals"));
-  return (r?.value ?? {}) as SellerGoalSettings;
+  return ((await settingValue("seller_goals")) ?? {}) as SellerGoalSettings;
 }
 
 export type SellerMonth = { actual: SellerActuals; bonusSales: number; bonusReais: number; monthLabel: string };

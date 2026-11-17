@@ -7,9 +7,6 @@ import { NavLinks } from "./nav-links";
 import { SideBar } from "./side-bar";
 import { UserMenu } from "./user-menu";
 
-/** Abas viram grupos por cargo quando a conta tem mais de um cargo (e o Adm não desligou isso). */
-const grouped = (user: CurrentUser, on: boolean) => on && user.roles.length > 1;
-
 function navFor(user: CurrentUser) {
   return orderNav(visibleNav(user.permissions, user.roles.includes("admin")).filter((i) => i.href !== "/conta"), user.navOrder).map((i) => i.href);
 }
@@ -21,7 +18,7 @@ export function AppHeader({ user, badges = {}, groupNav = true }: { user: Curren
     <header className={`sticky top-0 z-20 border-b border-line bg-panel/90 backdrop-blur ${user.navLayout === "side" ? "lg:hidden" : ""}`}>
       <div className="mx-auto flex w-full max-w-7xl items-center gap-x-6 px-4 py-2.5 sm:px-6">
         <Link href="/painel" aria-label="SDR FEY, ir para o início"><Logo /></Link>
-        <div className="min-w-0 flex-1"><NavLinks hrefs={navFor(user)} badges={badges} grouped={grouped(user, groupNav)} roles={user.roles} /></div>
+        <div className="min-w-0 flex-1"><NavLinks hrefs={navFor(user)} badges={badges} grouped={groupNav} /></div>
         <UserMenu name={user.name} username={user.username} hex={accent.hex} onHex={accent.onAccent} roles={user.roles} />
       </div>
     </header>
@@ -31,5 +28,5 @@ export function AppHeader({ user, badges = {}, groupNav = true }: { user: Curren
 /** Barra vertical à esquerda (só em telas largas). */
 export function SideBarFor({ user, badges = {}, groupNav = true }: { user: CurrentUser; badges?: Record<string, number>; groupNav?: boolean }) {
   const accent = resolveAccent(user.accent, user.roles);
-  return <SideBar hrefs={navFor(user)} name={user.name} username={user.username} hex={accent.hex} onHex={accent.onAccent} roles={user.roles} initialCollapsed={user.navCollapsed} badges={badges} grouped={grouped(user, groupNav)} />;
+  return <SideBar hrefs={navFor(user)} name={user.name} username={user.username} hex={accent.hex} onHex={accent.onAccent} roles={user.roles} initialCollapsed={user.navCollapsed} badges={badges} grouped={groupNav} />;
 }

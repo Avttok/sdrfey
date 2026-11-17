@@ -1,12 +1,11 @@
 "use client";
 
-import { ChevronDown, Ellipsis } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import Link, { useLinkStatus } from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Spinner } from "@/components/spinner";
 import { NAV } from "@/config/nav";
-import { ROLES, ROLE_META, hasRole, type Role } from "@/config/roles";
 
 function Pending({ Icon }: { Icon: React.ComponentType<{ size?: number; "aria-hidden"?: boolean }> }) {
   const { pending } = useLinkStatus();
@@ -14,18 +13,27 @@ function Pending({ Icon }: { Icon: React.ComponentType<{ size?: number; "aria-hi
 }
 
 type Item = (typeof NAV)[number];
+type Entry = { kind: "link"; item: Item } | { kind: "menu"; label: string; items: Item[] };
 
-/** Itens do menu, na ordem recebida. `vertical` = barra lateral. Na barra de cima, itens “more” ficam no menu “Mais”. */
-export function NavLinks({ hrefs, vertical = false, collapsed = false, badges = {}, grouped = false, roles = [] }: { roles?: Role[]; hrefs: string[]; vertical?: boolean; collapsed?: boolean; badges?: Record<string, number>; grouped?: boolean }) {
+/** Monta o menu: itens do mesmo grupo viram um menu; grupo com um item só vira link solto. */
+function build(all: Item[], grouped: boolean): Entry[] {
+  const out: Entry[] = [];
+  const done = new Set<string>();
+  for (const it of all) {
+    if (!grouped || !it.group) { out.push({ kind: "link", item: it }); continue; }
+    if (done.has(it.group)) continue;
+    done.add(it.group);
+    const items = all.filter((x) => x.group === it.group);
+    out.push(items.length > 1 ? { kind: "menu", label: it.group, items } : { kind: "link", item: it });
+  }
+  return out;
+}
+
+/** Itens do menu, na ordem recebida. `vertical` = barra lateral. */
+export function NavLinks({ hrefs, vertical = false, collapsed = false, badges = {}, grouped = true }: { hrefs: string[]; vertical?: boolean; collapsed?: boolean; badges?: Record<string, number>; grouped?: boolean }) {
   const pathname = usePathname();
   const all = hrefs.map((h) => NAV.find((n) => n.href === h)).filter((n): n is Item => !!n);
-  // Com grupos (conta com mais de um cargo): o que é de todos fica solto; o resto vai para o grupo do cargo.
-  // O item só entra no grupo se a pessoa tem aquele cargo; se recebeu a aba por permissão pessoal, fica solto.
-  const inGroup = (n: Item) => !!n.group && hasRole(roles, n.group);
-  const groups = grouped ? ROLES.map((r) => ({ role: r as Role, items: all.filter((n) => n.group === r && inGroup(n)) })).filter((g) => g.items.length) : [];
-  const base = grouped ? all.filter((n) => !inGroup(n)) : all;
-  const items = vertical ? base : base.filter((n) => !n.more);
-  const more = vertical || grouped ? [] : base.filter((n) => n.more);
+  const entries = build(all, grouped);
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   const [open, setOpen] = useState<string | null>(null);
   const [pos, setPos] = useState({ left: 0, top: 0 });
@@ -52,15 +60,17 @@ export function NavLinks({ hrefs, vertical = false, collapsed = false, badges = 
       </Link>
     );
   };
-  const menu = (id: string, label: string, Icon: typeof Ellipsis, list: Item[]) => {
+  const menu = (label: string, list: Item[]) => {
     const active = list.some((n) => isActive(n.href));
-    const isOpen = open === id;
+    const isOpen = open === label;
+    const hasBadge = list.some((n) => badges[n.href]);
     return (
-      <div key={id} id={isOpen ? "nav-menu" : undefined} className="shrink-0">
+      <div key={label} id={isOpen ? "nav-menu" : undefined} className="shrink-0">
         <button type="button" aria-haspopup="menu" aria-expanded={isOpen}
-          onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setPos({ left: Math.max(8, Math.min(r.left, window.innerWidth - 232)), top: r.bottom + 6 }); setOpen(isOpen ? null : id); }}
-          className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition-all ${active ? "bg-grad-soft text-accent shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_30%,transparent)]" : "text-muted hover:bg-sunk hover:text-ink"}`}>
-          <Icon size={17} aria-hidden />{label}<ChevronDown size={14} aria-hidden className={`transition ${isOpen ? "rotate-180" : ""}`} />
+          onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setPos({ left: Math.max(8, Math.min(r.left, window.innerWidth - 232)), top: r.bottom + 6 }); setOpen(isOpen ? null : label); }}
+          className={`relative flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition-all ${active ? "bg-grad-soft text-accent shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_30%,transparent)]" : "text-muted hover:bg-sunk hover:text-ink"}`}>
+          {label}<ChevronDown size={14} aria-hidden className={`transition ${isOpen ? "rotate-180" : ""}`} />
+          {hasBadge && <span aria-hidden className="absolute right-1 top-1 size-2 rounded-full border-2 border-panel bg-danger" />}
         </button>
         {isOpen && (
           <div role="menu" style={{ left: pos.left, top: pos.top }} className="fixed z-50 w-56 space-y-0.5 rounded-2xl border border-line bg-panel p-1.5 shadow-xl">
@@ -72,16 +82,14 @@ export function NavLinks({ hrefs, vertical = false, collapsed = false, badges = 
   };
   return (
     <nav aria-label="Principal" className={vertical ? "flex flex-col gap-1" : "-mx-1 flex items-center gap-1 overflow-x-auto"}>
-      {items.map((n) => link(n))}
-      {more.length > 0 && menu("more", "Mais", Ellipsis, more)}
-      {groups.map((g) => vertical
+      {entries.map((e) => e.kind === "link" ? link(e.item) : vertical
         ? (
-          <div key={g.role} role="group" aria-label={ROLE_META[g.role].label} className="mt-2 flex flex-col gap-1 border-t border-line pt-2">
-            {!collapsed && <p className="px-3 pb-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted">{ROLE_META[g.role].label}</p>}
-            {g.items.map((n) => link(n))}
+          <div key={e.label} role="group" aria-label={e.label} className="mt-2 flex flex-col gap-1 border-t border-line pt-2">
+            {!collapsed && <p className="px-3 pb-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted">{e.label}</p>}
+            {e.items.map((n) => link(n))}
           </div>
         )
-        : menu(g.role, ROLE_META[g.role].label, g.items[0].icon, g.items))}
+        : menu(e.label, e.items))}
     </nav>
   );
 }

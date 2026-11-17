@@ -1,5 +1,6 @@
 "use server";
 
+import { invalidateSettings } from "@/modules/settings/get";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, settings, users } from "@/db";
@@ -38,6 +39,7 @@ export async function saveGoalsAction(input: GoalsInput): Promise<ActionResult> 
   const setKey = async (key: string, label: string, old: number, val: number) => {
     if (old === val) return;
     await db.insert(settings).values({ key, value: val, updatedBy: me.id }).onConflictDoUpdate({ target: settings.key, set: { value: val, updatedAt: new Date(), updatedBy: me.id } });
+    invalidateSettings();
     await logAudit(db, { userId: me.id, entity: "goal", action: "alterou meta global", field: label, oldValue: old, newValue: val });
   };
   if (scope === "all") {
@@ -95,6 +97,7 @@ export async function saveSellerGoalsAction(input: SellerGoalsInput): Promise<Ac
       await logAudit(tx, { userId: me.id, entity: "goal", action: "alterou meta individual", field: `${u.name} · Metas de vendedor`, oldValue: JSON.stringify(u.sellerGoals ?? {}), newValue: JSON.stringify(clean) });
     }
   });
+  invalidateSettings();
   revalidatePath("/", "layout");
   return { ok: true, message: "Metas de vendas salvas." };
 }

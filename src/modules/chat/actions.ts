@@ -2,9 +2,11 @@
 
 import { and, eq, gt, sql } from "drizzle-orm";
 import { z } from "zod";
-import { chatMessages, db } from "@/db";
+import { chatMessages, chatReactions, db, users } from "@/db";
+import { logAudit } from "@/modules/audit/log";
+import type { Role } from "@/config/roles";
 import { requireUser } from "@/modules/auth/guard";
-import { canUseChannel } from "./channels";
+import { canUseChannel, REACTION_EMOJIS } from "./channels";
 import { chatEnabled, isMod, listMessages, type ChatMsg } from "./data";
 import { searchShareable, shareInfo, shareLabel, type ShareInfo, type ShareItem, type ShareKind } from "./share";
 
@@ -61,4 +63,40 @@ export async function sharedInfoAction(messageId: number): Promise<R<{ info: Sha
   const [m] = await db.select().from(chatMessages).where(eq(chatMessages.id, messageId));
   if (!m || m.deletedAt || !m.shareKind || !m.shareId || !canUseChannel(me.roles, m.channel)) return bad("Item não encontrado.");
   return { ok: true, info: await shareInfo(me, m.shareKind, m.shareId) };
+}
+
+export async function toggleReactionAction(messageId: number, emoji: string): Promise<R<object>> {
+  const me = await allowed();
+  if (!me) return bad("O chat está desligado.");
+  if (!(REACTION_EMOJIS as readonly string[]).includes(emoji)) return bad("Reação inválida.");
+  const [m] = await db.select({ channel: chatMessages.channel, deletedAt: chatMessages.deletedAt }).from(chatMessages).where(eq(chatMessages.id, messageId));
+  if (!m || m.deletedAt || !canUseChannel(me.roles, m.channel)) return bad("Mensagem não encontrada.");
+  const gone = await db.delete(chatReactions).where(and(eq(chatReactions.messageId, messageId), eq(chatReactions.userId, me.id), eq(chatReactions.emoji, emoji))).returning({ id: chatReactions.messageId });
+  if (!gone.length) await db.insert(chatReactions).values({ messageId, userId: me.id, emoji }).onConflictDoNothing();
+  return { ok: true };
+}
+
+export type ChatProfile = { id: number; name: string; username: string; roles: Role[]; sent: number; lastLoginAt: string | null; active: boolean; isAdminView: boolean };
+
+/** Perfil de quem escreveu. Todos veem nome, @usuário e cargos; o Adm vê também situação e último acesso. */
+export async function chatProfileAction(userId: number): Promise<R<{ profile: ChatProfile }>> {
+  const me = await allowed();
+  if (!me) return bad("O chat está desligado.");
+  const [u] = await db.select().from(users).where(eq(users.id, userId));
+  if (!u) return bad("Conta não encontrada.");
+  const admin = me.roles.includes("admin");
+  if (!u.inMetrics && !admin && u.id !== me.id) return bad("Conta não encontrada.");
+  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(chatMessages).where(and(eq(chatMessages.userId, userId), sql`${chatMessages.deletedAt} is null`));
+  return { ok: true, profile: { id: u.id, name: u.name, username: u.username, roles: u.roles as Role[], sent: n, active: u.active, lastLoginAt: admin ? u.lastLoginAt?.toISOString() ?? null : null, isAdminView: admin } };
+}
+
+/** Só o Adm: apaga todas as mensagens de um grupo, ou todas as de uma pessoa (em um grupo ou em todos). */
+export async function adminChatPurgeAction(input: { channel?: string; userId?: number }): Promise<R<{ removed: number }>> {
+  const me = await requireUser();
+  if (!me.roles.includes("admin")) return bad("Só o Adm pode fazer isso.");
+  const p = z.object({ channel: z.string().optional(), userId: z.number().int().positive().optional() }).safeParse(input);
+  if (!p.success || (!p.data.channel && !p.data.userId)) return bad("Escolha o grupo ou a pessoa.");
+  const gone = await db.delete(chatMessages).where(and(p.data.channel ? eq(chatMessages.channel, p.data.channel) : undefined, p.data.userId ? eq(chatMessages.userId, p.data.userId) : undefined)).returning({ id: chatMessages.id });
+  await logAudit(db, { userId: me.id, entity: "setting", action: "apagou mensagens do chat", field: p.data.channel ?? "pessoa", newValue: `${gone.length} mensagens${p.data.userId ? ` (conta ${p.data.userId})` : ""}` });
+  return { ok: true, removed: gone.length };
 }

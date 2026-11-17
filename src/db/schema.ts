@@ -162,6 +162,8 @@ export const leads = pgTable(
     index("leads_eligible_idx").on(t.nextEligibleAt),
     index("leads_locked_idx").on(t.lockedBy),
     index("leads_owner_idx").on(t.ownerId),
+    index("leads_unenriched_idx").on(t.id).where(sql`not is_test and enriched_at is null`),
+    index("leads_uf_idx").on(t.uf),
   ],
 );
 
@@ -208,7 +210,7 @@ export const visits = pgTable(
     confirmedBy: integer("confirmed_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: now(),
   },
-  (t) => [index("visits_lead_idx").on(t.leadId)],
+  (t) => [index("visits_lead_idx").on(t.leadId), index("visits_user_idx").on(t.userId, t.createdAt), index("visits_rep_idx").on(t.repSap), index("visits_pending_idx").on(t.createdAt).where(sql`status = 'pendente' and canceled_at is null`)],
 );
 
 /* ───────────── Representantes e cidades ───────────── */
@@ -277,6 +279,7 @@ export const auditLog = pgTable(
     index("audit_at_idx").on(t.at),
     index("audit_lead_idx").on(t.leadId),
     index("audit_user_idx").on(t.userId),
+    index("audit_entity_idx").on(t.entity, t.at),
   ],
 );
 
@@ -346,7 +349,7 @@ export const attendanceSessions = pgTable(
     outcome: text("outcome"),
     isTest: boolean("is_test").notNull().default(false),
   },
-  (t) => [index("sessions_user_idx").on(t.userId, t.savedAt), index("sessions_lead_idx").on(t.leadId)],
+  (t) => [index("sessions_user_idx").on(t.userId, t.savedAt), index("sessions_saved_idx").on(t.savedAt), index("sessions_lead_idx").on(t.leadId)],
 );
 
 /** Lead pulado: some só para esse usuário até `until`. */
@@ -436,6 +439,9 @@ export const deals = pgTable(
   (t) => [
     index("deals_lead_idx").on(t.leadId),
     index("deals_seller_idx").on(t.sellerId, t.stage),
+    index("deals_sdr_idx").on(t.sdrId),
+    index("deals_updated_idx").on(t.updatedAt),
+    index("deals_claimed_idx").on(t.claimedAt),
     uniqueIndex("deals_one_open_per_lead").on(t.leadId).where(sql`stage not in ('ganho','perdido')`),
   ],
 );
@@ -453,7 +459,7 @@ export const dealEvents = pgTable(
     valueCents: integer("value_cents"),
     at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("deal_events_deal_idx").on(t.dealId), index("deal_events_at_idx").on(t.at)],
+  (t) => [index("deal_events_deal_idx").on(t.dealId, t.at), index("deal_events_at_idx").on(t.at), index("deal_events_user_idx").on(t.userId, t.at)],
 );
 
 /** Cada cotação enviada ao cliente (uma negociação pode ter várias). Os valores da última ficam espelhados na negociação. */
@@ -537,7 +543,7 @@ export const dealQuoteItems = pgTable(
     unitCents: integer("unit_cents"),
     totalCents: integer("total_cents"),
   },
-  (t) => [index("deal_quote_items_deal_idx").on(t.dealId)],
+  (t) => [index("deal_quote_items_deal_idx").on(t.dealId), index("deal_quote_items_quote_idx").on(t.quoteId)],
 );
 
 /** Chat interno. Canais: geral, user (SDR), seller (vendedores), manager (gestores). */
@@ -555,7 +561,7 @@ export const chatMessages = pgTable(
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: now(),
   },
-  (t) => [index("chat_messages_channel_idx").on(t.channel, t.id)],
+  (t) => [index("chat_messages_channel_idx").on(t.channel, t.id), index("chat_messages_user_idx").on(t.userId)],
 );
 
 /** Até onde cada pessoa já leu em cada canal (para o aviso de não lidas). */
@@ -567,4 +573,15 @@ export const chatReads = pgTable(
     lastId: integer("last_id").notNull().default(0),
   },
   (t) => [primaryKey({ columns: [t.userId, t.channel] })],
+);
+
+/** Reações às mensagens do chat (um emoji por pessoa e mensagem). */
+export const chatReactions = pgTable(
+  "chat_reactions",
+  {
+    messageId: integer("message_id").notNull().references(() => chatMessages.id, { onDelete: "cascade" }),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    emoji: text("emoji").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.messageId, t.userId, t.emoji] }), index("chat_reactions_user_idx").on(t.userId)],
 );
