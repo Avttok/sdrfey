@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, ChevronUp, FileText, FileUp, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, ExternalLink, FileText, FileUp, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { DateInput } from "@/components/date-input";
@@ -15,7 +15,7 @@ import { readQuotePdfAction } from "@/modules/quotes/read";
 
 export type QuoteView = {
   id: number; number: string | null; quoteDate: string | null; totalCents: number | null; productsCents: number | null; ipiCents: number | null; icmsCents: number | null; netCents: number | null; freightCents: number | null;
-  freight: "CIF" | "FOB" | "RED" | null; paymentTerms: string | null; validityDays: number | null; note: string | null; createdAt: string;
+  freight: "CIF" | "FOB" | "RED" | null; paymentTerms: string | null; validityDays: number | null; note: string | null; link: string | null; createdAt: string;
   items: (QuoteItem & { id: number })[];
 };
 
@@ -40,21 +40,27 @@ export function QuoteValues({ q }: { q: Pick<QuoteView, "totalCents" | "products
 }
 
 /** Formulário de cotação (nova ou edição): dados, itens editáveis e leitura de PDF. */
-export function QuoteEditor({ dealId, quote, terms, onClose, onTerm, leadCnpj }: { dealId: number; quote?: QuoteView; terms: string[]; onClose: () => void; onTerm: (t: string) => void; leadCnpj: string }) {
+export function QuoteEditor({ dealId, quote, terms, extraPct, onClose, onTerm, leadCnpj }: { dealId: number; quote?: QuoteView; terms: string[]; extraPct: number; onClose: () => void; onTerm: (t: string) => void; leadCnpj: string }) {
   const { run, pending } = useRun();
   const toast = useToast();
   const [f, setF] = useState({
     number: quote?.number ?? "", date: quote?.quoteDate ?? "", freight: quote?.freight ?? "", paymentTerms: quote?.paymentTerms ?? "", validity: quote?.validityDays ? String(quote.validityDays) : "",
-    freightValue: quote?.freightCents ? brl(quote.freightCents) : "", totalValue: quote && !quote.items.length ? brl(quote.totalCents) : "", note: quote?.note ?? "", days: 2,
+    freightValue: quote?.freightCents ? brl(quote.freightCents) : "", totalValue: quote && !quote.items.length ? brl(quote.totalCents) : "", note: quote?.note ?? "", link: quote?.link ?? "", days: 2,
   });
   const [items, setItems] = useState<EItem[]>(quote?.items.map(toE) ?? []);
   const [reading, setReading] = useState(false);
+  const [netStr, setNetStr] = useState<string | null>(null);
   const set = (k: keyof typeof f, v: string | number) => setF((p) => ({ ...p, [k]: v }));
   const setItem = (n: number, patch: Partial<EItem>) => setItems((p) => p.map((x, i) => (i === n ? { ...x, ...patch } : x)));
   const productsSum = items.reduce((a, e) => a + lineTotal(e), 0);
   const ipiSum = items.reduce((a, e) => a + (e.ipiCents ?? 0), 0);
   const icmsSum = items.reduce((a, e) => a + (e.icmsCents ?? 0), 0);
   const freightC = parseMoneyToCents(f.freightValue) ?? 0;
+  /** Sem impostos calculado: (total − IPI − ICMS) menos o imposto extra (PIS/COFINS). */
+  const calcNet = items.length ? Math.round((productsSum + freightC - icmsSum) * (1 - extraPct / 100)) : parseMoneyToCents(f.totalValue) ?? 0;
+  const savedManual = !!quote && quote.netCents != null && Math.abs(quote.netCents - calcNet) > 1;
+  const manualNet = netStr ?? (savedManual && items.length === quote!.items.length ? brl(quote!.netCents) : null);
+  const netShown = manualNet ?? brl(calcNet);
 
   const readPdf = async (file: File) => {
     setReading(true);
@@ -76,60 +82,67 @@ export function QuoteEditor({ dealId, quote, terms, onClose, onTerm, leadCnpj }:
     if (p && !it.description.trim()) setItem(n, { description: p.description, kind: p.kind, unit: p.unit, unitStr: it.unitStr || brl(p.lastUnitCents) });
   };
   const save = () => run(() => saveQuoteAction(dealId, quote?.id ?? null, {
-    number: f.number, date: f.date, freight: f.freight, paymentTerms: f.paymentTerms, validityDays: f.validity ? Number(f.validity) : null, note: f.note, freightValue: f.freightValue, totalValue: f.totalValue, followupDays: f.days,
+    number: f.number, date: f.date, freight: f.freight, paymentTerms: f.paymentTerms, validityDays: f.validity ? Number(f.validity) : null, note: f.note, freightValue: f.freightValue, totalValue: f.totalValue, netValue: manualNet ?? "", link: f.link, followupDays: f.days,
     items: items.map((e, n) => ({ seq: (n + 1) * 10, productCode: e.productCode, clientRef: e.clientRef, description: e.description, kind: e.kind ?? (e.description.split(" ")[0]?.toUpperCase() || null), qty: num(e.qty), packQty: e.packQty, unit: e.unit, icmsCents: e.icmsCents, ipiCents: e.ipiCents, unitCents: parseMoneyToCents(e.unitStr), totalCents: lineTotal(e) })),
   }), undefined, onClose);
 
+  const lab = "flex min-w-0 flex-col gap-1 text-xs font-medium text-muted";
+  const cell = `${inputCls} !h-10 !min-h-10 !px-2.5 !py-0 text-[13px]`;
+  const COLS = "grid grid-cols-[6.5rem_minmax(14rem,1fr)_5.5rem_7.5rem_8rem_2.25rem] items-center gap-2";
   return (
-    <div className="space-y-4 rounded-xl border border-accent/40 bg-sunk/40 p-4">
+    <div className="space-y-5 rounded-xl border border-accent/40 bg-sunk/40 p-4">
       <div className="flex flex-wrap items-center gap-3">
         <h3 className="flex-1 font-semibold">{quote ? `Editar cotação ${quote.number ?? ""}` : "Nova cotação"}</h3>
         <label className={`${btnGhost} cursor-pointer`}><FileUp size={16} aria-hidden /> {reading ? "Lendo…" : "Ler PDF"}<input type="file" accept="application/pdf" className="sr-only" disabled={reading} onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ""; if (file) void readPdf(file); }} /></label>
         <button type="button" className="grid size-9 place-items-center rounded-lg text-muted hover:bg-sunk" aria-label="Fechar" onClick={onClose}><X size={18} aria-hidden /></button>
       </div>
-      <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
-        <label className="flex flex-col gap-1"><span className="text-xs font-medium text-muted">Nº da cotação</span><input className={inputCls} value={f.number} onChange={(e) => set("number", e.target.value)} /></label>
-        <div className="flex flex-col gap-1"><span className="text-xs font-medium text-muted">Data da cotação</span><DateInput label="Data da cotação" value={f.date} onChange={(v) => set("date", v)} /></div>
-        <label className="flex flex-col gap-1"><span className="text-xs font-medium text-muted">Frete</span><select className={inputCls} value={f.freight} onChange={(e) => set("freight", e.target.value)}><option value="">—</option><option>CIF</option><option>FOB</option><option>RED</option></select></label>
-        <label className="flex flex-col gap-1"><span className="text-xs font-medium text-muted">Condição de pagamento</span>
+      <div className="grid gap-x-3 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+        <label className={lab}>Nº da cotação<input className={inputCls} value={f.number} onChange={(e) => set("number", e.target.value)} /></label>
+        <div className={lab}>Data da cotação<DateInput label="Data da cotação" value={f.date} onChange={(v) => set("date", v)} /></div>
+        <label className={lab}>Frete<select className={inputCls} value={f.freight} onChange={(e) => set("freight", e.target.value)}><option value="">—</option><option>CIF</option><option>FOB</option><option>RED</option></select></label>
+        <label className={lab}>Condição de pagamento
           <select className={inputCls} value={f.paymentTerms} onChange={(e) => set("paymentTerms", e.target.value)}><option value="">—</option>{[...new Set([...(f.paymentTerms ? [f.paymentTerms] : []), ...terms])].map((t) => <option key={t}>{t}</option>)}</select></label>
-        <label className="flex flex-col gap-1"><span className="text-xs font-medium text-muted">Validade (dias)</span><input className={inputCls} inputMode="numeric" value={f.validity} onChange={(e) => set("validity", e.target.value.replace(/\D/g, ""))} /></label>
-        <label className="flex flex-col gap-1"><span className="text-xs font-medium text-muted">Frete negociado (R$)</span><input className={inputCls} inputMode="decimal" value={f.freightValue} onChange={(e) => set("freightValue", e.target.value)} /></label>
+        <label className={lab}>Validade (dias)<input className={inputCls} inputMode="numeric" value={f.validity} onChange={(e) => set("validity", e.target.value.replace(/\D/g, ""))} /></label>
+        <label className={lab}>Frete negociado (R$)<input className={inputCls} inputMode="decimal" value={f.freightValue} onChange={(e) => set("freightValue", e.target.value)} /></label>
+        <label className={`${lab} sm:col-span-2`}>Link da cotação (Salesforce)<input className={inputCls} type="url" placeholder="https://…" value={f.link} onChange={(e) => set("link", e.target.value)} /></label>
       </div>
 
       <div className="space-y-2">
         <p className="text-xs font-medium text-muted">Produtos {items.length > 0 && `(${items.length})`}</p>
         {items.length > 0 && (
           <div className="overflow-x-auto rounded-lg border border-line bg-panel">
-            <table className="w-full text-[13px]">
-              <thead><tr className="text-left text-xs text-muted"><th className="p-2 font-medium">Cód.</th><th className="p-2 font-medium">Descrição</th><th className="p-2 text-right font-medium">Qtd</th><th className="p-2 text-right font-medium">Unitário</th><th className="p-2 text-right font-medium">Total</th><th className="w-8" /></tr></thead>
-              <tbody className="divide-y divide-line">
-                {items.map((e, n) => (
-                  <tr key={n}>
-                    <td className="p-1.5"><input aria-label="Código" className={`${inputCls} !min-h-9 !w-24 !px-2 !py-1 text-[13px]`} value={e.productCode} onChange={(x) => setItem(n, { productCode: x.target.value })} onBlur={() => lookup(n)} /></td>
-                    <td className="p-1.5"><input aria-label="Descrição" className={`${inputCls} !min-h-9 !px-2 !py-1 text-[13px]`} value={e.description} onChange={(x) => setItem(n, { description: x.target.value, kind: x.target.value.split(" ")[0]?.toUpperCase() || null })} /></td>
-                    <td className="p-1.5"><input aria-label="Quantidade" inputMode="decimal" className={`${inputCls} !min-h-9 !w-20 !px-2 !py-1 text-right text-[13px]`} value={e.qty} onChange={(x) => setItem(n, { qty: x.target.value })} /></td>
-                    <td className="p-1.5"><input aria-label="Preço unitário" inputMode="decimal" className={`${inputCls} !min-h-9 !w-24 !px-2 !py-1 text-right text-[13px]`} value={e.unitStr} onChange={(x) => setItem(n, { unitStr: x.target.value })} /></td>
-                    <td className="figure whitespace-nowrap p-1.5 text-right font-medium">{brl(lineTotal(e))}</td>
-                    <td className="p-1.5"><button type="button" aria-label="Remover item" className="grid size-8 place-items-center rounded-md text-muted hover:bg-danger/10 hover:text-danger" onClick={() => setItems((p) => p.filter((_, i) => i !== n))}><Trash2 size={15} aria-hidden /></button></td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr><td colSpan={4} className="p-2 text-right text-xs text-muted">Produtos (preço já com ICMS)</td><td className="figure p-2 text-right">{brl(productsSum)}</td><td /></tr>
-                {ipiSum > 0 && <tr><td colSpan={4} className="px-2 pb-1 text-right text-xs text-muted">+ IPI</td><td className="figure px-2 pb-1 text-right">{brl(ipiSum)}</td><td /></tr>}
-                {freightC > 0 && <tr><td colSpan={4} className="px-2 pb-1 text-right text-xs text-muted">+ Frete</td><td className="figure px-2 pb-1 text-right">{brl(freightC)}</td><td /></tr>}
-                <tr><td colSpan={4} className="px-2 pb-1 text-right text-xs text-muted">Total com impostos</td><td className="figure px-2 pb-1 text-right">{brl(productsSum + ipiSum + freightC)}</td><td /></tr>
-                {(ipiSum > 0 || icmsSum > 0) && <tr><td colSpan={4} className="px-2 pb-1 text-right text-xs text-muted">− IPI − ICMS ({brl(icmsSum)})</td><td /><td /></tr>}
-                <tr><td colSpan={4} className="px-2 pb-2 text-right text-xs font-semibold">Valor sem impostos</td><td className="figure px-2 pb-2 text-right text-base font-bold">{brl(productsSum + freightC - icmsSum)}</td><td /></tr>
-              </tfoot>
-            </table>
+            <div className="min-w-[44rem] space-y-2 p-3">
+              <div className={`${COLS} text-xs font-medium text-muted`}><span>Código</span><span>Descrição</span><span className="text-right">Qtd</span><span className="text-right">Unitário</span><span className="text-right">Total</span><span /></div>
+              {items.map((e, n) => (
+                <div key={n} className={COLS}>
+                  <input aria-label="Código" className={cell} value={e.productCode} onChange={(x) => setItem(n, { productCode: x.target.value })} onBlur={() => lookup(n)} />
+                  <input aria-label="Descrição" className={cell} value={e.description} onChange={(x) => setItem(n, { description: x.target.value, kind: x.target.value.split(" ")[0]?.toUpperCase() || null })} />
+                  <input aria-label="Quantidade" inputMode="decimal" className={`${cell} text-right`} value={e.qty} onChange={(x) => setItem(n, { qty: x.target.value })} />
+                  <input aria-label="Preço unitário" inputMode="decimal" className={`${cell} text-right`} value={e.unitStr} onChange={(x) => setItem(n, { unitStr: x.target.value })} />
+                  <span className="figure flex h-10 items-center justify-end rounded-lg bg-sunk/60 px-2.5 text-[13px] font-medium">{brl(lineTotal(e))}</span>
+                  <button type="button" aria-label="Remover item" className="grid size-9 place-items-center rounded-md text-muted hover:bg-danger/10 hover:text-danger" onClick={() => setItems((p) => p.filter((_, i) => i !== n))}><Trash2 size={15} aria-hidden /></button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
         <button type="button" className={btnGhost} onClick={() => setItems((p) => [...p, { productCode: "", description: "", kind: null, unit: "CEN", clientRef: null, packQty: null, icmsCents: null, ipiCents: null, qty: "1", unitStr: "" }])}><Plus size={15} aria-hidden /> Adicionar produto</button>
         {items.length === 0 && (
-          <label className="flex max-w-xs flex-col gap-1 text-sm"><span className="text-xs font-medium text-muted">Valor total da cotação (R$), se não for listar os produtos</span><input className={inputCls} inputMode="decimal" placeholder="12.500,00" value={f.totalValue} onChange={(e) => set("totalValue", e.target.value)} /></label>
+          <label className={`${lab} max-w-xs`}>Valor total da cotação (R$), se não for listar os produtos<input className={inputCls} inputMode="decimal" placeholder="12.500,00" value={f.totalValue} onChange={(e) => set("totalValue", e.target.value)} /></label>
         )}
+      </div>
+
+      <div className="grid gap-4 rounded-xl border border-line bg-panel p-4 sm:grid-cols-[1fr_auto] sm:items-end">
+        <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+          {items.length > 0 && <><dt className="text-muted">Produtos (preço já com ICMS)</dt><dd className="figure text-right">{brl(productsSum)}</dd></>}
+          {ipiSum > 0 && <><dt className="text-muted">+ IPI</dt><dd className="figure text-right">{brl(ipiSum)}</dd></>}
+          {freightC > 0 && <><dt className="text-muted">+ Frete</dt><dd className="figure text-right">{brl(freightC)}</dd></>}
+          {items.length > 0 && <><dt className="font-medium">Total com impostos</dt><dd className="figure text-right font-medium">{brl(productsSum + ipiSum + freightC)}</dd></>}
+        </dl>
+        <label className={`${lab} sm:w-56`}>Valor sem impostos (R$)
+          <input className={`${inputCls} text-right text-base font-bold`} inputMode="decimal" value={netShown} onChange={(e) => setNetStr(e.target.value)} />
+          <span className="font-normal">{manualNet !== null ? <button type="button" className="text-accent hover:underline" onClick={() => setNetStr(null)}>Voltar ao valor calculado ({brl(calcNet)})</button> : "Calculado. Pode corrigir com o valor do Salesforce."}</span>
+        </label>
       </div>
       <textarea className={`${inputCls} min-h-16`} placeholder="Observações da cotação (opcional)" value={f.note} onChange={(e) => set("note", e.target.value)} />
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -141,12 +154,12 @@ export function QuoteEditor({ dealId, quote, terms, onClose, onTerm, leadCnpj }:
 }
 
 /** Um card por cotação enviada. */
-export function QuoteCard({ dealId, q, terms, onTerm, leadCnpj, editable, isLast }: { dealId: number; q: QuoteView; terms: string[]; onTerm: (t: string) => void; leadCnpj: string; editable: boolean; isLast: boolean }) {
+export function QuoteCard({ dealId, q, terms, extraPct, onTerm, leadCnpj, editable, isLast }: { dealId: number; q: QuoteView; terms: string[]; extraPct: number; onTerm: (t: string) => void; leadCnpj: string; editable: boolean; isLast: boolean }) {
   const { run, pending } = useRun();
   const [edit, setEdit] = useState(false);
   const [show, setShow] = useState(false);
   const [del, setDel] = useState(false);
-  if (edit) return <QuoteEditor dealId={dealId} quote={q} terms={terms} onTerm={onTerm} leadCnpj={leadCnpj} onClose={() => setEdit(false)} />;
+  if (edit) return <QuoteEditor dealId={dealId} quote={q} extraPct={extraPct} terms={terms} onTerm={onTerm} leadCnpj={leadCnpj} onClose={() => setEdit(false)} />;
   return (
     <article className="space-y-3 rounded-xl border border-line bg-panel p-4">
       <header className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -155,7 +168,7 @@ export function QuoteCard({ dealId, q, terms, onTerm, leadCnpj, editable, isLast
           <h3 className="font-semibold leading-tight">Cotação {q.number ?? `#${q.id}`}{isLast && <span className="ml-2 rounded-full bg-accent/12 px-2 py-0.5 align-middle text-[11px] font-semibold text-accent">Mais recente</span>}</h3>
           <p className="text-xs text-muted">{q.quoteDate ? fmtDate(q.quoteDate) : fmtDate(q.createdAt)}{q.freight ? ` · Frete ${q.freight}` : ""}{q.paymentTerms ? ` · ${q.paymentTerms}` : ""}{q.validityDays ? ` · validade ${q.validityDays} dias` : ""}</p>
         </div>
-        {editable && <div className="flex gap-1.5"><button type="button" className={`${btnGhost} !min-h-9 !px-3 !text-sm`} onClick={() => setEdit(true)}><Pencil size={14} aria-hidden /> Editar</button><button type="button" aria-label="Apagar cotação" className={`${btnGhost} !min-h-9 !px-2.5 text-danger`} disabled={pending} onClick={() => setDel(true)}><Trash2 size={15} aria-hidden /></button></div>}
+        <div className="flex flex-wrap items-center gap-1.5">{q.link && <a href={q.link} target="_blank" rel="noreferrer" style={{ background: "#0070d2", borderColor: "#0070d2" }} className={`${btnGhost} !min-h-9 !px-3 !text-sm !text-white hover:brightness-110`}><ExternalLink size={14} aria-hidden /> Abrir no Salesforce</a>}{editable && <><button type="button" className={`${btnGhost} !min-h-9 !px-3 !text-sm`} onClick={() => setEdit(true)}><Pencil size={14} aria-hidden /> Editar</button><button type="button" aria-label="Apagar cotação" className={`${btnGhost} !min-h-9 !px-2.5 text-danger`} disabled={pending} onClick={() => setDel(true)}><Trash2 size={15} aria-hidden /></button></>}</div>
       </header>
       <QuoteValues q={q} />
       {q.note && <p className="whitespace-pre-wrap rounded-lg bg-sunk px-3 py-2 text-sm text-muted">{q.note}</p>}

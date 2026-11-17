@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, MapPin, Plus, Package, Trash2, Tags, CalendarClock, Check, ExternalLink, FileText, Link2, Mail, MessageCircle, NotebookPen, Phone, PhoneCall, RotateCcw, Trophy, UserPlus, XCircle } from "lucide-react";
+import { Building2, Plus, Package, Trash2, Tags, CalendarClock, Check, ExternalLink, FileText, Link2, Mail, MessageCircle, NotebookPen, Phone, PhoneCall, RotateCcw, Trophy, UserPlus, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -30,7 +30,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 }
 const brl = (c: number | null) => (c == null ? "" : (c / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
-export function DealPanel({ deal, events, quotes, tags, terms, canDelete, phones, meId, team, canClaim, sellers }: { deal: DealRow; events: Ev[]; quotes: QuoteView[]; tags: { group: string; label: string; color: string }[]; terms: string[]; canDelete: boolean; phones: { value: string; label: string | null }[]; meId: number; team: boolean; canClaim: boolean; sellers: { id: number; name: string }[] }) {
+export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDelete, phones, meId, team, canClaim, sellers }: { deal: DealRow; events: Ev[]; quotes: QuoteView[]; tags: { group: string; label: string; color: string }[]; terms: string[]; extraPct: number; canDelete: boolean; phones: { value: string; label: string | null }[]; meId: number; team: boolean; canClaim: boolean; sellers: { id: number; name: string }[] }) {
   const { run, pending } = useRun();
   const closed = deal.stage === "ganho" || deal.stage === "perdido";
   const mine = deal.sellerId === meId || team;
@@ -50,7 +50,7 @@ export function DealPanel({ deal, events, quotes, tags, terms, canDelete, phones
   const [editLinks, setEditLinks] = useState(false);
   const [f, setF] = useState({
     freight: deal.freight ?? "", sapCode: deal.sapCode ?? "", orderNumber: deal.orderNumber ?? "", quoteNumber: deal.quoteNumber ?? "", quoteDate: deal.quoteDate ?? "",
-    closedOn: deal.closedOn ?? "", quoteValue: brl(deal.valueCents), closedValue: brl(deal.closedValueCents), realValue: brl(deal.realValueCents), paymentTerms: deal.paymentTerms ?? "", isReactivation: deal.isReactivation,
+    closedOn: deal.closedOn ?? "", quoteValue: brl(deal.valueCents), netValue: brl(deal.netValueCents), closedValue: brl(deal.closedValueCents), realValue: brl(deal.realValueCents), paymentTerms: deal.paymentTerms ?? "", isReactivation: deal.isReactivation,
   });
   const set = (k: keyof typeof f, v: string | boolean) => setF((p) => ({ ...p, [k]: v }));
   const addTerm = (t: string) => setTermList((p) => (p.includes(t) ? p : [...p, t]));
@@ -85,8 +85,6 @@ export function DealPanel({ deal, events, quotes, tags, terms, canDelete, phones
                 </p>
               ))}
               {deal.email && <p className="flex items-center gap-2 pt-1"><Mail size={14} className="text-muted" aria-hidden /><a href={`mailto:${deal.email}`} className="truncate hover:text-accent">{deal.email}</a></p>}
-              {deal.addressLine && <p className="flex items-start gap-2 pt-1 text-muted"><MapPin size={14} className="mt-0.5 shrink-0" aria-hidden /><span>{deal.addressLine}{deal.city ? ` · ${deal.city}/${deal.uf}` : ""}</span></p>}
-              {deal.stateReg && <p className="pl-6 text-xs text-muted">Inscrição estadual {deal.stateReg}</p>}
             </div>
             <div className="space-y-1.5">
               <p className="flex items-center justify-between text-xs font-medium text-muted">Perfis do cliente <button type="button" className="font-medium text-accent hover:underline" onClick={() => setEditLinks(!editLinks)}>{editLinks ? "Fechar" : "Editar links"}</button></p>
@@ -137,34 +135,34 @@ export function DealPanel({ deal, events, quotes, tags, terms, canDelete, phones
           </>
         )}
 
-        <div className="grid items-start gap-4 xl:grid-cols-2">
+        <div className="grid items-stretch gap-4 xl:grid-cols-2">
         {mine && deal.sellerId && !closed && (
           <>
-            <SectionCard icon={NotebookPen} title="Registrar andamento">
+            <SectionCard icon={NotebookPen} title="Registrar andamento" className="flex h-full flex-col">
               <div role="tablist" className="flex flex-wrap gap-2">
                 {([["contato", "Contato feito", PhoneCall], ["nota", "Anotação", NotebookPen], ["encerrar", "Encerrar", Trophy]] as const).map(([k, l, I]) => (
                   <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition ${tab === k ? "border-transparent bg-grad text-on-accent" : "border-line hover:bg-sunk"}`}><I size={15} aria-hidden />{l}</button>
                 ))}
               </div>
               {tab === "contato" && (
-                <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); run(() => logContactAction(deal.id, { kinds, note, nextAt: nextAt || null, nextNote: nextNote || null }), undefined, reset); }}>
+                <form className="flex flex-1 flex-col gap-3" onSubmit={(e) => { e.preventDefault(); run(() => logContactAction(deal.id, { kinds, note, nextAt: nextAt || null, nextNote: nextNote || null }), undefined, reset); }}>
                   <p className="text-xs text-muted">Marque todos os meios usados neste contato.</p>
                   <div className="flex flex-wrap gap-2">
                     {([["ligacao", "Ligação", PhoneCall], ["whatsapp", "WhatsApp", MessageCircle], ["email", "E-mail", Mail]] as const).map(([k, l, I]) => (
                       <button key={k} type="button" aria-pressed={kinds.includes(k)} onClick={() => setKinds((p) => (p.includes(k) ? (p.length > 1 ? p.filter((x) => x !== k) : p) : [...p, k]))} className={`inline-flex items-center gap-2 rounded-full border-2 px-3.5 py-1.5 text-sm font-medium transition ${kinds.includes(k) ? "border-accent bg-accent/10" : "border-line hover:bg-sunk"}`}><I size={15} aria-hidden />{l}</button>
                     ))}
                   </div>
-                  <textarea className={`${inputCls} min-h-20`} placeholder="O que foi conversado?" value={note} onChange={(e) => setNote(e.target.value)} />
+                  <textarea className={`${inputCls} min-h-24 flex-1`} placeholder="O que foi conversado?" value={note} onChange={(e) => setNote(e.target.value)} />
                   <div className="flex flex-wrap items-end gap-3">
                     <div className="w-48 text-sm"><span className="mb-1 block text-muted">Voltar a falar em</span><DateInput label="Próximo contato" value={nextAt} onChange={setNextAt} /></div>
                     <label className="block min-w-48 flex-1 text-sm"><span className="mb-1 block text-muted">Combinado</span><input className={inputCls} placeholder="Ex.: ligar para fechar" value={nextNote} onChange={(e) => setNextNote(e.target.value)} /></label>
-                    <button className={btnPrimary} disabled={pending}><Check size={16} aria-hidden /> Registrar contato</button>
+                    <button className={`${btnPrimary} whitespace-nowrap`} disabled={pending}><Check size={16} aria-hidden /> Registrar contato</button>
                   </div>
                 </form>
               )}
               {tab === "nota" && (
-                <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); run(() => logContactAction(deal.id, { kinds: ["nota"], note, nextAt: null, nextNote: null }), undefined, reset); }}>
-                  <textarea className={`${inputCls} min-h-24`} placeholder="Anotação (não conta como contato)" value={note} onChange={(e) => setNote(e.target.value)} />
+                <form className="flex flex-1 flex-col gap-3" onSubmit={(e) => { e.preventDefault(); run(() => logContactAction(deal.id, { kinds: ["nota"], note, nextAt: null, nextNote: null }), undefined, reset); }}>
+                  <textarea className={`${inputCls} min-h-24 flex-1`} placeholder="Anotação (não conta como contato)" value={note} onChange={(e) => setNote(e.target.value)} />
                   <button className={btnPrimary} disabled={pending}><Check size={16} aria-hidden /> Salvar anotação</button>
                 </form>
               )}
@@ -192,22 +190,22 @@ export function DealPanel({ deal, events, quotes, tags, terms, canDelete, phones
 
 
         {(mine && deal.sellerId) && (
-          <SectionCard icon={Package} title="Dados da negociação">
-            <form className="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); run(() => saveDealDataAction(deal.id, f)); }}>
+          <SectionCard icon={Package} title="Dados da negociação" className="flex h-full flex-col">
+            <form className="grid flex-1 content-start gap-x-4 gap-y-3 text-sm sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); run(() => saveDealDataAction(deal.id, f)); }}>
               <Field label="Frete"><select className={inputCls} value={f.freight} onChange={(e) => set("freight", e.target.value)}><option value="">—</option><option>CIF</option><option>FOB</option><option>RED</option></select></Field>
               <Field label="Código SAP"><input className={inputCls} value={f.sapCode} onChange={(e) => set("sapCode", e.target.value)} /></Field>
               <Field label="Condição de pagamento"><select className={inputCls} value={f.paymentTerms} onChange={(e) => set("paymentTerms", e.target.value)}><option value="">—</option>{[...new Set([...(f.paymentTerms ? [f.paymentTerms] : []), ...termList])].map((t) => <option key={t}>{t}</option>)}</select></Field>
               <Field label="Nº da cotação"><input className={`${inputCls} opacity-70`} readOnly value={f.quoteNumber} /></Field>
               <Field label="Data da cotação"><input className={`${inputCls} opacity-70`} readOnly value={f.quoteDate ? f.quoteDate.split("-").reverse().join("/") : ""} /></Field>
-              <Field label="Valor sem impostos (R$)" hint="Total − IPI − ICMS da última cotação."><input className={`${inputCls} opacity-70`} readOnly value={brl(deal.netValueCents)} /></Field>
+              <Field label="Valor sem impostos (R$)" hint="Pode corrigir com o do Salesforce."><input className={inputCls} inputMode="decimal" value={f.netValue} onChange={(e) => set("netValue", e.target.value)} /></Field>
               <Field label="Total com impostos (R$)"><input className={`${inputCls} opacity-70`} readOnly value={f.quoteValue} /></Field>
               <Field label="Nº do pedido"><input className={inputCls} value={f.orderNumber} onChange={(e) => set("orderNumber", e.target.value)} /></Field>
               <Field label="Data fechada"><DateInput label="Data fechada" value={f.closedOn} onChange={(v) => set("closedOn", v)} /></Field>
               <Field label="Valor fechado (R$)"><input className={inputCls} inputMode="decimal" value={f.closedValue} onChange={(e) => set("closedValue", e.target.value)} /></Field>
-              <Field label="Valor real (R$)" hint="Opcional. Se vazio, conta o valor sem impostos."><input className={inputCls} inputMode="decimal" value={f.realValue} onChange={(e) => set("realValue", e.target.value)} /></Field>
+              <Field label="Valor real (R$)" hint="Opcional; senão conta o sem impostos."><input className={inputCls} inputMode="decimal" value={f.realValue} onChange={(e) => set("realValue", e.target.value)} /></Field>
               <div className="flex items-center justify-between gap-3 border-t border-line pt-3 sm:col-span-2">
-                <label className="flex items-center gap-2"><input type="checkbox" checked={f.isReactivation} onChange={(e) => set("isReactivation", e.target.checked)} /> Cliente reativado (conta na meta de reativados)</label>
-                <button className={btnPrimary} disabled={pending}><Check size={16} aria-hidden /> Salvar dados</button>
+                <label className="flex items-center gap-2"><input type="checkbox" checked={f.isReactivation} onChange={(e) => set("isReactivation", e.target.checked)} /> Cliente reativado</label>
+                <button className={`${btnPrimary} whitespace-nowrap`} disabled={pending}><Check size={16} aria-hidden /> Salvar dados</button>
               </div>
             </form>
           </SectionCard>
@@ -217,10 +215,10 @@ export function DealPanel({ deal, events, quotes, tags, terms, canDelete, phones
         {mine && deal.sellerId && (
           <SectionCard icon={FileText} title={`Cotações${quotes.length ? ` (${quotes.length})` : ""}`}>
             <div className="space-y-3">
-              {quotes.map((q, n) => <QuoteCard key={q.id} dealId={deal.id} q={q} terms={termList} onTerm={addTerm} leadCnpj={deal.cnpj ?? ""} editable={!closed} isLast={n === 0} />)}
+              {quotes.map((q, n) => <QuoteCard key={q.id} dealId={deal.id} q={q} terms={termList} extraPct={extraPct} onTerm={addTerm} leadCnpj={deal.cnpj ?? ""} editable={!closed} isLast={n === 0} />)}
               {quotes.length === 0 && !newQuote && <p className="text-sm text-muted">Nenhuma cotação enviada ainda.</p>}
               {newQuote
-                ? <QuoteEditor dealId={deal.id} terms={termList} onTerm={addTerm} leadCnpj={deal.cnpj ?? ""} onClose={() => setNewQuote(false)} />
+                ? <QuoteEditor dealId={deal.id} extraPct={extraPct} terms={termList} onTerm={addTerm} leadCnpj={deal.cnpj ?? ""} onClose={() => setNewQuote(false)} />
                 : !closed && <button type="button" className={btnPrimary} onClick={() => setNewQuote(true)}><Plus size={16} aria-hidden /> {quotes.length ? "Nova cotação" : "Registrar cotação"}</button>}
             </div>
           </SectionCard>

@@ -47,7 +47,8 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "lead.release", label: "Liberar lead que está com outra pessoa", group: "Funções", defaults: ["manager"] },
   { key: "rep.edit", label: "Criar e editar representantes", group: "Funções", defaults: ["manager"] },
   { key: "audit.revert", label: "Reverter alterações pelo Registro", group: "Funções", defaults: [] },
-  { key: "goals.edit", label: "Alterar metas da equipe", group: "Funções", defaults: [] },
+  { key: "goals.edit", label: "Alterar metas da equipe: padrão (global) e de qualquer pessoa", group: "Funções", defaults: [] },
+  { key: "goals.edit.own", label: "Alterar só a própria meta (sem mexer na global nem na dos outros)", group: "Funções", defaults: [] },
 ];
 
 export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);

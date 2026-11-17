@@ -478,6 +478,8 @@ export const dealQuotes = pgTable(
     paymentTerms: text("payment_terms"),
     validityDays: integer("validity_days"),
     note: text("note"),
+    /** Link da cotação no Salesforce. */
+    link: text("link"),
     createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: now(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

@@ -23,10 +23,12 @@ function Switch({ on, onChange, label, disabled }: { on: boolean; onChange: (v: 
   );
 }
 
-export function GoalsForm({ global, people, canEdit }: { global: Global; people: GoalPerson[]; canEdit: boolean }) {
+export function GoalsForm({ global, people, canGlobal, editableIds }: { global: Global; people: GoalPerson[]; canGlobal: boolean; editableIds: number[] }) {
   const [g, setG] = useState<Global>(global);
   const [per, setPer] = useState<Record<number, Record<Kind, PersonGoalInput>>>(Object.fromEntries(people.map((p) => [p.id, p.own])));
   const { run, pending } = useRun();
+  const canEdit = canGlobal;
+  const mayEdit = (id: number) => canGlobal || editableIds.includes(id);
   const upd = (id: number, k: Kind, patch: Partial<PersonGoalInput>) => setPer({ ...per, [id]: { ...per[id], [k]: { ...per[id][k], ...patch } } });
   /** Liga/desliga que a pessoa vê: o dela, senão o global. */
   const effOn = (id: number, k: Kind) => per[id][k].on ?? g[k].on;
@@ -35,7 +37,7 @@ export function GoalsForm({ global, people, canEdit }: { global: Global; people:
   const save = () => run(() => saveGoalsAction({
     global: g,
     // se a pessoa ficou igual ao global, não guarda ajuste próprio (assim ela acompanha mudanças futuras da meta global)
-    perUser: Object.fromEntries(people.map((p) => [p.id, Object.fromEntries(KINDS.map(({ k }) => [k, { on: per[p.id][k].on === g[k].on ? null : per[p.id][k].on, qty: per[p.id][k].qty }])) as Record<Kind, PersonGoalInput>])),
+    perUser: Object.fromEntries(people.filter((p) => mayEdit(p.id)).map((p) => [p.id, Object.fromEntries(KINDS.map(({ k }) => [k, { on: per[p.id][k].on === g[k].on ? null : per[p.id][k].on, qty: per[p.id][k].qty }])) as Record<Kind, PersonGoalInput>])),
   }));
 
   return (
@@ -68,9 +70,9 @@ export function GoalsForm({ global, people, canEdit }: { global: Global; people:
                 return (
                   <div key={k} className={on ? "" : "opacity-50"}>
                     <div className="mb-1.5 flex items-center gap-2.5">
-                      <Switch on={on} disabled={!canEdit} label={`${title} de ${p.name} ativa`} onChange={(v) => upd(p.id, k, { on: v })} />
+                      <Switch on={on} disabled={!mayEdit(p.id)} label={`${title} de ${p.name} ativa`} onChange={(v) => upd(p.id, k, { on: v })} />
                       <span className="flex-1 text-sm">{k === "attended" ? "Atendidos" : "Agendados"}</span>
-                      <input type="number" min={0} aria-label={`${title} de ${p.name}`} disabled={!canEdit || !on} className={`${inputCls} !w-24 text-center`} placeholder={String(g[k].qty)} title="Vazio = meta global" value={per[p.id][k].qty ?? ""} onChange={(e) => upd(p.id, k, { qty: e.target.value === "" ? null : Number(e.target.value) })} />
+                      <input type="number" min={0} aria-label={`${title} de ${p.name}`} disabled={!mayEdit(p.id) || !on} className={`${inputCls} !w-24 text-center`} placeholder={String(g[k].qty)} title="Vazio = meta global" value={per[p.id][k].qty ?? ""} onChange={(e) => upd(p.id, k, { qty: e.target.value === "" ? null : Number(e.target.value) })} />
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-sunk"><div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} /></div>
                     <p className="mt-1 text-xs text-muted">{on ? <>Hoje: <b className="figure text-ink">{p.today[k]}</b> de {qty}</> : "Meta desligada"}</p>
@@ -82,7 +84,7 @@ export function GoalsForm({ global, people, canEdit }: { global: Global; people:
         </ul>
       </section>
 
-      {canEdit ? <button type="button" className={btnPrimary} disabled={pending} onClick={save}>Salvar metas</button> : <p className="text-sm text-muted">Você pode ver as metas, mas só quem recebeu essa permissão do Adm pode alterar.</p>}
+      {canGlobal || editableIds.length > 0 ? <button type="button" className={btnPrimary} disabled={pending} onClick={save}>Salvar metas</button> : <p className="text-sm text-muted">Você pode ver as metas, mas só quem recebeu essa permissão do Adm pode alterar.</p>}
     </div>
   );
 }

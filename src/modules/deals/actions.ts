@@ -180,7 +180,7 @@ const FREIGHTS = ["CIF", "FOB", "RED"] as const;
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 export type DealDataInput = {
   freight?: string | null; sapCode?: string | null; orderNumber?: string | null; quoteNumber?: string | null;
-  quoteDate?: string | null; closedOn?: string | null; quoteValue?: string | null; closedValue?: string | null; realValue?: string | null;
+  quoteDate?: string | null; closedOn?: string | null; quoteValue?: string | null; netValue?: string | null; closedValue?: string | null; realValue?: string | null;
   paymentTerms?: string | null; isReactivation?: boolean;
 };
 
@@ -203,7 +203,7 @@ function dataPatch(input: DealDataInput): { patch: Partial<typeof deals.$inferIn
     if (v && !isoDate.safeParse(v).success) return { patch, error: `${label} inválida.` };
     patch[k] = v || null;
   }
-  for (const [k, label, col] of [["quoteValue", "Valor da cotação", "valueCents"], ["closedValue", "Valor fechado", "closedValueCents"], ["realValue", "Valor real (após impostos)", "realValueCents"]] as const) {
+  for (const [k, label, col] of [["quoteValue", "Valor da cotação", "valueCents"], ["netValue", "Valor sem impostos", "netValueCents"], ["closedValue", "Valor fechado", "closedValueCents"], ["realValue", "Valor real (após impostos)", "realValueCents"]] as const) {
     if (input[k] === undefined) continue;
     const v = (input[k] ?? "").trim();
     if (!v) { patch[col] = null; continue; }
@@ -215,7 +215,7 @@ function dataPatch(input: DealDataInput): { patch: Partial<typeof deals.$inferIn
   return { patch };
 }
 
-const DATA_LABEL: Record<string, string> = { freight: "Frete", sapCode: "Código SAP", orderNumber: "Nº do pedido", quoteNumber: "Nº da cotação", quoteDate: "Data da cotação", closedOn: "Data fechada", valueCents: "Valor da cotação", closedValueCents: "Valor fechado", realValueCents: "Valor real (após impostos)", paymentTerms: "Condição de pagamento", isReactivation: "Reativação" };
+const DATA_LABEL: Record<string, string> = { freight: "Frete", sapCode: "Código SAP", orderNumber: "Nº do pedido", quoteNumber: "Nº da cotação", quoteDate: "Data da cotação", closedOn: "Data fechada", valueCents: "Valor da cotação", netValueCents: "Valor sem impostos", closedValueCents: "Valor fechado", realValueCents: "Valor real (após impostos)", paymentTerms: "Condição de pagamento", isReactivation: "Reativação" };
 
 /** Grava os campos comerciais e registra no histórico o que mudou. Código SAP também vai para o cadastro do cliente. */
 async function applyData(tx: Parameters<Parameters<typeof db.transaction>[0]>[0], me: CurrentUser, deal: typeof deals.$inferSelect, patch: Partial<typeof deals.$inferInsert>) {
@@ -246,7 +246,14 @@ export async function saveDealDataAction(id: number, input: DealDataInput): Prom
     const [ok] = await db.select({ id: paymentTerms.id }).from(paymentTerms).where(and(eq(paymentTerms.name, patch.paymentTerms), eq(paymentTerms.active, true)));
     if (!ok) return fail("Escolha uma condição de pagamento da lista.");
   }
-  await db.transaction((tx) => applyData(tx, r.me, r.deal, patch));
+  await db.transaction(async (tx) => {
+    await applyData(tx, r.me, r.deal, patch);
+    // o valor sem impostos corrigido vale também para a cotação mais recente (o card dela mostra o mesmo número)
+    if (patch.netValueCents != null && patch.netValueCents !== r.deal.netValueCents) {
+      const [q] = await tx.select({ id: dealQuotes.id }).from(dealQuotes).where(eq(dealQuotes.dealId, id)).orderBy(desc(dealQuotes.id)).limit(1);
+      if (q) await tx.update(dealQuotes).set({ netCents: patch.netValueCents, updatedAt: new Date() }).where(eq(dealQuotes.id, q.id));
+    }
+  });
   refresh(id);
   return { ok: true, message: "Dados salvos." };
 }

@@ -9,6 +9,7 @@ import { attendanceSessions, db, leads, users, visits } from "@/db";
 import { bubbleHex } from "@/config/theme";
 import { isSellerOnly } from "@/config/roles";
 import { requirePerm } from "@/modules/auth/guard";
+import { goalScope } from "@/modules/auth/goal-scope";
 import { getSettings } from "@/modules/settings/get";
 import { getSellerGoalSettings, getSellerMonth } from "@/modules/deals/goals";
 import { SellerGoalPanel } from "@/components/deals/seller-goal-panel";
@@ -23,8 +24,13 @@ export default async function Page() {
   const month = sql`(date_trunc('month', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo')`;
   const s = await getSettings();
   const sellerOnly = isSellerOnly(me.roles);
+  const scope = goalScope(me.permissions);
+  const canGlobal = scope === "all";
+  const editableIds = scope === "own" ? [me.id] : [];
+  /** Vê a equipe toda: Adm, "ver números da equipe" ou quem altera metas da equipe. Sem isso, só a própria linha. */
+  const viewAll = me.roles.includes("admin") || !!me.permissions["panel.equipe"] || canGlobal;
 
-  const sellers = await db.select().from(users).where(and(eq(users.active, true), sql`'seller' = any(${users.roles})`, sellerOnly ? eq(users.id, me.id) : undefined, visibleUsers(me))).orderBy(asc(users.name));
+  const sellers = await db.select().from(users).where(and(eq(users.active, true), sql`'seller' = any(${users.roles})`, sellerOnly || !viewAll ? eq(users.id, me.id) : undefined, visibleUsers(me))).orderBy(asc(users.name));
   const gset = await getSellerGoalSettings();
   const views = await Promise.all(sellers.map(async (u) => {
     const m = await getSellerMonth(u.id);
@@ -40,12 +46,13 @@ export default async function Page() {
       <div className="mx-auto max-w-4xl space-y-5">
         <PageHead icon={Target} title="Metas" subtitle="Suas metas do mês, com o peso de cada uma." />
         {v && <SellerGoalPanel actual={v.m.actual} targets={v.targets} weights={v.weights} bonusReais={v.m.bonusReais} bonusSales={v.m.bonusSales} monthLabel={v.m.monthLabel} />}
+        {scope && v && <SellerGoalsForm canGlobal={canGlobal} editableIds={editableIds} global={globalVals} people={sellerPeople} />}
       </div>
     );
   }
 
   const [list, done, sched] = await Promise.all([
-    db.select().from(users).where(and(eq(users.active, true), eq(users.inMetrics, true), sql`not (${users.roles} = array['seller']::text[])`, visibleUsers(me))).orderBy(asc(users.name)),
+    db.select().from(users).where(and(eq(users.active, true), eq(users.inMetrics, true), sql`not (${users.roles} = array['seller']::text[])`, visibleUsers(me), viewAll ? undefined : eq(users.id, me.id))).orderBy(asc(users.name)),
     db.select({ id: attendanceSessions.userId, n: sql<number>`count(*)::int` }).from(attendanceSessions)
       .where(sql`${attendanceSessions.outcome} = 'saved' and not ${attendanceSessions.isTest} and ${attendanceSessions.savedAt} >= ${today}`).groupBy(attendanceSessions.userId),
     db.execute<{ id: number; n: number }>(sql`select u as id, count(*)::int as n from (
@@ -57,11 +64,11 @@ export default async function Page() {
     <div className="mx-auto max-w-5xl space-y-4">
       <PageHead icon={Target} title="Metas" subtitle="Metas diárias de atendimentos e agendamentos (SDR) e de vendas (vendedores), globais ou por pessoa." />
       <GoalsForm
-        canEdit={!!me.permissions["goals.edit"]}
+        canGlobal={canGlobal} editableIds={editableIds}
         global={{ attended: { on: s.goal_attended_on === 1, qty: s.daily_goal }, scheduled: { on: s.goal_scheduled_on === 1, qty: s.daily_goal_scheduled } }}
         people={list.map((u) => ({ id: u.id, name: u.name, hex: bubbleHex(u.accent, u.id, u.roles), today: { attended: done.find((d) => d.id === u.id)?.n ?? 0, scheduled: sched.find((d) => d.id === u.id)?.n ?? 0 }, own: { attended: { on: u.goalAttendedOn, qty: u.dailyGoal }, scheduled: { on: u.goalScheduledOn, qty: u.dailyGoalScheduled } } }))}
       />
-      <div className="mx-auto max-w-5xl"><SellerGoalsForm canEdit={!!me.permissions["goals.edit"]} global={globalVals} people={sellerPeople} /></div>
+      <div className="mx-auto max-w-5xl"><SellerGoalsForm canGlobal={canGlobal} editableIds={editableIds} global={globalVals} people={sellerPeople} /></div>
     </div>
   );
 }

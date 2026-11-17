@@ -10,10 +10,12 @@ export type SellerGoalPerson = { id: number; name: string; hex: string; own: Rec
 type Global = Record<string, number>;
 
 /** Metas dos vendedores: padrão do time (meta + peso) e ajuste por vendedor. */
-export function SellerGoalsForm({ global, people, canEdit }: { global: Global; people: SellerGoalPerson[]; canEdit: boolean }) {
+export function SellerGoalsForm({ global, people, canGlobal, editableIds }: { global: Global; people: SellerGoalPerson[]; canGlobal: boolean; editableIds: number[] }) {
   const [g, setG] = useState<Global>(global);
   const [per, setPer] = useState<Record<number, Record<string, number | "">>>(Object.fromEntries(people.map((p) => [p.id, p.own])));
   const { run, pending } = useRun();
+  const canEdit = canGlobal || editableIds.length > 0;
+  const mayEdit = (id: number) => canGlobal || editableIds.includes(id);
   const sum = SELLER_METRICS.reduce((a, m) => a + (g[`w_${m.key}`] || 0), 0);
   const n = (v: string) => (v === "" ? 0 : Number(v));
   return (
@@ -29,8 +31,8 @@ export function SellerGoalsForm({ global, people, canEdit }: { global: Global; p
             {SELLER_METRICS.map((m) => (
               <tr key={m.key}>
                 <td className="py-2.5 pr-3"><span className="font-medium">{m.label}</span><span className="block text-xs text-muted">{m.hint}</span></td>
-                <td className="py-2.5 pr-3"><span className="relative block w-36">{m.kind === "money" && <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">R$</span>}<input type="number" min={0} aria-label={`Meta padrão de ${m.label}`} disabled={!canEdit} className={`${inputCls} text-right ${m.kind === "money" ? "!pl-9" : ""}`} value={g[m.key]} onChange={(e) => setG({ ...g, [m.key]: n(e.target.value) })} /></span></td>
-                <td className="py-2.5"><input type="number" min={0} max={100} aria-label={`Peso de ${m.label}`} disabled={!canEdit} className={`${inputCls} !w-24 text-right`} value={g[`w_${m.key}`]} onChange={(e) => setG({ ...g, [`w_${m.key}`]: n(e.target.value) })} /></td>
+                <td className="py-2.5 pr-3"><span className="relative block w-36">{m.kind === "money" && <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">R$</span>}<input type="number" min={0} aria-label={`Meta padrão de ${m.label}`} disabled={!canGlobal} className={`${inputCls} text-right ${m.kind === "money" ? "!pl-9" : ""}`} value={g[m.key]} onChange={(e) => setG({ ...g, [m.key]: n(e.target.value) })} /></span></td>
+                <td className="py-2.5"><input type="number" min={0} max={100} aria-label={`Peso de ${m.label}`} disabled={!canGlobal} className={`${inputCls} !w-24 text-right`} value={g[`w_${m.key}`]} onChange={(e) => setG({ ...g, [`w_${m.key}`]: n(e.target.value) })} /></td>
               </tr>
             ))}
           </tbody>
@@ -47,7 +49,7 @@ export function SellerGoalsForm({ global, people, canEdit }: { global: Global; p
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                   {SELLER_METRICS.map((m) => (
                     <label key={m.key} className="block text-xs text-muted">{m.label}
-                      <span className="relative mt-1 block">{m.kind === "money" && <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">R$</span>}<input type="number" min={0} disabled={!canEdit} className={`${inputCls} text-right ${m.kind === "money" ? "!pl-9" : ""}`} placeholder={String(g[m.key])} value={per[p.id][m.key] ?? ""} onChange={(e) => setPer({ ...per, [p.id]: { ...per[p.id], [m.key]: e.target.value === "" ? "" : Number(e.target.value) } })} /></span>
+                      <span className="relative mt-1 block">{m.kind === "money" && <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">R$</span>}<input type="number" min={0} disabled={!mayEdit(p.id)} className={`${inputCls} text-right ${m.kind === "money" ? "!pl-9" : ""}`} placeholder={String(g[m.key])} value={per[p.id][m.key] ?? ""} onChange={(e) => setPer({ ...per, [p.id]: { ...per[p.id], [m.key]: e.target.value === "" ? "" : Number(e.target.value) } })} /></span>
                     </label>
                   ))}
                 </div>
@@ -57,7 +59,7 @@ export function SellerGoalsForm({ global, people, canEdit }: { global: Global; p
         </div>
       )}
       {canEdit
-        ? <button type="button" className={btnPrimary} disabled={pending || sum !== 100} onClick={() => run(() => saveSellerGoalsAction({ global: g, perUser: Object.fromEntries(people.map((p) => [p.id, Object.fromEntries(Object.entries(per[p.id]).filter(([, v]) => v !== "")) as Record<string, number>])) }))}>Salvar metas de vendas</button>
+        ? <button type="button" className={btnPrimary} disabled={pending || (canGlobal && sum !== 100)} onClick={() => run(() => saveSellerGoalsAction({ global: g, perUser: Object.fromEntries(people.filter((p) => mayEdit(p.id)).map((p) => [p.id, Object.fromEntries(Object.entries(per[p.id]).filter(([, v]) => v !== "")) as Record<string, number>])) }))}>Salvar metas de vendas</button>
         : <p className="text-sm text-muted">Só quem recebeu a permissão de metas pode alterar.</p>}
     </section>
   );

@@ -1,0 +1,1 @@
+ALTER TABLE "deal_quotes" ADD COLUMN "link" text;

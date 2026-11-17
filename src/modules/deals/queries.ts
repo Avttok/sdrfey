@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { getExtraTaxPct } from "@/modules/quotes/db";
 import { dealEvents, dealQuoteItems, dealQuotes, deals, db, leadChannels, leads, leadTags, paymentTerms, tagGroups, tags, users, type DealStage } from "@/db";
 import { ALERT_RULES } from "@/config/deals";
 import { soldBeforeThisMonth } from "./portfolio";
@@ -94,7 +95,7 @@ export async function getDeal(id: number) {
     db.select({ name: paymentTerms.name }).from(paymentTerms).where(eq(paymentTerms.active, true)).orderBy(asc(paymentTerms.name)),
   ]);
   const quotes = quoteRows.map((q) => ({ ...q, createdAt: q.createdAt.toISOString(), items: items.filter((i) => i.quoteId === q.id).map((i) => ({ id: i.id, seq: i.seq, productCode: i.productCode, clientRef: i.clientRef, description: i.description, kind: i.kind, qty: Number(i.qty), packQty: i.packQty == null ? null : Number(i.packQty), unit: i.unit, icmsCents: i.icmsCents, ipiCents: i.ipiCents, unitCents: i.unitCents, totalCents: i.totalCents })) }));
-  return { events: events.map((e) => ({ ...e, at: e.at.toISOString() })), phones, quotes, tags: tagRows, terms: terms.map((t) => t.name) };
+  return { events: events.map((e) => ({ ...e, at: e.at.toISOString() })), phones, quotes, tags: tagRows, terms: terms.map((t) => t.name), extraPct: await getExtraTaxPct() };
 }
 
 /** Quantos avisos pendentes a pessoa tem (para a bolinha do menu). */
