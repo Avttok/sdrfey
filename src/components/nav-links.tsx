@@ -5,7 +5,7 @@ import Link, { useLinkStatus } from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Spinner } from "@/components/spinner";
-import { NAV } from "@/config/nav";
+import { GROUP_ICONS, NAV } from "@/config/nav";
 
 function Pending({ Icon }: { Icon: React.ComponentType<{ size?: number; "aria-hidden"?: boolean }> }) {
   const { pending } = useLinkStatus();
@@ -69,7 +69,7 @@ export function NavLinks({ hrefs, vertical = false, collapsed = false, badges = 
         <button type="button" aria-haspopup="menu" aria-expanded={isOpen}
           onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setPos({ left: Math.max(8, Math.min(r.left, window.innerWidth - 232)), top: r.bottom + 6 }); setOpen(isOpen ? null : label); }}
           className={`relative flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition-all ${active ? "bg-grad-soft text-accent shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_30%,transparent)]" : "text-muted hover:bg-sunk hover:text-ink"}`}>
-          {label}<ChevronDown size={14} aria-hidden className={`transition ${isOpen ? "rotate-180" : ""}`} />
+          {(() => { const I = GROUP_ICONS[label]; return I ? <I size={17} aria-hidden /> : null; })()}{label}<ChevronDown size={14} aria-hidden className={`transition ${isOpen ? "rotate-180" : ""}`} />
           {hasBadge && <span aria-hidden className="absolute right-1 top-1 size-2 rounded-full border-2 border-panel bg-danger" />}
         </button>
         {isOpen && (

@@ -1,4 +1,4 @@
-import { Gauge, History, Play, CalendarCheck, ScrollText, ShieldCheck, Target, UserRound, Users, MapPin, Handshake, type LucideIcon } from "lucide-react";
+import { Gauge, Headset, Info, ShieldHalf, Contact, History, Play, CalendarCheck, ScrollText, ShieldCheck, Target, UserRound, Users, MapPin, Handshake, type LucideIcon } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: string; adminOnly?: boolean; /** Menu a que pertence. Menu com um item só aparece como link solto; sem grupo = link solto. */ group?: string };
 
@@ -6,6 +6,9 @@ export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: st
  * Menu do sistema. Para criar uma página nova: crie a pasta em src/app/(app)/ e acrescente uma linha aqui.
  * `perm` liga o item a uma permissão (config/permissions.ts); sem `perm`, todos veem.
  */
+/** Ícone de cada menu (grupo) da barra. */
+export const GROUP_ICONS: Record<string, LucideIcon> = { Pessoas: Contact, Info: Info, SDR: Headset, "Gestão": ShieldHalf };
+
 export const NAV: NavItem[] = [
   { href: "/painel", label: "Dashboard", icon: Gauge, perm: "tab.painel" },
   { href: "/leads", label: "Leads", icon: Users, perm: "tab.leads", group: "Pessoas" },
