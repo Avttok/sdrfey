@@ -6,6 +6,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgTable,
   primaryKey,
   serial,
@@ -52,9 +53,11 @@ export const users = pgTable("users", {
   dailyGoal: integer("daily_goal"),
   /** Meta de agendados por dia (nulo = meta global). */
   dailyGoalScheduled: integer("daily_goal_scheduled"),
-  /** Metas do vendedor (nulo = meta global): contatos por dia e vendas por mês. */
+  /** Metas próprias do vendedor (campos ausentes = meta global). Ver config/seller-goals.ts. */
+  /** @deprecated substituídas por sellerGoals (não usadas). */
   sellerGoalContacts: integer("seller_goal_contacts"),
   sellerGoalSales: integer("seller_goal_sales"),
+  sellerGoals: jsonb("seller_goals").$type<Record<string, number>>().notNull().default(sql`'{}'::jsonb`),
   /** Liga/desliga cada meta só para esta pessoa (nulo = segue a global). */
   goalAttendedOn: boolean("goal_attended_on"),
   goalScheduledOn: boolean("goal_scheduled_on"),
@@ -400,6 +403,21 @@ export const deals = pgTable(
     nextActionAt: timestamp("next_action_at", { withTimezone: true }),
     nextActionNote: text("next_action_note"),
     lostReason: text("lost_reason"),
+    /** Dados comerciais, preenchidos pelo vendedor (ou lidos do PDF da cotação). */
+    freight: text("freight").$type<"CIF" | "FOB" | "RED">(),
+    sapCode: text("sap_code"),
+    orderNumber: text("order_number"),
+    quoteNumber: text("quote_number"),
+    quoteDate: date("quote_date"),
+    /** Dia em que a venda foi fechada (pode ser corrigido à mão). */
+    closedOn: date("closed_on"),
+    /** Valor fechado em centavos. `valueCents` é o valor da cotação. */
+    closedValueCents: integer("closed_value_cents"),
+    paymentTerms: text("payment_terms"),
+    /** Cor que o vendedor escolheu para reconhecer o cliente (#rrggbb). */
+    color: text("color"),
+    /** Cliente inativo que voltou a comprar (conta na meta de reativados). */
+    isReactivation: boolean("is_reactivation").notNull().default(false),
     claimedAt: timestamp("claimed_at", { withTimezone: true }),
     closedAt: timestamp("closed_at", { withTimezone: true }),
     isTest: boolean("is_test").notNull().default(false),
@@ -427,4 +445,29 @@ export const dealEvents = pgTable(
     at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("deal_events_deal_idx").on(t.dealId), index("deal_events_at_idx").on(t.at)],
+);
+
+/** Itens lidos da cotação (produto, descrição, tipo, quantidade e valores). O PDF em si não é guardado. */
+export const dealQuoteItems = pgTable(
+  "deal_quote_items",
+  {
+    id: serial("id").primaryKey(),
+    dealId: integer("deal_id").notNull().references(() => deals.id, { onDelete: "cascade" }),
+    quoteNumber: text("quote_number"),
+    seq: integer("seq").notNull(),
+    productCode: text("product_code").notNull(),
+    /** Código/observação do cliente que vem junto (ex.: "CLASSE 8 POLIDA"). */
+    clientRef: text("client_ref"),
+    description: text("description").notNull(),
+    /** Tipo do item: primeira palavra da descrição (PARAFUSO, PORCA, ARRUELA…). */
+    kind: text("kind"),
+    qty: numeric("qty", { precision: 12, scale: 2, mode: "number" }).notNull(),
+    packQty: numeric("pack_qty", { precision: 12, scale: 2, mode: "number" }),
+    unit: text("unit"),
+    icmsCents: integer("icms_cents"),
+    ipiCents: integer("ipi_cents"),
+    unitCents: integer("unit_cents"),
+    totalCents: integer("total_cents"),
+  },
+  (t) => [index("deal_quote_items_deal_idx").on(t.dealId)],
 );

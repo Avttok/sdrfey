@@ -1,6 +1,6 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-import { dealEvents, deals, db, leadChannels, leads, users, type DealStage } from "@/db";
+import { dealEvents, dealQuoteItems, deals, db, leadChannels, leads, users, type DealStage } from "@/db";
 import { ALERT_RULES } from "@/config/deals";
 
 export type DealAlertKind = "pool" | "novo" | "retorno" | "cobrar" | "parado";
@@ -12,6 +12,8 @@ export type DealRow = {
   sellerId: number | null; sellerName: string | null; sdrName: string | null; handoffNote: string | null;
   valueCents: number | null; createdAt: string; claimedAt: string | null; quoteSentAt: string | null; lastContactAt: string | null;
   nextActionAt: string | null; nextActionNote: string | null; lostReason: string | null; closedAt: string | null;
+  freight: "CIF" | "FOB" | "RED" | null; sapCode: string | null; orderNumber: string | null; quoteNumber: string | null; quoteDate: string | null; closedOn: string | null;
+  cnpj: string; closedValueCents: number | null; paymentTerms: string | null; color: string | null; isReactivation: boolean;
   alerts: DealAlert[];
 };
 
@@ -52,7 +54,7 @@ export async function listDeals(meId: number, team: boolean, opts: { includeTest
   const rows = await db
     .select({
       d: deals, company: leads.company, city: leads.city, uf: leads.uf, contactName: leads.contactName, phones: leads.phones, email: leads.email,
-      salesforceUrl: leads.salesforceUrl, eoxUrl: leads.eoxUrl, sellerName: seller.name, sdrName: sdr.name,
+      salesforceUrl: leads.salesforceUrl, eoxUrl: leads.eoxUrl, leadSap: leads.sapCode, leadCnpj: leads.cnpj, sellerName: seller.name, sdrName: sdr.name,
     })
     .from(deals)
     .innerJoin(leads, eq(leads.id, deals.leadId))
@@ -67,6 +69,8 @@ export async function listDeals(meId: number, team: boolean, opts: { includeTest
       salesforceUrl: x.salesforceUrl, eoxUrl: x.eoxUrl, sellerId: d.sellerId, sellerName: x.sellerName, sdrName: x.sdrName, handoffNote: d.handoffNote,
       valueCents: d.valueCents, createdAt: d.createdAt.toISOString(), claimedAt: iso(d.claimedAt), quoteSentAt: iso(d.quoteSentAt), lastContactAt: iso(d.lastContactAt),
       nextActionAt: iso(d.nextActionAt), nextActionNote: d.nextActionNote, lostReason: d.lostReason, closedAt: iso(d.closedAt),
+      freight: d.freight, sapCode: d.sapCode ?? x.leadSap, orderNumber: d.orderNumber, quoteNumber: d.quoteNumber, quoteDate: d.quoteDate, closedOn: d.closedOn,
+      cnpj: x.leadCnpj, closedValueCents: d.closedValueCents, paymentTerms: d.paymentTerms, color: d.color, isReactivation: d.isReactivation,
     };
     return { ...row, alerts: dealAlerts(row) };
   });
@@ -80,7 +84,8 @@ export async function getDeal(id: number) {
     .from(dealEvents).leftJoin(users, eq(users.id, dealEvents.userId)).where(eq(dealEvents.dealId, id)).orderBy(desc(dealEvents.at), desc(dealEvents.id));
   const phones = await db.select({ value: leadChannels.value, label: leadChannels.label }).from(leadChannels)
     .innerJoin(deals, eq(deals.leadId, leadChannels.leadId)).where(and(eq(deals.id, id), eq(leadChannels.kind, "phone"), eq(leadChannels.wrong, false)));
-  return { events: events.map((e) => ({ ...e, at: e.at.toISOString() })), phones };
+  const items = await db.select().from(dealQuoteItems).where(eq(dealQuoteItems.dealId, id)).orderBy(asc(dealQuoteItems.quoteNumber), asc(dealQuoteItems.seq));
+  return { events: events.map((e) => ({ ...e, at: e.at.toISOString() })), phones, items };
 }
 
 /** Quantos avisos pendentes a pessoa tem (para a bolinha do menu). */

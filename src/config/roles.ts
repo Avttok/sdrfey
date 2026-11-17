@@ -6,7 +6,7 @@ export const ROLES = ["user", "seller", "manager", "admin"] as const;
 export type Role = (typeof ROLES)[number];
 
 export const ROLE_META: Record<Role, { label: string; defaultAccent: string; rank: number }> = {
-  user: { label: "Usuário", defaultAccent: "azul", rank: 1 },
+  user: { label: "SDR", defaultAccent: "azul", rank: 1 },
   seller: { label: "Vendedor", defaultAccent: "verde", rank: 1 },
   manager: { label: "Gestor", defaultAccent: "amarelo", rank: 2 },
   admin: { label: "Adm", defaultAccent: "vermelho", rank: 3 },

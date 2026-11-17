@@ -7,6 +7,7 @@ import { logAudit } from "@/modules/audit/log";
 import { requirePerm } from "@/modules/auth/guard";
 import type { ActionResult } from "@/modules/leads/actions";
 import { getSettings } from "@/modules/settings/get";
+import { SELLER_METRICS } from "@/config/seller-goals";
 
 export type GoalInput = { on: boolean; qty: number };
 export type PersonGoalInput = { on: boolean | null; qty: number | null };
@@ -48,29 +49,38 @@ export async function saveGoalsAction(input: GoalsInput): Promise<ActionResult> 
   return { ok: true, message: "Metas salvas." };
 }
 
-export type SellerGoalsInput = { global: { contacts: number; sales: number }; perUser: Record<number, { contacts: number | null; sales: number | null }> };
+export type SellerGoalsInput = { global: Record<string, number>; perUser: Record<number, Record<string, number>> };
 
-/** Metas dos vendedores: contatos por dia e vendas por mês, globais e individuais. */
+/** Metas dos vendedores: meta e peso globais (padrão do time) e metas próprias por vendedor. */
 export async function saveSellerGoalsAction(input: SellerGoalsInput): Promise<ActionResult> {
   const me = await requirePerm("goals.edit");
-  const ok = (n: number | null) => n === null || (Number.isInteger(n) && n >= 0 && n <= 1000);
-  if (!ok(input.global.contacts) || !ok(input.global.sales) || !Object.values(input.perUser).every((p) => ok(p.contacts) && ok(p.sales))) return { ok: false, message: "As metas precisam ser números inteiros de 0 a 1000." };
-  const before = await getSettings();
-  const setKey = async (key: string, label: string, old: number, val: number) => {
-    if (old === val) return;
-    await db.insert(settings).values({ key, value: val, updatedBy: me.id }).onConflictDoUpdate({ target: settings.key, set: { value: val, updatedAt: new Date(), updatedBy: me.id } });
-    await logAudit(db, { userId: me.id, entity: "goal", action: "alterou meta global", field: label, oldValue: old, newValue: val });
-  };
-  await setKey("seller_goal_contacts", "Meta de vendedor: contatos por dia", before.seller_goal_contacts, input.global.contacts);
-  await setKey("seller_goal_sales", "Meta de vendedor: vendas por mês", before.seller_goal_sales, input.global.sales);
-  for (const [idStr, p] of Object.entries(input.perUser)) {
-    const [u] = await db.select().from(users).where(eq(users.id, Number(idStr)));
-    if (!u) continue;
-    const labels: [boolean, string, number | null, number | null][] = [[u.sellerGoalContacts !== p.contacts, "Contatos por dia", u.sellerGoalContacts, p.contacts], [u.sellerGoalSales !== p.sales, "Vendas por mês", u.sellerGoalSales, p.sales]];
-    if (!labels.some(([c]) => c)) continue;
-    await db.update(users).set({ sellerGoalContacts: p.contacts, sellerGoalSales: p.sales }).where(eq(users.id, u.id));
-    for (const [changed, label, o, n] of labels) if (changed) await logAudit(db, { userId: me.id, entity: "goal", action: "alterou meta individual", field: `${u.name} · ${label}`, oldValue: o, newValue: n });
+  const keys = SELLER_METRICS.map((m) => m.key as string);
+  const num = (n: unknown) => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 100_000_000;
+  const g: Record<string, number> = {};
+  for (const m of SELLER_METRICS) {
+    const t = input.global[m.key], w = input.global[`w_${m.key}`];
+    if (!num(t) || !num(w) || w > 100) return { ok: false, message: "Metas precisam ser números (≥ 0) e pesos de 0 a 100." };
+    g[m.key] = t; g[`w_${m.key}`] = w;
   }
+  if (SELLER_METRICS.reduce((a, m) => a + g[`w_${m.key}`], 0) !== 100) return { ok: false, message: "Os pesos precisam somar 100%." };
+  const [row] = await db.select().from(settings).where(eq(settings.key, "seller_goals"));
+  const before = (row?.value ?? {}) as Record<string, number>;
+  const label = (k: string) => { const m = SELLER_METRICS.find((x) => x.key === k.replace(/^w_/, ""))!; return k.startsWith("w_") ? `Peso de ${m.label}` : `Meta de ${m.label}`; };
+  await db.transaction(async (tx) => {
+    for (const k of Object.keys(g)) {
+      const old = before[k] ?? (k.startsWith("w_") ? SELLER_METRICS.find((m) => m.key === k.slice(2))!.weight : SELLER_METRICS.find((m) => m.key === k)!.target);
+      if (old !== g[k]) await logAudit(tx, { userId: me.id, entity: "goal", action: "alterou meta de vendedor (global)", field: label(k), oldValue: old, newValue: g[k] });
+    }
+    await tx.insert(settings).values({ key: "seller_goals", value: g, updatedBy: me.id }).onConflictDoUpdate({ target: settings.key, set: { value: g, updatedAt: new Date(), updatedBy: me.id } });
+    for (const [idStr, own] of Object.entries(input.perUser)) {
+      const [u] = await tx.select().from(users).where(eq(users.id, Number(idStr)));
+      if (!u) continue;
+      const clean = Object.fromEntries(Object.entries(own).filter(([k, v]) => keys.includes(k) && num(v)));
+      if (JSON.stringify(u.sellerGoals ?? {}) === JSON.stringify(clean)) continue;
+      await tx.update(users).set({ sellerGoals: clean }).where(eq(users.id, u.id));
+      await logAudit(tx, { userId: me.id, entity: "goal", action: "alterou meta individual", field: `${u.name} · Metas de vendedor`, oldValue: JSON.stringify(u.sellerGoals ?? {}), newValue: JSON.stringify(clean) });
+    }
+  });
   revalidatePath("/", "layout");
   return { ok: true, message: "Metas de vendas salvas." };
 }

@@ -24,7 +24,7 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="mx-auto max-w-5xl space-y-4">
       <Link href="/negociacoes" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink"><ArrowLeft size={15} aria-hidden /> Negociações</Link>
-      <DealPanel deal={row} events={extra.events} phones={extra.phones} meId={me.id} team={team} canClaim={me.roles.includes("seller") || team} sellers={sellers} />
+      <DealPanel deal={row} events={extra.events} items={extra.items.map((i) => ({ ...i, qty: Number(i.qty), packQty: i.packQty == null ? null : Number(i.packQty) }))} phones={extra.phones} meId={me.id} team={team} canClaim={me.roles.includes("seller") || team} sellers={sellers} />
     </div>
   );
 }

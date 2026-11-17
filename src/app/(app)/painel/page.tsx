@@ -13,7 +13,9 @@ import { SalesDashboard } from "@/components/deals/sales-dashboard";
 import { isSellerOnly } from "@/config/roles";
 import { db, tags, users } from "@/db";
 import { getSalesStats } from "@/modules/deals/stats";
-import { effectiveSellerGoals } from "@/modules/settings/goals";
+import { getSellerGoalSettings, getSellerMonth } from "@/modules/deals/goals";
+import { SellerGoalPanel } from "@/components/deals/seller-goal-panel";
+import { resolveSellerGoals } from "@/config/seller-goals";
 import { sql } from "drizzle-orm";
 import { fmtDate, fmtDateTime, fmtDuration } from "@/lib/format";
 import { requirePerm } from "@/modules/auth/guard";
@@ -50,16 +52,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const team = !!me.permissions["panel.equipe"];
 
   if (isSellerOnly(me.roles)) {
-    const s = await getSettings();
-    const [stats] = await Promise.all([getSalesStats(period, [me.id])]);
-    const [self] = await db.select().from(users).where(eq(users.id, me.id));
+    const [stats, month, gset, [self]] = await Promise.all([getSalesStats(period, [me.id]), getSellerMonth(me.id), getSellerGoalSettings(), db.select().from(users).where(eq(users.id, me.id))]);
+    const { targets, weights } = resolveSellerGoals(gset, self.sellerGoals ?? {});
     return (
       <div className="space-y-5">
         <PageHead icon={LayoutDashboard} title="Dashboard" subtitle={`Suas vendas · ${period.preset === "hoje" ? "Hoje" : period.preset === "custom" ? `${fmtDate(period.from)} a ${fmtDate(period.to)}` : `Últimos ${period.preset} dias`}`} />
         <div className={`${panelCls} p-4`}><Suspense fallback={null}>
           <DashboardFilters preset={period.preset} from={period.preset === "custom" ? period.from : ""} to={period.preset === "custom" ? period.to : ""} people={[]} selected={[me.id]} />
         </Suspense></div>
-        <SalesDashboard s={stats} days={periodDays(period)} goals={effectiveSellerGoals(self, s)} showRanking={false} />
+        <SellerGoalPanel actual={month.actual} targets={targets} weights={weights} bonusReais={month.bonusReais} bonusSales={month.bonusSales} monthLabel={month.monthLabel} />
+        <SalesDashboard s={stats} showRanking={false} />
       </div>
     );
   }
@@ -181,7 +183,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       {teamSales && (
         <section className="space-y-3">
           <h2 className="display text-2xl">Vendas da equipe</h2>
-          <SalesDashboard s={teamSales} days={d.days} showRanking />
+          <SalesDashboard s={teamSales} showRanking />
         </section>
       )}
     </div>

@@ -27,7 +27,7 @@ export const ALERT_RULES = {
 } as const;
 
 export const DEAL_EVENT_LABEL: Record<string, string> = {
-  criado: "Repassado pelo SDR",
+  criado: "Negociação aberta",
   assumido: "Assumiu a negociação",
   repassado: "Trocou de vendedor",
   ligacao: "Ligação",

@@ -1,6 +1,6 @@
 import { Gauge, History, Play, CalendarCheck, ScrollText, ShieldCheck, Target, UserRound, Users, MapPin, Handshake, type LucideIcon } from "lucide-react";
 
-export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: string; adminOnly?: boolean };
+export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: string; adminOnly?: boolean; /** Na barra de cima, vai para o menu “Mais” (menos itens na tela). */ more?: boolean };
 
 /**
  * Menu do sistema. Para criar uma página nova: crie a pasta em src/app/(app)/ e acrescente uma linha aqui.
@@ -14,9 +14,9 @@ export const NAV: NavItem[] = [
   { href: "/negociacoes", label: "Negociações", icon: Handshake, perm: "tab.negociacoes" },
   { href: "/visitas", label: "Visitas", icon: CalendarCheck, perm: "tab.visitas" },
   { href: "/metas", label: "Metas", icon: Target, perm: "tab.metas" },
-  { href: "/registro", label: "Registro", icon: ScrollText, perm: "tab.registro" },
-  { href: "/representantes", label: "Representantes", icon: MapPin, perm: "tab.representantes" },
-  { href: "/admin", label: "Admin", icon: ShieldCheck, adminOnly: true },
+  { href: "/registro", label: "Registro", icon: ScrollText, perm: "tab.registro", more: true },
+  { href: "/representantes", label: "Representantes", icon: MapPin, perm: "tab.representantes", more: true },
+  { href: "/admin", label: "Admin", icon: ShieldCheck, adminOnly: true, more: true },
   { href: "/conta", label: "Minha conta", icon: UserRound },
 ];
 

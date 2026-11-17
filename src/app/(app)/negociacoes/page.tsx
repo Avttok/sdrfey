@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { BellRing, CircleDollarSign, FileText, Handshake, UserPlus } from "lucide-react";
+import { NewDeal } from "@/components/deals/new-deal";
 import { DealBoard } from "@/components/deals/deal-board";
 import { PageHead } from "@/components/page-head";
 import { panelCls } from "@/components/ui";
@@ -31,6 +32,7 @@ export default async function DealsPage() {
   return (
     <div className="space-y-5">
       <PageHead icon={Handshake} title="Negociações" subtitle="Clientes repassados pelos SDRs: ligue, envie cotações e feche. Os avisos mostram o que não pode esperar." />
+      {canClaim && <NewDeal />}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map(({ I, t, v, s, hot }) => (
           <div key={t} className={`${panelCls} p-4 ${hot ? "border-danger/50" : ""}`}>

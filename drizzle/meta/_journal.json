@@ -71,6 +71,20 @@
       "when": 1794921142746,
       "tag": "0009_vendedores",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794923186099,
+      "tag": "0010_negociacao_dados",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794923487720,
+      "tag": "0011_cotacao_itens",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,5 @@
 import { BellRing, CircleDollarSign, FileText, Handshake, PhoneCall, Percent, Timer, Trophy, Wallet } from "lucide-react";
 import Link from "next/link";
-import { GoalBar } from "@/components/goal-bar";
 import { panelCls } from "@/components/ui";
 import { fmtBRL } from "@/config/deals";
 import { bubbleHex } from "@/config/theme";
@@ -29,15 +28,9 @@ const Block = ({ icon: I, title, children }: { icon: typeof Wallet; title: strin
 );
 
 /** Números de vendas: usado no Dashboard do vendedor e no bloco “Vendas da equipe” do gestor. */
-export function SalesDashboard({ s, days, goals, showRanking }: { s: SalesStats; days: number; goals?: { contactsPerDay: number; salesPerMonth: number }; showRanking: boolean }) {
+export function SalesDashboard({ s, showRanking }: { s: SalesStats; showRanking: boolean }) {
   return (
     <div className="space-y-5">
-      {goals && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <GoalBar label="Contatos no período" value={s.contacts} qty={goals.contactsPerDay * days} />
-          <GoalBar label="Vendas no mês" value={s.wonMonth} qty={goals.salesPerMonth} alt />
-        </div>
-      )}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <Kpi I={Handshake} t="Em andamento" v={nf.format(s.open)} s="negociações abertas" />
         <Kpi I={FileText} t="Cotações abertas" v={nf.format(s.quotesOpen)} s={s.quotesOpenValue ? fmtBRL(s.quotesOpenValue) : "aguardando resposta"} />

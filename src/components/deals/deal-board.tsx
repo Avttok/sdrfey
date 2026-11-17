@@ -17,8 +17,8 @@ function Card({ d, meId, canClaim }: { d: DealRow; meId: number; canClaim: boole
   const { run, pending } = useRun();
   const danger = d.alerts.some((a) => a.tone === "danger");
   return (
-    <li className={`${panelCls} group relative overflow-hidden transition hover:border-accent/50 hover:shadow-md ${danger ? "border-danger/50" : ""}`}>
-      <span aria-hidden className="absolute inset-y-0 left-0 w-1" style={{ background: STAGE_META[d.stage].color }} />
+    <li className={`${panelCls} group relative overflow-hidden transition hover:border-accent/50 hover:shadow-md ${danger ? "border-danger/50" : ""}`} style={d.color ? { background: `color-mix(in srgb, ${d.color} 12%, var(--panel))` } : undefined}>
+      <span aria-hidden className={`absolute inset-y-0 left-0 ${d.color ? "w-2" : "w-1"}`} style={{ background: d.color ?? STAGE_META[d.stage].color }} />
       <div className="space-y-2.5 p-3.5 pl-4">
         <Link href={`/negociacoes/${d.id}`} className="block space-y-1 outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-accent/50">
           <p className="truncate font-semibold leading-tight">{d.company}</p>
@@ -30,7 +30,7 @@ function Card({ d, meId, canClaim }: { d: DealRow; meId: number; canClaim: boole
         {d.alerts.length > 0 && <div className="flex flex-wrap gap-1.5">{d.alerts.map((a) => <AlertChip key={a.kind} a={a} />)}</div>}
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
           <span className="truncate">{d.sellerName ? <>Vendedor: <b className="font-semibold text-ink">{d.sellerId === meId ? "você" : d.sellerName}</b></> : "Sem vendedor"}{d.sdrName ? <> · SDR {d.sdrName}</> : null}</span>
-          {d.valueCents ? <b className="figure text-sm text-ink">{fmtBRL(d.valueCents)}</b> : null}
+          {d.quoteNumber && <span className="figure">Cot. {d.quoteNumber}</span>}{(d.closedValueCents ?? d.valueCents) ? <b className="figure text-sm text-ink">{fmtBRL(d.closedValueCents ?? d.valueCents)}</b> : null}
         </div>
         {!d.sellerId && canClaim && d.stage !== "ganho" && d.stage !== "perdido" && (
           <button type="button" disabled={pending} onClick={() => run(() => claimDealAction(d.id))} className={`${btnPrimary} relative z-10 w-full !py-2 !text-sm`}><UserPlus size={15} aria-hidden /> Assumir</button>

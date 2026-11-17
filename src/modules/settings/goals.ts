@@ -12,7 +12,3 @@ export function effectiveGoals(u: U, s: Record<SettingKey, number>): Goals {
   };
 }
 
-/** Metas do vendedor: contatos por dia e vendas por mês (a própria ou a global). */
-export function effectiveSellerGoals(u: { sellerGoalContacts: number | null; sellerGoalSales: number | null }, s: Record<SettingKey, number>) {
-  return { contactsPerDay: u.sellerGoalContacts ?? s.seller_goal_contacts, salesPerMonth: u.sellerGoalSales ?? s.seller_goal_sales };
-}
