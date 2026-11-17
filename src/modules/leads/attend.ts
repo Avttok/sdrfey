@@ -1,3 +1,4 @@
+import { nearestRep } from "@/modules/reps/nearest";
 import { and, eq, sql } from "drizzle-orm";
 import { attendanceSessions, db, interactions, leadChannels, leads, leadTags, tags, visits } from "@/db";
 import { TAG } from "@/config/tags";
@@ -19,6 +20,8 @@ export type SaveInput = {
   visitCode?: string | null;
   /** Dia em que a visita vai acontecer (AAAA-MM-DD). Obrigatório junto com o código. */
   visitDate?: string | null;
+  /** Link da visita no Salesforce (opcional). */
+  visitLink?: string | null;
 };
 
 const VISIT_RE = /^V-\d{3,}$/i;
@@ -37,6 +40,8 @@ export async function saveAttendance(userId: number, input: SaveInput): Promise<
   if (visitCode && !VISIT_RE.test(visitCode)) throw new UserError("Código da visita inválido. Exemplo: V-12345.");
   const visitDate = input.visitDate && /^\d{4}-\d{2}-\d{2}$/.test(input.visitDate) ? input.visitDate : null;
   if (visitCode && !visitDate) throw new UserError("Informe a data da visita.");
+  const visitLink = cleanVisitLink(input.visitLink);
+  if (input.visitLink?.trim() && !visitLink) throw new UserError("O link da visita precisa começar com https://.");
   const s = await getSettings();
 
   await db.transaction(async (tx) => {
@@ -63,8 +68,9 @@ export async function saveAttendance(userId: number, input: SaveInput): Promise<
     await setLeadTags(tx, { leadId: lead.id, userId, add, remove });
 
     if (visitCode) {
-      await tx.insert(visits).values({ leadId: lead.id, userId, code: visitCode, visitDate });
-      await logAudit(tx, { userId, leadId: lead.id, entity: "visit", action: "agendou visita", field: "Agenda", oldValue: null, newValue: visitCode, meta: { dataDaVisita: visitDate } });
+      const rep = await nearestRep(lead.city, lead.uf);
+      await tx.insert(visits).values({ leadId: lead.id, userId, code: visitCode, visitDate, link: visitLink, ...repSnapshot(rep) });
+      await logAudit(tx, { userId, leadId: lead.id, entity: "visit", action: "agendou visita", field: "Agenda", oldValue: null, newValue: visitCode, meta: { dataDaVisita: visitDate, representante: rep?.repName ?? null, km: rep?.km ?? null } });
     }
 
     await tx.insert(interactions).values(
@@ -180,4 +186,15 @@ async function loadUnlockedForReset(tx: typeof db, leadId: number) {
   if (!lead) throw new Error("Lead não encontrado.");
   if (lead.lockedBy) throw new Error("Este lead está em atendimento. Libere-o antes de resetar.");
   return lead;
+}
+
+/** Link opcional da visita: precisa ser http(s) e ter até 600 caracteres. */
+export function cleanVisitLink(raw: string | null | undefined): string | null {
+  const v = raw?.trim();
+  return v && /^https?:\/\/\S+$/i.test(v) && v.length <= 600 ? v : null;
+}
+
+/** Guarda na visita quem era o representante mais próximo e a distância na hora do agendamento. */
+export function repSnapshot(rep: Awaited<ReturnType<typeof nearestRep>>) {
+  return rep ? { repName: rep.repName, repSap: rep.sapCode, repCity: rep.city && rep.uf ? `${rep.city}/${rep.uf}` : rep.city, repKm: rep.km } : { repName: null, repSap: null, repCity: null, repKm: null };
 }

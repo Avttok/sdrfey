@@ -1,12 +1,13 @@
 "use server";
 
-import { resetLead } from "@/modules/leads/attend";
+import { cleanVisitLink, repSnapshot, resetLead } from "@/modules/leads/attend";
+import { nearestRep } from "@/modules/reps/nearest";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db, leadPeople, leads, visits } from "@/db";
 import { diffToAudit, logAudit } from "@/modules/audit/log";
-import { requirePerm } from "@/modules/auth/guard";
+import { requirePerm, requireUser } from "@/modules/auth/guard";
 import { setLeadTags, type TagChange } from "@/modules/tags/apply";
 import type { ActionResult } from "./actions";
 
@@ -53,11 +54,19 @@ export async function removePersonAction(id: number, personId: number): Promise<
   return { ok: true, message: "Pessoa removida." };
 }
 
+/** Quem agendou a visita (ou quem pode editar qualquer lead) pode alterá-la ou apagá-la. */
+async function visitForEditing(leadId: number, visitId: number) {
+  const me = await requireUser();
+  const [v] = await db.select().from(visits).where(and(eq(visits.id, visitId), eq(visits.leadId, leadId)));
+  if (!v) return { me, v: null, allowed: false };
+  return { me, v, allowed: v.userId === me.id || !!me.permissions["lead.edit"] };
+}
+
 /** Apaga o registro de uma visita (fica no Registro de atividades). */
 export async function deleteVisitAction(leadId: number, visitId: number): Promise<ActionResult> {
-  const me = await requirePerm("lead.edit");
-  const [v] = await db.select().from(visits).where(and(eq(visits.id, visitId), eq(visits.leadId, leadId)));
+  const { me, v, allowed } = await visitForEditing(leadId, visitId);
   if (!v) return fail("Visita não encontrada.");
+  if (!allowed) return fail("Só quem agendou a visita (ou quem pode editar leads) pode apagá-la.");
   await db.transaction(async (tx) => {
     await tx.delete(visits).where(eq(visits.id, visitId));
     await logAudit(tx, { userId: me.id, leadId, entity: "visit", action: "apagou visita", field: "Agenda", oldValue: v.code, newValue: null, meta: { dataDaVisita: v.visitDate } });
@@ -67,29 +76,47 @@ export async function deleteVisitAction(leadId: number, visitId: number): Promis
   return { ok: true, message: "Visita apagada." };
 }
 
-/** Registra uma visita na página do lead (um lead pode ter várias). */
-export async function addVisitAction(leadId: number, input: { code: string; visitDate: string }): Promise<ActionResult> {
-  const me = await requirePerm("lead.edit");
-  const code = input.code.trim().toUpperCase();
-  if (!/^V-\d{3,}$/.test(code)) return fail("Código da visita inválido. Exemplo: V-12345.");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.visitDate)) return fail("Informe a data da visita.");
+const visitInput = z.object({
+  code: z.string().trim().toUpperCase().regex(/^V-\d{3,}$/, "Código da visita inválido. Exemplo: V-12345."),
+  visitDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Informe a data da visita."),
+  link: z.string().trim().nullish(),
+});
+
+/** Registra uma visita na página do lead (um lead pode ter várias). Guarda o representante mais próximo e os km. */
+export async function addVisitAction(leadId: number, input: { code: string; visitDate: string; link?: string | null }): Promise<ActionResult> {
+  const me = await requirePerm("tab.leads");
+  const p = visitInput.safeParse(input);
+  if (!p.success) return fail(p.error.issues[0].message);
+  const link = cleanVisitLink(p.data.link);
+  if (p.data.link && !link) return fail("O link da visita precisa começar com https://.");
+  const [lead] = await db.select({ city: leads.city, uf: leads.uf }).from(leads).where(eq(leads.id, leadId));
+  if (!lead) return fail("Lead não encontrado.");
+  const rep = await nearestRep(lead.city, lead.uf);
   await db.transaction(async (tx) => {
-    await tx.insert(visits).values({ leadId, userId: me.id, code, visitDate: input.visitDate });
-    await logAudit(tx, { userId: me.id, leadId, entity: "visit", action: "agendou visita", field: "Agenda", oldValue: null, newValue: code, meta: { dataDaVisita: input.visitDate } });
+    await tx.insert(visits).values({ leadId, userId: me.id, code: p.data.code, visitDate: p.data.visitDate, link, ...repSnapshot(rep) });
+    await logAudit(tx, { userId: me.id, leadId, entity: "visit", action: "agendou visita", field: "Agenda", oldValue: null, newValue: p.data.code, meta: { dataDaVisita: p.data.visitDate, representante: rep?.repName ?? null, km: rep?.km ?? null } });
   });
   revalidatePath(`/leads/${leadId}`);
   revalidatePath("/visitas");
   return { ok: true, message: "Visita registrada." };
 }
 
-/** Gestor/Adm libera um lead que ficou preso com alguém. */
-export async function forceReleaseAction(id: number): Promise<ActionResult> {
-  const me = await requirePerm("lead.release");
-  const [b] = await db.select({ by: leads.lockedBy }).from(leads).where(eq(leads.id, id));
-  await db.update(leads).set({ lockedBy: null, lockedAt: null }).where(eq(leads.id, id));
-  await logAudit(db, { userId: me.id, leadId: id, entity: "lead", action: "liberou o lead", field: "Em atendimento por", oldValue: b?.by ?? null, newValue: null });
-  revalidatePath(`/leads/${id}`);
-  return { ok: true, message: "Lead liberado." };
+/** Edita código, data e link de uma visita. */
+export async function updateVisitAction(leadId: number, visitId: number, input: { code: string; visitDate: string; link?: string | null }): Promise<ActionResult> {
+  const { me, v, allowed } = await visitForEditing(leadId, visitId);
+  if (!v) return fail("Visita não encontrada.");
+  if (!allowed) return fail("Só quem agendou a visita (ou quem pode editar leads) pode alterá-la.");
+  const p = visitInput.safeParse(input);
+  if (!p.success) return fail(p.error.issues[0].message);
+  const link = cleanVisitLink(p.data.link);
+  if (p.data.link && !link) return fail("O link da visita precisa começar com https://.");
+  await db.transaction(async (tx) => {
+    await tx.update(visits).set({ code: p.data.code, visitDate: p.data.visitDate, link }).where(eq(visits.id, visitId));
+    await logAudit(tx, diffToAudit({ userId: me.id, leadId, entity: "visit", meta: { visita: v.code } }, { code: v.code, visitDate: v.visitDate, link: v.link } as Record<string, unknown>, { code: p.data.code, visitDate: p.data.visitDate, link } as Record<string, unknown>, { code: "Código da visita", visitDate: "Data da visita", link: "Link da visita" }));
+  });
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/visitas");
+  return { ok: true, message: "Visita atualizada." };
 }
 
 /** Zera o atendimento do lead (tags, observação, interações e visitas) pela página do lead. */
@@ -100,4 +127,14 @@ export async function resetLeadFromPageAction(id: number): Promise<ActionResult>
   revalidatePath(`/leads/${id}`);
   revalidatePath("/leads");
   return { ok: true, message: "Lead resetado: tags, observação, interações e visitas apagadas." };
+}
+
+/** Gestor/Adm libera um lead que ficou preso com alguém. */
+export async function forceReleaseAction(id: number): Promise<ActionResult> {
+  const me = await requirePerm("lead.release");
+  const [b] = await db.select({ by: leads.lockedBy }).from(leads).where(eq(leads.id, id));
+  await db.update(leads).set({ lockedBy: null, lockedAt: null }).where(eq(leads.id, id));
+  await logAudit(db, { userId: me.id, leadId: id, entity: "lead", action: "liberou o lead", field: "Em atendimento por", oldValue: b?.by ?? null, newValue: null });
+  revalidatePath(`/leads/${id}`);
+  return { ok: true, message: "Lead liberado." };
 }

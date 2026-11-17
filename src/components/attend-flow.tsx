@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, Building2, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Send, Plus, RotateCcw, SkipForward, Square, TriangleAlert, Trash2, X } from "lucide-react";
+import { Ban, Building2, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Send, Plus, RotateCcw, History, SkipForward, Square, TriangleAlert, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -11,12 +11,13 @@ import { LeadInfoPanel } from "@/components/lead-info-panel";
 import { TagChip } from "@/components/tag-chip";
 import { useBusyWhile, useToast } from "@/components/toast";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
-import { cleanRole, fmtCnpj, fmtDate, fmtMoney, fmtPhone } from "@/lib/format";
+import { cleanRole, fmtCnpj, fmtDate, fmtDateTime, fmtMoney, fmtPhone } from "@/lib/format";
 import { addChannelAction, discardAction, heartbeatAction, markWrongAction, releaseAction, removeChannelAction, resetLeadAction, saveAction, skipAction, startAction, startedAction } from "@/modules/leads/actions";
 import { htmlToText, mailtoLink, renderHtml, renderTemplate } from "@/modules/email/render";
 import type { LeadView, TagCatalog } from "@/modules/leads/view";
 import type { Goals } from "@/modules/settings/goals";
 
+export type PreviousAttendance = { by: string; at: string; channels: string[]; note: string | null };
 type Template = { id: number; name: string; subject: string; body: string; bodyHtml: string | null };
 const STEPS = ["Perfil", "E-mail", "WhatsApp", "Ligação", "Finalizar"] as const;
 
@@ -29,7 +30,7 @@ const copy = async (text: string, toast: ReturnType<typeof useToast>) => {
   }
 };
 
-export function AttendFlow({ lead, catalog, templates, myName, showMap, doneToday, scheduledToday, goals }: { lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; doneToday: number; scheduledToday: number; goals: Goals }) {
+export function AttendFlow({ lead, catalog, templates, myName, showMap, previous, doneToday, scheduledToday, goals }: { lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; previous: PreviousAttendance | null; doneToday: number; scheduledToday: number; goals: Goals }) {
   const toast = useToast();
   const [pending, start] = useTransition();
   useBusyWhile(pending);
@@ -41,6 +42,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, doneToda
   const [note, setNote] = useState(lead.notes ?? "");
   const [visit, setVisit] = useState("");
   const [visitDate, setVisitDate] = useState("");
+  const [visitLink, setVisitLink] = useState("");
   const dir = useRef<"fwd" | "back">("fwd");
   const [showVisit, setShowVisit] = useState(false);
   const [newValue, setNewValue] = useState("");
@@ -52,12 +54,21 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, doneToda
   /** Lead com situação cadastral diferente de ATIVA: pergunta antes de seguir (uma vez por lead). */
   const [statusAck, setStatusAck] = useState<number | null>(null);
   const status = lead.registrationStatus?.trim().toUpperCase() ?? null;
-  const inactive = !!status && status !== "ATIVA" && statusAck !== lead.id;
+  /** Lead que outra pessoa (ou você) já atendeu: mostra quem, quando e o resultado antes de seguir. */
+  const [priorAck, setPriorAck] = useState<number | null>(null);
+  const priorOpen = !!previous && priorAck !== lead.id;
+  const inactive = !priorOpen && !!status && status !== "ATIVA" && statusAck !== lead.id;
+  const seek = () => run(async () => { const r = await skipAction(lead.id); if (r.ok) await startAction(); return r; });
 
   const phones = lead.channels.filter((c) => c.kind === "phone");
   const emails = lead.channels.filter((c) => c.kind === "email");
   const goodPhones = phones.filter((p) => !p.wrong);
   const goodEmails = emails.filter((e) => !e.wrong);
+  /** Etapas que fazem sentido para este lead: sem e-mail válido some "E-mail"; sem telefone válido somem "WhatsApp" e "Ligação". */
+  const visible = [0, ...(goodEmails.length ? [1] : []), ...(goodPhones.length ? [2, 3] : []), 4];
+  const nextStep = (from: number) => visible.find((i) => i > from) ?? from;
+  const prevStep = (from: number) => [...visible].reverse().find((i) => i < from) ?? from;
+  useEffect(() => { if (!visible.includes(step)) setStep(prevStep(step)); /* uma etapa pode sumir (ex.: último telefone marcado como errado) */ }, [visible.join(), step]); // eslint-disable-line react-hooks/exhaustive-deps
   const groups = useMemo(() => Object.fromEntries(catalog.map((g) => [g.key, g])), [catalog]);
 
   /* batimento a cada 30 s: mantém o lead com você e mostra que está online */
@@ -98,7 +109,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, doneToda
     if (tpl && to) window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(renderTemplate(tpl.subject, vars))}`;
   };
 
-  const payload = () => ({ leadId: lead.id, channels: [...used], temperature, qualification, situations: [...situations], note, visitCode: showVisit ? visit : null, visitDate: showVisit ? visitDate : null });
+  const payload = () => ({ leadId: lead.id, channels: [...used], temperature, qualification, situations: [...situations], note, visitCode: showVisit ? visit : null, visitDate: showVisit ? visitDate : null, visitLink: showVisit ? visitLink || null : null });
   /** Salva e sorteia o próximo lead. */
   const save = () => run(async () => {
     const r = await saveAction(payload());
@@ -123,7 +134,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, doneToda
   };
   const resetNow = () => run(async () => {
     const r = await resetLeadAction(lead.id);
-    if (r.ok) { setUsed(new Set()); setTemperature(null); setQualification(null); setSituations(new Set()); setNote(""); setVisit(""); setVisitDate(""); setShowVisit(false); setConfirmReset(false); setStep(0); router.refresh(); }
+    if (r.ok) { setUsed(new Set()); setTemperature(null); setQualification(null); setSituations(new Set()); setNote(""); setVisit(""); setVisitDate(""); setVisitLink(""); setShowVisit(false); setConfirmReset(false); setStep(0); router.refresh(); }
     return r;
   });
   const discardNow = () => run(async () => { const r = await discardAction(lead.id, "Descartado no atendimento"); if (r.ok) await startAction(); return r; });
@@ -150,6 +161,22 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, doneToda
 
   return (
     <div className="space-y-5">
+      <ConfirmDialog open={priorOpen} tone="warn" icon={History} busy={pending} title="Este lead já foi atendido" confirmLabel="Buscar outro lead" cancelLabel="Atender mesmo assim"
+        onCancel={() => setPriorAck(lead.id)} onConfirm={seek}>
+        {previous && (
+          <div className="space-y-3">
+            <p><b className="text-ink">{previous.by}</b> atendeu <b className="text-ink">{lead.company}</b> em <b className="text-ink">{fmtDateTime(previous.at)}</b>{previous.channels.length ? <> por <b className="text-ink">{previous.channels.map((k) => groups.meio?.tags.find((t) => t.key === k)?.label ?? k).join(", ")}</b></> : null}.</p>
+            <div>
+              <p className="mb-1.5 text-xs font-medium uppercase tracking-wide">Resultado</p>
+              {lead.tags.filter((t) => ["temperatura", "qualificacao", "situacao", "agenda"].includes(t.groupKey)).length
+                ? <div className="flex flex-wrap gap-1.5">{lead.tags.filter((t) => ["temperatura", "qualificacao", "situacao", "agenda"].includes(t.groupKey)).map((t) => <TagChip key={t.id} label={t.label} color={t.color} />)}</div>
+                : <p>Nenhuma tag de resultado foi marcada.</p>}
+              {previous.note && <p className="mt-2 whitespace-pre-wrap rounded-lg bg-sunk px-3 py-2 text-ink">{previous.note}</p>}
+            </div>
+            <p>Quer atender mesmo assim ou procurar um novo lead? Se buscar outro, este some só para você por 24 h e não conta na meta.</p>
+          </div>
+        )}
+      </ConfirmDialog>
       <ConfirmDialog open={inactive} tone="warn" icon={TriangleAlert} busy={pending} title={`Situação cadastral: ${status}`} confirmLabel="Buscar outro lead" cancelLabel="Atender mesmo assim"
         onCancel={() => setStatusAck(lead.id)} onConfirm={() => run(async () => { const r = await skipAction(lead.id); if (r.ok) await startAction(); return r; })}>
         <b className="text-ink">{lead.company}</b> não está com a situação ATIVA na Receita, então provavelmente não consegue negociar. Quer atender mesmo assim ou procurar um novo lead? Se buscar outro, este some só para você por 24 h e não conta na meta.
@@ -169,15 +196,15 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, doneToda
           </div>
         </div>
         <ol className="relative mt-5 flex items-center" aria-label="Passos do atendimento">
-          {STEPS.map((st, i) => (
-            <li key={st} className={`flex items-center ${i < STEPS.length - 1 ? "flex-1" : ""}`}>
+          {visible.map((i, pos) => { const st = STEPS[i]; return (
+            <li key={st} className={`flex items-center ${pos < visible.length - 1 ? "flex-1" : ""}`}>
               <button type="button" onClick={() => go(i)} aria-current={i === step ? "step" : undefined} className="group flex flex-col items-center gap-1">
-                <span className={`grid size-9 place-items-center rounded-full text-sm font-bold transition-all ${i === step ? "scale-110 bg-grad text-on-accent shadow-lg shadow-accent/30" : i < step ? "bg-accent/20 text-accent" : "bg-sunk text-muted group-hover:bg-line"}`}>{i < step ? <Check size={16} aria-hidden /> : i + 1}</span>
+                <span className={`grid size-9 place-items-center rounded-full text-sm font-bold transition-all ${i === step ? "scale-110 bg-grad text-on-accent shadow-lg shadow-accent/30" : i < step ? "bg-accent/20 text-accent" : "bg-sunk text-muted group-hover:bg-line"}`}>{i < step ? <Check size={16} aria-hidden /> : pos + 1}</span>
                 <span className={`text-xs font-medium ${i === step ? "text-ink" : "text-muted"}`}>{st}</span>
               </button>
-              {i < STEPS.length - 1 && <span aria-hidden className="relative mx-1 mb-5 h-1 flex-1 overflow-hidden rounded-full bg-line"><span className="absolute inset-y-0 left-0 rounded-full bg-grad transition-[width] duration-500 ease-out" style={{ width: i < step ? "100%" : "0%" }} /></span>}
+              {pos < visible.length - 1 && <span aria-hidden className="relative mx-1 mb-5 h-1 flex-1 overflow-hidden rounded-full bg-line"><span className="absolute inset-y-0 left-0 rounded-full bg-grad transition-[width] duration-500 ease-out" style={{ width: i < step ? "100%" : "0%" }} /></span>}
             </li>
-          ))}
+          ); })}
         </ol>
       </header>
 
@@ -286,7 +313,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, doneToda
 
         {step === 4 && (
           <section className="space-y-5">
-            <h2 className="display text-xl">Resultado</h2>
+            <h2 className="display text-xl">Finalizar</h2>
             <Group title={groups.meio?.name ?? "Meios de contato usados"}>{groups.meio?.tags.filter((t) => !t.autoOnly).map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={used.has(t.key)} onClick={() => toggle(used, t.key, setUsed)} />)}</Group>
             <Group title={groups.temperatura?.name ?? "Temperatura"}>{groups.temperatura?.tags.map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={temperature === t.key} onClick={() => setTemperature(temperature === t.key ? null : t.key)} />)}</Group>
             <Group title={groups.qualificacao?.name ?? "Qualificação"}>{groups.qualificacao?.tags.map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={qualification === t.key} onClick={() => setQualification(qualification === t.key ? null : (t.key as "qualificado"))} />)}</Group>
@@ -297,7 +324,8 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, doneToda
                 <div className="mt-2 flex flex-wrap items-end gap-3">
                   <label className="block w-48 text-sm"><span className="mb-1 block text-muted">Código da visita</span><input className={inputCls} placeholder="V-12345" value={visit} onChange={(e) => setVisit(e.target.value)} /></label>
                   <div className="block w-48 text-sm"><span className="mb-1 block text-muted">Data da visita</span><DateInput label="Data da visita" value={visitDate} onChange={setVisitDate} /></div>
-                  <p className="w-full text-xs text-muted">Agendar visita qualifica o lead automaticamente.</p>
+                  <label className="block min-w-60 flex-1 text-sm"><span className="mb-1 block text-muted">Link da visita (Salesforce, opcional)</span><input className={inputCls} placeholder="https://…" value={visitLink} onChange={(e) => setVisitLink(e.target.value)} /></label>
+                  <p className="w-full text-xs text-muted">Agendar visita qualifica o lead automaticamente e guarda o representante mais próximo e a distância.</p>
                 </div>
               )}
             </div>
@@ -318,8 +346,8 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, doneToda
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" className={btnGhost} disabled={step === 0} onClick={() => go(step - 1)}><ChevronLeft size={16} aria-hidden /> Voltar</button>
-        {step < STEPS.length - 1 && <button type="button" className={btnPrimary} onClick={() => go(step + 1)}>Avançar <ChevronRight size={16} aria-hidden /></button>}
+        <button type="button" className={btnGhost} disabled={step === 0} onClick={() => go(prevStep(step))}><ChevronLeft size={16} aria-hidden /> Voltar</button>
+        {step < STEPS.length - 1 && <button type="button" className={btnPrimary} onClick={() => go(nextStep(step))}>Avançar <ChevronRight size={16} aria-hidden /></button>}
         <span className="flex-1" />
         <button type="button" className={btnGhost} disabled={pending} title="Esconde este lead só de você por 24 h e não conta na meta" onClick={() => run(async () => { const r = await skipAction(lead.id); if (r.ok) await startAction(); return r; })}><SkipForward size={16} aria-hidden /> Pular</button>
         <button type="button" className={`${btnPrimary} !bg-grad-danger !text-white`} disabled={pending} onClick={() => run(() => releaseAction(lead.id))}><Square size={15} aria-hidden /> Parar atendimento</button>

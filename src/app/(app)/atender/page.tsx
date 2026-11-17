@@ -55,5 +55,12 @@ export default async function AttendPage() {
   }
 
   const [catalog, templates] = await Promise.all([getTagCatalog(), getActiveTemplates()]);
-  return <AttendFlow lead={lead} catalog={catalog} templates={templates} myName={me.name} showMap={me.mapMode === "map"} doneToday={done?.n ?? 0} scheduledToday={sched?.n ?? 0} goals={goals} />;
+  const [prev] = await db.execute<{ at: Date; name: string | null; channels: string[] | null; note: string | null }>(sql`
+    select s.saved_at as at, u.name, l.notes as note,
+      (select array_agg(distinct i.channel) from interactions i where i.lead_id = s.lead_id and i.user_id = s.user_id and i.at between coalesce(s.started_at, s.shown_at) and s.saved_at + interval '2 minutes') as channels
+    from attendance_sessions s join leads l on l.id = s.lead_id left join users u on u.id = s.user_id
+    where s.lead_id = ${lead.id} and s.outcome = 'saved' and not s.is_test and s.saved_at is not null and exists (select 1 from interactions x where x.lead_id = s.lead_id)
+    order by s.saved_at desc limit 1`);
+  const previous = prev ? { by: prev.name ?? "Outra pessoa", at: new Date(prev.at).toISOString(), channels: prev.channels ?? [], note: prev.note } : null;
+  return <AttendFlow lead={lead} catalog={catalog} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={previous} doneToday={done?.n ?? 0} scheduledToday={sched?.n ?? 0} goals={goals} />;
 }

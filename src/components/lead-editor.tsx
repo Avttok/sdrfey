@@ -13,13 +13,14 @@ import { TagChip } from "@/components/tag-chip";
 import { useToast } from "@/components/toast";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
+import { VisitRow } from "@/components/visit-row";
 import { DateInput } from "@/components/date-input";
 import { fmtCnpj, fmtDate, fmtDateTime, fmtPhone } from "@/lib/format";
 import { addChannelAction, markWrongAction, removeChannelAction } from "@/modules/leads/actions";
 import { addPersonAction, addVisitAction, deleteVisitAction, changeTagAction, forceReleaseAction, removePersonAction, resetLeadFromPageAction, updateLeadAction } from "@/modules/leads/edit";
 import type { LeadView, TagCatalog } from "@/modules/leads/view";
 
-export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedBy, showMap }: { showMap: boolean; lead: LeadView; catalog: TagCatalog; owners: { id: number; name: string }[]; canEdit: boolean; canRelease: boolean; lockedBy: { name: string; hex: string } | null }) {
+export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedBy, showMap, meId }: { showMap: boolean; meId: number; lead: LeadView; catalog: TagCatalog; owners: { id: number; name: string }[]; canEdit: boolean; canRelease: boolean; lockedBy: { name: string; hex: string } | null }) {
   const toast = useToast();
   const active = lead.registrationStatus ? lead.registrationStatus.toUpperCase() === "ATIVA" : null;
   const name0 = lead.tradeName ?? lead.company;
@@ -29,7 +30,7 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
   const [on, setOn] = useState(new Set(lead.tags.map((t) => `${t.groupKey}:${t.key}`)));
   const [newCh, setNewCh] = useState("");
   const [confirmReset, setConfirmReset] = useState(false);
-  const [vis, setVis] = useState({ code: "", date: "" });
+  const [vis, setVis] = useState({ code: "", date: "", link: "" });
   const [delVisit, setDelVisit] = useState<number | null>(null);
   const [p, setP] = useState({ name: "", roleTitle: "", extension: "" });
 
@@ -120,22 +121,14 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
       </SectionCard>
       <SectionCard icon={CalendarCheck} title={`Visitas${lead.visits.length ? ` (${lead.visits.length})` : ""}`}>
         <ul className="space-y-2">
-          {lead.visits.map((v) => (
-            <li key={v.id} className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-sunk px-3 py-2.5 text-sm ${v.canceled ? "opacity-60" : ""}`}>
-              <span className="rounded-md bg-grad px-2 py-0.5 text-xs font-bold text-on-accent">{v.code}</span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-medium">{v.visitDate ? `Visita em ${fmtDate(v.visitDate)}` : "Sem data de visita"}{v.canceled && <span className="ml-2 rounded-full bg-danger/15 px-2 py-0.5 text-xs font-medium text-danger">Cancelada</span>}</span>
-                <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">Agendada em {fmtDateTime(v.at)}{v.by && v.byHex && <>&nbsp;por <PersonBubble name={v.by} hex={v.byHex} /></>}</span>
-              </span>
-              {canEdit && <button type="button" aria-label={`Apagar visita ${v.code}`} title="Apagar visita" disabled={pending} className="grid size-8 place-items-center rounded-lg text-danger transition hover:bg-danger/10" onClick={() => setDelVisit(v.id)}><Trash2 size={16} aria-hidden /></button>}
-            </li>
-          ))}
+          {lead.visits.map((v) => <VisitRow key={v.id} leadId={lead.id} v={v} canManage={canEdit || v.byUserId === meId} onDelete={() => setDelVisit(v.id)} />)}
           {lead.visits.length === 0 && <li className="text-sm text-muted">Nenhuma visita agendada para este lead.</li>}
         </ul>
-        {canEdit && (
-          <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); run(() => addVisitAction(lead.id, { code: vis.code, visitDate: vis.date }), undefined, () => setVis({ code: "", date: "" })); }}>
+        {(
+          <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); run(() => addVisitAction(lead.id, { code: vis.code, visitDate: vis.date, link: vis.link || null }), undefined, () => setVis({ code: "", date: "", link: "" })); }}>
             <label className="block min-w-36 flex-1 text-sm"><span className="mb-1 block text-muted">Código</span><input className={inputCls} placeholder="V-12345" value={vis.code} onChange={(e) => setVis({ ...vis, code: e.target.value })} /></label>
             <div className="block w-44 text-sm"><span className="mb-1 block text-muted">Data da visita</span><DateInput label="Data da visita" value={vis.date} onChange={(d) => setVis({ ...vis, date: d })} /></div>
+            <label className="block min-w-48 flex-[2] text-sm"><span className="mb-1 block text-muted">Link da visita (opcional)</span><input className={inputCls} placeholder="https://…" value={vis.link} onChange={(e) => setVis({ ...vis, link: e.target.value })} /></label>
             <button type="submit" className={btnGhost} disabled={pending}><Plus size={15} aria-hidden /> Adicionar visita</button>
           </form>
         )}

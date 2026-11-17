@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { and, asc, eq, sql } from "drizzle-orm";
-import { CalendarCheck, CalendarX2, ExternalLink } from "lucide-react";
+import { CalendarCheck, CalendarX2, ExternalLink, MapPin } from "lucide-react";
 import { Suspense } from "react";
 import { DashboardFilters } from "@/components/dashboard-filters";
 import { PageHead } from "@/components/page-head";
@@ -17,7 +17,7 @@ import { resolvePeriod } from "@/modules/dashboard/stats";
 export const metadata: Metadata = { title: "Visitas" };
 export const dynamic = "force-dynamic";
 
-type Row = { visit_date: string | null; id: number; code: string; at: Date; note: string | null; canceled_at: Date | null; lead_id: number; company: string; city: string | null; uf: string | null; uid: number | null; name: string | null; accent: string | null; roles: Role[] | null };
+type Row = { link: string | null; rep_name: string | null; rep_sap: string | null; rep_city: string | null; rep_km: number | null; visit_date: string | null; id: number; code: string; at: Date; note: string | null; canceled_at: Date | null; lead_id: number; company: string; city: string | null; uf: string | null; uid: number | null; name: string | null; accent: string | null; roles: Role[] | null };
 
 /** Todas as visitas agendadas. Cada pessoa vê as suas; quem tem a permissão vê as da equipe. */
 export default async function VisitsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -37,7 +37,7 @@ export default async function VisitsPage({ searchParams }: { searchParams: Promi
   const to = dayEnd(period.to).toISOString();
   const who = scope ? sql`and v.user_id in (${sql.join(scope.map((i) => sql`${i}`), sql`, `)})` : sql``;
   const rows = await db.execute<Row>(sql`
-    select v.id, v.visit_date::text as visit_date, v.code, v.created_at as at, v.note, v.canceled_at, l.id as lead_id, l.company, l.city, l.uf, u.id as uid, u.name, u.accent, u.roles
+    select v.id, v.visit_date::text as visit_date, v.link, v.rep_name, v.rep_sap, v.rep_city, v.rep_km, v.code, v.created_at as at, v.note, v.canceled_at, l.id as lead_id, l.company, l.city, l.uf, u.id as uid, u.name, u.accent, u.roles
     from visits v join leads l on l.id = v.lead_id left join users u on u.id = v.user_id
     where not l.is_test and v.created_at between ${from}::timestamptz and ${to}::timestamptz ${who}
     order by v.created_at desc limit 500`);
@@ -71,6 +71,8 @@ export default async function VisitsPage({ searchParams }: { searchParams: Promi
                 <p className="mt-3 font-semibold leading-snug">{v.company}</p>
                 {(v.city || v.uf) && <p className="text-sm text-muted">{[v.city, v.uf].filter(Boolean).join(" / ")}</p>}
                 <p className="mt-2 flex items-center gap-1.5 text-sm font-medium"><CalendarCheck size={15} className="text-accent" aria-hidden /> {v.visit_date ? `Visita em ${fmtDate(v.visit_date)}` : "Data da visita não informada"}</p>
+                {v.rep_name && <p className="mt-1.5 flex items-start gap-1.5 text-xs text-muted"><MapPin size={13} className="mt-0.5 shrink-0" aria-hidden /><span>Representante: <b className="font-medium text-ink">{v.rep_name}</b>{v.rep_km != null ? ` · ${v.rep_km} km` : ""}{v.rep_city ? ` · ${v.rep_city}` : ""}</span></p>}
+                {v.link && <span className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-accent"><ExternalLink size={12} aria-hidden /> Tem link do Salesforce</span>}
                 {v.note && <p className="mt-2 line-clamp-2 text-sm text-muted">{v.note}</p>}
                 <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3 text-xs text-muted">
                   {v.name ? <span className="flex min-w-0 items-center gap-2"><span className="text-muted/80">Agendada por</span><PersonBubble name={v.name} hex={bubbleHex(v.accent, v.uid ?? 0, v.roles ?? undefined)} /></span> : <span />}

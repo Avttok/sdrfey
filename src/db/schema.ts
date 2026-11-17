@@ -180,6 +180,13 @@ export const visits = pgTable(
     note: text("note"),
     /** Dia em que a visita vai acontecer (a data em que foi agendada é createdAt). */
     visitDate: date("visit_date"),
+    /** Link da visita gerado no Salesforce (opcional). */
+    link: text("link"),
+    /** Representante mais próximo no momento do agendamento (cópia: não muda se a lista de representantes mudar). */
+    repName: text("rep_name"),
+    repSap: text("rep_sap"),
+    repCity: text("rep_city"),
+    repKm: integer("rep_km"),
     canceledAt: timestamp("canceled_at", { withTimezone: true }),
     createdAt: now(),
   },
