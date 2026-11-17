@@ -539,3 +539,32 @@ export const dealQuoteItems = pgTable(
   },
   (t) => [index("deal_quote_items_deal_idx").on(t.dealId)],
 );
+
+/** Chat interno. Canais: geral, user (SDR), seller (vendedores), manager (gestores). */
+export const chatMessages = pgTable(
+  "chat_messages",
+  {
+    id: serial("id").primaryKey(),
+    channel: text("channel").notNull(),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    body: text("body").notNull().default(""),
+    /** Item compartilhado: lead (cliente), deal (negociação) ou quote (cotação). */
+    shareKind: text("share_kind").$type<"lead" | "deal" | "quote">(),
+    shareId: integer("share_id"),
+    shareLabel: text("share_label"),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: now(),
+  },
+  (t) => [index("chat_messages_channel_idx").on(t.channel, t.id)],
+);
+
+/** Até onde cada pessoa já leu em cada canal (para o aviso de não lidas). */
+export const chatReads = pgTable(
+  "chat_reads",
+  {
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    channel: text("channel").notNull(),
+    lastId: integer("last_id").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.channel] })],
+);

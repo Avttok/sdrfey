@@ -48,6 +48,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "rep.edit", label: "Criar e editar representantes", group: "Funções", defaults: ["manager"] },
   { key: "audit.revert", label: "Reverter alterações pelo Registro", group: "Funções", defaults: [] },
   { key: "goals.edit", label: "Alterar metas da equipe: padrão (global) e de qualquer pessoa", group: "Funções", defaults: [] },
+  { key: "chat.use", label: "Usar o chat interno", group: "Funções", defaults: ["user", "seller", "manager"] },
   { key: "goals.edit.own", label: "Alterar só a própria meta (sem mexer na global nem na dos outros)", group: "Funções", defaults: [] },
 ];
 

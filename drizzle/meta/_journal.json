@@ -120,6 +120,13 @@
       "when": 1794935293607,
       "tag": "0016_cotacao_link",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794936471032,
+      "tag": "0017_chat",
+      "breakpoints": true
     }
   ]
 }

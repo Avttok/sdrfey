@@ -5,6 +5,7 @@ import { ToastProvider } from "@/components/toast";
 import { AppHeader, SideBarFor } from "@/components/app-header";
 import { navBadges } from "@/modules/deals/queries";
 import { getSettings } from "@/modules/settings/get";
+import { ChatMount } from "@/components/chat/chat-mount";
 import { requireUser } from "@/modules/auth/guard";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -22,6 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <main className="mx-auto w-full max-w-7xl px-4 py-8 pb-24 sm:px-6">{children}</main>
         </div>
       </div>
+      <Suspense fallback={null}><ChatMount user={user} /></Suspense>
     </ToastProvider>
   );
 }

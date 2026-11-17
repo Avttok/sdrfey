@@ -16,6 +16,7 @@ const FIELDS: { key: SettingKey; label: string; hint: string }[] = [
 const SYSTEM: { key: SettingKey; label: string; hint: string; kind: "number" | "toggle" | "period" }[] = [
   { key: "alert_days", label: "Dias para um lead quente ou visita pendente virar alerta", hint: "Aparece no bloco Alertas do dashboard.", kind: "number" },
   { key: "dash_default_days", label: "Período que o dashboard abre por padrão", hint: "Cada pessoa ainda pode trocar o filtro na hora.", kind: "period" },
+  { key: "chat_on", label: "Chat interno", hint: "Botão flutuante com chat geral e por cargo. Desligado, some para todos (as conversas ficam guardadas).", kind: "toggle" },
   { key: "nav_group", label: "Agrupar as abas por cargo", hint: "Quem tem mais de um cargo vê as abas em grupos (SDR, Vendedor, Gestor, Adm) em vez de uma lista só.", kind: "toggle" },
 ];
 

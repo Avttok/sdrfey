@@ -19,6 +19,8 @@ export const SETTING_DEFAULTS = {
   dash_default_days: 1,
   /** 1 = contas com mais de um cargo veem as abas em grupos (SDR, Vendedor, Gestor, Adm). */
   nav_group: 1,
+  /** 1 = chat interno ligado para todos (botão flutuante). */
+  chat_on: 1,
 } as const;
 export type SettingKey = keyof typeof SETTING_DEFAULTS;
 
