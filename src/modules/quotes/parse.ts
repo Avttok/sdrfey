@@ -20,6 +20,14 @@ export type ParsedQuote = {
   ipiCents: number | null;
   freightCents: number | null;
   validityDays: number | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  neighborhood: string | null;
+  zip: string | null;
+  stateReg: string | null;
+  weightKg: number | null;
+  typedBy: string | null;
   items: QuoteItem[];
 };
 
@@ -39,7 +47,7 @@ export function parseItems(lines: string[]): QuoteItem[] {
   const body = lines.slice(start >= 0 ? start + 1 : 0);
   const records: string[] = [];
   for (const l of body) {
-    if (/^(PRAZO DE ENTREGA|VALIDADE DA PROPOSTA|Valor Produtos)/i.test(l)) break;
+    if (/^(PRAZO DE ENTREGA|VALIDADE DA PROPOSTA|Valor Produtos|_{3,}|DATA:|NOME:|ASSINATURA:)/i.test(l)) break;
     if (!l || HEADER.test(l)) continue;
     if (/^\d{1,4}\s+\d+(\s|$)/.test(l) && Number(l.split(/\s+/)[0]) % 10 === 0) records.push(l);
     else if (records.length) records[records.length - 1] += ` ${l}`;
@@ -95,6 +103,14 @@ export function parseQuoteText(raw: string): ParsedQuote {
     ipiCents: money(m(/Valor IPI:\s*([\d.,]+)/i) ?? undefined),
     freightCents: money(m(/Frete Negociado:\s*([\d.,]+)/i) ?? undefined),
     validityDays: Number(m(/VALIDADE DA PROPOSTA:\s*(\d+)/i)) || null,
+    email: m(/E-?mail:\s*([^\s@]+@[^\s@]+\.[^\s@]+)/i)?.toLowerCase() ?? null,
+    phone: (() => { const d = (m(/\nTelefone:[ \t]*([^\n]*)/i) ?? "").replace(/\D/g, ""); return d.length === 10 || d.length === 11 ? d : null; })(),
+    address: m(/^Endere[çc]o:[ \t]*(.+)$/im),
+    neighborhood: m(/^Bairro:[ \t]*(.+)$/im),
+    zip: m(/^CEP:[ \t]*(\d{5}-?\d{3})/im)?.replace(/\D/g, "") ?? null,
+    stateReg: m(/Inscri[çc][ãa]o Estadual:[ \t]*([\w./-]+)/i),
+    weightKg: (() => { const w = m(/Peso Total:\s*([\d.,]+)/i); return w ? Number(w.replace(/\./g, "").replace(",", ".")) || null : null; })(),
+    typedBy: m(/Digitador:[ \t]*(.+)/i),
     items,
   };
 }

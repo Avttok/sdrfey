@@ -14,7 +14,7 @@ export type DealRow = {
   valueCents: number | null; netValueCents: number | null; mainCents: number | null; createdAt: string; claimedAt: string | null; quoteSentAt: string | null; lastContactAt: string | null;
   nextActionAt: string | null; nextActionNote: string | null; lostReason: string | null; closedAt: string | null;
   freight: "CIF" | "FOB" | "RED" | null; sapCode: string | null; orderNumber: string | null; quoteNumber: string | null; quoteDate: string | null; closedOn: string | null;
-  cnpj: string; closedValueCents: number | null; realValueCents: number | null; expired: boolean; paymentTerms: string | null; color: string | null; isReactivation: boolean;
+  cnpj: string; addressLine: string | null; stateReg: string | null; closedValueCents: number | null; realValueCents: number | null; expired: boolean; paymentTerms: string | null; color: string | null; isReactivation: boolean;
   alerts: DealAlert[];
 };
 
@@ -54,7 +54,7 @@ const sdr = alias(users, "sdr");
 export async function listDeals(meId: number, team: boolean, opts: { includeTest?: boolean } = {}): Promise<DealRow[]> {
   const rows = await db
     .select({
-      d: deals, company: leads.company, city: leads.city, uf: leads.uf, contactName: leads.contactName, phones: leads.phones, email: leads.email,
+      d: deals, company: leads.company, city: leads.city, uf: leads.uf, contactName: leads.contactName, phones: leads.phones, email: leads.email, address: leads.address, neighborhood: leads.neighborhood, zip: leads.zip, stateReg: leads.stateReg,
       salesforceUrl: leads.salesforceUrl, eoxUrl: leads.eoxUrl, leadSap: leads.sapCode, leadCnpj: leads.cnpj, sellerName: seller.name, sdrName: sdr.name,
     })
     .from(deals)
@@ -71,7 +71,7 @@ export async function listDeals(meId: number, team: boolean, opts: { includeTest
       valueCents: d.valueCents, netValueCents: d.netValueCents, mainCents: d.realValueCents ?? d.netValueCents ?? d.closedValueCents ?? d.valueCents, createdAt: d.createdAt.toISOString(), claimedAt: iso(d.claimedAt), quoteSentAt: iso(d.quoteSentAt), lastContactAt: iso(d.lastContactAt),
       nextActionAt: iso(d.nextActionAt), nextActionNote: d.nextActionNote, lostReason: d.lostReason, closedAt: iso(d.closedAt),
       freight: d.freight, sapCode: d.sapCode ?? x.leadSap, orderNumber: d.orderNumber, quoteNumber: d.quoteNumber, quoteDate: d.quoteDate, closedOn: d.closedOn,
-      cnpj: x.leadCnpj, closedValueCents: d.closedValueCents, realValueCents: d.realValueCents, expired: soldBeforeThisMonth({ stage: d.stage, closedOn: d.closedOn, closedAt: iso(d.closedAt) }), paymentTerms: d.paymentTerms, color: d.color, isReactivation: d.isReactivation,
+      cnpj: x.leadCnpj, addressLine: [x.address, x.neighborhood, x.zip ? x.zip.replace(/^(\d{5})(\d{3})$/, "$1-$2") : null].filter(Boolean).join(" · ") || null, stateReg: x.stateReg, closedValueCents: d.closedValueCents, realValueCents: d.realValueCents, expired: soldBeforeThisMonth({ stage: d.stage, closedOn: d.closedOn, closedAt: iso(d.closedAt) }), paymentTerms: d.paymentTerms, color: d.color, isReactivation: d.isReactivation,
     };
     return { ...row, alerts: dealAlerts(row) };
   });

@@ -10,7 +10,7 @@ import { db } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { loadDeal } from "@/modules/deals/access";
 import type { ActionResult } from "@/modules/leads/actions";
-import { normalizeItem, normTerm, syncDealFromQuotes, totalsOf, upsertPaymentTerm, upsertProducts } from "./db";
+import { getExtraTaxPct, normalizeItem, normTerm, syncDealFromQuotes, totalsOf, upsertPaymentTerm, upsertProducts } from "./db";
 
 const fail = (message: string): ActionResult => ({ ok: false, message });
 const refresh = (id: number) => { for (const p of ["/negociacoes", `/negociacoes/${id}`, "/painel", "/metas", "/historico"]) revalidatePath(p); };
@@ -49,7 +49,7 @@ export async function saveQuoteAction(dealId: number, quoteId: number | null, in
   const freightCents = input.freightValue.trim() ? parseMoneyToCents(input.freightValue) : 0;
   if (freightCents === null) return fail("Frete negociado inválido.");
   let t = { productsCents: null as number | null, ipiCents: null as number | null, icmsCents: null as number | null, netCents: null as number | null, totalCents: null as number | null };
-  if (list.length) t = totalsOf(list, freightCents);
+  if (list.length) t = totalsOf(list, freightCents, await getExtraTaxPct());
   else {
     const v = parseMoneyToCents(input.totalValue);
     if (v === null || v <= 0) return fail("Informe o valor da cotação (ex.: 12.500,00) ou adicione os itens.");

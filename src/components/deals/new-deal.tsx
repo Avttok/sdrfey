@@ -17,7 +17,7 @@ import { ColorPicker } from "./color-picker";
 
 const maskCnpj = (v: string) => { const d = v.replace(/\D/g, "").slice(0, 14); return d.replace(/^(\d{2})(\d)/, "$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3").replace(/\.(\d{3})(\d)/, ".$1/$2").replace(/(\d{4})(\d)/, "$1-$2"); };
 const brl = (c: number | null) => (c == null ? "" : (c / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-const EMPTY = { cnpj: "", company: "", contactName: "", phone: "", note: "", freight: "", sapCode: "", orderNumber: "", quoteNumber: "", quoteDate: "", quoteValue: "", paymentTerms: "", isReactivation: false };
+const EMPTY = { cnpj: "", company: "", contactName: "", phone: "", email: "", street: "", neighborhood: "", zip: "", stateReg: "", city: "", uf: "", note: "", freight: "", sapCode: "", orderNumber: "", quoteNumber: "", quoteDate: "", quoteValue: "", paymentTerms: "", isReactivation: false };
 
 /** “Nova negociação”: o vendedor abre uma negociação sem passar pelo SDR. CNPJ obrigatório; se já existir no banco, traz o cadastro e o atendimento. */
 export function NewDeal({ terms }: { terms: string[] }) {
@@ -50,13 +50,14 @@ export function NewDeal({ terms }: { terms: string[] }) {
     const r = await lookupCnpjAction(cnpj).catch(() => ({ ok: false as const, message: "Não consegui pesquisar agora. Tente de novo." }));
     setLook(r);
     if (!r.ok) { setPhase("idle"); return toast("bad", r.message); }
+    if (r.found) { const l = r.lead; setF((p) => ({ ...p, contactName: p.contactName || l.contactName || "", phone: p.phone || l.phones[0] || "", email: p.email || l.email || "", street: p.street || l.address || "", neighborhood: p.neighborhood || l.neighborhood || "", zip: p.zip || l.zip || "", stateReg: p.stateReg || l.stateReg || "", city: p.city || l.city || "", uf: p.uf || l.uf || "", sapCode: p.sapCode || l.sapCode || "" })); }
     if (r.found && r.lead.enriched) return setPhase("idle");
     setPhase("receita");
     const c = await consultCnpjAction(cnpj).catch(() => ({ ok: true as const, info: null }));
     setConsult(c); setPhase("idle");
     if (c.ok && c.info) {
       const i = c.info;
-      setF((p) => ({ ...p, company: p.company || i.tradeName || i.name || "", phone: p.phone || i.phones[0] || "" }));
+      setF((p) => ({ ...p, company: p.company || i.tradeName || i.name || "", phone: p.phone || i.phones[0] || "", email: p.email || i.email || "", city: p.city || i.city || "", uf: p.uf || i.uf || "" }));
     }
   };
   useEffect(() => {
@@ -71,13 +72,13 @@ export function NewDeal({ terms }: { terms: string[] }) {
     if (!r.ok) return toast("bad", r.message);
     const q = r.quote;
     const cnpj = q.cnpj?.length === 14 ? maskCnpj(q.cnpj) : f.cnpj;
-    setF((p) => ({ ...p, cnpj, company: q.clientName ?? p.company, quoteNumber: q.quoteNumber ?? "", quoteDate: q.quoteDate ?? "", freight: q.freight ?? "", sapCode: q.sapCode ?? "", paymentTerms: q.paymentTerms ?? "", quoteValue: brl(q.totalCents) }));
+    setF((p) => ({ ...p, cnpj, company: q.clientName ?? p.company, quoteNumber: q.quoteNumber ?? "", quoteDate: q.quoteDate ?? "", freight: q.freight ?? "", sapCode: q.sapCode ?? "", paymentTerms: q.paymentTerms ?? "", quoteValue: brl(q.totalCents), email: q.email ?? p.email, phone: q.phone ?? p.phone, street: q.address ?? p.street, neighborhood: q.neighborhood ?? p.neighborhood, zip: q.zip ?? p.zip, stateReg: q.stateReg ?? p.stateReg, city: q.city ?? p.city, uf: q.uf ?? p.uf }));
     setItems(q.items);
     toast("ok", `PDF lido: cotação ${q.quoteNumber ?? "?"}, ${q.items.length} itens. O arquivo não é guardado.`);
     if (q.cnpj?.length === 14) search(cnpj);
   };
   const create = () => start(async () => {
-    const r = await createDealManualAction({ cnpj: f.cnpj, company: f.company, contactName: f.contactName, phone: f.phone, note: f.note, color, items,
+    const r = await createDealManualAction({ cnpj: f.cnpj, company: f.company, contactName: f.contactName, phone: f.phone, email: f.email, address: { street: f.street || null, neighborhood: f.neighborhood || null, zip: f.zip || null, stateReg: f.stateReg || null, city: f.city || null, uf: f.uf || null }, note: f.note, color, items,
       data: { freight: f.freight, sapCode: f.sapCode, orderNumber: f.orderNumber, quoteNumber: f.quoteNumber, quoteDate: f.quoteDate, quoteValue: f.quoteValue, paymentTerms: f.paymentTerms, isReactivation: f.isReactivation } });
     if (!r.ok) return toast("bad", r.message);
     toast("ok", r.message ?? "Negociação criada.");
@@ -113,6 +114,8 @@ export function NewDeal({ terms }: { terms: string[] }) {
             <p className="font-semibold">{found.lead.company}</p>
             <p className="text-xs text-muted">{[found.lead.tradeName, found.lead.city && `${found.lead.city}/${found.lead.uf}`, found.lead.contactName, found.lead.sapCode && `SAP ${found.lead.sapCode}`, found.lead.status].filter(Boolean).join(" · ")}</p>
             {found.lead.phones.length > 0 && <p className="figure text-xs text-muted">{found.lead.phones.map(fmtPhone).join(" · ")}</p>}
+            {found.lead.email && <p className="text-xs text-muted">{found.lead.email}</p>}
+            {(found.lead.address || found.lead.neighborhood) && <p className="text-xs text-muted">{[found.lead.address, found.lead.neighborhood, found.lead.zip].filter(Boolean).join(" · ")}</p>}
           </div>
           {found.leftPortfolio && <p className="rounded-lg bg-danger/12 px-3 py-2 text-danger">Este cliente já comprou em mês anterior e saiu da carteira (vendas futuras). Não dá para abrir nova negociação.</p>}
           {found.openDeal && <p className="rounded-lg bg-warn/15 px-3 py-2 text-warn">Já existe negociação aberta{found.openDeal.sellerName ? ` com ${found.openDeal.sellerName}` : " (sem vendedor)"}. <Link href={`/negociacoes/${found.openDeal.id}`} className="font-semibold underline">Abrir</Link></p>}
@@ -131,6 +134,12 @@ export function NewDeal({ terms }: { terms: string[] }) {
             {!found && <label className="block lg:col-span-2"><span className="mb-1 block text-muted">Nome da empresa (se a Receita não trouxer)</span><input className={inputCls} value={f.company} onChange={(e) => set("company", e.target.value)} /></label>}
             <label className="block"><span className="mb-1 block text-muted">Contato</span><input className={inputCls} value={f.contactName} onChange={(e) => set("contactName", e.target.value)} /></label>
             <label className="block"><span className="mb-1 block text-muted">Telefone (com DDD)</span><input className={inputCls} inputMode="tel" value={f.phone} onChange={(e) => set("phone", e.target.value)} /></label>
+            <label className="block"><span className="mb-1 block text-muted">E-mail</span><input className={inputCls} type="email" value={f.email} onChange={(e) => set("email", e.target.value)} /></label>
+            <label className="block lg:col-span-2"><span className="mb-1 block text-muted">Endereço</span><input className={inputCls} value={f.street} onChange={(e) => set("street", e.target.value)} /></label>
+            <label className="block"><span className="mb-1 block text-muted">Bairro</span><input className={inputCls} value={f.neighborhood} onChange={(e) => set("neighborhood", e.target.value)} /></label>
+            <label className="block"><span className="mb-1 block text-muted">CEP</span><input className={inputCls} inputMode="numeric" value={f.zip} onChange={(e) => set("zip", e.target.value)} /></label>
+            <label className="block"><span className="mb-1 block text-muted">Cidade / UF</span><span className="flex gap-2"><input className={inputCls} aria-label="Cidade" value={f.city} onChange={(e) => set("city", e.target.value)} /><input className={`${inputCls} !w-16 uppercase`} aria-label="UF" maxLength={2} value={f.uf} onChange={(e) => set("uf", e.target.value)} /></span></label>
+            <label className="block"><span className="mb-1 block text-muted">Inscrição estadual</span><input className={inputCls} value={f.stateReg} onChange={(e) => set("stateReg", e.target.value)} /></label>
             <label className="block"><span className="mb-1 block text-muted">Frete</span><select className={inputCls} value={f.freight} onChange={(e) => set("freight", e.target.value)}><option value="">—</option><option>CIF</option><option>FOB</option><option>RED</option></select></label>
             <label className="block"><span className="mb-1 block text-muted">Código SAP</span><input className={inputCls} value={f.sapCode} onChange={(e) => set("sapCode", e.target.value)} /></label>
             <label className="block"><span className="mb-1 block text-muted">Condição de pagamento</span><select className={inputCls} value={f.paymentTerms} onChange={(e) => set("paymentTerms", e.target.value)}><option value="">—</option>{[...new Set([...(f.paymentTerms ? [f.paymentTerms] : []), ...terms])].map((t) => <option key={t}>{t}</option>)}</select></label>

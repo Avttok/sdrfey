@@ -1,12 +1,12 @@
 "use client";
 
-import { Check, CreditCard, Package, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { Calculator, Check, CreditCard, Package, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SectionCard } from "@/components/section-card";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls } from "@/components/ui";
-import { deletePaymentTermAction, deleteProductAction, savePaymentTermAction, saveProductAction } from "@/modules/admin/sales";
+import { deletePaymentTermAction, deleteProductAction, savePaymentTermAction, saveProductAction, saveExtraTaxAction } from "@/modules/admin/sales";
 
 export type TermRow = { id: number; name: string; active: boolean };
 export type ProductRow = { id: number; code: string; description: string; kind: string | null; unit: string | null; lastUnitCents: number | null; seenCount: number };
@@ -105,6 +105,20 @@ function Products({ rows }: { rows: ProductRow[] }) {
   );
 }
 
-export function SalesAdmin({ terms, products }: { terms: TermRow[]; products: ProductRow[] }) {
-  return <div className="space-y-5"><Terms rows={terms} /><Products rows={products} /></div>;
+function ExtraTax({ pct }: { pct: number }) {
+  const { run, pending } = useRun();
+  const [v, setV] = useState(String(pct).replace(".", ","));
+  return (
+    <SectionCard icon={Calculator} title="Cálculo do valor sem impostos">
+      <p className="text-sm text-muted">Valor sem impostos = (total − IPI − ICMS) menos este percentual (PIS/COFINS) sobre o que sobra. Use 0 para só tirar IPI e ICMS. Vale para cotações novas ou editadas.</p>
+      <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); run(() => saveExtraTaxAction(Number(v.replace(",", ".")))); }}>
+        <label className="block text-sm"><span className="mb-1 block text-muted">Imposto extra (%)</span><input className={`${inputCls} !w-32 text-right`} inputMode="decimal" value={v} onChange={(e) => setV(e.target.value)} /></label>
+        <button className={btnPrimary} disabled={pending}><Check size={15} aria-hidden /> Salvar</button>
+      </form>
+    </SectionCard>
+  );
+}
+
+export function SalesAdmin({ terms, products, extraTaxPct }: { terms: TermRow[]; products: ProductRow[]; extraTaxPct: number }) {
+  return <div className="space-y-5"><ExtraTax pct={extraTaxPct} /><Terms rows={terms} /><Products rows={products} /></div>;
 }

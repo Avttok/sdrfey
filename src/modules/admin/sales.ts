@@ -2,12 +2,12 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { db, paymentTerms, products } from "@/db";
+import { db, paymentTerms, products, settings } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { requireAdmin } from "@/modules/auth/guard";
 import type { ActionResult } from "@/modules/leads/actions";
 import { parseMoneyToCents } from "@/config/deals";
-import { normTerm } from "@/modules/quotes/db";
+import { getExtraTaxPct, normTerm } from "@/modules/quotes/db";
 
 const done = (message: string): ActionResult => { revalidatePath("/admin/vendas"); revalidatePath("/negociacoes"); return { ok: true, message }; };
 const bad = (message: string): ActionResult => ({ ok: false, message });
@@ -76,4 +76,14 @@ export async function deleteProductAction(id: number): Promise<ActionResult> {
   await db.delete(products).where(eq(products.id, id));
   await logAudit(db, { userId: me.id, entity: "setting", action: "removeu produto", field: `Produto ${old.code}`, oldValue: old.description });
   return done("Produto removido do catálogo.");
+}
+
+/** Imposto extra (PIS/COFINS, %) descontado do valor sem impostos das cotações novas. */
+export async function saveExtraTaxAction(pct: number): Promise<ActionResult> {
+  const me = await requireAdmin();
+  if (!Number.isFinite(pct) || pct < 0 || pct >= 100) return bad("Informe um percentual entre 0 e 99,99.");
+  const old = await getExtraTaxPct();
+  await db.insert(settings).values({ key: "net_extra_tax_pct", value: pct, updatedBy: me.id }).onConflictDoUpdate({ target: settings.key, set: { value: pct, updatedAt: new Date(), updatedBy: me.id } });
+  await logAudit(db, { userId: me.id, entity: "setting", action: "alterou imposto extra do valor sem impostos", field: "PIS/COFINS (%)", oldValue: String(old), newValue: String(pct) });
+  return done("Percentual salvo. Vale para cotações novas ou editadas.");
 }

@@ -83,7 +83,7 @@ export function DealBoard({ deals, meId, canClaim, team }: { deals: DealRow[]; m
                   <span className="whitespace-nowrap"><StageChip stage={st} /></span>
                   <span className="figure whitespace-nowrap text-sm text-muted">{col.length}</span>
                 </header>
-                {col.some((x) => x.mainCents) && <p className="figure -mt-1 px-1.5 text-xs text-muted">{fmtBRL(col.reduce((a, x) => a + (x.valueCents ?? 0), 0))} em cotações</p>}
+                {col.some((x) => x.mainCents) && <p className="figure -mt-1 px-1.5 text-xs text-muted">{fmtBRL(col.reduce((a, x) => a + (x.mainCents ?? 0), 0))} sem impostos</p>}
                 <ul className="space-y-2.5">{col.map((d) => <Card key={d.id} d={d} meId={meId} canClaim={canClaim} />)}{col.length === 0 && <li className="rounded-xl border border-dashed border-line p-5 text-center text-xs text-muted">Vazio</li>}</ul>
               </section>
             );

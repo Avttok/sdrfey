@@ -1,18 +1,27 @@
 import { desc, eq, sql } from "drizzle-orm";
-import { dealQuotes, deals, paymentTerms, products, type Db } from "@/db";
+import { dealQuotes, deals, db, paymentTerms, products, settings, type Db } from "@/db";
 import type { DbOrTx } from "@/modules/audit/log";
 import type { QuoteItem } from "./parse";
 
 type Tx = DbOrTx | Db;
 
-/** Totais de uma cotação a partir dos itens: produtos (sem IPI), IPI e total com IPI + frete. */
-export function totalsOf(items: QuoteItem[], freightCents: number) {
+/** Imposto extra descontado do líquido (PIS/COFINS), em %. Padrão 9,25; o admin muda em Admin → Vendas. */
+export const DEFAULT_EXTRA_TAX_PCT = 9.25;
+export async function getExtraTaxPct(): Promise<number> {
+  const [r] = await db.select().from(settings).where(eq(settings.key, "net_extra_tax_pct"));
+  const v = Number(r?.value);
+  return Number.isFinite(v) && v >= 0 && v < 100 ? v : DEFAULT_EXTRA_TAX_PCT;
+}
+
+/** Totais de uma cotação a partir dos itens. O preço unitário já traz o ICMS; o IPI vem por fora.
+ *  Sem impostos = (total − IPI − ICMS) menos o imposto extra (PIS/COFINS) sobre essa base. */
+export function totalsOf(items: QuoteItem[], freightCents: number, extraTaxPct = 0) {
   const productsCents = items.reduce((a, i) => a + (i.totalCents ?? 0), 0);
   const ipiCents = items.reduce((a, i) => a + (i.ipiCents ?? 0), 0);
   const icmsCents = items.reduce((a, i) => a + (i.icmsCents ?? 0), 0);
   const totalCents = productsCents + ipiCents + freightCents;
-  /** Sem impostos = total − IPI − ICMS (o preço unitário já traz o ICMS dentro). */
-  return { productsCents, ipiCents, icmsCents, totalCents, netCents: totalCents - ipiCents - icmsCents };
+  const netCents = Math.round((totalCents - ipiCents - icmsCents) * (1 - extraTaxPct / 100));
+  return { productsCents, ipiCents, icmsCents, totalCents, netCents };
 }
 
 /** Recalcula o total do item (quantidade × preço unitário) e o IPI/ICMS proporcionais quando a quantidade mudou. */

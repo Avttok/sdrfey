@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { BellRing, CircleDollarSign, FileText, Handshake, UserPlus } from "lucide-react";
+import { BellRing, CircleDollarSign, FileSpreadsheet, FileText, Handshake, UserPlus } from "lucide-react";
 import { NewDeal } from "@/components/deals/new-deal";
 import { DealBoard } from "@/components/deals/deal-board";
 import { PageHead } from "@/components/page-head";
-import { panelCls } from "@/components/ui";
+import Link from "next/link";
+import { btnGhost, panelCls } from "@/components/ui";
 import { fmtBRL } from "@/config/deals";
 import { asc, eq } from "drizzle-orm";
 import { db, paymentTerms } from "@/db";
@@ -34,6 +35,7 @@ export default async function DealsPage() {
   return (
     <div className="space-y-5">
       <PageHead icon={Handshake} title="Negociações" subtitle="Clientes repassados pelos SDRs: ligue, envie cotações e feche. Os avisos mostram o que não pode esperar.">
+        {canClaim && <Link href="/negociacoes/importar" className={btnGhost}><FileSpreadsheet size={16} aria-hidden /> Importar planilha</Link>}
         {canClaim && <NewDeal terms={(await db.select({ n: paymentTerms.name }).from(paymentTerms).where(eq(paymentTerms.active, true)).orderBy(asc(paymentTerms.name))).map((t) => t.n)} />}
       </PageHead>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

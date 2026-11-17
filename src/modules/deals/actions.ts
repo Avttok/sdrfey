@@ -4,8 +4,8 @@ import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fetchCnpjInfo } from "@/modules/enrich/enrich";
-import { normalizeItem, syncDealFromQuotes, totalsOf, upsertPaymentTerm, upsertProducts } from "@/modules/quotes/db";
-import { dealEvents, dealQuoteItems, dealQuotes, deals, paymentTerms, interactions, leads, tags, users, type DealStage } from "@/db";
+import { getExtraTaxPct, normalizeItem, syncDealFromQuotes, totalsOf, upsertPaymentTerm, upsertProducts } from "@/modules/quotes/db";
+import { leadChannels, dealEvents, dealQuoteItems, dealQuotes, deals, paymentTerms, interactions, leads, tags, users, type DealStage } from "@/db";
 import { desc } from "drizzle-orm";
 import { TAG } from "@/config/tags";
 import { enrichLead } from "@/modules/enrich/enrich";
@@ -269,7 +269,7 @@ export async function setDealColorAction(id: number, color: string | null): Prom
 export type CnpjLookup =
   | { ok: false; message: string }
   | { ok: true; cnpj: string; found: false }
-  | { ok: true; cnpj: string; found: true; lead: { id: number; company: string; tradeName: string | null; city: string | null; uf: string | null; contactName: string | null; phones: string[]; email: string | null; sapCode: string | null; status: string | null; enriched: boolean };
+  | { ok: true; cnpj: string; found: true; lead: { id: number; company: string; tradeName: string | null; city: string | null; uf: string | null; contactName: string | null; phones: string[]; email: string | null; sapCode: string | null; status: string | null; enriched: boolean; address: string | null; neighborhood: string | null; zip: string | null; stateReg: string | null };
       openDeal: { id: number; sellerName: string | null } | null; leftPortfolio: boolean; attendance: { at: string; by: string | null; channel: string; note: string | null }[]; deals: number };
 
 export type CnpjConsult = { ok: true; info: { name: string | null; tradeName: string | null; city: string | null; uf: string | null; status: string | null; phones: string[]; email: string | null } | null } | { ok: false; message: string };
@@ -301,7 +301,7 @@ export async function lookupCnpjAction(raw: string): Promise<CnpjLookup> {
   const open = ds.find((d) => !closed(d.stage));
   return {
     ok: true, cnpj, found: true,
-    lead: { id: l.id, company: l.company, tradeName: l.tradeName, city: l.city, uf: l.uf, contactName: l.contactName, phones: l.phones, email: l.email, sapCode: l.sapCode, status: l.registrationStatus, enriched: !!l.enrichedAt },
+    lead: { id: l.id, company: l.company, tradeName: l.tradeName, city: l.city, uf: l.uf, contactName: l.contactName, phones: l.phones, email: l.email, sapCode: l.sapCode, status: l.registrationStatus, enriched: !!l.enrichedAt, address: l.address, neighborhood: l.neighborhood, zip: l.zip, stateReg: l.stateReg },
     openDeal: open ? { id: open.id, sellerName: open.sellerName } : null,
     leftPortfolio: !!(await db.execute<{ x: boolean }>(sql`select ${leftPortfolio(sql`${l.id}`)} as x`))[0]?.x,
     attendance: att.map((a) => ({ at: a.at.toISOString(), by: a.by, channel: a.label ?? a.channel, note: a.note })),
@@ -309,7 +309,7 @@ export async function lookupCnpjAction(raw: string): Promise<CnpjLookup> {
   };
 }
 
-export type NewDealInput = { cnpj: string; company: string; contactName: string; phone: string; note: string; color: string | null; data: DealDataInput; items?: QuoteItem[] };
+export type NewDealInput = { cnpj: string; company: string; contactName: string; phone: string; email?: string; address?: { street: string | null; neighborhood: string | null; zip: string | null; stateReg: string | null; city: string | null; uf: string | null }; note: string; color: string | null; data: DealDataInput; items?: QuoteItem[] };
 
 /** Vendedor abre uma negociação por conta própria (algo que veio por fora, sem passar pelo SDR). CNPJ obrigatório. */
 export async function createDealManualAction(input: NewDealInput): Promise<ActionResult & { id?: number }> {
@@ -324,6 +324,10 @@ export async function createDealManualAction(input: NewDealInput): Promise<Actio
   if (!it.success) return fail("Itens da cotação inválidos.");
   const items = it.data;
   const phone = input.phone.replace(/\D/g, "");
+  const email = (input.email ?? "").trim().toLowerCase();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail("E-mail inválido.");
+  const a = input.address;
+  const addr = { address: a?.street?.trim().slice(0, 200) || null, neighborhood: a?.neighborhood?.trim().slice(0, 100) || null, zip: a?.zip?.replace(/\D/g, "").slice(0, 8) || null, stateReg: a?.stateReg?.trim().slice(0, 30) || null, city: a?.city?.trim().slice(0, 100) || null, uf: a?.uf?.trim().toUpperCase().slice(0, 2) || null };
   if (phone && (phone.length < 10 || phone.length > 11)) return fail("Telefone com DDD (10 ou 11 dígitos).");
 
   let [lead] = await db.select().from(leads).where(eq(leads.cnpj, cnpj));
@@ -335,7 +339,7 @@ export async function createDealManualAction(input: NewDealInput): Promise<Actio
     if (open) return fail("Este cliente já tem uma negociação aberta. Abra-a na lista.");
   } else {
     const fallback = `CNPJ ${cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")}`;
-    [lead] = await db.insert(leads).values({ cnpj, company: input.company.trim().slice(0, 200) || fallback, contactName: input.contactName.trim().slice(0, 120) || null, phones: phone ? [phone] : [], source: "vendedor" }).returning();
+    [lead] = await db.insert(leads).values({ cnpj, company: input.company.trim().slice(0, 200) || fallback, contactName: input.contactName.trim().slice(0, 120) || null, phones: phone ? [phone] : [], email: email || null, ...addr, source: "vendedor" }).returning();
     await logAudit(db, { userId: me.id, leadId: lead.id, entity: "lead", action: "criou lead pela negociação", field: "Lead", newValue: lead.company });
     try {
       const r = await enrichLead(lead.id, me.id);
@@ -352,8 +356,12 @@ export async function createDealManualAction(input: NewDealInput): Promise<Actio
         const extra: Partial<typeof leads.$inferInsert> = {};
         if (input.contactName.trim() && !lead.contactName) extra.contactName = input.contactName.trim().slice(0, 120);
         if (phone && !lead.phones.includes(phone)) extra.phones = [...lead.phones, phone];
+        if (email && !lead.email) extra.email = email;
+        for (const k of ["address", "neighborhood", "zip", "stateReg", "city", "uf"] as const) if (addr[k] && !lead[k]) extra[k] = addr[k];
         if (Object.keys(extra).length) await tx.update(leads).set({ ...extra, updatedAt: new Date() }).where(eq(leads.id, leadId));
       }
+      if (phone) await tx.insert(leadChannels).values({ leadId, kind: "phone", value: phone, origin: "manual" }).onConflictDoNothing();
+      if (email) await tx.insert(leadChannels).values({ leadId, kind: "email", value: email, origin: "manual" }).onConflictDoNothing();
       const [d] = await tx.insert(deals).values({
         leadId, sdrId: null, sellerId: seller, stage: cents ? "cotacao" : "contato", handoffNote: note, claimedAt: seller ? new Date() : null,
         lastContactAt: new Date(), quoteSentAt: cents ? new Date() : null, nextActionAt: cents ? new Date(Date.now() + ALERT_RULES.defaultFollowupDays * 86400_000) : null,
@@ -363,7 +371,7 @@ export async function createDealManualAction(input: NewDealInput): Promise<Actio
       if (cents) await tx.insert(dealEvents).values({ dealId: d.id, userId: me.id, kind: "cotacao", valueCents: cents, note: dp.patch.quoteNumber ? `Cotação ${dp.patch.quoteNumber}` : null });
       if (cents || items.length) {
         const list = items.map((i, n) => ({ ...normalizeItem(i), seq: (n + 1) * 10 }));
-        const t = list.length ? totalsOf(list, 0) : { productsCents: null, ipiCents: null, icmsCents: null, netCents: cents, totalCents: cents };
+        const t = list.length ? totalsOf(list, 0, await getExtraTaxPct()) : { productsCents: null, ipiCents: null, icmsCents: null, netCents: cents, totalCents: cents };
         const term = await upsertPaymentTerm(tx, dp.patch.paymentTerms);
         const [q] = await tx.insert(dealQuotes).values({ dealId: d.id, createdBy: me.id, number: dp.patch.quoteNumber ?? null, quoteDate: dp.patch.quoteDate ?? null, totalCents: t.totalCents ?? cents, productsCents: t.productsCents, ipiCents: t.ipiCents, icmsCents: t.icmsCents, netCents: t.netCents, freight: dp.patch.freight ?? null, paymentTerms: term }).returning({ id: dealQuotes.id });
         if (list.length) { await tx.insert(dealQuoteItems).values(list.map((i) => ({ ...i, dealId: d.id, quoteId: q.id, quoteNumber: dp.patch.quoteNumber ?? null }))); await upsertProducts(tx, list); }

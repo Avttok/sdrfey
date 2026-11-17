@@ -118,6 +118,11 @@ export const leads = pgTable(
     /** Telefones só com dígitos, com DDD. */
     phones: text("phones").array().notNull().default(sql`ARRAY[]::text[]`),
     email: text("email"),
+    /** Endereço e dados fiscais, completados por cotações e consultas. */
+    address: text("address"),
+    neighborhood: text("neighborhood"),
+    zip: text("zip"),
+    stateReg: text("state_reg"),
     notes: text("notes"),
     /** Texto da coluna VISITA da planilha antiga. */
     legacyVisit: text("legacy_visit"),

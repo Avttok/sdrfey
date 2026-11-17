@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Plus, Package, Trash2, Tags, CalendarClock, Check, ExternalLink, FileText, Link2, Mail, MessageCircle, NotebookPen, Phone, PhoneCall, RotateCcw, Trophy, UserPlus, XCircle } from "lucide-react";
+import { Building2, MapPin, Plus, Package, Trash2, Tags, CalendarClock, Check, ExternalLink, FileText, Link2, Mail, MessageCircle, NotebookPen, Phone, PhoneCall, RotateCcw, Trophy, UserPlus, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -85,6 +85,8 @@ export function DealPanel({ deal, events, quotes, tags, terms, canDelete, phones
                 </p>
               ))}
               {deal.email && <p className="flex items-center gap-2 pt-1"><Mail size={14} className="text-muted" aria-hidden /><a href={`mailto:${deal.email}`} className="truncate hover:text-accent">{deal.email}</a></p>}
+              {deal.addressLine && <p className="flex items-start gap-2 pt-1 text-muted"><MapPin size={14} className="mt-0.5 shrink-0" aria-hidden /><span>{deal.addressLine}{deal.city ? ` · ${deal.city}/${deal.uf}` : ""}</span></p>}
+              {deal.stateReg && <p className="pl-6 text-xs text-muted">Inscrição estadual {deal.stateReg}</p>}
             </div>
             <div className="space-y-1.5">
               <p className="flex items-center justify-between text-xs font-medium text-muted">Perfis do cliente <button type="button" className="font-medium text-accent hover:underline" onClick={() => setEditLinks(!editLinks)}>{editLinks ? "Fechar" : "Editar links"}</button></p>
