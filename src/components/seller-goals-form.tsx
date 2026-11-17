@@ -29,7 +29,7 @@ export function SellerGoalsForm({ global, people, canEdit }: { global: Global; p
             {SELLER_METRICS.map((m) => (
               <tr key={m.key}>
                 <td className="py-2.5 pr-3"><span className="font-medium">{m.label}</span><span className="block text-xs text-muted">{m.hint}</span></td>
-                <td className="py-2.5 pr-3"><span className="flex items-center gap-1.5">{m.kind === "money" && <span className="text-muted">R$</span>}<input type="number" min={0} aria-label={`Meta padrão de ${m.label}`} disabled={!canEdit} className={`${inputCls} !w-32 text-right`} value={g[m.key]} onChange={(e) => setG({ ...g, [m.key]: n(e.target.value) })} /></span></td>
+                <td className="py-2.5 pr-3"><span className="relative block w-36">{m.kind === "money" && <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">R$</span>}<input type="number" min={0} aria-label={`Meta padrão de ${m.label}`} disabled={!canEdit} className={`${inputCls} text-right ${m.kind === "money" ? "!pl-9" : ""}`} value={g[m.key]} onChange={(e) => setG({ ...g, [m.key]: n(e.target.value) })} /></span></td>
                 <td className="py-2.5"><input type="number" min={0} max={100} aria-label={`Peso de ${m.label}`} disabled={!canEdit} className={`${inputCls} !w-24 text-right`} value={g[`w_${m.key}`]} onChange={(e) => setG({ ...g, [`w_${m.key}`]: n(e.target.value) })} /></td>
               </tr>
             ))}
@@ -47,7 +47,7 @@ export function SellerGoalsForm({ global, people, canEdit }: { global: Global; p
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                   {SELLER_METRICS.map((m) => (
                     <label key={m.key} className="block text-xs text-muted">{m.label}
-                      <input type="number" min={0} disabled={!canEdit} className={`${inputCls} mt-1 text-right`} placeholder={String(g[m.key])} value={per[p.id][m.key] ?? ""} onChange={(e) => setPer({ ...per, [p.id]: { ...per[p.id], [m.key]: e.target.value === "" ? "" : Number(e.target.value) } })} />
+                      <span className="relative mt-1 block">{m.kind === "money" && <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">R$</span>}<input type="number" min={0} disabled={!canEdit} className={`${inputCls} text-right ${m.kind === "money" ? "!pl-9" : ""}`} placeholder={String(g[m.key])} value={per[p.id][m.key] ?? ""} onChange={(e) => setPer({ ...per, [p.id]: { ...per[p.id], [m.key]: e.target.value === "" ? "" : Number(e.target.value) } })} /></span>
                     </label>
                   ))}
                 </div>

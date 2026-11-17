@@ -1,6 +1,8 @@
 "use server";
 
+import { db } from "@/db";
 import { requireUser } from "@/modules/auth/guard";
+import { upsertPaymentTerm } from "./db";
 import { parseQuoteText, type ParsedQuote } from "./parse";
 
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -17,6 +19,8 @@ export async function readQuotePdfAction(fd: FormData): Promise<{ ok: true; quot
     const { text } = await extractText(pdf, { mergePages: true });
     const quote = parseQuoteText(text);
     if (!quote.quoteNumber && !quote.totalCents && !quote.cnpj) return { ok: false, message: "Não encontrei dados de cotação nesse PDF." };
+    /* a condição de pagamento lida entra na lista do dropdown (só o texto, o PDF não é guardado) */
+    quote.paymentTerms = await upsertPaymentTerm(db, quote.paymentTerms);
     return { ok: true, quote };
   } catch {
     return { ok: false, message: "Não consegui ler esse PDF. Preencha os campos manualmente." };

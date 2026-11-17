@@ -41,6 +41,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "panel.vendas", label: "Bloco Vendas da equipe (dashboard)", group: "Painel", defaults: ["manager"] },
 
   { key: "deals.team", label: "Ver e atender as negociações de toda a equipe (sem isso, só as próprias e as sem dono)", group: "Funções", defaults: ["manager"] },
+  { key: "deals.delete", label: "Apagar e resetar negociações (tudo fica no Registro do Adm)", group: "Funções", defaults: ["manager"] },
   { key: "visits.team", label: "Ver as visitas agendadas por toda a equipe (sem isso, só as próprias)", group: "Funções", defaults: ["manager"] },
   { key: "lead.edit", label: "Editar qualquer dado de um lead", group: "Funções", defaults: ["manager"] },
   { key: "lead.release", label: "Liberar lead que está com outra pessoa", group: "Funções", defaults: ["manager"] },

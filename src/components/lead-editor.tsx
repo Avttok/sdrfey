@@ -21,7 +21,7 @@ import { saveLeadLinksAction } from "@/modules/deals/actions";
 import { addPersonAction, addVisitAction, deleteVisitAction, changeTagAction, forceReleaseAction, removePersonAction, resetLeadFromPageAction, updateLeadAction } from "@/modules/leads/edit";
 import type { LeadView, TagCatalog } from "@/modules/leads/view";
 
-export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedBy, showMap, meId, sellerView, dealId }: { sellerView?: boolean; dealId?: number | null; showMap: boolean; meId: number; lead: LeadView; catalog: TagCatalog; owners: { id: number; name: string }[]; canEdit: boolean; canRelease: boolean; lockedBy: { name: string; hex: string } | null }) {
+export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedBy, showMap, meId, sellerView, dealId, inDeal }: { inDeal?: boolean; sellerView?: boolean; dealId?: number | null; showMap: boolean; meId: number; lead: LeadView; catalog: TagCatalog; owners: { id: number; name: string }[]; canEdit: boolean; canRelease: boolean; lockedBy: { name: string; hex: string } | null }) {
   const toast = useToast();
   const active = lead.registrationStatus ? lead.registrationStatus.toUpperCase() === "ATIVA" : null;
   const name0 = lead.tradeName ?? lead.company;
@@ -68,7 +68,7 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
           <div className="flex flex-wrap items-center gap-2">
             {lead.salesforceUrl && <a href={lead.salesforceUrl} target="_blank" rel="noreferrer" className={btnGhost}><ExternalLink size={15} aria-hidden /> Salesforce</a>}
             {lead.eoxUrl && <a href={lead.eoxUrl} target="_blank" rel="noreferrer" className={btnGhost}><ExternalLink size={15} aria-hidden /> CRM (EOX)</a>}
-            {sellerView ? (dealId ? <Link href={`/negociacoes/${dealId}`} className={btnPrimary}><Handshake size={16} aria-hidden /> Abrir negociação</Link> : null) : lockedBy ? <PersonBubble name={lockedBy.name} hex={lockedBy.hex} prefix="Em atendimento" /> : <AttendButton leadId={lead.id} />}
+            {sellerView ? (dealId ? <Link href={`/negociacoes/${dealId}`} className={btnPrimary}><Handshake size={16} aria-hidden /> Abrir negociação</Link> : null) : lockedBy ? <PersonBubble name={lockedBy.name} hex={lockedBy.hex} prefix="Em atendimento" /> : inDeal ? <span className="rounded-full bg-accent/12 px-3 py-1.5 text-sm font-semibold text-accent">Com os vendedores</span> : <AttendButton leadId={lead.id} />}
             {!sellerView && canEdit && !lockedBy && <button type="button" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => setConfirmReset(true)}><RotateCcw size={15} aria-hidden /> Resetar lead</button>}
             {lockedBy && canRelease && <button type="button" className={btnGhost} disabled={pending} onClick={() => run(() => forceReleaseAction(lead.id))}><UnlockKeyhole size={15} aria-hidden /> Liberar lead</button>}
           </div>
@@ -82,11 +82,11 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
       <div className={`${panelCls} p-5 sm:p-6`}><LeadInfoPanel lead={lead} wide showMap={showMap} /></div>
 
       <div className={`grid items-start gap-5 lg:grid-cols-2`}>
-      {!sellerView && <div className="space-y-5">
+      <div className="space-y-5">
       <SectionCard icon={Pencil} title="Editar dados">
         <div className="grid gap-3 sm:grid-cols-2">
           {input("company", "Razão social", true)}{input("tradeName", "Nome fantasia")}{input("city", "Cidade")}{input("uf", "UF")}
-          <label className="block text-sm"><span className="mb-1 block text-muted">Responsável</span><select className={inputCls} disabled={!canEdit} value={f.ownerId ?? ""} onChange={(e) => setF({ ...f, ownerId: e.target.value ? Number(e.target.value) : null })}><option value="">Sem responsável</option>{owners.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select></label>
+          {!sellerView && (<label className="block text-sm"><span className="mb-1 block text-muted">Responsável</span><select className={inputCls} disabled={!canEdit} value={f.ownerId ?? ""} onChange={(e) => setF({ ...f, ownerId: e.target.value ? Number(e.target.value) : null })}><option value="">Sem responsável</option>{owners.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select></label>)}
           <label className="block text-sm sm:col-span-2"><span className="mb-1 block text-muted">Observação</span><textarea className={`${inputCls} min-h-24`} disabled={!canEdit} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></label>
         </div>
         <p className="text-xs text-muted">Situação cadastral: {lead.registrationStatus ?? "sem informação"}{lead.enrichedAt ? ` · consultada em ${fmtDate(lead.enrichedAt)}` : ""}</p>
@@ -96,18 +96,18 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
       <SectionCard icon={Tag} title="Tags">
         {catalog.filter((g) => g.tags.length).map((g) => (
           <div key={g.key}><p className="mb-1.5 text-sm font-medium">{g.name}</p>
-            <div className="flex flex-wrap gap-1.5">{g.tags.map((t) => <TagChip key={t.key} label={t.label} color={t.color} on={on.has(`${g.key}:${t.key}`)} onClick={canEdit ? () => toggleTag(g.key, t.key, g.exclusive) : undefined} />)}</div></div>
+            <div className="flex flex-wrap gap-1.5">{g.tags.map((t) => <TagChip key={t.key} label={t.label} color={t.color} on={on.has(`${g.key}:${t.key}`)} onClick={canEdit && !sellerView ? () => toggleTag(g.key, t.key, g.exclusive) : undefined} />)}</div></div>
         ))}
       </SectionCard>
-      </div>}
-      <div className={sellerView ? "grid items-start gap-5 lg:col-span-2 lg:grid-cols-2" : "space-y-5"}>
-      <div className={sellerView ? "lg:col-span-2" : ""}><SectionCard icon={Link2} title="Perfis do cliente">
-        <form className={`grid gap-3 ${sellerView ? "sm:grid-cols-[1fr_1fr_auto] sm:items-end" : "sm:grid-cols-2"}`} onSubmit={(e) => { e.preventDefault(); run(() => saveLeadLinksAction(lead.id, { salesforceUrl: links.sf, eoxUrl: links.eox })); }}>
+      </div>
+      <div className="space-y-5">
+      <SectionCard icon={Link2} title="Perfis do cliente">
+        <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); run(() => saveLeadLinksAction(lead.id, { salesforceUrl: links.sf, eoxUrl: links.eox })); }}>
           <label className="block text-sm"><span className="mb-1 block text-muted">Perfil no Salesforce</span><input className={inputCls} placeholder="https://…" value={links.sf} onChange={(e) => setLinks({ ...links, sf: e.target.value })} /></label>
           <label className="block text-sm"><span className="mb-1 block text-muted">Perfil no CRM (EOX)</span><input className={inputCls} placeholder="https://…" value={links.eox} onChange={(e) => setLinks({ ...links, eox: e.target.value })} /></label>
-          <div className={sellerView ? "" : "sm:col-span-2"}><button type="submit" className={btnPrimary} disabled={pending}>Salvar links</button></div>
+          <div className="sm:col-span-2"><button type="submit" className={btnPrimary} disabled={pending}>Salvar links</button></div>
         </form>
-      </SectionCard></div>
+      </SectionCard>
 
       <SectionCard icon={Phone} title="Contatos">
         <ul className="space-y-1.5">

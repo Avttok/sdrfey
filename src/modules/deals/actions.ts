@@ -3,7 +3,8 @@
 import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { dealEvents, dealQuoteItems, deals, interactions, leads, tags, users, type DealStage } from "@/db";
+import { normalizeItem, syncDealFromQuotes, totalsOf, upsertPaymentTerm, upsertProducts } from "@/modules/quotes/db";
+import { dealEvents, dealQuoteItems, dealQuotes, deals, paymentTerms, interactions, leads, tags, users, type DealStage } from "@/db";
 import { desc } from "drizzle-orm";
 import { TAG } from "@/config/tags";
 import { enrichLead } from "@/modules/enrich/enrich";
@@ -15,20 +16,13 @@ import { db } from "@/db";
 import { ALERT_RULES, parseMoneyToCents, STAGE_META } from "@/config/deals";
 import { logAudit, type AuditEntry } from "@/modules/audit/log";
 import { requirePerm, type CurrentUser } from "@/modules/auth/guard";
+import { loadDeal } from "./access";
 import type { ActionResult } from "@/modules/leads/actions";
 
 const fail = (message: string): ActionResult => ({ ok: false, message });
 const refresh = (id: number) => { revalidatePath("/negociacoes"); revalidatePath(`/negociacoes/${id}`); revalidatePath("/painel"); revalidatePath("/metas"); revalidatePath("/historico"); };
 
-/** Carrega a negociação e confere se esta pessoa pode mexer nela (dona, ou gestor com “deals.team”). */
-async function load(id: number): Promise<{ me: CurrentUser; deal: typeof deals.$inferSelect } | { error: string }> {
-  const me = await requirePerm("tab.negociacoes");
-  const [deal] = await db.select().from(deals).where(eq(deals.id, id));
-  if (!deal) return { error: "Negociação não encontrada." };
-  const team = !!me.permissions["deals.team"];
-  if (deal.sellerId !== me.id && !team) return { error: deal.sellerId ? "Esta negociação é de outro vendedor." : "Assuma a negociação primeiro." };
-  return { me, deal };
-}
+const load = loadDeal;
 
 const closed = (s: DealStage) => s === "ganho" || s === "perdido";
 
@@ -50,18 +44,19 @@ export async function claimDealAction(id: number): Promise<ActionResult> {
 }
 
 /** Registra um contato (ligação, WhatsApp, e-mail) ou uma anotação, e opcionalmente o próximo passo. */
-export async function logContactAction(id: number, input: { kind: "ligacao" | "whatsapp" | "email" | "nota"; note: string; nextAt: string | null; nextNote: string | null }): Promise<ActionResult> {
-  const p = z.object({ kind: z.enum(["ligacao", "whatsapp", "email", "nota"]), note: z.string().trim().max(2000), nextAt: z.string().regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/).nullable(), nextNote: z.string().trim().max(300).nullable() }).safeParse(input);
+export async function logContactAction(id: number, input: { kinds: ("ligacao" | "whatsapp" | "email" | "nota")[]; note: string; nextAt: string | null; nextNote: string | null }): Promise<ActionResult> {
+  const p = z.object({ kinds: z.array(z.enum(["ligacao", "whatsapp", "email", "nota"])).min(1).max(4), note: z.string().trim().max(2000), nextAt: z.string().regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/).nullable(), nextNote: z.string().trim().max(300).nullable() }).safeParse(input);
   if (!p.success) return fail("Confira os campos.");
   const r = await load(id);
   if ("error" in r) return fail(r.error);
   if (closed(r.deal.stage)) return fail("Esta negociação já foi encerrada. Reabra para continuar.");
   const { me, deal } = r;
-  const { kind, note, nextAt, nextNote } = p.data;
-  if (kind === "nota" && !note) return fail("Escreva a anotação.");
+  const { kinds, note, nextAt, nextNote } = p.data;
+  const isNote = kinds.length === 1 && kinds[0] === "nota";
+  if (isNote && !note) return fail("Escreva a anotação.");
   const next = nextAt ? new Date(nextAt.length === 10 ? `${nextAt}T09:00:00-03:00` : `${nextAt}:00-03:00`) : null;
   await db.transaction(async (tx) => {
-    const contact = kind !== "nota";
+    const contact = !isNote;
     const stage: DealStage = contact && deal.stage === "novo" ? "contato" : deal.stage;
     await tx.update(deals).set({
       stage,
@@ -70,45 +65,13 @@ export async function logContactAction(id: number, input: { kind: "ligacao" | "w
       nextActionNote: next ? nextNote : contact ? null : deal.nextActionNote,
       updatedAt: new Date(),
     }).where(eq(deals.id, id));
-    await tx.insert(dealEvents).values({ dealId: id, userId: me.id, kind, note: note || null });
+    for (const [i, k] of kinds.entries()) await tx.insert(dealEvents).values({ dealId: id, userId: me.id, kind: k, note: i === 0 ? note || null : null });
     if (next) await tx.insert(dealEvents).values({ dealId: id, userId: me.id, kind: "retorno", note: nextNote ?? null });
     if (stage !== deal.stage) await tx.insert(dealEvents).values({ dealId: id, userId: me.id, kind: "etapa", note: `${STAGE_META[deal.stage].label} → ${STAGE_META[stage].label}` });
-    await logAudit(tx, { userId: me.id, leadId: deal.leadId, entity: "deal", action: kind === "nota" ? "anotou na negociação" : "registrou contato", field: "Negociação", newValue: kind, meta: { negociacao: id } });
+    await logAudit(tx, { userId: me.id, leadId: deal.leadId, entity: "deal", action: isNote ? "anotou na negociação" : "registrou contato", field: "Negociação", newValue: kinds.join(", "), meta: { negociacao: id } });
   });
   refresh(id);
-  return { ok: true, message: kind === "nota" ? "Anotação salva." : "Contato registrado." };
-}
-
-/** Cotação enviada: guarda valor e data e já agenda a cobrança (aviso). */
-export async function sendQuoteAction(id: number, input: { value: string; note: string; followupDays: number; data?: DealDataInput; items?: QuoteItem[] }): Promise<ActionResult> {
-  const r = await load(id);
-  if ("error" in r) return fail(r.error);
-  const { me, deal } = r;
-  if (closed(deal.stage)) return fail("Esta negociação já foi encerrada.");
-  const cents = parseMoneyToCents(input.value);
-  if (cents === null || cents <= 0) return fail("Informe o valor da cotação (ex.: 12.500,00).");
-  const days = Number.isInteger(input.followupDays) && input.followupDays >= 1 && input.followupDays <= 30 ? input.followupDays : ALERT_RULES.defaultFollowupDays;
-  const next = new Date(Date.now() + days * 86400_000);
-  const note = input.note.trim().slice(0, 2000) || null;
-  const extra = dataPatch({ ...input.data, quoteValue: undefined, closedValue: undefined, closedOn: undefined, isReactivation: undefined });
-  const parsedItems = itemsSchema.safeParse(input.items ?? []);
-  if (!parsedItems.success) return fail("Itens da cotação inválidos.");
-  const items = parsedItems.data;
-  if (extra.error) return fail(extra.error);
-  await db.transaction(async (tx) => {
-    await applyData(tx, me, deal, extra.patch);
-    if (items.length) {
-      const qn = extra.patch.quoteNumber ?? deal.quoteNumber ?? null;
-      await tx.delete(dealQuoteItems).where(and(eq(dealQuoteItems.dealId, id), qn ? eq(dealQuoteItems.quoteNumber, qn) : sql`${dealQuoteItems.quoteNumber} is null`));
-      await tx.insert(dealQuoteItems).values(items.map((i) => ({ ...i, dealId: id, quoteNumber: qn })));
-      await logAudit(tx, { userId: me.id, leadId: deal.leadId, entity: "deal", action: "registrou itens da cotação", field: "Itens", newValue: items.length, meta: { negociacao: id } });
-    }
-    await tx.update(deals).set({ stage: "cotacao", valueCents: cents, quoteSentAt: new Date(), lastContactAt: new Date(), nextActionAt: next, nextActionNote: "Cobrar retorno da cotação", updatedAt: new Date() }).where(eq(deals.id, id));
-    await tx.insert(dealEvents).values({ dealId: id, userId: me.id, kind: "cotacao", note, valueCents: cents });
-    await logAudit(tx, { userId: me.id, leadId: deal.leadId, entity: "deal", action: "enviou cotação", field: "Valor", oldValue: deal.valueCents, newValue: cents, meta: { negociacao: id } });
-  });
-  refresh(id);
-  return { ok: true, message: `Cotação registrada. Aviso de cobrança em ${days} ${days === 1 ? "dia" : "dias"}.` };
+  return { ok: true, message: isNote ? "Anotação salva." : kinds.length > 1 ? `Contato registrado (${kinds.length} meios).` : "Contato registrado." };
 }
 
 const MOVABLE: DealStage[] = ["novo", "contato", "cotacao", "negociacao"];
@@ -278,6 +241,10 @@ export async function saveDealDataAction(id: number, input: DealDataInput): Prom
   if ("error" in r) return fail(r.error);
   const { patch, error } = dataPatch(input);
   if (error) return fail(error);
+  if (patch.paymentTerms && patch.paymentTerms !== r.deal.paymentTerms) {
+    const [ok] = await db.select({ id: paymentTerms.id }).from(paymentTerms).where(and(eq(paymentTerms.name, patch.paymentTerms), eq(paymentTerms.active, true)));
+    if (!ok) return fail("Escolha uma condição de pagamento da lista.");
+  }
   await db.transaction((tx) => applyData(tx, r.me, r.deal, patch));
   refresh(id);
   return { ok: true, message: "Dados salvos." };
@@ -380,7 +347,14 @@ export async function createDealManualAction(input: NewDealInput): Promise<Actio
       }).returning({ id: deals.id });
       await tx.insert(dealEvents).values({ dealId: d.id, userId: me.id, kind: "criado", note: note ?? "Aberta pelo vendedor" });
       if (cents) await tx.insert(dealEvents).values({ dealId: d.id, userId: me.id, kind: "cotacao", valueCents: cents, note: dp.patch.quoteNumber ? `Cotação ${dp.patch.quoteNumber}` : null });
-      if (items.length) await tx.insert(dealQuoteItems).values(items.map((i) => ({ ...i, dealId: d.id, quoteNumber: dp.patch.quoteNumber ?? null })));
+      if (cents || items.length) {
+        const list = items.map((i, n) => ({ ...normalizeItem(i), seq: (n + 1) * 10 }));
+        const t = list.length ? totalsOf(list, 0) : { productsCents: null, ipiCents: null, totalCents: cents };
+        const term = await upsertPaymentTerm(tx, dp.patch.paymentTerms);
+        const [q] = await tx.insert(dealQuotes).values({ dealId: d.id, createdBy: me.id, number: dp.patch.quoteNumber ?? null, quoteDate: dp.patch.quoteDate ?? null, totalCents: t.totalCents ?? cents, productsCents: t.productsCents, ipiCents: t.ipiCents, freight: dp.patch.freight ?? null, paymentTerms: term }).returning({ id: dealQuotes.id });
+        if (list.length) { await tx.insert(dealQuoteItems).values(list.map((i) => ({ ...i, dealId: d.id, quoteId: q.id, quoteNumber: dp.patch.quoteNumber ?? null }))); await upsertProducts(tx, list); }
+        await syncDealFromQuotes(tx, d.id);
+      }
       if (dp.patch.sapCode && lead.sapCode !== dp.patch.sapCode) await tx.update(leads).set({ sapCode: dp.patch.sapCode }).where(eq(leads.id, leadId));
       await setLeadTags(tx, { leadId, userId: me.id, add: [{ group: TAG.group.agenda, key: TAG.agendado }], reason: "Negociação aberta pelo vendedor" });
       await logAudit(tx, { userId: me.id, leadId, entity: "deal", action: "abriu negociação", field: "Negociação", newValue: isNew ? "novo lead" : "lead existente", meta: { negociacao: d.id, itens: items.length } });
@@ -392,4 +366,46 @@ export async function createDealManualAction(input: NewDealInput): Promise<Actio
     if ((e as { code?: string }).code === "23505") return fail("Este cliente já tem uma negociação aberta.");
     throw e;
   }
+}
+
+/** Foto da negociação para o Registro: o que existia antes de apagar ou resetar. */
+async function snapshot(id: number) {
+  const [d] = await db.select({ d: deals, company: leads.company, cnpj: leads.cnpj, seller: users.name }).from(deals).innerJoin(leads, eq(leads.id, deals.leadId)).leftJoin(users, eq(users.id, deals.sellerId)).where(eq(deals.id, id));
+  if (!d) return null;
+  const [quotes, evs, its] = await Promise.all([
+    db.select({ n: dealQuotes.number, t: dealQuotes.totalCents }).from(dealQuotes).where(eq(dealQuotes.dealId, id)),
+    db.select({ c: sql<number>`count(*)::int` }).from(dealEvents).where(eq(dealEvents.dealId, id)),
+    db.select({ c: sql<number>`count(*)::int` }).from(dealQuoteItems).where(eq(dealQuoteItems.dealId, id)),
+  ]);
+  return { d: d.d, snap: { empresa: d.company, cnpj: d.cnpj, vendedor: d.seller, etapa: STAGE_META[d.d.stage].label, cotacoes: quotes.map((q) => `${q.n ?? "s/n"}: ${q.t ?? 0}`), valorFechado: d.d.closedValueCents, valorReal: d.d.realValueCents, pedido: d.d.orderNumber, eventos: evs[0]?.c ?? 0, itens: its[0]?.c ?? 0 } };
+}
+
+/** Gestor/Adm apaga a negociação inteira (eventos, cotações e itens). Fica tudo no Registro. */
+export async function deleteDealAction(id: number): Promise<ActionResult> {
+  const me = await requirePerm("deals.delete");
+  const s = await snapshot(id);
+  if (!s) return fail("Negociação não encontrada.");
+  await db.transaction(async (tx) => {
+    await tx.delete(deals).where(eq(deals.id, id));
+    await logAudit(tx, { userId: me.id, leadId: s.d.leadId, entity: "deal", action: "apagou negociação", field: "Negociação", oldValue: `${s.snap.empresa} · ${s.snap.etapa}`, meta: { negociacao: id, ...s.snap } });
+  });
+  revalidatePath("/negociacoes"); revalidatePath("/painel"); revalidatePath("/metas"); revalidatePath("/historico");
+  return { ok: true, message: "Negociação apagada." };
+}
+
+/** Volta a negociação ao começo: sem cotações, contatos nem dados de venda. Mantém o vendedor e a cor. */
+export async function resetDealAction(id: number): Promise<ActionResult> {
+  const me = await requirePerm("deals.delete");
+  const s = await snapshot(id);
+  if (!s) return fail("Negociação não encontrada.");
+  await db.transaction(async (tx) => {
+    await tx.delete(dealQuotes).where(eq(dealQuotes.dealId, id));
+    await tx.delete(dealEvents).where(eq(dealEvents.dealId, id));
+    await tx.update(deals).set({ stage: "novo", valueCents: null, closedValueCents: null, realValueCents: null, freight: null, orderNumber: null, quoteNumber: null, quoteDate: null, closedOn: null, paymentTerms: null, isReactivation: false,
+      quoteSentAt: null, lastContactAt: null, nextActionAt: null, nextActionNote: null, lostReason: null, closedAt: null, updatedAt: new Date() }).where(eq(deals.id, id));
+    await tx.insert(dealEvents).values({ dealId: id, userId: me.id, kind: "criado", note: "Negociação resetada pela gestão" });
+    await logAudit(tx, { userId: me.id, leadId: s.d.leadId, entity: "deal", action: "resetou negociação", field: "Negociação", oldValue: `${s.snap.empresa} · ${s.snap.etapa}`, newValue: "Novo", meta: { negociacao: id, ...s.snap } });
+  });
+  refresh(id);
+  return { ok: true, message: "Negociação resetada." };
 }

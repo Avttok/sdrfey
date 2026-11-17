@@ -1,74 +1,60 @@
 "use client";
 
-import { Building2, Plus, FileUp, Package, CalendarClock, Check, ExternalLink, FileText, Link2, Mail, MessageCircle, NotebookPen, Phone, PhoneCall, RotateCcw, Trophy, UserPlus, XCircle } from "lucide-react";
+import { Building2, Plus, Package, Trash2, Tags, CalendarClock, Check, ExternalLink, FileText, Link2, Mail, MessageCircle, NotebookPen, Phone, PhoneCall, RotateCcw, Trophy, UserPlus, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { DateInput } from "@/components/date-input";
+import { TagChip } from "@/components/tag-chip";
 import { SectionCard } from "@/components/section-card";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { DEAL_EVENT_LABEL, fmtBRL, OPEN_STAGES, STAGE_META } from "@/config/deals";
 import type { DealStage } from "@/db/schema";
 import { chatproUrl, fmtDateTime, fmtPhone } from "@/lib/format";
-import { claimDealAction, closeDealAction, logContactAction, reassignDealAction, reopenDealAction, saveDealDataAction, saveLeadLinksAction, sendQuoteAction, setDealColorAction, setStageAction } from "@/modules/deals/actions";
-import { readQuotePdfAction } from "@/modules/quotes/read";
-import type { QuoteItem } from "@/modules/quotes/parse";
-import { useToast } from "@/components/toast";
+import { claimDealAction, closeDealAction, logContactAction, reassignDealAction, reopenDealAction, saveDealDataAction, saveLeadLinksAction, deleteDealAction, resetDealAction, setDealColorAction, setStageAction } from "@/modules/deals/actions";
+import { QuoteCard, QuoteEditor, QuoteValues, type QuoteView } from "./quote-card";
+import { useRouter } from "next/navigation";
 import { ColorPicker } from "./color-picker";
 import type { DealRow } from "@/modules/deals/queries";
 import { AlertChip, StageChip } from "./deal-ui";
 
 type Ev = { id: number; kind: string; note: string | null; valueCents: number | null; at: string; by: string | null };
-type Tab = "contato" | "cotacao" | "nota" | "encerrar";
+type Tab = "contato" | "nota" | "encerrar";
+type Kind = "ligacao" | "whatsapp" | "email";
 
 const EV_ICON: Record<string, typeof Phone> = { ligacao: PhoneCall, whatsapp: MessageCircle, email: Mail, cotacao: FileText, nota: NotebookPen, ganho: Trophy, perdido: XCircle, retorno: CalendarClock, criado: UserPlus, assumido: UserPlus };
 
-type SavedItem = QuoteItem & { id: number; quoteNumber: string | null };
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return <div className="flex min-w-0 flex-col gap-1"><span className="text-xs font-medium text-muted">{label}</span>{children}{hint && <span className="text-[11px] text-muted">{hint}</span>}</div>;
 }
 const brl = (c: number | null) => (c == null ? "" : (c / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-const nf = new Intl.NumberFormat("pt-BR");
 
-export function DealPanel({ deal, events, items, phones, meId, team, canClaim, sellers }: { deal: DealRow; events: Ev[]; items: SavedItem[]; phones: { value: string; label: string | null }[]; meId: number; team: boolean; canClaim: boolean; sellers: { id: number; name: string }[] }) {
+export function DealPanel({ deal, events, quotes, tags, terms, canDelete, phones, meId, team, canClaim, sellers }: { deal: DealRow; events: Ev[]; quotes: QuoteView[]; tags: { group: string; label: string; color: string }[]; terms: string[]; canDelete: boolean; phones: { value: string; label: string | null }[]; meId: number; team: boolean; canClaim: boolean; sellers: { id: number; name: string }[] }) {
   const { run, pending } = useRun();
   const closed = deal.stage === "ganho" || deal.stage === "perdido";
   const mine = deal.sellerId === meId || team;
   const [tab, setTab] = useState<Tab>("contato");
-  const [kind, setKind] = useState<"ligacao" | "whatsapp" | "email">("ligacao");
+  const [kinds, setKinds] = useState<Kind[]>(["ligacao"]);
+  const [newQuote, setNewQuote] = useState(false);
+  const [termList, setTermList] = useState(terms);
+  const [confirm, setConfirm] = useState<"reset" | "delete" | null>(null);
+  const router = useRouter();
   const [note, setNote] = useState("");
   const [nextAt, setNextAt] = useState("");
   const [nextNote, setNextNote] = useState("");
-  const [value, setValue] = useState(deal.valueCents ? (deal.valueCents / 100).toFixed(2).replace(".", ",") : "");
-  const [days, setDays] = useState(2);
   const [reason, setReason] = useState("");
   const [confirmLost, setConfirmLost] = useState(false);
   const [sf, setSf] = useState(deal.salesforceUrl ?? "");
   const [eox, setEox] = useState(deal.eoxUrl ?? "");
   const [editLinks, setEditLinks] = useState(false);
-  const toast = useToast();
   const [f, setF] = useState({
     freight: deal.freight ?? "", sapCode: deal.sapCode ?? "", orderNumber: deal.orderNumber ?? "", quoteNumber: deal.quoteNumber ?? "", quoteDate: deal.quoteDate ?? "",
     closedOn: deal.closedOn ?? "", quoteValue: brl(deal.valueCents), closedValue: brl(deal.closedValueCents), realValue: brl(deal.realValueCents), paymentTerms: deal.paymentTerms ?? "", isReactivation: deal.isReactivation,
   });
-  const [pdfItems, setPdfItems] = useState<QuoteItem[]>([]);
-  const [reading, setReading] = useState(false);
   const set = (k: keyof typeof f, v: string | boolean) => setF((p) => ({ ...p, [k]: v }));
-  const readPdf = async (file: File) => {
-    setReading(true);
-    const fd = new FormData(); fd.set("file", file);
-    const r = await readQuotePdfAction(fd).catch(() => ({ ok: false as const, message: "Não consegui ler esse PDF." }));
-    setReading(false);
-    if (!r.ok) return toast("bad", r.message);
-    const q = r.quote;
-    setF((p) => ({ ...p, quoteNumber: q.quoteNumber ?? p.quoteNumber, quoteDate: q.quoteDate ?? p.quoteDate, freight: q.freight ?? p.freight, sapCode: q.sapCode ?? p.sapCode, paymentTerms: q.paymentTerms ?? p.paymentTerms, quoteValue: q.totalCents ? brl(q.totalCents) : p.quoteValue }));
-    if (q.totalCents) setValue(brl(q.totalCents));
-    if (q.validityDays) setDays(Math.min(30, Math.max(1, q.validityDays)));
-    setPdfItems(q.items);
-    const other = q.cnpj && q.cnpj !== deal.cnpj;
-    toast(other ? "bad" : "ok", other ? "Atenção: o CNPJ do PDF é diferente do cliente desta negociação. Confira antes de registrar." : `PDF lido: cotação ${q.quoteNumber ?? "?"}, ${q.items.length} ${q.items.length === 1 ? "item" : "itens"}. Confira e registre.`);
-  };
+  const addTerm = (t: string) => setTermList((p) => (p.includes(t) ? p : [...p, t]));
+  const lastQuote = quotes[0];
   const list = phones.length ? phones.map((p) => p.value) : deal.phone ? [deal.phone] : [];
   const reset = () => { setNote(""); setNextAt(""); setNextNote(""); setReason(""); };
 
@@ -85,6 +71,8 @@ export function DealPanel({ deal, events, items, phones, meId, team, canClaim, s
             <StageChip stage={deal.stage} />
           </div>
           {mine && <ColorPicker value={deal.color} disabled={pending} onChange={(c) => run(() => setDealColorAction(deal.id, c), "Cor salva.")} />}
+          {tags.length > 0 && <div className="flex flex-wrap items-center gap-1.5"><Tags size={14} className="text-muted" aria-hidden />{tags.map((t) => <TagChip key={`${t.group}-${t.label}`} label={t.label} color={t.color} />)}</div>}
+          {lastQuote && lastQuote.totalCents != null && <div className="rounded-xl bg-sunk/60 px-4 py-3"><p className="mb-1 text-[11px] font-medium text-muted">Cotação mais recente{lastQuote.number ? ` · ${lastQuote.number}` : ""}</p><QuoteValues q={lastQuote} /></div>}
           {deal.alerts.length > 0 && <div className="flex flex-wrap gap-2">{deal.alerts.map((a) => <AlertChip key={a.kind} a={a} />)}</div>}
           <div className="grid gap-3 text-sm sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -116,9 +104,8 @@ export function DealPanel({ deal, events, items, phones, meId, team, canClaim, s
           </div>
           {deal.handoffNote && <p className="rounded-lg bg-sunk px-3 py-2 text-sm"><span className="text-xs font-medium text-muted">Recado do SDR{deal.sdrName ? ` (${deal.sdrName})` : ""}</span><br />{deal.handoffNote}</p>}
           <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-            <Link href={`/leads/${deal.leadId}`} className="inline-flex items-center gap-1 hover:text-accent"><Link2 size={12} aria-hidden /> Ver lead completo</Link>
+            <Link href={`/leads/${deal.leadId}`} className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1 font-medium text-ink hover:bg-sunk"><Link2 size={13} aria-hidden /> Ver lead completo</Link>
             <span>Vendedor: <b className="text-ink">{deal.sellerName ?? "ninguém ainda"}</b></span>
-            {deal.valueCents ? <span>Valor: <b className="figure text-ink">{fmtBRL(deal.valueCents)}</b></span> : null}
             {deal.nextActionAt && !closed ? <span>Próximo passo: <b className="text-ink">{fmtDateTime(deal.nextActionAt).slice(0, 10)}{deal.nextActionNote ? ` · ${deal.nextActionNote}` : ""}</b></span> : null}
           </p>
         </section>
@@ -140,15 +127,16 @@ export function DealPanel({ deal, events, items, phones, meId, team, canClaim, s
             </div>
             <SectionCard icon={NotebookPen} title="Registrar andamento">
               <div role="tablist" className="flex flex-wrap gap-2">
-                {([["contato", "Contato feito", PhoneCall], ["cotacao", "Enviei cotação", FileText], ["nota", "Anotação", NotebookPen], ["encerrar", "Encerrar", Trophy]] as const).map(([k, l, I]) => (
+                {([["contato", "Contato feito", PhoneCall], ["nota", "Anotação", NotebookPen], ["encerrar", "Encerrar", Trophy]] as const).map(([k, l, I]) => (
                   <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition ${tab === k ? "border-transparent bg-grad text-on-accent" : "border-line hover:bg-sunk"}`}><I size={15} aria-hidden />{l}</button>
                 ))}
               </div>
               {tab === "contato" && (
-                <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); run(() => logContactAction(deal.id, { kind, note, nextAt: nextAt || null, nextNote: nextNote || null }), undefined, reset); }}>
+                <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); run(() => logContactAction(deal.id, { kinds, note, nextAt: nextAt || null, nextNote: nextNote || null }), undefined, reset); }}>
+                  <p className="text-xs text-muted">Marque todos os meios usados neste contato.</p>
                   <div className="flex flex-wrap gap-2">
                     {([["ligacao", "Ligação", PhoneCall], ["whatsapp", "WhatsApp", MessageCircle], ["email", "E-mail", Mail]] as const).map(([k, l, I]) => (
-                      <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)} className={`inline-flex items-center gap-2 rounded-full border-2 px-3.5 py-1.5 text-sm font-medium transition ${kind === k ? "border-accent bg-accent/10" : "border-line hover:bg-sunk"}`}><I size={15} aria-hidden />{l}</button>
+                      <button key={k} type="button" aria-pressed={kinds.includes(k)} onClick={() => setKinds((p) => (p.includes(k) ? (p.length > 1 ? p.filter((x) => x !== k) : p) : [...p, k]))} className={`inline-flex items-center gap-2 rounded-full border-2 px-3.5 py-1.5 text-sm font-medium transition ${kinds.includes(k) ? "border-accent bg-accent/10" : "border-line hover:bg-sunk"}`}><I size={15} aria-hidden />{l}</button>
                     ))}
                   </div>
                   <textarea className={`${inputCls} min-h-20`} placeholder="O que foi conversado?" value={note} onChange={(e) => setNote(e.target.value)} />
@@ -159,22 +147,8 @@ export function DealPanel({ deal, events, items, phones, meId, team, canClaim, s
                   </div>
                 </form>
               )}
-              {tab === "cotacao" && (
-                <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); run(() => sendQuoteAction(deal.id, { value, note, followupDays: days, data: { freight: f.freight, sapCode: f.sapCode, quoteNumber: f.quoteNumber, quoteDate: f.quoteDate, paymentTerms: f.paymentTerms }, items: pdfItems }), undefined, () => { reset(); setPdfItems([]); }); }}>
-                  <div className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-line p-3 text-sm">
-                    <label className={`${btnGhost} cursor-pointer`}><FileUp size={16} aria-hidden /> {reading ? "Lendo…" : "Ler PDF da cotação"}<input type="file" accept="application/pdf" className="sr-only" disabled={reading} onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ""; if (file) void readPdf(file); }} /></label>
-                    <span className="min-w-0 flex-1 text-xs text-muted">{pdfItems.length ? <>Lidos <b className="text-ink">{pdfItems.length} itens</b> (nº {f.quoteNumber || "—"}). O PDF não fica guardado, só os dados.</> : "Preenche número, data, valor, frete, SAP e itens sozinho. O PDF é só lido e descartado."}</span>
-                  </div>
-                  <div className="flex flex-wrap items-end gap-3">
-                    <label className="block w-48 text-sm"><span className="mb-1 block text-muted">Valor da cotação (R$)</span><input className={inputCls} inputMode="decimal" placeholder="12.500,00" value={value} onChange={(e) => setValue(e.target.value)} /></label>
-                    <label className="block w-48 text-sm"><span className="mb-1 block text-muted">Cobrar em (dias)</span><input className={inputCls} type="number" min={1} max={30} value={days} onChange={(e) => setDays(Number(e.target.value))} /></label>
-                  </div>
-                  <textarea className={`${inputCls} min-h-20`} placeholder="Produtos, condições, prazo… (opcional)" value={note} onChange={(e) => setNote(e.target.value)} />
-                  <button className={btnPrimary} disabled={pending}><FileText size={16} aria-hidden /> Registrar cotação e agendar cobrança</button>
-                </form>
-              )}
               {tab === "nota" && (
-                <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); run(() => logContactAction(deal.id, { kind: "nota", note, nextAt: null, nextNote: null }), undefined, reset); }}>
+                <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); run(() => logContactAction(deal.id, { kinds: ["nota"], note, nextAt: null, nextNote: null }), undefined, reset); }}>
                   <textarea className={`${inputCls} min-h-24`} placeholder="Anotação (não conta como contato)" value={note} onChange={(e) => setNote(e.target.value)} />
                   <button className={btnPrimary} disabled={pending}><Check size={16} aria-hidden /> Salvar anotação</button>
                 </form>
@@ -187,7 +161,7 @@ export function DealPanel({ deal, events, items, phones, meId, team, canClaim, s
                     <input className={inputCls} inputMode="decimal" placeholder="Valor real após impostos (R$)" aria-label="Valor real após impostos" value={f.realValue} onChange={(e) => set("realValue", e.target.value)} />
                     <DateInput label="Data fechada" value={f.closedOn} onChange={(v) => set("closedOn", v)} />
                     <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.isReactivation} onChange={(e) => set("isReactivation", e.target.checked)} /> Cliente reativado (voltou a comprar)</label>
-                    <button type="button" className={`${btnPrimary} w-full`} disabled={pending} onClick={() => run(() => closeDealAction(deal.id, { won: true, value: f.closedValue || f.quoteValue, closedOn: f.closedOn || null, data: { isReactivation: f.isReactivation, orderNumber: f.orderNumber, realValue: f.realValue } }))}>Fechar venda</button>
+                    <button type="button" className={`${btnPrimary} w-full`} disabled={pending} onClick={() => run(() => closeDealAction(deal.id, { won: true, value: f.closedValue || (lastQuote?.totalCents ? brl(lastQuote.totalCents) : ""), closedOn: f.closedOn || null, data: { isReactivation: f.isReactivation, orderNumber: f.orderNumber, realValue: f.realValue } }))}>Fechar venda</button>
                   </div>
                   <div className="space-y-2 rounded-xl border border-danger/40 p-4">
                     <p className="flex items-center gap-2 font-semibold text-danger"><XCircle size={16} aria-hidden /> Negócio perdido</p>
@@ -211,12 +185,12 @@ export function DealPanel({ deal, events, items, phones, meId, team, canClaim, s
         {(mine && deal.sellerId) && (
           <SectionCard icon={Package} title="Dados da negociação">
             <form className="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2 xl:grid-cols-3" onSubmit={(e) => { e.preventDefault(); run(() => saveDealDataAction(deal.id, f)); }}>
-              <Field label="Frete"><select className={inputCls} value={f.freight} onChange={(e) => set("freight", e.target.value)}><option value="">—</option><option value="CIF">CIF (por conta do vendedor)</option><option value="FOB">FOB (por conta do cliente)</option><option value="RED">RED (redespacho)</option></select></Field>
+              <Field label="Frete"><select className={inputCls} value={f.freight} onChange={(e) => set("freight", e.target.value)}><option value="">—</option><option>CIF</option><option>FOB</option><option>RED</option></select></Field>
               <Field label="Código SAP"><input className={inputCls} value={f.sapCode} onChange={(e) => set("sapCode", e.target.value)} /></Field>
-              <Field label="Condição de pagamento"><input className={inputCls} value={f.paymentTerms} onChange={(e) => set("paymentTerms", e.target.value)} /></Field>
-              <Field label="Nº da cotação"><input className={inputCls} value={f.quoteNumber} onChange={(e) => set("quoteNumber", e.target.value)} /></Field>
-              <Field label="Data da cotação"><DateInput label="Data da cotação" value={f.quoteDate} onChange={(v) => set("quoteDate", v)} /></Field>
-              <Field label="Valor da cotação (R$)"><input className={inputCls} inputMode="decimal" value={f.quoteValue} onChange={(e) => set("quoteValue", e.target.value)} /></Field>
+              <Field label="Condição de pagamento"><select className={inputCls} value={f.paymentTerms} onChange={(e) => set("paymentTerms", e.target.value)}><option value="">—</option>{[...new Set([...(f.paymentTerms ? [f.paymentTerms] : []), ...termList])].map((t) => <option key={t}>{t}</option>)}</select></Field>
+              <Field label="Nº da cotação" hint="Vem das cotações abaixo."><input className={`${inputCls} opacity-70`} readOnly value={f.quoteNumber} /></Field>
+              <Field label="Data da cotação"><input className={`${inputCls} opacity-70`} readOnly value={f.quoteDate ? f.quoteDate.split("-").reverse().join("/") : ""} /></Field>
+              <Field label="Valor da cotação (R$)"><input className={`${inputCls} opacity-70`} readOnly value={f.quoteValue} /></Field>
               <Field label="Nº do pedido"><input className={inputCls} value={f.orderNumber} onChange={(e) => set("orderNumber", e.target.value)} /></Field>
               <Field label="Data fechada"><DateInput label="Data fechada" value={f.closedOn} onChange={(v) => set("closedOn", v)} /></Field>
               <Field label="Valor fechado (R$)"><input className={inputCls} inputMode="decimal" value={f.closedValue} onChange={(e) => set("closedValue", e.target.value)} /></Field>
@@ -229,25 +203,14 @@ export function DealPanel({ deal, events, items, phones, meId, team, canClaim, s
           </SectionCard>
         )}
 
-        {items.length > 0 && (
-          <SectionCard icon={Package} title={`Itens da cotação (${items.length})`}>
-            <div className="overflow-x-auto">
-              <table className="w-full text-[13px]">
-                <thead><tr className="text-left text-xs text-muted"><th className="pb-2 pr-2 font-medium">Cód.</th><th className="pb-2 font-medium">Descrição</th><th className="hidden pb-2 font-medium sm:table-cell">Tipo</th><th className="pb-2 text-right font-medium">Qtd</th><th className="pb-2 pl-3 text-right font-medium">Unitário</th><th className="pb-2 text-right font-medium">Total</th></tr></thead>
-                <tbody className="divide-y divide-line">
-                  {items.map((i) => (
-                    <tr key={i.id}>
-                      <td className="figure py-2 pr-3">{i.productCode}</td>
-                      <td className="py-2 pr-3">{i.description}{i.clientRef && <span className="block text-xs text-muted">{i.clientRef}</span>}</td>
-                      <td className="hidden py-2 pr-3 text-xs capitalize text-muted sm:table-cell">{i.kind?.toLowerCase() ?? "—"}</td>
-                      <td className="figure whitespace-nowrap py-2 text-right">{nf.format(i.qty)}{i.unit ? ` ${i.unit}` : ""}</td>
-                      <td className="figure py-2 pl-3 text-right">{brl(i.unitCents)}</td>
-                      <td className="figure py-2 pl-3 text-right font-medium">{brl(i.totalCents)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot><tr><td colSpan={5} className="pt-2 text-right text-xs text-muted">Total dos produtos</td><td className="figure pt-2 text-right font-bold">{brl(items.reduce((a, i) => a + (i.totalCents ?? 0), 0))}</td></tr></tfoot>
-              </table>
+        {mine && deal.sellerId && (
+          <SectionCard icon={FileText} title={`Cotações${quotes.length ? ` (${quotes.length})` : ""}`}>
+            <div className="space-y-3">
+              {quotes.map((q, n) => <QuoteCard key={q.id} dealId={deal.id} q={q} terms={termList} onTerm={addTerm} leadCnpj={deal.cnpj ?? ""} editable={!closed} isLast={n === 0} />)}
+              {quotes.length === 0 && !newQuote && <p className="text-sm text-muted">Nenhuma cotação enviada ainda.</p>}
+              {newQuote
+                ? <QuoteEditor dealId={deal.id} terms={termList} onTerm={addTerm} leadCnpj={deal.cnpj ?? ""} onClose={() => setNewQuote(false)} />
+                : !closed && <button type="button" className={btnPrimary} onClick={() => setNewQuote(true)}><Plus size={16} aria-hidden /> {quotes.length ? "Nova cotação" : "Registrar cotação"}</button>}
             </div>
           </SectionCard>
         )}
@@ -263,6 +226,13 @@ export function DealPanel({ deal, events, items, phones, meId, team, canClaim, s
         )}
       </div>
 
+      {canDelete && (
+        <div className={`${panelCls} flex flex-wrap items-center gap-3 border-danger/30 p-4 text-sm lg:col-span-2`}>
+          <span className="flex-1 font-medium">Gestão · tudo fica registrado na auditoria do admin</span>
+          <button type="button" className={btnGhost} disabled={pending} onClick={() => setConfirm("reset")}><RotateCcw size={15} aria-hidden /> Resetar negociação</button>
+          <button type="button" className={`${btnGhost} !border-danger text-danger`} disabled={pending} onClick={() => setConfirm("delete")}><Trash2 size={15} aria-hidden /> Apagar negociação</button>
+        </div>
+      )}
       <aside className={`${panelCls} p-5`}>
         <h2 className="mb-4 text-[15px] font-semibold">Histórico da negociação</h2>
         <ol className="relative space-y-4 border-l border-line pl-5">
@@ -277,6 +247,9 @@ export function DealPanel({ deal, events, items, phones, meId, team, canClaim, s
         </ol>
       </aside>
 
+      <ConfirmDialog open={confirm !== null} tone="danger" icon={Trash2} title={confirm === "delete" ? "Apagar esta negociação?" : "Resetar esta negociação?"} confirmLabel={confirm === "delete" ? "Sim, apagar" : "Sim, resetar"} busy={pending} onCancel={() => setConfirm(null)} onConfirm={() => { const c = confirm; setConfirm(null); if (c === "delete") run(() => deleteDealAction(deal.id), undefined, () => router.push("/negociacoes")); else run(() => resetDealAction(deal.id)); }}>
+        {confirm === "delete" ? "A negociação, as cotações e o histórico serão apagados. Um registro completo fica guardado na auditoria do admin." : "As cotações e o histórico serão apagados e a negociação volta ao início. Um registro completo fica na auditoria do admin."}
+      </ConfirmDialog>
       <ConfirmDialog open={confirmLost} tone="danger" icon={XCircle} title="Marcar como perdida?" confirmLabel="Sim, perdida" busy={pending} onCancel={() => setConfirmLost(false)} onConfirm={() => { setConfirmLost(false); run(() => closeDealAction(deal.id, { won: false, reason })); }}>
         A negociação com {deal.company} será encerrada. Você pode reabri-la depois.
       </ConfirmDialog>

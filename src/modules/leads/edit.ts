@@ -8,19 +8,23 @@ import { z } from "zod";
 import { db, leadPeople, leads, visits } from "@/db";
 import { diffToAudit, logAudit } from "@/modules/audit/log";
 import { requirePerm, requireUser } from "@/modules/auth/guard";
+import { leadEditor } from "./access";
 import { setLeadTags, type TagChange } from "@/modules/tags/apply";
 import type { ActionResult } from "./actions";
 
 const fail = (message: string): ActionResult => ({ ok: false, message });
 
 export async function updateLeadAction(id: number, input: { company: string; tradeName: string | null; city: string | null; uf: string | null; ownerId: number | null; notes: string | null }): Promise<ActionResult> {
-  const me = await requirePerm("lead.edit");
+  const me = await leadEditor(id);
+  if (!me) return fail("Sem permissão para editar este lead.");
   const p = z.object({ company: z.string().trim().min(1, "Informe a razão social."), tradeName: z.string().trim().nullable(), city: z.string().trim().nullable(), uf: z.string().trim().toUpperCase().max(2).nullable(), ownerId: z.number().int().nullable(), notes: z.string().trim().nullable() }).safeParse(input);
   if (!p.success) return fail(p.error.issues[0].message);
   const clean = Object.fromEntries(Object.entries(p.data).map(([k, v]) => [k, v === "" ? null : v])) as typeof p.data;
+  const fullEdit = !!me.permissions["lead.edit"];
   await db.transaction(async (tx) => {
     const [b] = await tx.select().from(leads).where(eq(leads.id, id)).for("update");
     if (!b) throw new Error("Lead não encontrado.");
+    if (!fullEdit) clean.ownerId = b.ownerId; // vendedor não troca o responsável
     await tx.update(leads).set({ ...clean, updatedAt: new Date() }).where(eq(leads.id, id));
     await logAudit(tx, diffToAudit({ userId: me.id, leadId: id, entity: "lead" }, { company: b.company, tradeName: b.tradeName, city: b.city, uf: b.uf, ownerId: b.ownerId, notes: b.notes }, clean, { company: "Razão social", tradeName: "Nome fantasia", city: "Cidade", uf: "UF", ownerId: "Responsável (id)", notes: "Observação" }));
   });
@@ -36,7 +40,8 @@ export async function changeTagAction(id: number, change: { add?: TagChange[]; r
 }
 
 export async function addPersonAction(id: number, input: { name: string; roleTitle: string | null; extension: string | null }): Promise<ActionResult> {
-  const me = await requirePerm("lead.edit");
+  const me = await leadEditor(id);
+  if (!me) return fail("Sem permissão para editar este lead.");
   const name = input.name.trim();
   if (!name) return fail("Informe o nome da pessoa.");
   await db.insert(leadPeople).values({ leadId: id, name, roleTitle: input.roleTitle?.trim() || null, extension: input.extension?.trim() || null });
@@ -45,7 +50,8 @@ export async function addPersonAction(id: number, input: { name: string; roleTit
   return { ok: true, message: "Pessoa adicionada." };
 }
 export async function removePersonAction(id: number, personId: number): Promise<ActionResult> {
-  const me = await requirePerm("lead.edit");
+  const me = await leadEditor(id);
+  if (!me) return fail("Sem permissão para editar este lead.");
   const [p] = await db.select().from(leadPeople).where(and(eq(leadPeople.id, personId), eq(leadPeople.leadId, id)));
   if (!p) return fail("Pessoa não encontrada.");
   await db.delete(leadPeople).where(eq(leadPeople.id, personId));

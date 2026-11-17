@@ -449,6 +449,57 @@ export const dealEvents = pgTable(
   (t) => [index("deal_events_deal_idx").on(t.dealId), index("deal_events_at_idx").on(t.at)],
 );
 
+/** Cada cotação enviada ao cliente (uma negociação pode ter várias). Os valores da última ficam espelhados na negociação. */
+export const dealQuotes = pgTable(
+  "deal_quotes",
+  {
+    id: serial("id").primaryKey(),
+    dealId: integer("deal_id").notNull().references(() => deals.id, { onDelete: "cascade" }),
+    number: text("number"),
+    quoteDate: date("quote_date"),
+    /** Total com impostos (IPI e frete). */
+    totalCents: integer("total_cents"),
+    /** Total dos produtos, sem IPI. */
+    productsCents: integer("products_cents"),
+    ipiCents: integer("ipi_cents"),
+    freightCents: integer("freight_cents"),
+    freight: text("freight").$type<"CIF" | "FOB" | "RED">(),
+    paymentTerms: text("payment_terms"),
+    validityDays: integer("validity_days"),
+    note: text("note"),
+    createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: now(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("deal_quotes_deal_idx").on(t.dealId), uniqueIndex("deal_quotes_number_uq").on(t.dealId, t.number).where(sql`number is not null`)],
+);
+
+/** Condições de pagamento: preenchidas sozinhas pelos PDFs lidos; o Adm edita a lista. */
+export const paymentTerms = pgTable("payment_terms", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  active: boolean("active").notNull().default(true),
+  createdAt: now(),
+});
+
+/** Catálogo de produtos: cresce a cada item lido ou digitado nas cotações. */
+export const products = pgTable(
+  "products",
+  {
+    id: serial("id").primaryKey(),
+    code: text("code").notNull().unique(),
+    description: text("description").notNull(),
+    kind: text("kind"),
+    unit: text("unit"),
+    /** Último preço unitário visto (centavos). */
+    lastUnitCents: integer("last_unit_cents"),
+    seenCount: integer("seen_count").notNull().default(1),
+    createdAt: now(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("products_desc_idx").on(t.description)],
+);
+
 /** Itens lidos da cotação (produto, descrição, tipo, quantidade e valores). O PDF em si não é guardado. */
 export const dealQuoteItems = pgTable(
   "deal_quote_items",
@@ -456,6 +507,8 @@ export const dealQuoteItems = pgTable(
     id: serial("id").primaryKey(),
     dealId: integer("deal_id").notNull().references(() => deals.id, { onDelete: "cascade" }),
     quoteNumber: text("quote_number"),
+    /** Cotação a que o item pertence. */
+    quoteId: integer("quote_id").references(() => dealQuotes.id, { onDelete: "cascade" }),
     seq: integer("seq").notNull(),
     productCode: text("product_code").notNull(),
     /** Código/observação do cliente que vem junto (ex.: "CLASSE 8 POLIDA"). */

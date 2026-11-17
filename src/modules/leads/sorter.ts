@@ -56,6 +56,7 @@ export async function claimNext(userId: number, opts: { test?: boolean } = {}): 
         and (l.owner_id is null or l.owner_id = ${userId})
         and not exists (select 1 from lead_tags lt join tags t on t.id = lt.tag_id
                         where lt.lead_id = l.id and t.blocks_sorting)
+        and not exists (select 1 from deals dd where dd.lead_id = l.id)
         and not exists (select 1 from lead_skips s
                         where s.lead_id = l.id and s.user_id = ${userId} and s.until > now())
       order by random() limit 1
@@ -69,6 +70,8 @@ export async function claimNext(userId: number, opts: { test?: boolean } = {}): 
 /** "ATENDER" em um lead específico (da aba Leads ou do histórico): mesmo fluxo do sorteio. */
 export async function attendLead(userId: number, leadId: number): Promise<void> {
   await releaseExpiredLocks();
+  const [inDeal] = await db.execute<{ x: number }>(sql`select 1 as x from deals where lead_id = ${leadId} limit 1`);
+  if (inDeal) throw new UserError("Este cliente já está com os vendedores e não volta para o Shuffler.");
   const rows = await db.execute<{ id: number; is_test: boolean }>(sql`
     update leads set locked_by = ${userId}, locked_at = now(), last_served_at = now(),
                      times_served = times_served + case when locked_by = ${userId} then 0 else 1 end

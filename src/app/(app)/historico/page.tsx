@@ -1,3 +1,5 @@
+import { db } from "@/db";
+import { sql } from "drizzle-orm";
 import type { Metadata } from "next";
 import { PageHead } from "@/components/page-head";
 import { History, CalendarCheck, CheckCircle2, Clock, Search, Timer } from "lucide-react";
@@ -24,6 +26,8 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
   if (isSellerOnly(me.roles)) return <SellerHistory userId={me.id} sp={sp} />;
   const f = parseHistFilters(sp);
   const rows = await userHistoryRich(me.id, f);
+  const dealRows = rows.length ? await db.execute<{ lead_id: number }>(sql`select distinct lead_id from deals where lead_id in (${sql.join([...new Set(rows.map((r) => r.lead_id))].map((i) => sql`${i}`), sql`, `)})`) : [];
+  const inDeal = new Set(dealRows.map((r) => r.lead_id));
 
   const todayKey = dayKey(new Date().toISOString());
   const yKey = dayKey(new Date(Date.now() - 864e5).toISOString());
@@ -105,7 +109,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                   {r.tags.length > 0 && <div className="flex flex-wrap gap-1.5">{r.tags.map((t) => <TagChip key={t.key + t.group} label={t.label} color={t.color} />)}</div>}
                   {r.notes && <p className="line-clamp-2 rounded-md bg-sunk px-2.5 py-1.5 text-xs text-muted">{r.notes}</p>}
                 </div>
-                <AttendButton leadId={r.lead_id} compact />
+                {inDeal.has(r.lead_id) ? <span className="rounded-full bg-accent/12 px-2.5 py-1 text-xs font-semibold text-accent">Com os vendedores</span> : <AttendButton leadId={r.lead_id} compact />}
               </li>
             ))}
           </ul>

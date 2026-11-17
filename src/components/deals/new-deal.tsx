@@ -20,7 +20,7 @@ const brl = (c: number | null) => (c == null ? "" : (c / 100).toLocaleString("pt
 const EMPTY = { cnpj: "", company: "", contactName: "", phone: "", note: "", freight: "", sapCode: "", orderNumber: "", quoteNumber: "", quoteDate: "", quoteValue: "", paymentTerms: "", isReactivation: false };
 
 /** “Nova negociação”: o vendedor abre uma negociação sem passar pelo SDR. CNPJ obrigatório; se já existir no banco, traz o cadastro e o atendimento. */
-export function NewDeal() {
+export function NewDeal({ terms }: { terms: string[] }) {
   const toast = useToast();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -111,7 +111,7 @@ export function NewDeal() {
             <label className="block"><span className="mb-1 block text-muted">Telefone (com DDD)</span><input className={inputCls} inputMode="tel" value={f.phone} onChange={(e) => set("phone", e.target.value)} /></label>
             <label className="block"><span className="mb-1 block text-muted">Frete</span><select className={inputCls} value={f.freight} onChange={(e) => set("freight", e.target.value)}><option value="">—</option><option>CIF</option><option>FOB</option><option>RED</option></select></label>
             <label className="block"><span className="mb-1 block text-muted">Código SAP</span><input className={inputCls} value={f.sapCode} onChange={(e) => set("sapCode", e.target.value)} /></label>
-            <label className="block"><span className="mb-1 block text-muted">Condição de pagamento</span><input className={inputCls} value={f.paymentTerms} onChange={(e) => set("paymentTerms", e.target.value)} /></label>
+            <label className="block"><span className="mb-1 block text-muted">Condição de pagamento</span><select className={inputCls} value={f.paymentTerms} onChange={(e) => set("paymentTerms", e.target.value)}><option value="">—</option>{[...new Set([...(f.paymentTerms ? [f.paymentTerms] : []), ...terms])].map((t) => <option key={t}>{t}</option>)}</select></label>
             <label className="block"><span className="mb-1 block text-muted">Nº da cotação</span><input className={inputCls} value={f.quoteNumber} onChange={(e) => set("quoteNumber", e.target.value)} /></label>
             <div><span className="mb-1 block text-muted">Data da cotação</span><DateInput label="Data da cotação" value={f.quoteDate} onChange={(v) => set("quoteDate", v)} /></div>
             <label className="block"><span className="mb-1 block text-muted">Valor da cotação (R$)</span><input className={inputCls} inputMode="decimal" value={f.quoteValue} onChange={(e) => set("quoteValue", e.target.value)} /></label>

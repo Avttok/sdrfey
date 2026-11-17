@@ -92,6 +92,13 @@
       "when": 1794925267531,
       "tag": "0012_valor_real",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794926897135,
+      "tag": "0013_cotacoes_catalogo",
+      "breakpoints": true
     }
   ]
 }
