@@ -1,13 +1,18 @@
-import { Trophy } from "lucide-react";
+import { Frown, Trophy } from "lucide-react";
 import { KIND_ICON } from "@/components/goal-icons";
-import { GoalsOff, Ring } from "@/components/goals-overview";
+import { Ring } from "@/components/goals-overview";
 import type { GoalKind } from "@/modules/settings/goals";
 
 export type GoalTileItem = { k: GoalKind; label: string; value: number; qty: number };
 
 /** Metas do dia na tela inicial do Shuffler: um quadro por meta ligada, com anel de progresso. */
 export function GoalTiles({ items }: { items: GoalTileItem[] }) {
-  if (items.length === 0) return <GoalsOff />;
+  if (items.length === 0) return (
+    <div className="flex flex-col items-center gap-3 text-center text-muted">
+      <Frown size={56} strokeWidth={1.5} aria-hidden />
+      <p className="text-base font-medium">Você não tem metas definidas...</p>
+    </div>
+  );
   return (
     <ul className={`grid w-full gap-3 ${items.length === 1 ? "max-w-[15rem]" : "max-w-md grid-cols-2"} mx-auto`}>
       {items.map(({ k, label, value, qty }) => {

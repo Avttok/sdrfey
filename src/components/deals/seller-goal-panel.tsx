@@ -24,7 +24,7 @@ function PaceLine({ kind, p }: { kind: "count" | "money"; p: SellerPace }) {
 }
 
 /** Metas do mês do vendedor: uma métrica embaixo da outra (valor, barra e previsão). Métrica desligada nem aparece. */
-export function SellerGoalPanel({ actual, targets, weights, bonusReais, bonusSales, monthLabel, name, hex, compact, enabled, allOff, paces }: { paces?: Record<string, SellerPace>; enabled?: SellerEnabled; allOff?: boolean; name?: string; hex?: string; compact?: boolean; actual: SellerActuals; targets: SellerTargets; weights: SellerWeights; bonusReais: number; bonusSales: number; monthLabel: string }) {
+export function SellerGoalPanel({ actual, targets, weights, bonusReais, bonusSales, monthLabel, name, hex, compact, wide, enabled, allOff, paces }: { wide?: boolean; paces?: Record<string, SellerPace>; enabled?: SellerEnabled; allOff?: boolean; name?: string; hex?: string; compact?: boolean; actual: SellerActuals; targets: SellerTargets; weights: SellerWeights; bonusReais: number; bonusSales: number; monthLabel: string }) {
   const { each, overall } = attainment(actual, targets, weights, enabled);
   const shown = SELLER_METRICS.filter((m) => !enabled || enabled[m.key]);
   if (allOff || shown.length === 0) return <GoalsOff name={name} hex={hex} />;
@@ -37,7 +37,7 @@ export function SellerGoalPanel({ actual, targets, weights, bonusReais, bonusSal
         <div className="shrink-0 text-right"><p className="figure text-4xl font-bold leading-none">{Math.round(overall)}%</p><p className="text-xs text-muted">meta geral</p></div>
       </div>
       <div className="h-3 overflow-hidden rounded-full bg-sunk"><div className={`h-full rounded-full transition-[width] duration-700 ${done ? "bg-ok" : "bg-grad"}`} style={{ width: `${Math.min(100, overall)}%` }} /></div>
-      <ul className="space-y-3">
+      <ul className={wide ? "grid gap-3 md:grid-cols-2" : "space-y-3"}>
         {shown.map((m) => {
           const pct = each[m.key];
           return (

@@ -46,6 +46,8 @@ export function SdrOverview({ global, people, paces, showTeam }: { global: Globa
     return { k, n, qty, any: rows.length > 0, pct: qty ? (n / qty) * 100 : 0 };
   }).filter((t) => t.any);
   const META = Object.fromEntries(SDR_KINDS.map((d) => [d.k, { label: d.today, short: d.label, Icon: KIND_ICON[d.k] }])) as Record<Kind, { label: string; short: string; Icon: typeof KIND_ICON.attended }>;
+  const order = people.map((_, i) => i).sort((a, b) => Number(cfg[a].every((c) => !c.on)) - Number(cfg[b].every((c) => !c.on)));
+  const single = people.length === 1;
   return (
     <div className="space-y-4">
       {showTeam && totals.length > 0 && (
@@ -60,14 +62,15 @@ export function SdrOverview({ global, people, paces, showTeam }: { global: Globa
           ); })}
         </div>
       )}
-      <ul className={`grid items-start gap-3 ${people.length > 1 ? "lg:grid-cols-2 2xl:grid-cols-3" : "mx-auto max-w-3xl"}`}>
-        {people.map((p, i) => {
+      <ul className={people.length > 1 ? "panel-grid" : "grid gap-3"}>
+        {order.map((i) => {
+          const p = people[i];
           const rows = cfg[i].filter((c) => c.on);
           if (rows.length === 0) return <li key={p.id}><GoalsOff name={p.name} hex={p.hex} /></li>;
           return (
-            <li key={p.id} className={`${panelCls} space-y-4 p-5`}>
+            <li key={p.id} className={`${panelCls} space-y-4 ${single ? "p-6" : "p-5"}`}>
               <p className="flex items-center gap-2 text-lg font-semibold"><span aria-hidden className="size-3 rounded-full" style={{ background: p.hex }} /><span className="truncate">{p.name}</span></p>
-              <ul className="space-y-4">
+              <ul className={single ? "grid gap-4 md:grid-cols-2" : "space-y-4"}>
                 {rows.map((c) => {
                   const M = META[c.k], pc = paces[p.id]?.[c.k], done = c.qty > 0 && c.n >= c.qty;
                   return (

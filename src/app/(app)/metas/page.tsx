@@ -106,10 +106,10 @@ export default async function Page() {
       view: (
         <div className="space-y-4">
           {manage && counted.length > 1 && <section className={`${panelCls} flex flex-wrap items-center gap-x-6 gap-y-2 p-5`}><div><p className="text-sm text-muted">Meta geral da equipe no mês</p><p className="figure text-4xl font-bold leading-none">{avg}%</p></div><div className="h-3 min-w-40 flex-1 overflow-hidden rounded-full bg-sunk"><div className={`h-full rounded-full ${avg >= 100 ? "bg-ok" : "bg-grad"}`} style={{ width: `${Math.min(100, avg)}%` }} /></div></section>}
-          {mine && <SellerGoalPanel paces={pacesOf(mine)} actual={mine.m.actual} targets={mine.targets} weights={mine.weights} enabled={mine.enabled} allOff={mine.allOff} bonusReais={mine.m.bonusReais} bonusSales={mine.m.bonusSales} monthLabel={mine.m.monthLabel} />}
+          {mine && <SellerGoalPanel wide={views.length === 1} paces={pacesOf(mine)} actual={mine.m.actual} targets={mine.targets} weights={mine.weights} enabled={mine.enabled} allOff={mine.allOff} bonusReais={mine.m.bonusReais} bonusSales={mine.m.bonusSales} monthLabel={mine.m.monthLabel} />}
           {manage && views.filter((v) => v.u.id !== me.id).length > 0 && (
-            <div className="grid items-start gap-3 xl:grid-cols-2">
-              {views.filter((v) => v.u.id !== me.id).map((v) => <SellerGoalPanel key={v.u.id} paces={pacesOf(v)} compact name={v.u.name} hex={bubbleHex(v.u.accent, v.u.id, v.u.roles)} actual={v.m.actual} targets={v.targets} weights={v.weights} enabled={v.enabled} allOff={v.allOff} bonusReais={v.m.bonusReais} bonusSales={v.m.bonusSales} monthLabel={v.m.monthLabel} />)}
+            <div className="panel-grid">
+              {views.filter((v) => v.u.id !== me.id).map((v) => <SellerGoalPanel key={v.u.id} wide={views.length === 1} paces={pacesOf(v)} compact name={v.u.name} hex={bubbleHex(v.u.accent, v.u.id, v.u.roles)} actual={v.m.actual} targets={v.targets} weights={v.weights} enabled={v.enabled} allOff={v.allOff} bonusReais={v.m.bonusReais} bonusSales={v.m.bonusSales} monthLabel={v.m.monthLabel} />)}
             </div>
           )}
         </div>
