@@ -9,6 +9,8 @@ import { db, users } from "@/db";
 import { isSellerOnly } from "@/config/roles";
 import { sql } from "drizzle-orm";
 import { requirePerm } from "@/modules/auth/guard";
+import { getLeadCommercial } from "@/modules/deals/lead-commercial";
+import { AndamentosPanel, SalesSummaryPanel, VisitsPanel } from "@/components/deals/commercial-panels";
 import { getLeadView, getTagCatalog } from "@/modules/leads/view";
 
 export const metadata: Metadata = { title: "Lead" };
@@ -34,11 +36,25 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     const r = await db.execute<{ id: number }>(sql`select id from deals where lead_id = ${id} and seller_id = ${me.id} and not ${leftPortfolio(sql`${id}`)} order by created_at desc limit 1`);
     if (r[0]) { dealId = r[0].id; ownDeal = true; }
   }
-  const [anyDeal] = await db.execute<{ id: number }>(sql`select id from deals where lead_id = ${id} limit 1`);
+  const [anyDeal] = await db.execute<{ id: number; sname: string | null; sid: number | null; saccent: string | null; sroles: import("@/config/roles").Role[] | null }>(sql`select d.id, u.name as sname, u.id as sid, u.accent as saccent, u.roles as sroles from deals d left join users u on u.id = d.seller_id where d.lead_id = ${id} order by d.created_at desc limit 1`);
+  const dealSeller = anyDeal?.sname ? { name: anyDeal.sname, hex: bubbleHex(anyDeal.saccent, anyDeal.sid ?? 0, anyDeal.sroles ?? undefined) } : null;
   const [catalog, owners, locker] = await Promise.all([
     getTagCatalog(),
     db.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.active, true), visibleUsers(me))).orderBy(asc(users.name)),
     lead.lockedBy ? db.select({ name: users.name, accent: users.accent, roles: users.roles, id: users.id }).from(users).where(eq(users.id, lead.lockedBy)) : Promise.resolve([]),
   ]);
-  return <LeadEditor sellerView={sellerView} dealId={dealId} meId={me.id} showMap={me.mapMode === "map"} lead={lead} catalog={catalog} owners={owners} canEdit={!!me.permissions["lead.edit"] || ownDeal} inDeal={!!anyDeal} canRelease={!!me.permissions["lead.release"]} lockedBy={locker[0] ? { name: locker[0].name, hex: bubbleHex(locker[0].accent, locker[0].id, locker[0].roles) } : null} />;
+  const showCommercial = !!me.permissions["tab.negociacoes"] || me.roles.includes("manager") || me.roles.includes("admin");
+  const comm = showCommercial ? await getLeadCommercial(id, sellerView ? (dealId ? [dealId] : []) : undefined) : null;
+  return (
+    <div className="space-y-4">
+      <LeadEditor dealSeller={dealSeller} sellerView={sellerView} dealId={dealId} meId={me.id} showMap={me.mapMode === "map"} lead={lead} catalog={catalog} owners={owners} canEdit={!!me.permissions["lead.edit"] || ownDeal} inDeal={!!anyDeal} canRelease={!!me.permissions["lead.release"]} lockedBy={locker[0] ? { name: locker[0].name, hex: bubbleHex(locker[0].accent, locker[0].id, locker[0].roles) } : null} />
+      {comm && (
+        <div className="grid items-start gap-4 xl:grid-cols-2">
+          <SalesSummaryPanel deals={comm.deals} quotes={comm.quotes} />
+          <AndamentosPanel events={comm.events} showDeal title="Andamentos da negociação" />
+          {sellerView && <VisitsPanel visits={comm.visits} />}
+        </div>
+      )}
+    </div>
+  );
 }

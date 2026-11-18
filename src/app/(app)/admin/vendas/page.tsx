@@ -12,7 +12,7 @@ export default async function Page() {
   return (
     <div className="space-y-5">
       <PageHead icon={Handshake} size="md" title="Vendas" subtitle="Condições de pagamento e catálogo de produtos usados nas cotações." />
-      <SalesAdmin extraTaxPct={await getExtraTaxPct()} terms={terms.map((t) => ({ id: t.id, name: t.name, active: t.active }))} products={prods.map((p) => ({ id: p.id, code: p.code, description: p.description, kind: p.kind, unit: p.unit, lastUnitCents: p.lastUnitCents, seenCount: p.seenCount }))} />
+      <SalesAdmin extraTaxPct={await getExtraTaxPct()} terms={terms.map((t) => ({ id: t.id, name: t.name, active: t.active }))} products={prods.map((p) => ({ id: p.id, code: p.code, description: p.description, kind: p.kind, unit: p.unit, lastUnitCents: p.lastUnitCents, weightKg: p.weightKg, seenCount: p.seenCount }))} />
     </div>
   );
 }

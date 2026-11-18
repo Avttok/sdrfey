@@ -28,7 +28,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html
       lang="pt-BR"
       suppressHydrationWarning
-      style={{ "--accent": accent.hex, "--on-accent": accent.onAccent, "--app-font": fontCss(user?.font) } as CSSProperties}
+      style={{ "--accent": accent.hex, "--accent-2": accent.hex2 ?? `color-mix(in oklab, ${accent.hex} 78%, black)`, "--on-accent": accent.onAccent, "--app-font": fontCss(user?.font) } as CSSProperties}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />

@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/confirm-dialog";
 import { Eye, ExternalLink, MapPin, Pencil, Plus, Trash2, UserRound, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CopyVal } from "@/components/copy-val";
@@ -32,12 +33,13 @@ function ReadOnly({ r }: { r: RepRow }) {
 function Editor({ r, canEdit, isAdmin, onClose }: { r: RepRow; canEdit: boolean; isAdmin: boolean; onClose: () => void }) {
   const isNew = r.id === undefined;
   const [f, setF] = useState(r);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const { run, pending } = useRun();
+  const { ask, dialog } = useConfirm(pending);
   const field = (k: keyof RepRow, label: string, span = "") => <label className={`block text-sm ${span}`}><span className="mb-1 block text-muted">{label}</span><input className={inputCls} disabled={!canEdit} value={String(f[k] ?? "")} onChange={(e) => setF({ ...f, [k]: e.target.value })} /></label>;
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label={isNew ? "Novo representante" : `Representante ${r.repName}`} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className={`${panelCls} max-h-[90vh] w-full max-w-2xl space-y-5 overflow-y-auto p-6 shadow-2xl`}>
+        {dialog}
         <div className="flex items-start gap-3">
           <span className="grid size-11 place-items-center rounded-2xl bg-grad-soft text-accent">{isNew ? <Plus size={20} aria-hidden /> : <UserRound size={20} aria-hidden />}</span>
           <div className="flex-1"><h2 className="display text-xl">{isNew ? "Novo representante" : r.repName}</h2>{!isNew && <p className="text-xs text-muted">SAP {r.sapCode}</p>}</div>
@@ -51,15 +53,8 @@ function Editor({ r, canEdit, isAdmin, onClose }: { r: RepRow; canEdit: boolean;
         <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
           {canEdit && <button type="button" className={btnPrimary} disabled={pending} onClick={() => run(() => saveRepAction({ ...f, id: r.id, managerName: f.managerName || null, team: f.team || null, cnpj: f.cnpj || null, address: f.address || null, cep: f.cep || null }), undefined, onClose)}>{isNew ? "Criar representante" : "Salvar"}</button>}
           <span className="flex-1" />
-          {isAdmin && !isNew && !confirmDelete && <button type="button" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => setConfirmDelete(true)}><Trash2 size={15} aria-hidden /> Excluir</button>}
+          {isAdmin && !isNew && <button type="button" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => ask({ title: "Excluir este representante?", body: `${r.repName} será excluído por completo. Visitas já agendadas guardam a cópia dos dados dele.`, label: "Sim, excluir", icon: Trash2, onConfirm: () => run(() => deleteRepAction(r.id!)) })}><Trash2 size={15} aria-hidden /> Excluir</button>}
         </div>
-        {isAdmin && !isNew && confirmDelete && (
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-danger/50 bg-danger/5 p-3 text-sm">
-            <span className="flex-1 font-medium text-danger">Excluir {r.repName} por completo?</span>
-            <button type="button" disabled={pending} className={`${btnGhost} !border-danger !bg-danger !text-white`} onClick={() => run(() => deleteRepAction(r.id!))}>Sim, excluir</button>
-            <button type="button" className={btnGhost} onClick={() => setConfirmDelete(false)}>Cancelar</button>
-          </div>
-        )}
       </div>
     </div>
   );

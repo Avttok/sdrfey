@@ -19,6 +19,8 @@ import { useRouter } from "next/navigation";
 import { ColorPicker } from "./color-picker";
 import type { DealRow } from "@/modules/deals/queries";
 import { AlertChip, StageChip } from "./deal-ui";
+import { AndamentosPanel, VisitsPanel } from "./commercial-panels";
+import type { CommVisit } from "@/modules/deals/lead-commercial";
 
 type Ev = { id: number; kind: string; note: string | null; valueCents: number | null; at: string; by: string | null };
 type Tab = "contato" | "nota" | "encerrar";
@@ -31,7 +33,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 }
 const brl = (c: number | null) => (c == null ? "" : (c / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
-export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDelete, phones, meId, team, canClaim, sellers }: { deal: DealRow; events: Ev[]; quotes: QuoteView[]; tags: { group: string; label: string; color: string }[]; terms: string[]; extraPct: number; canDelete: boolean; phones: { value: string; label: string | null }[]; meId: number; team: boolean; canClaim: boolean; sellers: { id: number; name: string }[] }) {
+export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDelete, phones, meId, team, canClaim, sellers, visits }: { visits: CommVisit[]; deal: DealRow; events: Ev[]; quotes: QuoteView[]; tags: { group: string; label: string; color: string }[]; terms: string[]; extraPct: number; canDelete: boolean; phones: { value: string; label: string | null }[]; meId: number; team: boolean; canClaim: boolean; sellers: { id: number; name: string }[] }) {
   const { run, pending } = useRun();
   const closed = deal.stage === "ganho" || deal.stage === "perdido";
   const mine = deal.sellerId === meId || team;
@@ -244,19 +246,10 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDele
         )}
       </div>
 
-      <aside className={`${panelCls} p-5`}>
-        <h2 className="mb-4 text-[15px] font-semibold">Histórico da negociação</h2>
-        <ol className="relative space-y-4 border-l border-line pl-5">
-          {events.map((e) => { const I = EV_ICON[e.kind] ?? NotebookPen; return (
-            <li key={e.id} className="relative text-sm">
-              <span className="absolute -left-[31px] grid size-6 place-items-center rounded-full border border-line bg-panel text-accent"><I size={12} aria-hidden /></span>
-              <p className="font-medium">{DEAL_EVENT_LABEL[e.kind] ?? e.kind}{e.valueCents ? <span className="figure ml-1.5 text-muted">{fmtBRL(e.valueCents)}</span> : null}</p>
-              {e.note && <p className="whitespace-pre-wrap text-muted">{e.note}</p>}
-              <p className="text-xs text-muted">{fmtDateTime(e.at)}{e.by ? ` · ${e.by}` : ""}</p>
-            </li>
-          ); })}
-        </ol>
-      </aside>
+      <div className="grid items-start gap-4 xl:grid-cols-2">
+        <AndamentosPanel events={events.map((e) => ({ ...e, dealId: deal.id }))} title="Andamentos registrados" />
+        <VisitsPanel visits={visits} />
+      </div>
 
       <ConfirmDialog open={confirm !== null} tone="danger" icon={Trash2} title={confirm === "delete" ? "Apagar esta negociação?" : "Resetar esta negociação?"} confirmLabel={confirm === "delete" ? "Sim, apagar" : "Sim, resetar"} busy={pending} onCancel={() => setConfirm(null)} onConfirm={() => { const c = confirm; setConfirm(null); if (c === "delete") run(() => deleteDealAction(deal.id), undefined, () => router.push("/negociacoes")); else run(() => resetDealAction(deal.id)); }}>
         {confirm === "delete" ? "A negociação, as cotações e o histórico serão apagados. Um registro completo fica guardado na auditoria do admin." : "As cotações e o histórico serão apagados e a negociação volta ao início. Um registro completo fica na auditoria do admin."}

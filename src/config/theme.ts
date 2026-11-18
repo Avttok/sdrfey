@@ -1,7 +1,9 @@
 import { ROLE_META, topRole, type Role } from "./roles";
 
-/** As 10 cores que cada pessoa pode escolher. */
-export const ACCENTS = [
+export type Accent = { key: string; label: string; hex: string; /** Segunda cor: temas com degradê. */ hex2?: string };
+
+/** Cores sólidas e degradês que cada pessoa pode escolher. */
+export const ACCENTS: readonly Accent[] = [
   { key: "azul", label: "Azul", hex: "#3b82f6" },
   { key: "amarelo", label: "Amarelo", hex: "#eab308" },
   { key: "vermelho", label: "Vermelho", hex: "#ef4444" },
@@ -14,12 +16,26 @@ export const ACCENTS = [
   { key: "grafite", label: "Grafite", hex: "#64748b" },
   { key: "lima", label: "Lima", hex: "#84cc16" },
   { key: "turquesa", label: "Turquesa", hex: "#14b8a6" },
-] as const;
+  { key: "esmeralda", label: "Esmeralda", hex: "#10b981" },
+  { key: "magenta", label: "Magenta", hex: "#d946ef" },
+  { key: "marinho", label: "Marinho", hex: "#1d4ed8" },
+  { key: "aurora", label: "Aurora", hex: "#3b82f6", hex2: "#8b5cf6" },
+  { key: "sunset", label: "Pôr do sol", hex: "#f97316", hex2: "#ec4899" },
+  { key: "oceano", label: "Oceano", hex: "#06b6d4", hex2: "#2563eb" },
+  { key: "floresta", label: "Floresta", hex: "#22c55e", hex2: "#0d9488" },
+  { key: "lavanda", label: "Lavanda", hex: "#8b5cf6", hex2: "#ec4899" },
+  { key: "neon", label: "Neon", hex: "#84cc16", hex2: "#06b6d4" },
+  { key: "noite", label: "Meia-noite", hex: "#4f46e5", hex2: "#a855f7" },
+  { key: "tropical", label: "Tropical", hex: "#14b8a6", hex2: "#84cc16" },
+];
+
+/** Fundo da bolinha de uma cor: sólido ou degradê. */
+export const swatchBg = (a: { hex: string; hex2?: string }) => (a.hex2 ? `linear-gradient(135deg, ${a.hex}, ${a.hex2})` : a.hex);
 
 /** Amarelo e vermelho são reservados aos cargos Gestor e Adm: ninguém os escolhe. */
 export const CHOOSABLE_ACCENTS = ACCENTS.filter((a) => a.key !== "amarelo" && a.key !== "vermelho");
 
-export type AccentKey = (typeof ACCENTS)[number]["key"];
+export type AccentKey = string;
 
 export function isAccentKey(value: string | null | undefined): value is AccentKey {
   return ACCENTS.some((a) => a.key === value);
@@ -34,14 +50,13 @@ export function isChoosableAccent(value: string | null | undefined): value is Ac
 export function resolveAccent(accent: string | null | undefined, roles: readonly Role[]) {
   const key = isAccentKey(accent) ? accent : ROLE_META[topRole(roles.filter((r) => r !== "admin").length ? roles.filter((r) => r !== "admin") : roles)].defaultAccent;
   const found = ACCENTS.find((a) => a.key === key) ?? ACCENTS[0];
-  return { key: found.key, hex: found.hex, onAccent: readableOn(found.hex) };
+  return { key: found.key, hex: found.hex, hex2: found.hex2 ?? null, onAccent: readableOn(found.hex, found.hex2) };
 }
 
 /** Texto preto ou branco, o que contrastar melhor com a cor. */
-function readableOn(hex: string): string {
-  const n = parseInt(hex.slice(1), 16);
-  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+function readableOn(hex: string, hex2?: string): string {
+  const lum = (h: string) => { const n = parseInt(h.slice(1), 16); return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; };
+  const luminance = hex2 ? (lum(hex) + lum(hex2)) / 2 : lum(hex);
   return luminance > 0.62 ? "#1a1a1a" : "#ffffff";
 }
 

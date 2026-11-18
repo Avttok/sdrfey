@@ -15,7 +15,7 @@ import type { QuoteItem } from "@/modules/quotes/parse";
 import { readQuotePdfAction } from "@/modules/quotes/read";
 
 export type QuoteView = {
-  id: number; number: string | null; quoteDate: string | null; totalCents: number | null; productsCents: number | null; ipiCents: number | null; icmsCents: number | null; netCents: number | null; freightCents: number | null;
+  id: number; number: string | null; quoteDate: string | null; totalCents: number | null; productsCents: number | null; ipiCents: number | null; icmsCents: number | null; netCents: number | null; freightCents: number | null; weightKg: number | null;
   freight: "CIF" | "FOB" | "RED" | null; paymentTerms: string | null; validityDays: number | null; note: string | null; link: string | null; createdAt: string;
   items: (QuoteItem & { id: number })[];
 };
@@ -28,14 +28,17 @@ type EItem = { productCode: string; description: string; kind: string | null; un
 const toE = (i: QuoteItem): EItem => ({ productCode: i.productCode, description: i.description, kind: i.kind, unit: i.unit, clientRef: i.clientRef, packQty: i.packQty, icmsCents: i.icmsCents, ipiCents: i.ipiCents, qty: String(i.qty).replace(".", ","), unitStr: brl(i.unitCents) });
 const lineTotal = (e: EItem) => Math.round(num(e.qty) * (parseMoneyToCents(e.unitStr) ?? 0));
 
+/** Peso em kg no padrão brasileiro: 1.423,94 kg. */
+export const fmtKg = (n: number) => `${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg`;
+
 /** Valor principal = sem impostos (total − IPI − ICMS), que é o que conta para o vendedor. O total com impostos é secundário. */
-export function QuoteValues({ q }: { q: Pick<QuoteView, "totalCents" | "productsCents" | "ipiCents" | "icmsCents" | "netCents" | "freightCents"> }) {
+export function QuoteValues({ q }: { q: Pick<QuoteView, "totalCents" | "productsCents" | "ipiCents" | "icmsCents" | "netCents" | "freightCents"> & { weightKg?: number | null } }) {
   const net = q.netCents ?? q.totalCents;
   const sub: [string, number | null][] = [["Total com impostos", q.totalCents], ["IPI", q.ipiCents], ["ICMS", q.icmsCents], ["Frete", q.freightCents]];
   return (
     <div className="flex flex-wrap items-end gap-x-8 gap-y-2">
       <div><p className="text-[11px] font-medium text-muted">Valor sem impostos</p><p className="figure text-2xl font-bold leading-tight">{fmtBRL(net)}</p></div>
-      <dl className="flex flex-wrap gap-x-5 gap-y-1">{sub.filter(([, v]) => v).map(([l, v]) => <div key={l}><dt className="text-[11px] text-muted">{l}</dt><dd className="figure text-sm font-medium text-muted">{fmtBRL(v)}</dd></div>)}</dl>
+      <dl className="flex flex-wrap gap-x-5 gap-y-1">{sub.filter(([, v]) => v).map(([l, v]) => <div key={l}><dt className="text-[11px] text-muted">{l}</dt><dd className="figure text-sm font-medium text-muted">{fmtBRL(v)}</dd></div>)}{q.weightKg ? <div><dt className="text-[11px] text-muted">Peso</dt><dd className="figure whitespace-nowrap text-sm font-medium text-muted">{fmtKg(q.weightKg)}</dd></div> : null}</dl>
     </div>
   );
 }
@@ -46,7 +49,7 @@ export function QuoteEditor({ dealId, quote, terms, extraPct, onClose, onTerm, l
   const toast = useToast();
   const [f, setF] = useState({
     number: quote?.number ?? "", date: quote?.quoteDate ?? "", freight: quote?.freight ?? "", paymentTerms: quote?.paymentTerms ?? "", validity: quote?.validityDays ? String(quote.validityDays) : "",
-    freightValue: quote?.freightCents ? brl(quote.freightCents) : "", totalValue: quote && !quote.items.length ? brl(quote.totalCents) : "", note: quote?.note ?? "", link: quote?.link ?? "", days: 2,
+    freightValue: quote?.freightCents ? brl(quote.freightCents) : "", totalValue: quote && !quote.items.length ? brl(quote.totalCents) : "", note: quote?.note ?? "", link: quote?.link ?? "", weight: quote?.weightKg != null ? String(quote.weightKg).replace(".", ",") : "", days: 2,
   });
   const [items, setItems] = useState<EItem[]>(quote?.items.map(toE) ?? []);
   const [reading, setReading] = useState(false);
@@ -71,7 +74,7 @@ export function QuoteEditor({ dealId, quote, terms, extraPct, onClose, onTerm, l
     if (!r.ok) return toast("bad", r.message);
     const q = r.quote;
     if (q.paymentTerms) onTerm(q.paymentTerms);
-    setF((p) => ({ ...p, number: q.quoteNumber ?? p.number, date: q.quoteDate ?? p.date, freight: q.freight ?? p.freight, paymentTerms: q.paymentTerms ?? p.paymentTerms, validity: q.validityDays ? String(q.validityDays) : p.validity, freightValue: q.freightCents ? brl(q.freightCents) : "", totalValue: q.items.length ? "" : brl(q.totalCents) }));
+    setF((p) => ({ ...p, number: q.quoteNumber ?? p.number, date: q.quoteDate ?? p.date, freight: q.freight ?? p.freight, paymentTerms: q.paymentTerms ?? p.paymentTerms, validity: q.validityDays ? String(q.validityDays) : p.validity, freightValue: q.freightCents ? brl(q.freightCents) : "", totalValue: q.items.length ? "" : brl(q.totalCents), weight: q.weightKg != null ? String(q.weightKg).replace(".", ",") : p.weight }));
     if (q.items.length) setItems(q.items.map(toE));
     const other = q.cnpj && q.cnpj !== leadCnpj;
     toast(other ? "bad" : "ok", other ? "Atenção: o CNPJ do PDF é diferente do cliente desta negociação. Confira antes de salvar." : `PDF lido: cotação ${q.quoteNumber ?? "?"}, ${q.items.length} itens. Confira e salve. O arquivo não é guardado.`);
@@ -83,7 +86,7 @@ export function QuoteEditor({ dealId, quote, terms, extraPct, onClose, onTerm, l
     if (p && !it.description.trim()) setItem(n, { description: p.description, kind: p.kind, unit: p.unit, unitStr: it.unitStr || brl(p.lastUnitCents) });
   };
   const save = () => run(() => saveQuoteAction(dealId, quote?.id ?? null, {
-    number: f.number, date: f.date, freight: f.freight, paymentTerms: f.paymentTerms, validityDays: f.validity ? Number(f.validity) : null, note: f.note, freightValue: f.freightValue, totalValue: f.totalValue, netValue: manualNet ?? "", link: f.link, followupDays: f.days,
+    number: f.number, date: f.date, freight: f.freight, paymentTerms: f.paymentTerms, validityDays: f.validity ? Number(f.validity) : null, note: f.note, freightValue: f.freightValue, totalValue: f.totalValue, netValue: manualNet ?? "", link: f.link, weight: f.weight, followupDays: f.days,
     items: items.map((e, n) => ({ seq: (n + 1) * 10, productCode: e.productCode, clientRef: e.clientRef, description: e.description, kind: e.kind ?? (e.description.split(" ")[0]?.toUpperCase() || null), qty: num(e.qty), packQty: e.packQty, unit: e.unit, icmsCents: e.icmsCents, ipiCents: e.ipiCents, unitCents: parseMoneyToCents(e.unitStr), totalCents: lineTotal(e) })),
   }), undefined, onClose);
 
@@ -105,6 +108,7 @@ export function QuoteEditor({ dealId, quote, terms, extraPct, onClose, onTerm, l
           <select className={inputCls} value={f.paymentTerms} onChange={(e) => set("paymentTerms", e.target.value)}><option value="">—</option>{[...new Set([...(f.paymentTerms ? [f.paymentTerms] : []), ...terms])].map((t) => <option key={t}>{t}</option>)}</select></label>
         <label className={lab}>Validade (dias)<input className={inputCls} inputMode="numeric" value={f.validity} onChange={(e) => set("validity", e.target.value.replace(/\D/g, ""))} /></label>
         <label className={lab}>Frete negociado (R$)<input className={inputCls} inputMode="decimal" value={f.freightValue} onChange={(e) => set("freightValue", e.target.value)} /></label>
+        <label className={lab}>Peso total (kg)<input className={inputCls} inputMode="decimal" placeholder="Ex.: 423,94" value={f.weight} onChange={(e) => set("weight", e.target.value)} /></label>
         <label className={`${lab} sm:col-span-2`}>Link da cotação (Salesforce)<input className={inputCls} type="url" placeholder="https://…" value={f.link} onChange={(e) => set("link", e.target.value)} /></label>
       </div>
 

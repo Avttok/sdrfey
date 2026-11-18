@@ -3,7 +3,7 @@
 import { Ban, Building2, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Send, Plus, RotateCcw, History, SkipForward, Square, TriangleAlert, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { ConfirmDialog } from "@/components/confirm-dialog";
+import { ConfirmDialog, useConfirm } from "@/components/confirm-dialog";
 import { DateInput } from "@/components/date-input";
 import { GoalBar } from "@/components/goal-bar";
 import { CopyVal } from "@/components/copy-val";
@@ -34,6 +34,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
   const toast = useToast();
   const [pending, start] = useTransition();
   useBusyWhile(pending);
+  const { ask, dialog } = useConfirm(pending);
   const [step, setStep] = useState(0);
   const [used, setUsed] = useState<Set<string>>(new Set());
   const [temperature, setTemperature] = useState<string | null>(lead.tags.find((t) => t.groupKey === "temperatura")?.key ?? null);
@@ -76,11 +77,25 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
 
   /* batimento a cada 30 s: mantém o lead com você e mostra que está online */
   useEffect(() => {
-    const beat = () => void heartbeatAction(lead.id, `Atendendo ${lead.company}`);
-    beat();
-    const t = setInterval(beat, 30_000);
-    return () => clearInterval(t);
-  }, [lead.id, lead.company]);
+    let last = Date.now(); // última vez que a pessoa mexeu na tela: só isso renova o prazo do lead
+    const mark = () => { last = Date.now(); };
+    const evs = ["pointerdown", "keydown", "input", "wheel", "touchstart"] as const;
+    for (const e of evs) document.addEventListener(e, mark, { passive: true, capture: true });
+    let gone = false;
+    const beat = async () => {
+      if (gone) return;
+      const held = await heartbeatAction(lead.id, `Atendendo ${lead.company}`, Date.now() - last < 45_000).catch(() => true);
+      if (held || gone) return;
+      gone = true;
+      toast("warn", "Este lead foi liberado por inatividade. Use o Shuffler para pegar outro.");
+      router.replace("/atender"); router.refresh();
+    };
+    void beat();
+    const t = setInterval(() => void beat(), 30_000);
+    const vis = () => { if (!document.hidden) void beat(); };
+    document.addEventListener("visibilitychange", vis);
+    return () => { gone = true; clearInterval(t); document.removeEventListener("visibilitychange", vis); for (const e of evs) document.removeEventListener(e, mark, { capture: true }); };
+  }, [lead.id, lead.company]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const run = (fn: () => Promise<{ ok: boolean; message?: string }>, okMsg?: string) =>
     start(async () => {
@@ -145,20 +160,8 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
   const resetDiscard = (
     <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
       <span className="mr-auto text-xs font-medium uppercase tracking-wide text-muted">Este lead não serve?</span>
-      {confirmReset ? (
-        <span className="flex flex-wrap items-center gap-2 rounded-lg border border-danger/50 px-3 py-1.5 text-sm">
-          <span className="font-medium text-danger">Apagar tags, observação e interações? Os dados da empresa continuam.</span>
-          <button type="button" disabled={pending} className={`${btnGhost} !border-danger !bg-danger !text-white`} onClick={resetNow}>Sim, resetar</button>
-          <button type="button" className={btnGhost} onClick={() => setConfirmReset(false)}>Cancelar</button>
-        </span>
-      ) : <button type="button" disabled={pending} className={btnGhost} onClick={() => { setConfirmReset(true); setConfirmDiscard(false); }}><RotateCcw size={16} aria-hidden /> Resetar lead</button>}
-      {confirmDiscard ? (
-        <span className="flex flex-wrap items-center gap-2 rounded-lg border border-danger/50 px-3 py-1.5 text-sm">
-          <span className="font-medium text-danger">Descartar este lead? Ele sai do sorteio.</span>
-          <button type="button" disabled={pending} className={`${btnGhost} !border-danger !bg-danger !text-white`} onClick={discardNow}>Sim, descartar</button>
-          <button type="button" className={btnGhost} onClick={() => setConfirmDiscard(false)}>Cancelar</button>
-        </span>
-      ) : <button type="button" disabled={pending} className={`${btnGhost} text-danger`} onClick={() => { setConfirmDiscard(true); setConfirmReset(false); }}><X size={16} aria-hidden /> Descartar lead</button>}
+      <button type="button" disabled={pending} className={btnGhost} onClick={() => ask({ title: "Resetar este lead?", body: "Apaga as tags, a observação e as interações deste atendimento. Os dados da empresa continuam.", label: "Sim, resetar", icon: RotateCcw, onConfirm: resetNow })}><RotateCcw size={16} aria-hidden /> Resetar lead</button>
+      <button type="button" disabled={pending} className={`${btnGhost} text-danger`} onClick={() => ask({ title: "Descartar este lead?", body: "Ele sai do sorteio e você recebe o próximo.", label: "Sim, descartar", icon: X, onConfirm: discardNow })}><X size={16} aria-hidden /> Descartar lead</button>
     </div>
   );
 
@@ -225,7 +228,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
                     <span className="flex-1 break-all">{c.kind === "phone" ? fmtPhone(c.value) : c.value}<span className="ml-2 text-xs text-muted">{c.origin === "import" ? "" : c.origin}</span></span>
                     <button type="button" aria-label="Copiar" onClick={() => copy(c.value, toast)}><Copy size={15} /></button>
                     <button type="button" aria-label={c.wrong ? "Desmarcar como errado" : "Marcar como errado"} title={c.wrong ? "Desmarcar como errado" : "Marcar como errado"} onClick={() => run(() => markWrongAction(lead.id, c.id, !c.wrong))}><Ban size={15} /></button>
-                    <button type="button" aria-label="Remover" onClick={() => run(() => removeChannelAction(lead.id, c.id), "Contato removido.")}><Trash2 size={15} /></button>
+                    <button type="button" aria-label="Remover" onClick={() => ask({ title: "Remover este contato?", body: `${c.kind === "phone" ? fmtPhone(c.value) : c.value} será removido do cadastro do lead.`, label: "Sim, remover", icon: Trash2, onConfirm: () => run(() => removeChannelAction(lead.id, c.id), "Contato removido.") })}><Trash2 size={15} /></button>
                   </li>
                 ))}
                 {phones.length + emails.length === 0 && <li className="text-sm text-muted">Nenhum contato. Adicione abaixo ou use “Atualizar informações”.</li>}
@@ -353,13 +356,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
             <div className="flex flex-wrap items-center justify-center gap-2 border-t border-line pt-5">
               <button type="button" disabled={pending} className={btnPrimary} onClick={save}><Check size={17} aria-hidden /> SALVAR E PRÓXIMO</button>
               <button type="button" disabled={pending} className={btnGhost} onClick={saveAndStop} title="Salva, libera o lead e volta ao botão Shuffler"><Pause size={16} aria-hidden /> SALVAR E PARAR</button>
-              {confirmDiscard ? (
-                <span className="flex flex-wrap items-center gap-2 rounded-lg border border-danger/50 px-3 py-1.5 text-sm">
-                  <span className="font-medium text-danger">Descartar este lead? Ele sai do sorteio.</span>
-                  <button type="button" disabled={pending} className={`${btnGhost} !border-danger !bg-danger !text-white`} onClick={discardNow}>Sim, descartar</button>
-                  <button type="button" className={btnGhost} onClick={() => setConfirmDiscard(false)}>Cancelar</button>
-                </span>
-              ) : <button type="button" disabled={pending} className={`${btnGhost} text-danger`} onClick={() => setConfirmDiscard(true)}><X size={16} aria-hidden /> DESCARTAR LEAD</button>}
+              <button type="button" disabled={pending} className={`${btnGhost} text-danger`} onClick={() => ask({ title: "Descartar este lead?", body: "Ele sai do sorteio e você recebe o próximo.", label: "Sim, descartar", icon: X, onConfirm: discardNow })}><X size={16} aria-hidden /> DESCARTAR LEAD</button>
             </div>
           </section>
         )}
@@ -369,9 +366,10 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
         <button type="button" className={btnGhost} disabled={step === 0} onClick={() => go(prevStep(step))}><ChevronLeft size={16} aria-hidden /> Voltar</button>
         {step < STEPS.length - 1 && <button type="button" className={btnPrimary} onClick={() => go(nextStep(step))}>Avançar <ChevronRight size={16} aria-hidden /></button>}
         <span className="flex-1" />
-        <button type="button" className={btnGhost} disabled={pending} title="Esconde este lead só de você por 24 h e não conta na meta" onClick={() => run(async () => { const r = await skipAction(lead.id); if (r.ok) await startAction(); return r; })}><SkipForward size={16} aria-hidden /> Pular</button>
+        <button type="button" className={btnGhost} disabled={pending} title="Esconde este lead só de você por 24 h e não conta na meta" onClick={() => ask({ title: "Pular este lead?", body: "Ele fica escondido só de você por 24 h e não conta na meta. Você recebe o próximo.", label: "Sim, pular", tone: "warn", icon: SkipForward, onConfirm: () => run(async () => { const r = await skipAction(lead.id); if (r.ok) await startAction(); return r; }) })}><SkipForward size={16} aria-hidden /> Pular</button>
         <button type="button" className={`${btnPrimary} !bg-grad-danger !text-white`} disabled={pending} onClick={() => run(() => releaseAction(lead.id))}><Square size={15} aria-hidden /> Parar atendimento</button>
       </div>
+      {dialog}
     </div>
   );
 }

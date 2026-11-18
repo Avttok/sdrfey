@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/confirm-dialog";
 import { GripVertical, Plus, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { TagChip } from "@/components/tag-chip";
@@ -12,6 +13,7 @@ export type TagRow = { id?: number; groupKey: string; label: string; color: stri
 function Row({ t, isNew, onGrip, dragging }: { t: TagRow; isNew?: boolean; onGrip?: (e: React.PointerEvent) => void; dragging?: boolean }) {
   const [f, setF] = useState(t);
   const { run, pending } = useRun();
+  const { ask, dialog } = useConfirm(pending);
   return (
     <li data-tag={t.id} className={`rounded-xl border bg-panel p-3 text-sm transition-shadow ${dragging ? "border-accent shadow-xl ring-2 ring-accent" : isNew ? "border-dashed border-line" : "border-line"}`}>
       <div className="flex flex-wrap items-center gap-2.5">
@@ -24,13 +26,14 @@ function Row({ t, isNew, onGrip, dragging }: { t: TagRow; isNew?: boolean; onGri
         {t.autoOnly && <span className="rounded-full bg-sunk px-2 py-0.5 text-xs text-muted">só o sistema aplica</span>}
         <span className="flex-1" />
         <button type="button" className={isNew ? btnPrimary : btnGhost} disabled={pending} onClick={() => run(() => saveTagAction({ ...f, id: t.id }), undefined, () => isNew && setF(t))}>{isNew ? <><Plus size={15} aria-hidden /> Criar</> : "Salvar"}</button>
-        {!isNew && <button type="button" aria-label="Excluir tag" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => { if (confirm(`Excluir a tag ${t.label}?`)) run(() => deleteTagAction(t.id!)); }}><Trash2 size={15} /></button>}
+        {!isNew && <button type="button" aria-label="Excluir tag" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => ask({ title: "Excluir esta tag?", body: `A tag "${t.label}" será removida de todos os leads que a têm.`, label: "Sim, excluir", icon: Trash2, onConfirm: () => run(() => deleteTagAction(t.id!)) })}><Trash2 size={15} /></button>}
       </div>
       <div className="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line/70 pt-2.5 pl-1 text-[13px] text-muted">
         <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" className="size-4" checked={f.blocksSorting} onChange={(e) => setF({ ...f, blocksSorting: e.target.checked })} /> Tira do sorteio</label>
         <label className="flex items-center gap-1.5">Volta em <input type="number" min={0} className={`${inputCls} !w-16 !py-1 text-center`} placeholder="—" value={f.cooldownDays ?? ""} onChange={(e) => setF({ ...f, cooldownDays: e.target.value === "" ? null : Number(e.target.value) })} /> dias</label>
         <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" className="size-4" checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} /> Ativa</label>
       </div>
+      {dialog}
     </li>
   );
 }

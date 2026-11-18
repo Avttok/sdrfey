@@ -1,7 +1,8 @@
 "use server";
 
 import { plural } from "@/lib/format";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
+import { getSettings } from "@/modules/settings/get";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db, leadChannels, presence } from "@/db";
@@ -9,7 +10,7 @@ import { logAudit } from "@/modules/audit/log";
 import { requirePerm, requireUser } from "@/modules/auth/guard";
 import { refreshInfo } from "@/modules/enrich/refresh";
 import { addChannel, discardLead, markStarted, resetLead, saveAttendance, type SaveInput } from "./attend";
-import { attendLead, claimNext, releaseLead, skipLead, touchLock, UserError } from "./sorter";
+import { attendLead, claimNext, releaseExpiredLocks, releaseLead, skipLead, touchLock, UserError } from "./sorter";
 
 export type ActionResult = { ok: true; message?: string } | { ok: false; message: string };
 
@@ -54,7 +55,7 @@ export async function releaseAction(leadId: number): Promise<ActionResult> {
   const me = await requirePerm("tab.comecar");
   return guard(async () => {
     await releaseLead(me.id, leadId);
-    redirect("/painel");
+    redirect("/atender");
   });
 }
 
@@ -134,13 +135,22 @@ export async function refreshInfoAction(leadId: number): Promise<ActionResult> {
 }
 
 /** Batimento: mantém o lead preso a quem está atendendo e mostra a pessoa como online. */
-export async function heartbeatAction(leadId: number | null, activity: string): Promise<void> {
+/** `active` = a pessoa mexeu na tela desde o último batimento. Só atividade real renova o prazo do lead
+ *  (aba aberta e parada não segura o lead). Devolve false quando o lead não está mais com você. */
+export async function heartbeatAction(leadId: number | null, activity: string, active = true): Promise<boolean> {
   const me = await requireUser();
-  if (leadId) await touchLock(me.id, leadId);
+  let held = true;
+  if (leadId) {
+    const [l] = await db.execute<{ mine: boolean; fresh: boolean }>(sql`select (locked_by = ${me.id}) as mine, (locked_at >= now() - make_interval(mins => ${(await getSettings()).lock_minutes})) as fresh from leads where id = ${leadId}`);
+    if (!l?.mine) held = false;
+    else if (!l.fresh) { await releaseExpiredLocks(); held = false; }
+    else if (active) await touchLock(me.id, leadId);
+  }
   await db
     .insert(presence)
     .values({ userId: me.id, activity, leadId, lastSeenAt: new Date() })
     .onConflictDoUpdate({ target: presence.userId, set: { activity, leadId, lastSeenAt: new Date() } });
+  return held;
 }
 
 /** Modo teste: o Adm atende leads falsos, sem tocar nas métricas reais. */

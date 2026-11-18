@@ -2,9 +2,10 @@
 
 import { Check, Clock, KeyRound, Pencil, ShieldCheck, Trash2, X } from "lucide-react";
 import { useState } from "react";
+import { useConfirm } from "@/components/confirm-dialog";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
-import { ACCENTS, resolveAccent } from "@/config/theme";
+import { ACCENTS, resolveAccent, swatchBg } from "@/config/theme";
 import { ROLE_META, ROLES, type Role } from "@/config/roles";
 import { deleteUserAction, resetPasswordAction, updateUserAction } from "@/modules/admin/users";
 
@@ -16,10 +17,10 @@ const ROLE_TONE: Record<Role, string> = { user: "#3b82f6", seller: "#22c55e", ma
 export function UserCard({ u, isMe }: { u: UserRow; isMe: boolean }) {
   const [open, setOpen] = useState(false);
   const [f, setF] = useState(u);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const { run, pending } = useRun();
+  const { ask, dialog } = useConfirm(pending);
   const toggleRole = (r: Role) => setF({ ...f, roles: f.roles.includes(r) ? f.roles.filter((x) => x !== r) : [...f.roles, r] });
-  const close = () => { setOpen(false); setConfirmDelete(false); setF(u); };
+  const close = () => { setOpen(false); setF(u); };
   return (
     <li className={`${panelCls} group relative overflow-hidden transition hover:border-accent/50 hover:shadow-md ${u.active ? "" : "opacity-75"}`}>
       <div aria-hidden className="h-1.5" style={{ background: u.hex }} />
@@ -62,7 +63,7 @@ export function UserCard({ u, isMe }: { u: UserRow; isMe: boolean }) {
               <legend className="mb-1.5 text-sm text-muted">Cor da pessoa (aparece para todos)</legend>
               <div className="flex flex-wrap gap-2">
                 {ACCENTS.map((a) => (
-                  <button key={a.key} type="button" title={a.label} aria-label={a.label} aria-pressed={f.accent === a.key} onClick={() => setF({ ...f, accent: a.key })} className="grid size-9 place-items-center rounded-full ring-offset-2 ring-offset-panel transition hover:scale-105 aria-pressed:ring-2 aria-pressed:ring-ink" style={{ background: a.hex, color: "#fff" }}>{f.accent === a.key ? <Check size={16} aria-hidden /> : null}</button>
+                  <button key={a.key} type="button" title={a.label} aria-label={a.label} aria-pressed={f.accent === a.key} onClick={() => setF({ ...f, accent: a.key })} className="grid size-9 place-items-center rounded-full ring-offset-2 ring-offset-panel transition hover:scale-105 aria-pressed:ring-2 aria-pressed:ring-ink" style={{ background: swatchBg(a), color: "#fff" }}>{f.accent === a.key ? <Check size={16} aria-hidden /> : null}</button>
                 ))}
                 <button type="button" aria-pressed={!f.accent} onClick={() => setF({ ...f, accent: null })} className="rounded-full border border-line px-3 text-xs font-medium hover:bg-sunk aria-pressed:border-ink aria-pressed:bg-sunk">Padrão do cargo ({resolveAccent(null, f.roles).hex})</button>
               </div>
@@ -73,20 +74,14 @@ export function UserCard({ u, isMe }: { u: UserRow; isMe: boolean }) {
             </div>
             <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
               <button type="button" className={btnPrimary} disabled={pending} onClick={() => run(() => updateUserAction(u.id, { name: f.name, roles: f.roles, active: f.active, dailyGoal: u.dailyGoal, canManageGoals: u.canManageGoals, inMetrics: f.inMetrics, permissions: u.permissions, accent: f.accent }), undefined, () => setOpen(false))}>Salvar</button>
-              <button type="button" className={btnGhost} disabled={pending} onClick={() => { if (confirm(`Redefinir a senha de ${u.name} para a inicial?`)) run(() => resetPasswordAction(u.id)); }}><KeyRound size={15} aria-hidden /> Redefinir senha</button>
+              <button type="button" className={btnGhost} disabled={pending} onClick={() => ask({ title: "Redefinir a senha?", body: `A senha de ${u.name} volta para a inicial e a pessoa terá que criar uma nova no próximo acesso.`, label: "Sim, redefinir", icon: KeyRound, tone: "warn", onConfirm: () => run(() => resetPasswordAction(u.id)) })}><KeyRound size={15} aria-hidden /> Redefinir senha</button>
               <span className="flex-1" />
-              {!isMe && !confirmDelete && <button type="button" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => setConfirmDelete(true)}><Trash2 size={15} aria-hidden /> Excluir</button>}
+              {!isMe && <button type="button" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => ask({ title: "Excluir esta pessoa?", body: `${u.name} será excluída TOTALMENTE e não dá para desfazer. O histórico dela continua nos registros.`, label: "Sim, excluir", icon: Trash2, onConfirm: () => run(() => deleteUserAction(u.id)) })}><Trash2 size={15} aria-hidden /> Excluir</button>}
             </div>
-            {!isMe && confirmDelete && (
-              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-danger/50 bg-danger/5 p-3 text-sm">
-                <span className="flex-1 font-medium text-danger">Excluir {u.name} TOTALMENTE? Não dá para desfazer.</span>
-                <button type="button" disabled={pending} className={`${btnGhost} !border-danger !bg-danger !text-white`} onClick={() => run(() => deleteUserAction(u.id))}>Sim, excluir</button>
-                <button type="button" className={btnGhost} onClick={() => setConfirmDelete(false)}>Cancelar</button>
-              </div>
-            )}
           </div>
         </div>
       )}
+      {dialog}
     </li>
   );
 }

@@ -53,7 +53,7 @@ body {
   min-height: 100dvh;
   background:
     radial-gradient(70rem 34rem at 0% -8%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 70%),
-    radial-gradient(56rem 30rem at 100% 8%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 70%),
+    radial-gradient(56rem 30rem at 100% 8%, color-mix(in srgb, var(--accent-2, var(--accent)) 16%, transparent), transparent 70%),
     radial-gradient(60rem 30rem at 50% 108%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%),
     var(--bg);
   background-attachment: fixed;
@@ -101,8 +101,8 @@ input[type="checkbox"], input[type="radio"], input[type="range"] { accent-color:
 ::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
 
 /* ───────────── Degradês: sempre derivados da cor de destaque de cada pessoa ───────────── */
-@utility bg-grad { background-image: linear-gradient(135deg, color-mix(in oklab, var(--accent) 80%, white), var(--accent) 48%, color-mix(in oklab, var(--accent) 80%, black)); }
-@utility bg-grad-soft { background-image: linear-gradient(135deg, color-mix(in srgb, var(--accent) 24%, transparent), color-mix(in srgb, var(--accent) 8%, transparent)); }
+@utility bg-grad { background-image: linear-gradient(135deg, color-mix(in oklab, var(--accent) 80%, white), var(--accent) 48%, var(--accent-2, color-mix(in oklab, var(--accent) 78%, black))); }
+@utility bg-grad-soft { background-image: linear-gradient(135deg, color-mix(in srgb, var(--accent) 24%, transparent), color-mix(in srgb, var(--accent-2, var(--accent)) 12%, transparent)); }
 @utility bg-grad-panel { background-image: linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent 60%); }
 @utility text-grad { background-image: linear-gradient(90deg, var(--accent), color-mix(in oklab, var(--accent) 55%, #a855f7)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 @utility bg-grad-danger { background-image: linear-gradient(135deg, #f87171, #dc2626 55%, #b91c1c); }
@@ -157,3 +157,12 @@ body.dragging, body.dragging * { user-select: none !important; cursor: grabbing 
 .gold-card { background-image: linear-gradient(135deg, rgb(245 197 66 / 0.18), rgb(245 197 66 / 0.05)); box-shadow: inset 0 0 0 1px rgb(245 197 66 / 0.45); }
 .trophy-medal { background-image: linear-gradient(135deg, #fff1a8, #f5c542 55%, #b8860b); box-shadow: 0 0 0 0 rgb(245 197 66 / 0.6); animation: trophy-pop 0.55s cubic-bezier(0.2, 1.4, 0.4, 1) both, medal-pulse 2.4s ease-out 0.6s infinite; }
 @keyframes medal-pulse { 0% { box-shadow: 0 0 0 0 rgb(245 197 66 / 0.55); } 70%, 100% { box-shadow: 0 0 0 8px rgb(245 197 66 / 0); } }
+
+/* Brilho que pulsa de leve atrás do rodapé. */
+@keyframes glow-pulse { 0%, 100% { opacity: 0.18; transform: scale(0.92); } 50% { opacity: 0.6; transform: scale(1.08); } }
+.glow-pulse { animation: glow-pulse 3.2s ease-in-out infinite; }
+
+/* Tela que se adapta à janela sem rolar (início do Shuffler): a coluna do app tem a altura da janela e o miolo encolhe. */
+html.fit-screen, html.fit-screen body { height: 100dvh; overflow: hidden; }
+html.fit-screen .app-col { height: 100dvh; }
+html.fit-screen .app-col > main { min-height: 0; }

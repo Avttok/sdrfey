@@ -1,17 +1,19 @@
 "use client";
 
-import { LogOut, Settings2 } from "lucide-react";
+import { Check, LogOut, Palette, Settings2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { RoleBadge } from "@/components/role-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ROLES, type Role } from "@/config/roles";
+import { CHOOSABLE_ACCENTS, swatchBg } from "@/config/theme";
 import { logoutAction } from "@/modules/auth/actions";
+import { setAccentAction } from "@/modules/users/actions";
 import { SubmitButton } from "./submit-button";
 
 /** Foto (iniciais) da pessoa e as tags de cargo. Ao clicar abre o menu da conta. */
-export function UserMenu({ name, username, hex, onHex, roles, side = false, collapsed = false }: { name: string; username: string; hex: string; onHex: string; roles: Role[]; side?: boolean; collapsed?: boolean }) {
+export function UserMenu({ name, username, hex, onHex, accentKey, roles, side = false, collapsed = false }: { accentKey?: string; name: string; username: string; hex: string; onHex: string; roles: Role[]; side?: boolean; collapsed?: boolean }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const menu = useRef<HTMLDivElement>(null);
@@ -65,6 +67,14 @@ export function UserMenu({ name, username, hex, onHex, roles, side = false, coll
           <div className="space-y-1 p-2">
             <Link role="menuitem" href="/conta" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition hover:bg-sunk"><span className="grid size-8 place-items-center rounded-lg bg-grad-soft text-accent"><Settings2 size={16} aria-hidden /></span> Minha conta</Link>
             <div className="flex items-center justify-between gap-3 rounded-xl px-3 py-2"><span className="text-sm font-medium">Tema</span><ThemeToggle withLabels /></div>
+            <form action={setAccentAction} className="rounded-xl px-3 py-2">
+              <p className="mb-2 flex items-center gap-1.5 text-sm font-medium"><Palette size={14} aria-hidden /> Cor do tema</p>
+              <div className="grid grid-cols-7 gap-1.5">
+                {CHOOSABLE_ACCENTS.map((a) => { const on = a.key === accentKey; return (
+                  <button key={a.key} type="submit" name="accent" value={a.key} title={a.label} aria-label={a.label} aria-pressed={on} className="grid aspect-square place-items-center rounded-full text-white ring-offset-2 ring-offset-panel transition hover:scale-110 aria-pressed:ring-2 aria-pressed:ring-ink" style={{ background: swatchBg(a) }}>{on && <Check size={13} aria-hidden />}</button>
+                ); })}
+              </div>
+            </form>
           </div>
           <form action={logoutAction} className="border-t border-line p-2"><SubmitButton className="!w-full !bg-none !bg-transparent !text-danger hover:!bg-danger/10"><LogOut size={16} aria-hidden /> Sair</SubmitButton></form>
         </div>,

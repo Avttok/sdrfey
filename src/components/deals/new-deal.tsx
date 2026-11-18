@@ -27,6 +27,7 @@ export function NewDeal({ terms }: { terms: string[] }) {
   const [f, setF] = useState(EMPTY);
   const [color, setColor] = useState<string | null>(null);
   const [items, setItems] = useState<QuoteItem[]>([]);
+  const [weight, setWeight] = useState<number | null>(null);
   const [look, setLook] = useState<CnpjLookup | null>(null);
   const [consult, setConsult] = useState<CnpjConsult | null>(null);
   const [phase, setPhase] = useState<"idle" | "db" | "receita">("idle");
@@ -73,12 +74,12 @@ export function NewDeal({ terms }: { terms: string[] }) {
     const q = r.quote;
     const cnpj = q.cnpj?.length === 14 ? maskCnpj(q.cnpj) : f.cnpj;
     setF((p) => ({ ...p, cnpj, company: q.clientName ?? p.company, quoteNumber: q.quoteNumber ?? "", quoteDate: q.quoteDate ?? "", freight: q.freight ?? "", sapCode: q.sapCode ?? "", paymentTerms: q.paymentTerms ?? "", quoteValue: brl(q.totalCents), email: q.email ?? p.email, phone: q.phone ?? p.phone, street: q.address ?? p.street, neighborhood: q.neighborhood ?? p.neighborhood, zip: q.zip ?? p.zip, stateReg: q.stateReg ?? p.stateReg, city: q.city ?? p.city, uf: q.uf ?? p.uf }));
-    setItems(q.items);
+    setItems(q.items); setWeight(q.weightKg);
     toast("ok", `PDF lido: cotação ${q.quoteNumber ?? "?"}, ${q.items.length} itens. O arquivo não é guardado.`);
     if (q.cnpj?.length === 14) search(cnpj);
   };
   const create = () => start(async () => {
-    const r = await createDealManualAction({ cnpj: f.cnpj, company: f.company, contactName: f.contactName, phone: f.phone, email: f.email, address: { street: f.street || null, neighborhood: f.neighborhood || null, zip: f.zip || null, stateReg: f.stateReg || null, city: f.city || null, uf: f.uf || null }, note: f.note, color, items,
+    const r = await createDealManualAction({ cnpj: f.cnpj, company: f.company, contactName: f.contactName, phone: f.phone, email: f.email, address: { street: f.street || null, neighborhood: f.neighborhood || null, zip: f.zip || null, stateReg: f.stateReg || null, city: f.city || null, uf: f.uf || null }, note: f.note, color, items, weightKg: weight,
       data: { freight: f.freight, sapCode: f.sapCode, orderNumber: f.orderNumber, quoteNumber: f.quoteNumber, quoteDate: f.quoteDate, quoteValue: f.quoteValue, paymentTerms: f.paymentTerms, isReactivation: f.isReactivation } });
     if (!r.ok) return toast("bad", r.message);
     toast("ok", r.message ?? "Negociação criada.");

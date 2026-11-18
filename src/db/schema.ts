@@ -429,6 +429,8 @@ export const deals = pgTable(
     realValueCents: integer("real_value_cents"),
     /** Valor sem impostos da última cotação (espelho). */
     netValueCents: integer("net_value_cents"),
+    /** Peso (kg) da última cotação; espelhado pelas cotações. */
+    weightKg: numeric("weight_kg", { precision: 12, scale: 2, mode: "number" }),
     paymentTerms: text("payment_terms"),
     /** Cor que o vendedor escolheu para reconhecer o cliente (#rrggbb). */
     color: text("color"),
@@ -484,6 +486,8 @@ export const dealQuotes = pgTable(
     /** Valor sem impostos: total − IPI − ICMS. É o que vale para o vendedor. */
     netCents: integer("net_cents"),
     freightCents: integer("freight_cents"),
+    /** Peso total da cotação em kg (vem do PDF: "Peso Total"). */
+    weightKg: numeric("weight_kg", { precision: 12, scale: 2, mode: "number" }),
     freight: text("freight").$type<"CIF" | "FOB" | "RED">(),
     paymentTerms: text("payment_terms"),
     validityDays: integer("validity_days"),
@@ -516,6 +520,8 @@ export const products = pgTable(
     unit: text("unit"),
     /** Último preço unitário visto (centavos). */
     lastUnitCents: integer("last_unit_cents"),
+    /** Peso de uma unidade vendida, em kg (opcional; o Adm preenche no catálogo). */
+    weightKg: numeric("weight_kg", { precision: 12, scale: 4, mode: "number" }),
     seenCount: integer("seen_count").notNull().default(1),
     createdAt: now(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

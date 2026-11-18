@@ -58,14 +58,23 @@ export function SalesDashboard({ s, showRanking }: { s: SalesStats; showRanking:
       </div>
       {showRanking && s.ranking.length > 0 && (
         <Block icon={Trophy} title="Ranking de vendedores">
-          <ul className="space-y-3">
-            {s.ranking.map((r) => {
+          <ul className="space-y-3.5">
+            {s.ranking.map((r, i) => {
               const max = Math.max(1, ...s.ranking.map((x) => x.value));
+              const hex = bubbleHex(r.accent, r.id, r.roles as Role[]);
               return (
-                <li key={r.id} className="flex items-center gap-3 text-sm">
-                  <span className="w-24 shrink-0 truncate text-muted">{r.name.split(" ")[0]}</span>
-                  <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-sunk"><span className="block h-full rounded-full" style={{ width: `${Math.max(r.value ? 3 : 0, Math.round((r.value / max) * 100))}%`, background: bubbleHex(r.accent, r.id, r.roles as Role[]) }} /></span>
-                  <span className="figure w-56 text-right text-xs font-medium">{r.won} {r.won === 1 ? "venda" : "vendas"} · {fmtBRL(r.value)} · {r.contacts} {r.contacts === 1 ? "contato" : "contatos"}</span>
+                <li key={r.id} className="space-y-1.5 text-sm">
+                  <div className="flex items-center gap-3">
+                    <span className="figure w-5 shrink-0 text-center text-xs text-muted">{i + 1}º</span>
+                    <span className="w-20 shrink-0 truncate font-medium sm:w-24">{r.name.split(" ")[0]}</span>
+                    <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-sunk"><span className="block h-full rounded-full" style={{ width: `${Math.max(r.value ? 3 : 0, Math.round((r.value / max) * 100))}%`, background: hex }} /></span>
+                    <span className="figure shrink-0 whitespace-nowrap text-right text-sm font-bold">{fmtBRL(r.value)}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 pl-8 text-xs text-muted">
+                    <span className="whitespace-nowrap"><b className="figure text-ink">{r.won}</b> {r.won === 1 ? "venda" : "vendas"}</span>
+                    <span className="whitespace-nowrap"><b className="figure text-ink">{r.quotes}</b> {r.quotes === 1 ? "cotação" : "cotações"} · <b className="figure text-ink">{fmtBRL(r.quotesValue)}</b></span>
+                    <span className="whitespace-nowrap"><b className="figure text-ink">{r.contacts}</b> {r.contacts === 1 ? "contato" : "contatos"}</span>
+                  </div>
                 </li>
               );
             })}

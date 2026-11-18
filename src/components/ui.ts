@@ -15,4 +15,4 @@ export const btnGhost =
   "text-ink transition-colors hover:bg-sunk";
 
 /** Painel de vidro: translúcido com desfoque leve; o degradê do tema aparece por trás. */
-export const panelCls = "rounded-xl border border-line/60 bg-panel/70 bg-grad-panel backdrop-blur-md shadow-[0_1px_2px_rgb(0_0_0/0.04),0_10px_30px_-16px_rgb(0_0_0/0.18)]";
+export const panelCls = "rounded-xl border border-line/60 bg-panel/70 bg-grad-panel shadow-[0_1px_2px_rgb(0_0_0/0.04),0_10px_30px_-16px_rgb(0_0_0/0.18)]";

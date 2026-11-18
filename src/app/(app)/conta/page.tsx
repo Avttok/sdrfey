@@ -10,7 +10,7 @@ import { PasswordForm } from "@/components/password-form";
 import { RoleBadge } from "@/components/role-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { btnGhost, panelCls } from "@/components/ui";
-import { CHOOSABLE_ACCENTS, resolveAccent } from "@/config/theme";
+import { CHOOSABLE_ACCENTS, resolveAccent, swatchBg } from "@/config/theme";
 import { requireUser } from "@/modules/auth/guard";
 import { setAccentAction } from "@/modules/users/actions";
 
@@ -53,7 +53,7 @@ export default async function AccountPage() {
                   aria-label={a.label}
                   aria-pressed={selected}
                   className="flex size-10 items-center justify-center rounded-full ring-offset-2 ring-offset-panel transition hover:scale-105 aria-pressed:ring-2 aria-pressed:ring-ink"
-                  style={{ background: a.hex, color: a.key === "lima" ? "#1a1a1a" : "#fff" }}
+                  style={{ background: swatchBg(a), color: a.key === "lima" ? "#1a1a1a" : "#fff" }}
                 >
                   {selected && <Check size={18} aria-hidden />}
                 </button>

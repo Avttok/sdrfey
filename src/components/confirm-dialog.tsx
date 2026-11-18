@@ -42,3 +42,15 @@ export function ConfirmDialog({ open, icon: Icon, title, children, confirmLabel,
     document.body,
   );
 }
+
+export type AskReq = { title: string; body?: React.ReactNode; label: string; tone?: "accent" | "danger" | "warn"; icon?: LucideIcon; onConfirm: () => void };
+
+/** Confirmação por popup para qualquer ação de apagar/resetar/pular: `ask({...})` abre, `dialog` vai uma vez no JSX. */
+export function useConfirm(busy?: boolean) {
+  const [req, setReq] = useState<AskReq | null>(null);
+  const dialog = (
+    <ConfirmDialog open={!!req} tone={req?.tone ?? "danger"} icon={req?.icon} title={req?.title ?? ""} confirmLabel={req?.label ?? "Confirmar"} busy={busy}
+      onCancel={() => setReq(null)} onConfirm={() => { const r = req; setReq(null); r?.onConfirm(); }}>{req?.body}</ConfirmDialog>
+  );
+  return { ask: setReq, dialog };
+}

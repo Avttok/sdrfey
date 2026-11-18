@@ -1,4 +1,6 @@
 import { visibleUsers } from "@/modules/auth/visibility";
+import { NoScroll } from "@/components/no-scroll";
+import { releaseExpiredLocks } from "@/modules/leads/sorter";
 import type { Metadata } from "next";
 import { Play, Shuffle } from "lucide-react";
 import { and, eq, sql } from "drizzle-orm";
@@ -19,6 +21,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AttendPage() {
   const me = await requirePerm("tab.comecar");
+  await releaseExpiredLocks(); // lead parado além do prazo volta ao estoque antes de decidir qual tela mostrar
   const [mine] = await db.select({ id: leads.id }).from(leads).where(eq(leads.lockedBy, me.id)).limit(1);
   const today = sql`(date_trunc('day', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo')`;
   // tudo que não depende de outra consulta roda junto (cada ida ao banco custa tempo de rede)
@@ -42,7 +45,9 @@ export default async function AttendPage() {
 
   if (!lead) {
     return (
-      <div className="relative grid min-h-[calc(100dvh-9rem)] place-items-center overflow-hidden rounded-3xl border border-line/60 p-6 text-center sm:p-12" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 26%, var(--panel)) 0%, color-mix(in srgb, var(--accent) 8%, var(--panel)) 48%, color-mix(in srgb, var(--accent) 20%, var(--panel)) 100%)" }}>
+      <>
+      <NoScroll />
+      <div className="relative grid h-full min-h-[18rem] place-items-center overflow-y-auto overflow-x-hidden rounded-3xl border border-line/60 p-6 text-center sm:p-12" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 26%, var(--panel)) 0%, color-mix(in srgb, var(--accent) 8%, var(--panel)) 48%, color-mix(in srgb, var(--accent) 20%, var(--panel)) 100%)" }}>
         <div aria-hidden className="pointer-events-none absolute -left-24 -top-24 size-[28rem] rounded-full bg-accent/25 blur-3xl" />
         <div aria-hidden className="pointer-events-none absolute -bottom-32 -right-20 size-[32rem] rounded-full bg-accent/20 blur-3xl" />
         <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 size-[22rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/10 blur-3xl" />
@@ -64,6 +69,7 @@ export default async function AttendPage() {
           </form>
         </div>
       </div>
+      </>
     );
   }
 

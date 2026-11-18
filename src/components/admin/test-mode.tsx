@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/confirm-dialog";
 import { FlaskConical, Play, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useRun } from "@/components/use-run";
@@ -10,6 +11,7 @@ import { startTestAction } from "@/modules/leads/actions";
 export function TestMode({ count }: { count: number }) {
   const [n, setN] = useState(20);
   const { run, pending } = useRun();
+  const { ask, dialog } = useConfirm(pending);
   return (
     <div className="max-w-3xl space-y-4">
       <section className={`${panelCls} flex items-center gap-4 p-5`}>
@@ -26,9 +28,10 @@ export function TestMode({ count }: { count: number }) {
           <h2 className="font-semibold">Treinar e limpar</h2>
           <p className="flex-1 text-sm text-muted">Atenda um lead de teste para treinar o fluxo, e apague tudo quando terminar.</p>
           <form action={startTestAction}><button type="submit" className={`${btnGhost} w-full`}><Play size={15} aria-hidden /> Atender em modo teste</button></form>
-          <button type="button" className={`${btnGhost} w-full text-danger`} disabled={pending} onClick={() => { if (confirm("Apagar todos os leads de teste?")) run(() => clearTestDataAction()); }}><Trash2 size={15} aria-hidden /> Apagar leads de teste</button>
+          <button type="button" className={`${btnGhost} w-full text-danger`} disabled={pending} onClick={() => ask({ title: "Apagar todos os leads de teste?", body: "Todos os leads, atendimentos e visitas do modo teste serão apagados. Os leads reais não mudam.", label: "Sim, apagar", icon: Trash2, onConfirm: () => run(() => clearTestDataAction()) })}><Trash2 size={15} aria-hidden /> Apagar leads de teste</button>
         </section>
       </div>
+      {dialog}
     </div>
   );
 }

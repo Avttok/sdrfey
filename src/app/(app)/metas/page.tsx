@@ -1,5 +1,8 @@
 import { visibleUsers } from "@/modules/auth/visibility";
-import { Target } from "lucide-react";
+import { Handshake, Headset, Target } from "lucide-react";
+import { MetasShell, type MetasTab } from "@/components/metas-shell";
+import { SdrOverview } from "@/components/goals-overview";
+import { panelCls } from "@/components/ui";
 import { PageHead } from "@/components/page-head";
 import type { Metadata } from "next";
 import { and, asc, eq, sql } from "drizzle-orm";
@@ -48,7 +51,7 @@ export default async function Page() {
   const mine = views.find((v) => v.u.id === me.id);
   const both = showSdr && showSellers;
 
-  const sdrBlock = async () => {
+  const sdrData = async () => {
     const [list, done, sched] = await Promise.all([
       db.select().from(users).where(and(eq(users.active, true), eq(users.inMetrics, true), sql`not (${users.roles} = array['seller']::text[])`, visibleUsers(me), onlySelf ? eq(users.id, me.id) : undefined)).orderBy(asc(users.name)),
       db.select({ id: attendanceSessions.userId, n: sql<number>`count(*)::int` }).from(attendanceSessions)
@@ -57,28 +60,46 @@ export default async function Page() {
           select v.user_id as u from visits v join leads l on l.id = v.lead_id where v.canceled_at is null and not l.is_test and v.created_at >= ${today}
           union all select d.sdr_id from deals d where not d.is_test and d.created_at >= ${today}) x group by u`),
     ]);
-    return (
-      <GoalsForm
-        canGlobal={canGlobal} editableIds={editableIds} showGlobal={manage}
-        global={{ attended: { on: s.goal_attended_on === 1, qty: s.daily_goal }, scheduled: { on: s.goal_scheduled_on === 1, qty: s.daily_goal_scheduled } }}
-        people={list.map((u) => ({ id: u.id, name: u.name, hex: bubbleHex(u.accent, u.id, u.roles), today: { attended: done.find((d) => d.id === u.id)?.n ?? 0, scheduled: sched.find((d) => d.id === u.id)?.n ?? 0 }, own: { attended: { on: u.goalAttendedOn, qty: u.dailyGoal }, scheduled: { on: u.goalScheduledOn, qty: u.dailyGoalScheduled } } }))}
-      />
-    );
+    return {
+      global: { attended: { on: s.goal_attended_on === 1, qty: s.daily_goal }, scheduled: { on: s.goal_scheduled_on === 1, qty: s.daily_goal_scheduled } },
+      people: list.map((u) => ({ id: u.id, name: u.name, hex: bubbleHex(u.accent, u.id, u.roles), today: { attended: done.find((d) => d.id === u.id)?.n ?? 0, scheduled: sched.find((d) => d.id === u.id)?.n ?? 0 }, own: { attended: { on: u.goalAttendedOn, qty: u.dailyGoal }, scheduled: { on: u.goalScheduledOn, qty: u.dailyGoalScheduled } } })),
+    };
   };
-  const head = (t: string, sub: string) => <div><h2 className="display text-2xl">{t}</h2><p className="text-sm text-muted">{sub}</p></div>;
   const subtitle = manage ? "Metas diárias de atendimento e agendamento (SDR) e mensais de vendas, da equipe e de cada pessoa." : "Suas metas, com o progresso de hoje e do mês.";
+  const canEditSdr = canGlobal || editableIds.length > 0;
+  const tabs: MetasTab[] = [];
+
+  if (showSdr) {
+    const sdr = await sdrData();
+    tabs.push({
+      key: "sdr", label: "Atendimento", icon: <Headset size={16} aria-hidden />, sub: "Metas diárias de atendidos e agendados.",
+      view: <SdrOverview global={sdr.global} people={sdr.people} showTeam={manage && sdr.people.length > 1} />,
+      edit: canEditSdr || manage ? <GoalsForm canGlobal={canGlobal} editableIds={editableIds} showGlobal={manage} global={sdr.global} people={sdr.people} /> : undefined,
+    });
+  }
+  if (showSellers) {
+    const avg = views.length ? Math.round(views.reduce((a, v) => a + v.overall, 0) / views.length) : 0;
+    tabs.push({
+      key: "vendas", label: "Vendas", icon: <Handshake size={16} aria-hidden />, sub: "Metas mensais, cada uma com o seu peso.",
+      view: (
+        <div className="space-y-4">
+          {manage && views.length > 1 && <section className={`${panelCls} flex flex-wrap items-center gap-x-6 gap-y-2 p-5`}><div><p className="text-sm text-muted">Meta geral da equipe no mês</p><p className="figure text-4xl font-bold leading-none">{avg}%</p></div><div className="h-3 min-w-40 flex-1 overflow-hidden rounded-full bg-sunk"><div className={`h-full rounded-full ${avg >= 100 ? "bg-ok" : "bg-grad"}`} style={{ width: `${Math.min(100, avg)}%` }} /></div></section>}
+          {mine && <SellerGoalPanel actual={mine.m.actual} targets={mine.targets} weights={mine.weights} bonusReais={mine.m.bonusReais} bonusSales={mine.m.bonusSales} monthLabel={mine.m.monthLabel} />}
+          {manage && views.filter((v) => v.u.id !== me.id).length > 0 && (
+            <div className="grid gap-3 xl:grid-cols-2">
+              {views.filter((v) => v.u.id !== me.id).map((v) => <SellerGoalPanel key={v.u.id} compact name={v.u.name} hex={bubbleHex(v.u.accent, v.u.id, v.u.roles)} actual={v.m.actual} targets={v.targets} weights={v.weights} bonusReais={v.m.bonusReais} bonusSales={v.m.bonusSales} monthLabel={v.m.monthLabel} />)}
+            </div>
+          )}
+        </div>
+      ),
+      edit: manage || (scope && mine) ? <SellerGoalsForm canGlobal={canGlobal} editableIds={editableIds} showGlobal={manage} global={globalVals} people={sellerPeople} /> : undefined,
+    });
+  }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="space-y-5">
       <PageHead icon={Target} title="Metas" subtitle={subtitle} />
-      {showSdr && <section className="space-y-4">{both && head("Atendimento (SDR)", "Metas diárias de atendidos e agendados.")}{await sdrBlock()}</section>}
-      {showSellers && (
-        <section className="space-y-4">
-          {both && head("Vendas", "Metas mensais com o peso de cada uma.")}
-          {mine && <SellerGoalPanel actual={mine.m.actual} targets={mine.targets} weights={mine.weights} bonusReais={mine.m.bonusReais} bonusSales={mine.m.bonusSales} monthLabel={mine.m.monthLabel} />}
-          {(manage || (scope && mine)) && <SellerGoalsForm canGlobal={canGlobal} editableIds={editableIds} showGlobal={manage} global={globalVals} people={sellerPeople} />}
-        </section>
-      )}
+      <MetasShell tabs={tabs} />
     </div>
   );
 }

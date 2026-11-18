@@ -52,5 +52,5 @@ export async function upsertPaymentTerm(tx: Tx, name: string | null | undefined)
 /** A negociação espelha a última cotação (valor, número e data), que é o que os avisos e as metas usam. */
 export async function syncDealFromQuotes(tx: Tx, dealId: number) {
   const [q] = await tx.select().from(dealQuotes).where(eq(dealQuotes.dealId, dealId)).orderBy(desc(dealQuotes.id)).limit(1);
-  await tx.update(deals).set({ valueCents: q?.totalCents ?? null, netValueCents: q?.netCents ?? q?.totalCents ?? null, quoteNumber: q?.number ?? null, quoteDate: q?.quoteDate ?? null, updatedAt: new Date() }).where(eq(deals.id, dealId));
+  await tx.update(deals).set({ valueCents: q?.totalCents ?? null, netValueCents: q?.netCents ?? q?.totalCents ?? null, weightKg: q?.weightKg ?? null, quoteNumber: q?.number ?? null, quoteDate: q?.quoteDate ?? null, updatedAt: new Date() }).where(eq(deals.id, dealId));
 }

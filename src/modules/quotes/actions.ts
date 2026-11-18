@@ -29,6 +29,7 @@ export type QuoteInput = {
   /** Sem itens: valor total digitado (R$). */ totalValue: string;
   /** Valor sem impostos informado pelo vendedor (vem corrigido do Salesforce). Vazio = calculado. */ netValue?: string;
   /** Link da cotação no Salesforce. */ link?: string;
+  /** Peso total (kg), ex.: "423,94". Vazio = sem peso. */ weight?: string;
   items: z.infer<typeof itemSchema>[]; followupDays?: number;
 };
 
@@ -74,7 +75,10 @@ export async function saveQuoteAction(dealId: number, quoteId: number | null, in
     if (dup.length) return fail(`Já existe a cotação ${number} nesta negociação. Cada cotação é única: edite a existente.`);
   }
   const days = input.followupDays && Number.isInteger(input.followupDays) && input.followupDays >= 1 && input.followupDays <= 30 ? input.followupDays : ALERT_RULES.defaultFollowupDays;
-  const values = { number, quoteDate: date || null, totalCents: t.totalCents, productsCents: t.productsCents, ipiCents: t.ipiCents, icmsCents: t.icmsCents, netCents: t.netCents, freightCents: list.length ? freightCents : null, freight: (f || null) as "CIF" | "FOB" | "RED" | null, paymentTerms: term, validityDays: input.validityDays && input.validityDays > 0 ? Math.min(input.validityDays, 365) : null, note: input.note.trim().slice(0, 2000) || null, link: link.slice(0, 500) || null };
+  const wRaw = (input.weight ?? "").trim();
+  const weightKg = wRaw ? Number(wRaw.replace(/\./g, "").replace(",", ".")) : null;
+  if (wRaw && (weightKg === null || !Number.isFinite(weightKg) || weightKg < 0 || weightKg > 1e7)) return fail("Peso inválido. Exemplo: 423,94.");
+  const values = { weightKg, number, quoteDate: date || null, totalCents: t.totalCents, productsCents: t.productsCents, ipiCents: t.ipiCents, icmsCents: t.icmsCents, netCents: t.netCents, freightCents: list.length ? freightCents : null, freight: (f || null) as "CIF" | "FOB" | "RED" | null, paymentTerms: term, validityDays: input.validityDays && input.validityDays > 0 ? Math.min(input.validityDays, 365) : null, note: input.note.trim().slice(0, 2000) || null, link: link.slice(0, 500) || null };
   const id = await db.transaction(async (tx) => {
     let qid = quoteId;
     if (qid) {
@@ -120,10 +124,10 @@ export async function deleteQuoteAction(dealId: number, quoteId: number): Promis
 }
 
 /** Procura um produto do catálogo pelo código (para preencher a descrição e o preço ao digitar). */
-export async function lookupProductAction(code: string): Promise<{ description: string; kind: string | null; unit: string | null; lastUnitCents: number | null } | null> {
+export async function lookupProductAction(code: string): Promise<{ description: string; kind: string | null; unit: string | null; lastUnitCents: number | null; weightKg: number | null } | null> {
   await requireUser();
   const c = code.trim();
   if (!c) return null;
   const [p] = await db.select().from(products).where(eq(products.code, c));
-  return p ? { description: p.description, kind: p.kind, unit: p.unit, lastUnitCents: p.lastUnitCents } : null;
+  return p ? { description: p.description, kind: p.kind, unit: p.unit, lastUnitCents: p.lastUnitCents, weightKg: p.weightKg } : null;
 }

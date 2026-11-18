@@ -10,6 +10,7 @@ import type { ChatMsg, Reaction } from "@/modules/chat/data";
 import { adminChatPurgeAction, chatProfileAction, deleteChatMessageAction, searchShareAction, sendChatMessageAction, sharedInfoAction, toggleReactionAction, type ChatProfile } from "@/modules/chat/actions";
 import type { ShareInfo, ShareItem, ShareKind } from "@/modules/chat/share";
 
+import { useConfirm } from "@/components/confirm-dialog";
 import { ROLE_META, type Role } from "@/config/roles";
 const ROLE_RANK: Record<Role, number> = { user: 1, seller: 1, manager: 2, admin: 3 };
 const ROLE_DOT: Record<Role, string> = { user: "#3b82f6", seller: "#22c55e", manager: "#eab308", admin: "#ef4444" };
@@ -148,6 +149,7 @@ function ProfileDialog({ userId, hex, isAdmin, onClose, onPurged }: { userId: nu
 export function ChatWidget({ channels, meId, isAdmin, initialUnread }: { channels: Channel[]; meId: number; isAdmin: boolean; initialUnread: Record<string, number> }) {
   const toast = useToast();
   const [open, setOpen] = useState(false);
+  const { ask, dialog } = useConfirm();
   const [channel, setChannel] = useState(channels[0].key);
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -314,7 +316,7 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread }: { channel
           </div>
           {m.reactions.length > 0 && <div className={`mt-1 flex flex-wrap gap-1 ${mine ? "justify-end" : ""}`}>{m.reactions.map((x) => <button key={x.emoji} type="button" onClick={() => react(m.id, x.emoji)} title={x.names.join(", ")} aria-label={`${x.emoji} ${x.count}`} aria-pressed={x.mine} className={`figure rounded-full border px-1.5 py-0.5 text-xs transition ${x.mine ? "border-accent bg-accent/15" : "border-line bg-panel hover:border-accent/50"}`}>{x.emoji} {x.count}</button>)}</div>}
           {pickFor === m.id && <div className="mt-1 flex gap-0.5 rounded-full border border-line bg-panel p-1 shadow-lg">{REACTION_EMOJIS.map((e) => <button key={e} type="button" onClick={() => react(m.id, e)} className="rounded-full px-1.5 py-0.5 text-base transition hover:scale-125 hover:bg-sunk" aria-label={`Reagir com ${e}`}>{e}</button>)}</div>}
-          <p className="mt-0.5 flex items-center gap-1.5 px-1 text-[10px] text-muted">{hm.format(new Date(m.at))}<button type="button" aria-label="Reagir" title="Reagir" onClick={() => setPickFor(pickFor === m.id ? null : m.id)} className="opacity-0 transition hover:text-accent focus:opacity-100 group-hover:opacity-100 max-lg:opacity-60"><SmilePlus size={12} /></button>{m.canDelete && <button type="button" aria-label="Apagar mensagem" title="Apagar" onClick={() => del(m.id)} className="opacity-0 transition hover:text-danger focus:opacity-100 group-hover:opacity-100 max-lg:opacity-60"><Trash2 size={11} /></button>}</p>
+          <p className="mt-0.5 flex items-center gap-1.5 px-1 text-[10px] text-muted">{hm.format(new Date(m.at))}<button type="button" aria-label="Reagir" title="Reagir" onClick={() => setPickFor(pickFor === m.id ? null : m.id)} className="opacity-0 transition hover:text-accent focus:opacity-100 group-hover:opacity-100 max-lg:opacity-60"><SmilePlus size={12} /></button>{m.canDelete && <button type="button" aria-label="Apagar mensagem" title="Apagar" onClick={() => ask({ title: "Apagar esta mensagem?", body: "Ela some para todos no chat.", label: "Sim, apagar", icon: Trash2, onConfirm: () => void del(m.id) })} className="opacity-0 transition hover:text-danger focus:opacity-100 group-hover:opacity-100 max-lg:opacity-60"><Trash2 size={11} /></button>}</p>
         </div>
       </div>,
     );
@@ -374,6 +376,7 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread }: { channel
         {open ? <X size={24} aria-hidden /> : <MessageCircle size={24} aria-hidden />}
         {!open && total > 0 && <span className="figure absolute -right-1 -top-1 min-w-5 rounded-full border-2 border-bg bg-danger px-1 text-center text-[11px] font-bold leading-4 text-white">{total > 99 ? "99+" : total}</span>}
       </button>
+      {dialog}
       {info !== null && <InfoDialog messageId={info} onClose={() => setInfo(null)} />}
       {profile && <ProfileDialog userId={profile.id} hex={profile.hex} isAdmin={isAdmin} onClose={() => setProfile(null)} onPurged={() => void poll(true)} />}
     </>

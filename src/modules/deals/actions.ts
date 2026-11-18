@@ -316,7 +316,7 @@ export async function lookupCnpjAction(raw: string): Promise<CnpjLookup> {
   };
 }
 
-export type NewDealInput = { cnpj: string; company: string; contactName: string; phone: string; email?: string; address?: { street: string | null; neighborhood: string | null; zip: string | null; stateReg: string | null; city: string | null; uf: string | null }; note: string; color: string | null; data: DealDataInput; items?: QuoteItem[] };
+export type NewDealInput = { cnpj: string; company: string; contactName: string; phone: string; email?: string; address?: { street: string | null; neighborhood: string | null; zip: string | null; stateReg: string | null; city: string | null; uf: string | null }; note: string; color: string | null; data: DealDataInput; items?: QuoteItem[]; /** Peso total da cotação (kg), lido do PDF. */ weightKg?: number | null };
 
 /** Vendedor abre uma negociação por conta própria (algo que veio por fora, sem passar pelo SDR). CNPJ obrigatório. */
 export async function createDealManualAction(input: NewDealInput): Promise<ActionResult & { id?: number }> {
@@ -380,7 +380,7 @@ export async function createDealManualAction(input: NewDealInput): Promise<Actio
         const list = items.map((i, n) => ({ ...normalizeItem(i), seq: (n + 1) * 10 }));
         const t = list.length ? totalsOf(list, 0, await getExtraTaxPct()) : { productsCents: null, ipiCents: null, icmsCents: null, netCents: cents, totalCents: cents };
         const term = await upsertPaymentTerm(tx, dp.patch.paymentTerms);
-        const [q] = await tx.insert(dealQuotes).values({ dealId: d.id, createdBy: me.id, number: dp.patch.quoteNumber ?? null, quoteDate: dp.patch.quoteDate ?? null, totalCents: t.totalCents ?? cents, productsCents: t.productsCents, ipiCents: t.ipiCents, icmsCents: t.icmsCents, netCents: t.netCents, freight: dp.patch.freight ?? null, paymentTerms: term }).returning({ id: dealQuotes.id });
+        const [q] = await tx.insert(dealQuotes).values({ dealId: d.id, createdBy: me.id, number: dp.patch.quoteNumber ?? null, quoteDate: dp.patch.quoteDate ?? null, totalCents: t.totalCents ?? cents, productsCents: t.productsCents, ipiCents: t.ipiCents, icmsCents: t.icmsCents, netCents: t.netCents, freight: dp.patch.freight ?? null, paymentTerms: term, weightKg: input.weightKg && input.weightKg > 0 && input.weightKg < 1e7 ? input.weightKg : null }).returning({ id: dealQuotes.id });
         if (list.length) { await tx.insert(dealQuoteItems).values(list.map((i) => ({ ...i, dealId: d.id, quoteId: q.id, quoteNumber: dp.patch.quoteNumber ?? null }))); await upsertProducts(tx, list); }
         await syncDealFromQuotes(tx, d.id);
       }

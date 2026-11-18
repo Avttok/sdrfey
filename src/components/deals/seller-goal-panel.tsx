@@ -7,18 +7,18 @@ const nf = new Intl.NumberFormat("pt-BR");
 const val = (kind: "count" | "money", v: number) => (kind === "money" ? fmtBRL(Math.round(v * 100)) : nf.format(v));
 
 /** Metas do mês do vendedor: uma barra por métrica, o peso de cada uma e a meta geral ponderada. */
-export function SellerGoalPanel({ actual, targets, weights, bonusReais, bonusSales, monthLabel }: { actual: SellerActuals; targets: SellerTargets; weights: SellerWeights; bonusReais: number; bonusSales: number; monthLabel: string }) {
+export function SellerGoalPanel({ actual, targets, weights, bonusReais, bonusSales, monthLabel, name, hex, compact }: { name?: string; hex?: string; compact?: boolean; actual: SellerActuals; targets: SellerTargets; weights: SellerWeights; bonusReais: number; bonusSales: number; monthLabel: string }) {
   const { each, overall } = attainment(actual, targets, weights);
   const done = overall >= 100;
   return (
-    <section className={`${panelCls} space-y-5 p-5 sm:p-6 ${done ? "border-ok/60" : ""}`}>
+    <section className={`${panelCls} ${compact ? "space-y-4 p-4" : "space-y-5 p-5 sm:p-6"} ${done ? "border-ok/60" : ""}`}>
       <div className="flex flex-wrap items-center gap-4">
         <span className="grid size-11 place-items-center rounded-2xl bg-grad-soft text-accent"><Target size={22} aria-hidden /></span>
-        <div className="min-w-0 flex-1"><h2 className="display text-xl">Meta do mês</h2><p className="text-sm text-muted first-letter:uppercase">{monthLabel}</p></div>
+        <div className="min-w-0 flex-1"><h2 className="display flex items-center gap-2 text-xl">{name ? <><span aria-hidden className="size-3 rounded-full" style={{ background: hex }} />{name}</> : "Meta do mês"}</h2><p className="text-sm text-muted first-letter:uppercase">{monthLabel}</p></div>
         <div className="text-right"><p className="figure text-4xl font-bold leading-none">{Math.round(overall)}%</p><p className="text-xs text-muted">meta geral (pesos)</p></div>
       </div>
       <div className="h-3 overflow-hidden rounded-full bg-sunk"><div className={`h-full rounded-full transition-[width] duration-700 ${done ? "bg-ok" : "bg-grad"}`} style={{ width: `${Math.min(100, overall)}%` }} /></div>
-      <ul className="space-y-4">
+      <ul className={compact ? "grid gap-x-6 gap-y-3 sm:grid-cols-2" : "space-y-4"}>
         {SELLER_METRICS.map((m) => {
           const pct = each[m.key];
           return (
@@ -26,7 +26,7 @@ export function SellerGoalPanel({ actual, targets, weights, bonusReais, bonusSal
               <div className="mb-1.5 flex flex-wrap items-baseline gap-x-3 text-sm">
                 <span className="font-semibold">{m.label}</span>
                 <span className="rounded-full bg-sunk px-2 py-0.5 text-[11px] font-medium text-muted">peso {weights[m.key]}%</span>
-                <span className="figure ml-auto text-xs"><b className="text-sm">{val(m.kind, actual[m.key])}</b> <span className="text-muted">de {val(m.kind, targets[m.key])}</span></span>
+                <span className="figure ml-auto whitespace-nowrap text-xs"><b className="text-sm">{val(m.kind, actual[m.key])}</b> <span className="text-muted">de {val(m.kind, targets[m.key])}</span></span>
                 <b className={`figure w-12 text-right ${pct >= 100 ? "text-ok" : ""}`}>{Math.round(pct)}%</b>
               </div>
               <div className="h-2.5 overflow-hidden rounded-full bg-sunk"><div className={`h-full rounded-full transition-[width] duration-700 ${pct >= 100 ? "bg-ok" : "bg-accent"}`} style={{ width: `${Math.min(100, pct)}%` }} /></div>
