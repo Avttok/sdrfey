@@ -179,3 +179,10 @@ body.dragging, body.dragging * { user-select: none !important; cursor: grabbing 
   97% { transform: none; opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) { .fey-live path { animation: none; } }
+
+/* disquete "salvando": desce, enche e volta */
+@keyframes floppy { 0%,100% { transform: translateY(0) scale(1); } 40% { transform: translateY(5px) scale(.92); } 70% { transform: translateY(-3px) scale(1.06); } }
+.animate-floppy { animation: floppy 0.9s ease-in-out infinite; }
+@keyframes shake { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-12deg); } 75% { transform: rotate(12deg); } }
+.animate-shake { animation: shake 0.5s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .animate-floppy, .animate-shake { animation: none; } }

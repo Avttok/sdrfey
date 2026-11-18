@@ -3,7 +3,7 @@ export const SELLER_METRICS = [
   { key: "calls", label: "Ligações", kind: "count", target: 600, weight: 10, hint: "Ligações registradas nas negociações no mês" },
   { key: "engaged", label: "Engajados", kind: "count", target: 30, weight: 25, hint: "Clientes diferentes com quem você falou no mês" },
   { key: "quotes", label: "Cotações", kind: "money", target: 100_000, weight: 20, hint: "Valor das cotações enviadas no mês" },
-  { key: "sold", label: "Vendidos/Faturados", kind: "money", target: 50_000, weight: 20, hint: "Valor das vendas fechadas no mês" },
+  { key: "sold", label: "Faturados", kind: "money", target: 50_000, weight: 20, hint: "Valor das vendas fechadas no mês" },
   { key: "reactivated", label: "Reativados", kind: "count", target: 15, weight: 25, hint: "Clientes inativos que voltaram a comprar no mês" },
 ] as const;
 export type SellerMetricKey = (typeof SELLER_METRICS)[number]["key"];

@@ -4,11 +4,10 @@ import type { Metadata } from "next";
 import { Play, Shuffle } from "lucide-react";
 import { and, eq, sql } from "drizzle-orm";
 import { AttendFlow } from "@/components/attend-flow";
-import { GoalBar } from "@/components/goal-bar";
+import { GoalTiles } from "@/components/goal-tiles";
 import { SubmitButton } from "@/components/submit-button";
 import { panelCls } from "@/components/ui";
 import { attendanceSessions, db, leads, users, visits } from "@/db";
-import { plural } from "@/lib/format";
 import { requirePerm } from "@/modules/auth/guard";
 import { startAction } from "@/modules/leads/actions";
 import { getSettings } from "@/modules/settings/get";
@@ -48,7 +47,6 @@ export default async function AttendPage() {
       (select count(*) from deals d where d.sdr_id = ${me.id} and not d.is_test and d.created_at >= ${today})::int as converted`);
     extra.calls = r?.calls ?? 0; extra.converted = r?.converted ?? 0;
   }
-  const anyGoal = goals.attended.on || goals.scheduled.on || goals.calls.on || goals.converted.on;
 
   if (!lead) {
     return (
@@ -65,17 +63,13 @@ export default async function AttendPage() {
             <h1 className="display text-3xl lg:text-4xl">Pronto para o próximo lead?</h1>
             <p className="mx-auto max-w-md text-sm text-muted md:mx-0">O sistema escolhe um lead livre para você. Se quiser um específico, use ATENDER na aba Leads ou no seu histórico.</p>
           </div>
-          <div className="mx-auto w-full max-w-sm text-left">
-            {anyGoal ? (
-              <div className="grid gap-4">
-                {goals.attended.on && <GoalBar label="Atendidos hoje" value={done?.n ?? 0} qty={goals.attended.qty} />}
-                {goals.scheduled.on && <GoalBar label="Agendados hoje" value={sched?.n ?? 0} qty={goals.scheduled.qty} alt />}
-                {goals.calls.on && <GoalBar label="Ligações hoje" value={extra.calls} qty={goals.calls.qty} />}
-                {goals.converted.on && <GoalBar label="Convertidos hoje" value={extra.converted} qty={goals.converted.qty} alt />}
-              </div>
-            ) : (
-              <p className="text-center text-sm text-muted">Hoje: <b className="figure text-ink">{done?.n ?? 0}</b> {plural(done?.n ?? 0, "atendido", "atendidos")} · <b className="figure text-ink">{sched?.n ?? 0}</b> {plural(sched?.n ?? 0, "agendado", "agendados")}</p>
-            )}
+          <div className="mx-auto w-full">
+            <GoalTiles items={[
+              ...(goals.attended.on ? [{ k: "attended" as const, label: "Atendidos", value: done?.n ?? 0, qty: goals.attended.qty }] : []),
+              ...(goals.scheduled.on ? [{ k: "scheduled" as const, label: "Agendados", value: sched?.n ?? 0, qty: goals.scheduled.qty }] : []),
+              ...(goals.calls.on ? [{ k: "calls" as const, label: "Ligações", value: extra.calls, qty: goals.calls.qty }] : []),
+              ...(goals.converted.on ? [{ k: "converted" as const, label: "Convertidos", value: extra.converted, qty: goals.converted.qty }] : []),
+            ]} />
           </div>
           <form action={startAction} className="flex justify-center">
             <SubmitButton><Play size={18} aria-hidden /> Shuffler</SubmitButton>

@@ -1,6 +1,7 @@
 "use client";
 
-import { CalendarCheck, Handshake, Phone, PhoneCall, type LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { KIND_ICON } from "@/components/goal-icons";
 import { useState } from "react";
 import { useRun } from "@/components/use-run";
 import { btnPrimary, inputCls, panelCls } from "@/components/ui";
@@ -11,7 +12,6 @@ type Kind = GoalKind;
 export type GoalPerson = { id: number; name: string; hex: string; off: boolean; today: Record<Kind, number>; own: Record<Kind, PersonGoalInput> };
 type Global = Record<Kind, { on: boolean; qty: number }>;
 
-export const KIND_ICON: Record<Kind, LucideIcon> = { attended: PhoneCall, scheduled: CalendarCheck, calls: Phone, converted: Handshake };
 const KINDS = SDR_KINDS.map((d) => ({ k: d.k, title: d.title, sub: d.sub, label: d.label, Icon: KIND_ICON[d.k] }));
 
 export function Switch({ on, onChange, label, disabled }: { on: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {

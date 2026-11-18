@@ -1,15 +1,17 @@
-"use client";
-
-import { Trophy } from "lucide-react";
+import { Clock, Flame, Trophy } from "lucide-react";
 import { panelCls } from "@/components/ui";
-import { KIND_ICON, type GoalPerson } from "@/components/goals-form";
+import { KIND_ICON } from "@/components/goal-icons";
+import type { GoalPerson } from "@/components/goals-form";
+import type { SdrPace } from "@/config/pace";
 import { SDR_KINDS, type GoalKind } from "@/modules/settings/goals";
 
 type Kind = GoalKind;
 const KS = SDR_KINDS.map((d) => d.k) as Kind[];
 type Global = Record<Kind, { on: boolean; qty: number }>;
+const nf = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
+const hm = (d: Date) => new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }).format(d);
 
-function Ring({ pct, size = 64, children }: { pct: number; size?: number; children?: React.ReactNode }) {
+export function Ring({ pct, size = 64, children }: { pct: number; size?: number; children?: React.ReactNode }) {
   const r = (size - 10) / 2, c = 2 * Math.PI * r, done = pct >= 100;
   return (
     <span className="relative grid shrink-0 place-items-center" style={{ width: size, height: size }}>
@@ -22,8 +24,18 @@ function Ring({ pct, size = 64, children }: { pct: number; size?: number; childr
   );
 }
 
-/** Resumo do dia: o total da equipe e um cartão por pessoa, com anéis de progresso de atendidos e agendados. */
-export function SdrOverview({ global, people, showTeam }: { global: Global; people: GoalPerson[]; showTeam: boolean }) {
+/** Quadro único para quem está com todas as metas desligadas. */
+export function GoalsOff({ name, hex }: { name?: string; hex?: string }) {
+  return (
+    <section className={`${panelCls} p-5`}>
+      {name && <p className="mb-2 flex items-center gap-2 font-semibold"><span aria-hidden className="size-3 rounded-full" style={{ background: hex }} />{name}</p>}
+      <p className="rounded-xl bg-sunk/60 px-4 py-5 text-center text-sm font-medium text-muted">Metas desativadas</p>
+    </section>
+  );
+}
+
+/** Resumo do dia: total da equipe e, por pessoa, uma meta embaixo da outra com ritmo e previsão. Meta desligada nem aparece. */
+export function SdrOverview({ global, people, paces, showTeam }: { global: Global; people: GoalPerson[]; paces: Record<number, Partial<Record<Kind, SdrPace>>>; showTeam: boolean }) {
   const cfg = people.map((p) => KS.map((k) => {
     const on = !p.off && (p.own[k].on ?? global[k].on), qty = p.own[k].qty ?? global[k].qty;
     return { k, on, qty, n: p.today[k], pct: on && qty ? (p.today[k] / qty) * 100 : 0 };
@@ -41,28 +53,49 @@ export function SdrOverview({ global, people, showTeam }: { global: Global; peop
           {totals.map((t) => { const M = META[t.k]; return (
             <section key={t.k} className={`${panelCls} flex items-center gap-4 p-5`}>
               <Ring pct={t.pct} size={72} />
-              <div className="min-w-0"><p className="flex items-center gap-1.5 text-sm text-muted"><M.Icon size={15} aria-hidden /> {M.label} · equipe</p>
-                <p className="figure mt-1 whitespace-nowrap text-3xl font-bold leading-none">{t.n}<span className="text-lg font-medium text-muted"> / {t.qty}</span></p>
+              <div className="min-w-0"><p className="flex items-center gap-1.5 text-sm text-muted"><M.Icon size={15} aria-hidden /> {M.short} · equipe</p>
+                <p className="figure mt-1 whitespace-nowrap text-2xl font-bold leading-none">{t.n}<span className="text-base font-medium text-muted"> / {t.qty}</span></p>
                 {t.pct >= 100 && <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-ok"><Trophy size={12} aria-hidden /> Meta da equipe batida</p>}</div>
             </section>
           ); })}
         </div>
       )}
-      <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {people.map((p, i) => (
-          <li key={p.id} className={`${panelCls} space-y-4 p-4`}>
-            <p className="flex items-center gap-2 font-semibold"><span aria-hidden className="size-3 rounded-full" style={{ background: p.hex }} /><span className="truncate">{p.name}</span></p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-2 2xl:grid-cols-4">
-              {cfg[i].map((c) => { const M = META[c.k]; return (
-                <div key={c.k} className={`flex flex-col items-center gap-1.5 rounded-xl bg-sunk/40 px-2 py-3 text-center ${c.on ? "" : "opacity-50"}`}>
-                  {c.on ? <Ring pct={c.pct} size={64} /> : <span className="grid size-16 place-items-center text-xs text-muted">Desligada</span>}
-                  <p className="text-xs font-medium"><M.Icon size={12} className="mr-1 inline" aria-hidden />{M.short}</p>
-                  <p className="figure whitespace-nowrap text-xs text-muted">{c.on ? <><b className="text-ink">{c.n}</b> de {c.qty}</> : "—"}</p>
-                </div>
-              ); })}
-            </div>
-          </li>
-        ))}
+      <ul className={`grid items-start gap-3 ${people.length > 1 ? "lg:grid-cols-2 2xl:grid-cols-3" : "mx-auto max-w-3xl"}`}>
+        {people.map((p, i) => {
+          const rows = cfg[i].filter((c) => c.on);
+          if (rows.length === 0) return <li key={p.id}><GoalsOff name={p.name} hex={p.hex} /></li>;
+          return (
+            <li key={p.id} className={`${panelCls} space-y-4 p-5`}>
+              <p className="flex items-center gap-2 text-lg font-semibold"><span aria-hidden className="size-3 rounded-full" style={{ background: p.hex }} /><span className="truncate">{p.name}</span></p>
+              <ul className="space-y-4">
+                {rows.map((c) => {
+                  const M = META[c.k], pc = paces[p.id]?.[c.k], done = c.qty > 0 && c.n >= c.qty;
+                  return (
+                    <li key={c.k} className={`rounded-xl bg-sunk/40 p-4 ${done ? "ring-1 ring-ok/50" : ""}`}>
+                      <div className="flex items-center gap-2">
+                        <M.Icon size={16} className="shrink-0 text-accent" aria-hidden />
+                        <span className="flex-1 font-semibold">{M.short}</span>
+                        <b className={`figure text-sm ${done ? "text-ok" : ""}`}>{Math.round(c.pct)}%</b>
+                      </div>
+                      <p className="figure mt-1 text-sm"><b className="text-xl">{c.n}</b> <span className="text-muted">de {c.qty} hoje</span></p>
+                      <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-sunk"><div className={`h-full rounded-full transition-[width] duration-700 ${done ? "bg-ok" : "bg-grad"}`} style={{ width: `${Math.min(100, c.pct)}%` }} /></div>
+                      {pc && (
+                        <div className="mt-2.5 space-y-1.5 text-xs text-muted">
+                          <p className="flex items-start gap-1.5">
+                            {done ? <><Trophy size={13} className="mt-px shrink-0 text-ok" aria-hidden /><span><b className="text-ok">Meta batida!</b>{c.n > c.qty ? ` +${c.n - c.qty} acima.` : ""}</span></>
+                              : pc.etaAt ? <><Clock size={13} className="mt-px shrink-0 text-accent" aria-hidden /><span>Faltam <b className="figure text-ink">{pc.remaining}</b> · ritmo de {nf.format(pc.perHour!)}/h → bate a meta por volta das <b className="figure text-ink">{hm(pc.etaAt)}</b></span></>
+                              : <><Clock size={13} className="mt-px shrink-0" aria-hidden /><span>Faltam <b className="figure text-ink">{pc.remaining}</b> · sem ritmo hoje para prever o horário</span></>}
+                          </p>
+                          <p className="figure flex flex-wrap gap-x-3"><span>média {pc.avg == null ? "—" : nf.format(pc.avg)}/dia</span><span><Flame size={11} className="mr-0.5 inline" aria-hidden />melhor dia {pc.best}</span><span>{pc.daysHit}/{pc.daysWorked} dias na meta</span></p>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

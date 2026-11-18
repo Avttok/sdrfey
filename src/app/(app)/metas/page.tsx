@@ -14,9 +14,8 @@ import { hasSdrPart, hasSellerPart } from "@/config/roles";
 import { requirePerm } from "@/modules/auth/guard";
 import { goalScope } from "@/modules/auth/goal-scope";
 import { getSettings } from "@/modules/settings/get";
-import { MyDayDetail } from "@/components/my-goals-detail";
 import { sdrPace, sellerPace, type DayRow, type MonthCtx } from "@/config/pace";
-import { effectiveGoals, goalsOff, ownGoals, SDR_KINDS, type GoalKind } from "@/modules/settings/goals";
+import { goalsOff, ownGoals, SDR_KINDS, type GoalKind } from "@/modules/settings/goals";
 import { getSellerGoalSettings, getSellerMonth } from "@/modules/deals/goals";
 import { SellerGoalPanel } from "@/components/deals/seller-goal-panel";
 import { attainment, resolveSellerGoals, SELLER_METRICS } from "@/config/seller-goals";
@@ -56,7 +55,7 @@ export default async function Page() {
   const todayStr = spDate(new Date());
   const [yy, mm] = todayStr.split("-").map(Number);
   const mctx: MonthCtx = { today: todayStr, first: `${todayStr.slice(0, 7)}-01`, last: `${todayStr.slice(0, 7)}-${String(new Date(yy, mm, 0).getDate()).padStart(2, "0")}` };
-  const minePaces = mine ? Object.fromEntries(SELLER_METRICS.map((m) => [m.key, sellerPace(mine.m.actual[m.key], mine.targets[m.key], mctx)])) : undefined;
+  const pacesOf = (v: { m: { actual: Record<string, number> }; targets: Record<string, number> }) => Object.fromEntries(SELLER_METRICS.map((m) => [m.key, sellerPace(v.m.actual[m.key], v.targets[m.key], mctx)]));
   const both = showSdr && showSellers;
 
   const sdrData = async () => {
@@ -82,21 +81,20 @@ export default async function Page() {
 
   if (showSdr) {
     const sdr = await sdrData();
-    const mg = effectiveGoals(me, s);
-    let mineDetail: React.ReactNode = null;
-    if (SDR_KINDS.some((d) => mg[d.k].on)) {
-      const sp = sql`'America/Sao_Paulo'`;
-      const rows = await db.execute<{ k: string; day: string; n: number; first: string | null }>(sql`select k, day::text as day, count(*)::int as n, to_char(min(ts) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as first from (
-        select 'attended' as k, (saved_at at time zone ${sp})::date as day, saved_at as ts from attendance_sessions where user_id = ${me.id} and outcome = 'saved' and not is_test and saved_at >= now() - interval '16 days'
-        union all select 'scheduled', (v.created_at at time zone ${sp})::date, v.created_at from visits v join leads l on l.id = v.lead_id where v.user_id = ${me.id} and v.canceled_at is null and not l.is_test and v.created_at >= now() - interval '16 days'
-        union all select 'scheduled', (d.created_at at time zone ${sp})::date, d.created_at from deals d where d.sdr_id = ${me.id} and not d.is_test and d.created_at >= now() - interval '16 days'
-        union all select 'calls', (i.at at time zone ${sp})::date, i.at from interactions i where i.user_id = ${me.id} and not i.is_test and i.channel = 'ligacao' and i.at >= now() - interval '16 days'
-        union all select 'converted', (d.created_at at time zone ${sp})::date, d.created_at from deals d where d.sdr_id = ${me.id} and not d.is_test and d.created_at >= now() - interval '16 days') x group by k, day`);
-      mineDetail = <MyDayDetail items={SDR_KINDS.filter((d) => mg[d.k].on).map((d) => ({ label: d.label, pace: sdrPace(rows as unknown as DayRow[], d.k, mg[d.k].qty) }))} />;
+    const rows = sdr.people.length ? await db.execute<{ uid: number; k: string; day: string; n: number; first: string | null }>(sql`select uid, k, day::text as day, count(*)::int as n, to_char(min(ts) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as first from (
+        select user_id as uid, 'attended' as k, (saved_at at time zone 'America/Sao_Paulo')::date as day, saved_at as ts from attendance_sessions where user_id in (${sql.join(sdr.people.map((p) => sql`${p.id}`), sql`, `)}) and outcome = 'saved' and not is_test and saved_at >= now() - interval '16 days'
+        union all select v.user_id, 'scheduled', (v.created_at at time zone 'America/Sao_Paulo')::date, v.created_at from visits v join leads l on l.id = v.lead_id where v.user_id in (${sql.join(sdr.people.map((p) => sql`${p.id}`), sql`, `)}) and v.canceled_at is null and not l.is_test and v.created_at >= now() - interval '16 days'
+        union all select d.sdr_id, 'scheduled', (d.created_at at time zone 'America/Sao_Paulo')::date, d.created_at from deals d where d.sdr_id in (${sql.join(sdr.people.map((p) => sql`${p.id}`), sql`, `)}) and not d.is_test and d.created_at >= now() - interval '16 days'
+        union all select i.user_id, 'calls', (i.at at time zone 'America/Sao_Paulo')::date, i.at from interactions i where i.user_id in (${sql.join(sdr.people.map((p) => sql`${p.id}`), sql`, `)}) and not i.is_test and i.channel = 'ligacao' and i.at >= now() - interval '16 days'
+        union all select d.sdr_id, 'converted', (d.created_at at time zone 'America/Sao_Paulo')::date, d.created_at from deals d where d.sdr_id in (${sql.join(sdr.people.map((p) => sql`${p.id}`), sql`, `)}) and not d.is_test and d.created_at >= now() - interval '16 days') x group by uid, k, day`) : [];
+    const paces: Record<number, Partial<Record<GoalKind, ReturnType<typeof sdrPace>>>> = {};
+    for (const p of sdr.people) {
+      const mine = (rows as unknown as { uid: number; k: string; day: string; n: number; first: string | null }[]).filter((r) => r.uid === p.id) as DayRow[];
+      paces[p.id] = Object.fromEntries(SDR_KINDS.map((d) => [d.k, sdrPace(mine, d.k, p.own[d.k].qty ?? sdr.global[d.k].qty)]));
     }
     tabs.push({
       key: "sdr", label: "Atendimento", icon: <Headset size={16} aria-hidden />, sub: "Metas diárias: atendidos, agendados, ligações e convertidos.",
-      view: <div className="space-y-4">{mineDetail}<SdrOverview global={sdr.global} people={sdr.people} showTeam={manage && sdr.people.length > 1} /></div>,
+      view: <SdrOverview global={sdr.global} people={sdr.people} paces={paces} showTeam={manage && sdr.people.length > 1} />,
       edit: canEditSdr || manage ? <GoalsForm canGlobal={canGlobal} editableIds={editableIds} showGlobal={manage} global={sdr.global} people={sdr.people} /> : undefined,
     });
   }
@@ -108,10 +106,10 @@ export default async function Page() {
       view: (
         <div className="space-y-4">
           {manage && counted.length > 1 && <section className={`${panelCls} flex flex-wrap items-center gap-x-6 gap-y-2 p-5`}><div><p className="text-sm text-muted">Meta geral da equipe no mês</p><p className="figure text-4xl font-bold leading-none">{avg}%</p></div><div className="h-3 min-w-40 flex-1 overflow-hidden rounded-full bg-sunk"><div className={`h-full rounded-full ${avg >= 100 ? "bg-ok" : "bg-grad"}`} style={{ width: `${Math.min(100, avg)}%` }} /></div></section>}
-          {mine && <SellerGoalPanel paces={minePaces} actual={mine.m.actual} targets={mine.targets} weights={mine.weights} enabled={mine.enabled} allOff={mine.allOff} bonusReais={mine.m.bonusReais} bonusSales={mine.m.bonusSales} monthLabel={mine.m.monthLabel} />}
+          {mine && <SellerGoalPanel paces={pacesOf(mine)} actual={mine.m.actual} targets={mine.targets} weights={mine.weights} enabled={mine.enabled} allOff={mine.allOff} bonusReais={mine.m.bonusReais} bonusSales={mine.m.bonusSales} monthLabel={mine.m.monthLabel} />}
           {manage && views.filter((v) => v.u.id !== me.id).length > 0 && (
-            <div className="grid gap-3 xl:grid-cols-2">
-              {views.filter((v) => v.u.id !== me.id).map((v) => <SellerGoalPanel key={v.u.id} compact name={v.u.name} hex={bubbleHex(v.u.accent, v.u.id, v.u.roles)} actual={v.m.actual} targets={v.targets} weights={v.weights} enabled={v.enabled} allOff={v.allOff} bonusReais={v.m.bonusReais} bonusSales={v.m.bonusSales} monthLabel={v.m.monthLabel} />)}
+            <div className="grid items-start gap-3 xl:grid-cols-2">
+              {views.filter((v) => v.u.id !== me.id).map((v) => <SellerGoalPanel key={v.u.id} paces={pacesOf(v)} compact name={v.u.name} hex={bubbleHex(v.u.accent, v.u.id, v.u.roles)} actual={v.m.actual} targets={v.targets} weights={v.weights} enabled={v.enabled} allOff={v.allOff} bonusReais={v.m.bonusReais} bonusSales={v.m.bonusSales} monthLabel={v.m.monthLabel} />)}
             </div>
           )}
         </div>

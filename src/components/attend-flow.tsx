@@ -363,7 +363,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" className={btnGhost} disabled={step === 0} onClick={() => go(prevStep(step))}><ChevronLeft size={16} aria-hidden /> Voltar</button>
+        {step > 0 && <button type="button" className={btnGhost} onClick={() => go(prevStep(step))}><ChevronLeft size={16} aria-hidden /> Voltar</button>}
         {step < STEPS.length - 1 && <button type="button" className={btnPrimary} onClick={() => go(nextStep(step))}>Avançar <ChevronRight size={16} aria-hidden /></button>}
         <span className="flex-1" />
         <button type="button" className={btnGhost} disabled={pending} title="Esconde este lead só de você por 24 h e não conta na meta" onClick={() => ask({ title: "Pular este lead?", body: "Ele fica escondido só de você por 24 h e não conta na meta. Você recebe o próximo.", label: "Sim, pular", tone: "warn", icon: SkipForward, onConfirm: () => run(async () => { const r = await skipAction(lead.id); if (r.ok) await startAction(); return r; }) })}><SkipForward size={16} aria-hidden /> Pular</button>
