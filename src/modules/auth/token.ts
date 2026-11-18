@@ -39,3 +39,19 @@ export async function readToken(token: string): Promise<SessionPayload | null> {
     return null;
   }
 }
+
+/** Cookie "entrar com 1 clique": fica neste aparelho depois de sair da conta. Trocar a senha derruba (versão da sessão). */
+export const QUICK_COOKIE = "sdrfey_quick";
+export const QUICK_SECONDS = 60 * 60 * 24 * 30;
+export type QuickPayload = { uid: number; v: number; name: string; rem: boolean };
+
+export async function signQuick(p: QuickPayload): Promise<string> {
+  return new SignJWT({ ...p, kind: "quick" }).setProtectedHeader({ alg: "HS256" }).setIssuedAt().setExpirationTime(`${QUICK_SECONDS}s`).sign(secret());
+}
+export async function readQuick(token: string): Promise<QuickPayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, secret(), { algorithms: ["HS256"] });
+    if (payload.kind !== "quick" || typeof payload.uid !== "number" || typeof payload.v !== "number" || typeof payload.name !== "string") return null;
+    return { uid: payload.uid, v: payload.v, name: payload.name, rem: payload.rem === true };
+  } catch { return null; }
+}

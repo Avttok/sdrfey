@@ -7,7 +7,7 @@ import { z } from "zod";
 import { db, users } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { clearSessionCookie, requireUser, setSessionCookie } from "./guard";
-import { SESSION_COOKIE, readToken } from "./token";
+import { QUICK_COOKIE, QUICK_SECONDS, SESSION_COOKIE, readQuick, readToken, signQuick } from "./token";
 import { checkPasswordRules, hashPassword, verifyPassword } from "./password";
 
 export type FormState = { error?: string; ok?: string; fields?: { username?: string } };
@@ -58,8 +58,39 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   redirect(user.mustChangePassword ? "/trocar-senha" : "/painel");
 }
 
+/** Sair: lembra a conta neste aparelho para entrar de novo com 1 clique (sem senha). */
 export async function logoutAction() {
+  const jar = await cookies();
+  const session = jar.get(SESSION_COOKIE)?.value ? await readToken(jar.get(SESSION_COOKIE)!.value) : null;
+  if (session) {
+    const [u] = await db.select({ name: users.name, active: users.active, v: users.sessionVersion }).from(users).where(eq(users.id, session.uid)).limit(1);
+    if (u?.active && u.v === session.v) {
+      jar.set(QUICK_COOKIE, await signQuick({ uid: session.uid, v: session.v, name: u.name, rem: session.rem }), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: QUICK_SECONDS });
+    }
+  }
   await clearSessionCookie();
+  redirect("/login");
+}
+
+/** Entrar com 1 clique na conta lembrada neste aparelho. */
+export async function quickLoginAction() {
+  const jar = await cookies();
+  const q = jar.get(QUICK_COOKIE)?.value ? await readQuick(jar.get(QUICK_COOKIE)!.value) : null;
+  if (!q) redirect("/login");
+  const [user] = await db.select().from(users).where(eq(users.id, q.uid)).limit(1);
+  if (!user || !user.active || user.sessionVersion !== q.v || (user.lockedUntil && user.lockedUntil > new Date())) {
+    jar.delete(QUICK_COOKIE);
+    redirect("/login");
+  }
+  await db.update(users).set({ failedAttempts: 0, lockedUntil: null, lastLoginAt: new Date() }).where(eq(users.id, user.id));
+  await logAudit(db, { userId: user.id, entity: "user", action: "entrou no sistema (1 clique)" });
+  await setSessionCookie(user.id, user.sessionVersion, q.rem);
+  redirect(user.mustChangePassword ? "/trocar-senha" : "/painel");
+}
+
+/** "Esquecer este aparelho": apaga a conta lembrada. */
+export async function forgetQuickAction() {
+  (await cookies()).delete(QUICK_COOKIE);
   redirect("/login");
 }
 

@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { CalendarCheck, MessageCircle, Shuffle } from "lucide-react";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { getCurrentUser } from "@/modules/auth/guard";
+import { forgetQuickAction, quickLoginAction } from "@/modules/auth/actions";
+import { QUICK_COOKIE, readQuick } from "@/modules/auth/token";
+import { SubmitButton } from "@/components/submit-button";
 import { LoginForm } from "@/components/login-form";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -12,12 +16,14 @@ export const dynamic = "force-dynamic";
 
 const FEATURES = [
   { icon: Shuffle, title: "Um lead por vez", text: "O sistema sorteia o próximo e trava o lead só para você." },
-  { icon: MessageCircle, title: "Do e-mail à ligação", text: "Modelos prontos, WhatsApp em um clique e telefones em ordem." },
+  { icon: MessageCircle, title: "Do e-mail à ligação", text: "Modelos prontos e WhatsApp em um clique." },
   { icon: CalendarCheck, title: "Até o agendamento", text: "Metas do dia, visitas marcadas e tudo no histórico." },
 ];
 
 export default async function LoginPage() {
   if (await getCurrentUser()) redirect("/");
+  const qc = (await cookies()).get(QUICK_COOKIE)?.value;
+  const quick = qc ? await readQuick(qc) : null;
   return (
     <main className="grid min-h-screen lg:grid-cols-[1.15fr_1fr]">
       <section className="relative flex flex-col justify-between gap-10 overflow-hidden px-6 py-8 text-white sm:px-12 sm:py-12" style={{ backgroundImage: "linear-gradient(145deg, #0b1020 0%, #1e1b4b 45%, #312e81 100%)" }}>
@@ -35,7 +41,7 @@ export default async function LoginPage() {
             {FEATURES.map(({ icon: Icon, title, text }) => (
               <li key={title} className="flex items-start gap-3.5">
                 <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/12 ring-1 ring-white/20 backdrop-blur"><Icon size={19} aria-hidden /></span>
-                <span><span className="block font-semibold">{title}</span><span className="block text-sm text-white/70">{text}</span></span>
+                <span><span className="block font-semibold">{title}</span><span className="block text-balance text-sm text-white/70">{text}</span></span>
               </li>
             ))}
           </ul>
@@ -49,8 +55,21 @@ export default async function LoginPage() {
           <div className="rounded-3xl border border-line bg-panel p-7 shadow-xl sm:p-8">
             <span aria-hidden className="mb-5 block h-1 w-14 rounded-full bg-grad" />
             <h2 className="display mb-1.5 text-3xl">Bem-vindo de volta</h2>
-            <p className="mb-7 text-sm text-muted">Entre com o usuário e a senha que você recebeu.</p>
-            <LoginForm />
+            {quick ? (
+              <div className="space-y-4">
+                <p className="text-sm text-muted">Você saiu da conta neste aparelho. Entre de novo com um clique.</p>
+                <form action={quickLoginAction}>
+                  <SubmitButton className="!h-auto w-full !justify-start gap-3 !px-4 !py-3 text-left">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white/25 text-base font-bold">{quick.name.trim().slice(0, 1).toUpperCase()}</span>
+                    <span className="min-w-0"><span className="block text-xs font-normal opacity-80">Entrar como</span><span className="block truncate text-base font-semibold">{quick.name}</span></span>
+                  </SubmitButton>
+                </form>
+                <form action={forgetQuickAction}><button type="submit" className="w-full text-center text-sm text-muted underline-offset-2 hover:underline">Usar outra conta</button></form>
+              </div>
+            ) : (<>
+              <p className="mb-7 text-sm text-muted">Entre com o usuário e a senha que você recebeu.</p>
+              <LoginForm />
+            </>)}
           </div>
         </div>
       </section>

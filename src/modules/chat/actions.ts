@@ -7,7 +7,7 @@ import { logAudit } from "@/modules/audit/log";
 import { publicRoles, type Role } from "@/config/roles";
 import { requireUser } from "@/modules/auth/guard";
 import { canUseChannel, REACTION_EMOJIS } from "./channels";
-import { chatEnabled, isMod, listMessages, type ChatMsg } from "./data";
+import { chatEnabled, DELETE_WINDOW_MS, isMod, listMessages, type ChatMsg } from "./data";
 import { searchShareable, shareInfo, shareLabel, type ShareInfo, type ShareItem, type ShareKind } from "./share";
 
 type R<T> = ({ ok: true } & T) | { ok: false; message: string };
@@ -45,6 +45,7 @@ export async function deleteChatMessageAction(id: number): Promise<R<object>> {
   const [m] = await db.select().from(chatMessages).where(eq(chatMessages.id, id));
   if (!m || !canUseChannel(me.roles, m.channel)) return bad("Mensagem não encontrada.");
   if (m.userId !== me.id && !isMod(me)) return bad("Só quem escreveu, gestores e o Adm apagam mensagens.");
+  if (!me.roles.includes("admin") && Date.now() - m.createdAt.getTime() > DELETE_WINDOW_MS) return bad("Só dá para apagar uma mensagem até 15 minutos depois de enviada.");
   await db.update(chatMessages).set({ deletedAt: new Date() }).where(eq(chatMessages.id, id));
   return { ok: true };
 }

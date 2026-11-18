@@ -16,7 +16,7 @@ export function Logo({ size = "md", tone = "brand" }: { size?: "md" | "lg"; tone
   const light = tone === "light";
   return (
     <span className={`inline-flex items-center ${size === "lg" ? "gap-4" : "gap-2.5"}`}>
-      <FeyMark animated size={size === "lg" ? 60 : 38} color={light ? "#fff" : "#E9283A"} />
+      <FeyMark animated size={size === "lg" ? 60 : 38} color={light ? "#fff" : "#E9283A"} className={light ? "fey-now" : ""} />
       <span className={`display font-bold leading-none tracking-wide ${size === "lg" ? "text-5xl" : "text-[1.7rem]"}`}
         style={light ? { color: "#fff", textShadow: "0 2px 12px rgb(0 0 0 / .35)" } : undefined}>
         SDR

@@ -56,3 +56,12 @@ describe("ritmo", () => {
     expect(p.onTrack).toBe(false); expect(p.needPerDay).toBeCloseTo(300 / 9);
   });
 });
+
+import { readQuick, signQuick } from "@/modules/auth/token";
+describe("login de 1 clique", () => {
+  it("assina e lê o cookie; lixo é recusado", async () => {
+    const t = await signQuick({ uid: 3, v: 2, name: "Ruan", rem: true });
+    expect(await readQuick(t)).toEqual({ uid: 3, v: 2, name: "Ruan", rem: true });
+    expect(await readQuick("lixo")).toBeNull();
+  });
+});

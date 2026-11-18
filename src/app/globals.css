@@ -172,6 +172,8 @@ body.dragging, body.dragging * { user-select: none !important; cursor: grabbing 
 
 /* Marca da FEY: a cada 15 s as barras "acendem" em onda; o resto do tempo ela só brilha de leve. */
 .fey-live path { transform-box: fill-box; transform-origin: center; animation: fey-wave 8s ease-in-out infinite; animation-delay: calc(var(--i, 0) * 0.14s); }
+/* na tela de login a onda já passa logo ao abrir, sem esperar o primeiro ciclo */
+.fey-now path { animation-delay: calc(var(--i, 0) * 0.14s - 6.6s); }
 @keyframes fey-wave {
   0%, 88%, 100% { transform: none; opacity: 1; }
   91% { transform: translateX(-7%) scaleX(0.94); opacity: 0.35; }

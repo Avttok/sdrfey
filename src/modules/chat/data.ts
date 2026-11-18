@@ -11,6 +11,8 @@ export type ChatMsg = {
   id: number; channel: string; userId: number | null; name: string; roles: Role[]; hex: string; body: string; at: string; reactions: Reaction[];
   share: { kind: "lead" | "deal" | "quote"; id: number; label: string } | null;
   canDelete: boolean;
+  /** até quando dá para apagar (ms); null = sem limite (Adm) */
+  delUntil: number | null;
 };
 
 /** O chat está disponível para esta conta? (ligado pelo Adm e permissão de uso) */
@@ -19,6 +21,8 @@ export async function chatEnabled(me: CurrentUser): Promise<boolean> {
   return (await getSettings()).chat_on === 1;
 }
 
+/** Prazo para apagar a própria mensagem (o Adm apaga sempre). */
+export const DELETE_WINDOW_MS = 15 * 60_000;
 export const isMod = (me: CurrentUser) => me.roles.includes("admin") || me.roles.includes("manager");
 
 export async function listMessages(me: CurrentUser, channel: string, o: { after?: number; before?: number; limit?: number } = {}): Promise<ChatMsg[]> {
@@ -35,6 +39,7 @@ export async function listMessages(me: CurrentUser, channel: string, o: { after?
     body: m.body, at: m.createdAt.toISOString(),
     share: m.shareKind && m.shareId ? { kind: m.shareKind, id: m.shareId, label: m.shareLabel ?? "" } : null,
     canDelete: mod || m.userId === me.id,
+    delUntil: me.roles.includes("admin") ? null : m.createdAt.getTime() + DELETE_WINDOW_MS,
   }));
 }
 
