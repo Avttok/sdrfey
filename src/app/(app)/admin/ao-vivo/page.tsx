@@ -2,6 +2,7 @@ import { desc, eq } from "drizzle-orm";
 import { Radio } from "lucide-react";
 import { DisconnectButton, LiveToolbar } from "@/components/admin/live-actions";
 import { LiveRefresh } from "@/components/admin/live-refresh";
+import { ActivityIcon } from "@/components/activity-icon";
 import { RoleBadge } from "@/components/role-badge";
 import { topRole } from "@/config/roles";
 import { requireAdmin } from "@/modules/auth/guard";
@@ -36,7 +37,10 @@ export default async function Page() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-2 truncate font-semibold">{r.name}<RoleBadge role={topRole(r.roles)} /></p>
-                <p className={`truncate text-sm ${r.online ? "text-ok" : "text-muted"}`}>{r.online ? (r.activity ?? "Online") : `Offline · visto ${fmtDateTime(r.last)}`}</p>
+                <p className={`flex items-center gap-1.5 truncate text-sm ${!r.online ? "text-muted" : r.activity?.startsWith("Ausente") ? "text-warn" : "text-ok"}`}>
+                  <ActivityIcon text={r.online ? r.activity : null} kind={r.online ? undefined : "away"} size={14} className="shrink-0" />
+                  <span className="truncate">{r.online ? (r.activity ?? "Online") : `Offline · visto ${fmtDateTime(r.last)}`}</span>
+                </p>
               </div>
               {r.uid !== me.id && <DisconnectButton id={r.uid} name={r.name} />}
             </li>

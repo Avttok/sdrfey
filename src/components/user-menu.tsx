@@ -2,19 +2,34 @@
 
 import { Check, LogOut, Palette, Settings2 } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { ActivityIcon } from "@/components/activity-icon";
 import { RoleBadge } from "@/components/role-badge";
 import { ThemeTile } from "@/components/theme-toggle";
 import { ROLES, type Role } from "@/config/roles";
+import { describePath } from "@/config/activity";
 import { CHOOSABLE_ACCENTS, swatchBg } from "@/config/theme";
 import { logoutAction } from "@/modules/auth/actions";
 import { setAccentAction } from "@/modules/users/actions";
+import { myActivityAction } from "@/modules/users/presence";
 import { SubmitButton } from "./submit-button";
 
 /** Foto (iniciais) da pessoa e as tags de cargo. Ao clicar abre o menu da conta. */
-export function UserMenu({ name, username, hex, onHex, accentKey, roles, activity, side = false, collapsed = false }: { accentKey?: string; name: string; username: string; hex: string; onHex: string; roles: Role[]; activity?: string | null; side?: boolean; collapsed?: boolean }) {
+export function UserMenu({ name, username, hex, onHex, accentKey, roles, side = false, collapsed = false }: { accentKey?: string; name: string; username: string; hex: string; onHex: string; roles: Role[]; side?: boolean; collapsed?: boolean }) {
   const [open, setOpen] = useState(false);
+  const path = usePathname();
+  const [live, setLive] = useState<string | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    let off = false;
+    const load = () => void myActivityAction().then((a) => { if (!off) setLive(a); }).catch(() => {});
+    load();
+    const t = setInterval(load, 15_000);
+    return () => { off = true; clearInterval(t); };
+  }, [open]);
+  const activity = (live && !live.startsWith("Ausente") ? live : null) ?? describePath(path).text;
   const box = useRef<HTMLDivElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<React.CSSProperties>({});
@@ -71,9 +86,8 @@ export function UserMenu({ name, username, hex, onHex, accentKey, roles, activit
                 <p className="truncate text-xs opacity-75">@{username}</p>
               </div>
             </div>
-            <p className="relative mt-4 flex items-center gap-2 rounded-xl bg-black/25 px-3 py-2 text-xs font-medium backdrop-blur-sm" title={activity ? `Atendendo ${activity}` : "Disponível"}>
-              <span aria-hidden className={`size-2 shrink-0 rounded-full ${activity ? "animate-pulse bg-amber-300" : "bg-ok"}`} />
-              <span className="min-w-0 truncate">{activity ? <>Atendendo <b>{activity}</b></> : "Disponível · sem atendimento aberto"}</span>
+            <p className="relative mt-4 flex items-center gap-2 rounded-xl bg-black/25 px-3 py-2 text-xs font-medium backdrop-blur-sm" title={activity}>
+              <ActivityIcon text={activity} size={14} className="shrink-0" /><span className="min-w-0 flex-1 truncate">{activity}</span><span aria-hidden className="size-2 shrink-0 animate-pulse rounded-full bg-ok" />
             </p>
             <div className="relative mt-3 flex flex-wrap gap-1.5">{sorted.map((r) => <RoleBadge key={r} role={r} />)}</div>
           </div>

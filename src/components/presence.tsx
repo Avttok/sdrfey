@@ -2,19 +2,18 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { NAV } from "@/config/nav";
-import { heartbeatAction } from "@/modules/leads/actions";
+import { pingAction } from "@/modules/users/presence";
 
-/** Avisa a cada 30 s que a pessoa está online e em qual aba (a tela de atendimento faz o próprio aviso). */
+/** Avisa a cada 30 s que a pessoa está online, em que tela está e se a aba está à vista (o Shuffler faz o próprio aviso). */
 export function Presence() {
   const path = usePathname();
   useEffect(() => {
     if (path.startsWith("/atender")) return;
-    const label = NAV.find((n) => path.startsWith(n.href))?.label ?? "Navegando";
-    const beat = () => void heartbeatAction(null, `Na aba ${label}`);
+    const beat = () => void pingAction(path, document.visibilityState === "visible").catch(() => {});
     beat();
     const t = setInterval(beat, 30_000);
-    return () => clearInterval(t);
+    document.addEventListener("visibilitychange", beat);
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", beat); };
   }, [path]);
   return null;
 }
