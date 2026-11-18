@@ -1,11 +1,11 @@
 "use client";
 
-import { Check, LogOut, Moon, Palette, Settings2, Sun } from "lucide-react";
+import { Check, LogOut, Palette, Settings2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { RoleBadge } from "@/components/role-badge";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { ThemeTile } from "@/components/theme-toggle";
 import { ROLES, type Role } from "@/config/roles";
 import { CHOOSABLE_ACCENTS, swatchBg } from "@/config/theme";
 import { logoutAction } from "@/modules/auth/actions";
@@ -82,11 +82,7 @@ export function UserMenu({ name, username, hex, onHex, accentKey, roles, activit
               <span className="grid size-9 place-items-center rounded-xl bg-grad text-on-accent shadow-sm"><Settings2 size={17} aria-hidden className="transition-transform duration-500 group-hover:rotate-180" /></span>
               <span>Minha conta<span className="block text-xs font-normal text-muted">Senha, barra e fonte</span></span>
             </Link>
-            <div className="menu-tile flex flex-col gap-2 rounded-2xl bg-sunk p-3 text-sm font-semibold">
-              <span className="grid size-9 place-items-center rounded-xl bg-grad-soft text-accent"><Moon size={17} aria-hidden className="hidden dark:block" /><Sun size={17} aria-hidden className="dark:hidden" /></span>
-              <span>Aparência</span>
-              <ThemeToggle />
-            </div>
+            <ThemeTile />
           </div>
           <form action={setAccentAction} className="px-4 pb-3">
             <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold"><Palette size={14} aria-hidden /> Cor do tema<span className="ml-auto text-xs font-normal text-muted">{CHOOSABLE_ACCENTS.find((a) => a.key === accentKey)?.label ?? "Padrão"}</span></p>

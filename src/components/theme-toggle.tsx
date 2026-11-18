@@ -55,3 +55,31 @@ export function ThemeToggle({ withLabels = false }: { withLabels?: boolean }) {
     </div>
   );
 }
+
+/** Cartão do menu do perfil: um toque alterna claro/noturno, com o ícone girando na troca. */
+export function ThemeTile() {
+  const [mode, setMode] = useState<Mode>("light");
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("theme");
+      if (saved === "dark" || saved === "light") setMode(saved);
+      else setMode(document.documentElement.classList.contains("dark") ? "dark" : "light");
+    } catch {}
+  }, []);
+  const dark = mode === "dark";
+  function flip() {
+    const next: Mode = dark ? "light" : "dark";
+    setMode(next);
+    try { localStorage.setItem("theme", next); } catch {}
+    apply(next);
+  }
+  return (
+    <button type="button" role="switch" aria-checked={dark} onClick={flip} className="menu-tile group flex flex-col gap-2 rounded-2xl bg-sunk p-3 text-left text-sm font-semibold transition hover:-translate-y-0.5 hover:shadow-md">
+      <span className="relative grid size-9 place-items-center overflow-hidden rounded-xl bg-grad-soft text-accent">
+        <Sun size={17} aria-hidden className={`absolute transition-all duration-500 ${dark ? "rotate-90 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100"}`} />
+        <Moon size={17} aria-hidden className={`absolute transition-all duration-500 ${dark ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-0 opacity-0"}`} />
+      </span>
+      <span>{dark ? "Modo noturno" : "Modo claro"}<span className="block text-xs font-normal text-muted">Toque para trocar</span></span>
+    </button>
+  );
+}
