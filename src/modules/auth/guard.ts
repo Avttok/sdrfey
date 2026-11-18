@@ -27,6 +27,7 @@ export type CurrentUser = {
   dailyGoalScheduled: number | null;
   goalAttendedOn: boolean | null;
   goalScheduledOn: boolean | null;
+  goalsExtra: Record<string, number>;
 };
 
 /** Grava o cookie de login. */
@@ -64,6 +65,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     dailyGoalScheduled: u.dailyGoalScheduled,
     goalAttendedOn: u.goalAttendedOn,
     goalScheduledOn: u.goalScheduledOn,
+    goalsExtra: u.goalsExtra ?? {},
     id: u.id,
     username: u.username,
     name: u.name,

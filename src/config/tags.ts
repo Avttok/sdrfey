@@ -120,6 +120,10 @@ export const SETTINGS_SEED: Record<string, unknown> = {
   daily_goal_scheduled: 5,
   goal_attended_on: 1,
   goal_scheduled_on: 1,
+  daily_goal_calls: 20,
+  goal_calls_on: 0,
+  daily_goal_converted: 2,
+  goal_converted_on: 0,
   /** Horas que um lead pulado fica escondido só para quem pulou. */
   skip_hours: 24,
   /** Dias até "Sem contato" voltar ao sorteio. */

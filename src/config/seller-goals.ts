@@ -15,26 +15,33 @@ export type SellerGoalSettings = Partial<Record<string, number>>;
 export type SellerTargets = Record<SellerMetricKey, number>;
 export type SellerWeights = Record<SellerMetricKey, number>;
 
-/** Metas e pesos valendo para uma pessoa: o que ela tem de próprio, senão o global (settings), senão o padrão do sistema. */
-export function resolveSellerGoals(global: SellerGoalSettings, own: Record<string, number> = {}): { targets: SellerTargets; weights: SellerWeights } {
-  const targets = {} as SellerTargets, weights = {} as SellerWeights;
+export type SellerEnabled = Record<SellerMetricKey, boolean>;
+
+/** Metas e pesos valendo para uma pessoa: o que ela tem de próprio, senão o global (settings), senão o padrão do sistema.
+ *  Liga/desliga: `off_<métrica>` (1 = desligada, 0 = ligada à força; ausente = herda) e `off_all` (desliga tudo desta pessoa). */
+export function resolveSellerGoals(global: SellerGoalSettings, own: Record<string, number> = {}): { targets: SellerTargets; weights: SellerWeights; enabled: SellerEnabled; allOff: boolean } {
+  const targets = {} as SellerTargets, weights = {} as SellerWeights, enabled = {} as SellerEnabled;
+  const allOff = own.off_all === 1;
   for (const m of SELLER_METRICS) {
     targets[m.key] = own[m.key] ?? global[m.key] ?? m.target;
     weights[m.key] = global[`w_${m.key}`] ?? m.weight;
+    enabled[m.key] = !allOff && (own[`off_${m.key}`] ?? global[`off_${m.key}`] ?? 0) !== 1;
   }
-  return { targets, weights };
+  return { targets, weights, enabled, allOff };
 }
 
 export type SellerActuals = Record<SellerMetricKey, number>;
 
-/** % de cada métrica (sem teto) e a meta geral: soma dos pesos × atingimento de cada uma (cada uma limitada a 100%). */
-export function attainment(actual: SellerActuals, targets: SellerTargets, weights: SellerWeights) {
+/** % de cada métrica (sem teto) e a meta geral: soma dos pesos × atingimento de cada uma (cada uma limitada a 100%).
+ *  Métricas desligadas ficam de fora e os pesos das restantes são reescalados. */
+export function attainment(actual: SellerActuals, targets: SellerTargets, weights: SellerWeights, enabled?: SellerEnabled) {
   const each = {} as Record<SellerMetricKey, number>;
   let sum = 0, wsum = 0;
   for (const m of SELLER_METRICS) {
     const t = targets[m.key];
     const pct = t > 0 ? (actual[m.key] / t) * 100 : 0;
     each[m.key] = pct;
+    if (enabled && !enabled[m.key]) continue;
     sum += weights[m.key] * Math.min(pct, 100);
     wsum += weights[m.key];
   }

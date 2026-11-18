@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { and, asc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { PageHead } from "@/components/page-head";
-import { AlertTriangle, LayoutDashboard, CalendarCheck, Clock, Database, Flame, MessagesSquare, Percent, Timer, Target, Trophy, Filter as FunnelIcon, PhoneCall, CircleCheck } from "lucide-react";
+import { AlertTriangle, LayoutDashboard, CalendarCheck, Clock, Database, Flame, MessagesSquare, Percent, Timer, Target, Trophy, Filter as FunnelIcon, PhoneCall, CircleCheck, Phone, Handshake } from "lucide-react";
 import { Suspense } from "react";
 import { DashboardFilters } from "@/components/dashboard-filters";
 import { panelCls } from "@/components/ui";
@@ -107,6 +107,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     { k: "contatos", I: PhoneCall, t: "Contatos", v: nf.format(d.contacts), s: plural(d.days, "dia", "dias") },
     { k: "meta", I: Target, t: "Meta atendidos", v: d.goal ? pct(d.contacts, d.goal) : "—", s: d.goal ? `de ${nf.format(d.goal)}` : "meta desligada", bar: d.goal ? (d.contacts / d.goal) * 100 : undefined },
     { k: "meta_agend", I: CalendarCheck, t: "Meta agendados", v: d.goalScheduled ? pct(d.scheduled, d.goalScheduled) : "—", s: d.goalScheduled ? `de ${nf.format(d.goalScheduled)}` : "meta desligada", bar: d.goalScheduled ? (d.scheduled / d.goalScheduled) * 100 : undefined },
+    ...(d.goalCalls ? [{ k: "meta_ligacoes", I: Phone, t: "Meta ligações", v: pct(d.calls, d.goalCalls), s: `${nf.format(d.calls)} de ${nf.format(d.goalCalls)}`, bar: (d.calls / d.goalCalls) * 100 }] : []),
+    ...(d.goalConverted ? [{ k: "meta_convertidos", I: Handshake, t: "Meta convertidos", v: pct(d.converted, d.goalConverted), s: `${nf.format(d.converted)} de ${nf.format(d.goalConverted)}`, bar: (d.converted / d.goalConverted) * 100 }] : []),
     { k: "qualificados", I: CircleCheck, t: "Qualificados", v: nf.format(d.qualified), s: "no período" },
     { k: "agendados", I: CalendarCheck, t: "Agendados", v: nf.format(d.scheduled), s: "visitas marcadas" },
     { k: "taxa_qualif", I: Percent, t: "Taxa de qualificação", v: pct(d.qualified, d.contacts), s: "dos contatos" },

@@ -41,6 +41,14 @@ export default async function AttendPage() {
     order by s.saved_at desc limit 1`) : Promise.resolve([undefined]),
   ]);
   const goals = effectiveGoals(me, settings);
+  const extra = { calls: 0, converted: 0 };
+  if (goals.calls.on || goals.converted.on) {
+    const [r] = await db.execute<{ calls: number; converted: number }>(sql`select
+      (select count(*) from interactions i where i.user_id = ${me.id} and not i.is_test and i.channel = 'ligacao' and i.at >= ${today})::int as calls,
+      (select count(*) from deals d where d.sdr_id = ${me.id} and not d.is_test and d.created_at >= ${today})::int as converted`);
+    extra.calls = r?.calls ?? 0; extra.converted = r?.converted ?? 0;
+  }
+  const anyGoal = goals.attended.on || goals.scheduled.on || goals.calls.on || goals.converted.on;
 
   if (!lead) {
     return (
@@ -58,10 +66,12 @@ export default async function AttendPage() {
             <p className="mx-auto max-w-md text-sm text-muted md:mx-0">O sistema escolhe um lead livre para você. Se quiser um específico, use ATENDER na aba Leads ou no seu histórico.</p>
           </div>
           <div className="mx-auto w-full max-w-sm text-left">
-            {(goals.attended.on || goals.scheduled.on) ? (
+            {anyGoal ? (
               <div className="grid gap-4">
                 {goals.attended.on && <GoalBar label="Atendidos hoje" value={done?.n ?? 0} qty={goals.attended.qty} />}
                 {goals.scheduled.on && <GoalBar label="Agendados hoje" value={sched?.n ?? 0} qty={goals.scheduled.qty} alt />}
+                {goals.calls.on && <GoalBar label="Ligações hoje" value={extra.calls} qty={goals.calls.qty} />}
+                {goals.converted.on && <GoalBar label="Convertidos hoje" value={extra.converted} qty={goals.converted.qty} alt />}
               </div>
             ) : (
               <p className="text-center text-sm text-muted">Hoje: <b className="figure text-ink">{done?.n ?? 0}</b> {plural(done?.n ?? 0, "atendido", "atendidos")} · <b className="figure text-ink">{sched?.n ?? 0}</b> {plural(sched?.n ?? 0, "agendado", "agendados")}</p>

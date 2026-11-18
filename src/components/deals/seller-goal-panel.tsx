@@ -1,25 +1,44 @@
 import { CircleDollarSign, Gift, Target } from "lucide-react";
 import { panelCls } from "@/components/ui";
 import { fmtBRL } from "@/config/deals";
-import { attainment, SELLER_METRICS, type SellerActuals, type SellerTargets, type SellerWeights } from "@/config/seller-goals";
+import type { SellerPace } from "@/config/pace";
+import { attainment, SELLER_METRICS, type SellerActuals, type SellerEnabled, type SellerTargets, type SellerWeights } from "@/config/seller-goals";
 
 const nf = new Intl.NumberFormat("pt-BR");
 const val = (kind: "count" | "money", v: number) => (kind === "money" ? fmtBRL(Math.round(v * 100)) : nf.format(v));
 
+const fmtDay = (iso: string) => iso.split("-").reverse().slice(0, 2).join("/");
+const rn = (kind: "count" | "money", v: number) => val(kind, kind === "money" ? Math.round(v) : Math.round(v * 10) / 10);
+
+/** Ritmo do mês: média por dia útil, projeção para o fim do mês, o que precisa por dia e quando bate a meta. */
+function PaceLine({ kind, p }: { kind: "count" | "money"; p: SellerPace }) {
+  return (
+    <p className="mt-1.5 text-xs text-muted">
+      {p.hit ? <b className="text-ok">Meta batida no mês.</b> : <>
+        Ritmo <b className="figure text-ink">{rn(kind, p.perDay)}</b>/dia útil · projeção do mês <b className={`figure ${p.onTrack ? "text-ok" : "text-warn"}`}>{rn(kind, p.projected)}</b>
+        {p.left > 0 ? <> · precisa de <b className="figure text-ink">{rn(kind, p.needPerDay)}</b>/dia nos {p.left} dias úteis restantes</> : <> · último dia útil do mês</>}
+        {p.etaDate ? <> · no ritmo atual bate a meta em <b className="figure text-ink">{fmtDay(p.etaDate)}</b></> : <> · <b className="text-warn">no ritmo atual não bate no mês</b></>}
+      </>}
+    </p>
+  );
+}
+
 /** Metas do mês do vendedor: uma barra por métrica, o peso de cada uma e a meta geral ponderada. */
-export function SellerGoalPanel({ actual, targets, weights, bonusReais, bonusSales, monthLabel, name, hex, compact }: { name?: string; hex?: string; compact?: boolean; actual: SellerActuals; targets: SellerTargets; weights: SellerWeights; bonusReais: number; bonusSales: number; monthLabel: string }) {
-  const { each, overall } = attainment(actual, targets, weights);
+export function SellerGoalPanel({ actual, targets, weights, bonusReais, bonusSales, monthLabel, name, hex, compact, enabled, allOff, paces }: { paces?: Record<string, SellerPace>; enabled?: SellerEnabled; allOff?: boolean; name?: string; hex?: string; compact?: boolean; actual: SellerActuals; targets: SellerTargets; weights: SellerWeights; bonusReais: number; bonusSales: number; monthLabel: string }) {
+  const { each, overall } = attainment(actual, targets, weights, enabled);
+  const shown = SELLER_METRICS.filter((m) => !enabled || enabled[m.key]);
   const done = overall >= 100;
   return (
     <section className={`${panelCls} ${compact ? "space-y-4 p-4" : "space-y-5 p-5 sm:p-6"} ${done ? "border-ok/60" : ""}`}>
       <div className="flex flex-wrap items-center gap-4">
         <span className="grid size-11 place-items-center rounded-2xl bg-grad-soft text-accent"><Target size={22} aria-hidden /></span>
         <div className="min-w-0 flex-1"><h2 className="display flex items-center gap-2 text-xl">{name ? <><span aria-hidden className="size-3 rounded-full" style={{ background: hex }} />{name}</> : "Meta do mês"}</h2><p className="text-sm text-muted first-letter:uppercase">{monthLabel}</p></div>
-        <div className="text-right"><p className="figure text-4xl font-bold leading-none">{Math.round(overall)}%</p><p className="text-xs text-muted">meta geral (pesos)</p></div>
+        <div className={`text-right ${shown.length === 0 ? "hidden" : ""}`}><p className="figure text-4xl font-bold leading-none">{Math.round(overall)}%</p><p className="text-xs text-muted">meta geral (pesos)</p></div>
       </div>
       <div className="h-3 overflow-hidden rounded-full bg-sunk"><div className={`h-full rounded-full transition-[width] duration-700 ${done ? "bg-ok" : "bg-grad"}`} style={{ width: `${Math.min(100, overall)}%` }} /></div>
+      {shown.length === 0 && <p className="rounded-xl bg-sunk px-3.5 py-3 text-sm text-muted">{allOff ? "As metas de vendas desta pessoa estão desativadas." : "Nenhuma meta de vendas ativa no momento."}</p>}
       <ul className={compact ? "grid gap-x-6 gap-y-3 sm:grid-cols-2" : "space-y-4"}>
-        {SELLER_METRICS.map((m) => {
+        {shown.map((m) => {
           const pct = each[m.key];
           return (
             <li key={m.key} title={m.hint}>
@@ -30,6 +49,7 @@ export function SellerGoalPanel({ actual, targets, weights, bonusReais, bonusSal
                 <b className={`figure w-12 text-right ${pct >= 100 ? "text-ok" : ""}`}>{Math.round(pct)}%</b>
               </div>
               <div className="h-2.5 overflow-hidden rounded-full bg-sunk"><div className={`h-full rounded-full transition-[width] duration-700 ${pct >= 100 ? "bg-ok" : "bg-accent"}`} style={{ width: `${Math.min(100, pct)}%` }} /></div>
+              {paces?.[m.key] && <PaceLine kind={m.kind} p={paces[m.key]} />}
             </li>
           );
         })}

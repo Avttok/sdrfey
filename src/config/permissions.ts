@@ -23,6 +23,8 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "panel.kpi.contatos", label: "Indicador: Contatos", group: "Painel", defaults: ["user", "manager"] },
   { key: "panel.kpi.meta", label: "Indicador: Meta atendidos", group: "Painel", defaults: ["user", "manager"] },
   { key: "panel.kpi.meta_agend", label: "Indicador: Meta agendados", group: "Painel", defaults: ["user", "manager"] },
+  { key: "panel.kpi.meta_ligacoes", label: "Indicador: Meta ligações", group: "Painel", defaults: ["user", "manager"] },
+  { key: "panel.kpi.meta_convertidos", label: "Indicador: Meta convertidos", group: "Painel", defaults: ["user", "manager"] },
   { key: "panel.kpi.qualificados", label: "Indicador: Qualificados", group: "Painel", defaults: ["user", "manager"] },
   { key: "panel.kpi.agendados", label: "Indicador: Agendados", group: "Painel", defaults: ["user", "manager"] },
   { key: "panel.kpi.taxa_qualif", label: "Indicador: Taxa de qualificação", group: "Painel", defaults: ["user", "manager"] },

@@ -171,7 +171,7 @@ body.dragging, body.dragging * { user-select: none !important; cursor: grabbing 
 @media (prefers-reduced-motion: reduce) { .spawn-in, .spawn-fade, .glow-pulse { animation: none; } }
 
 /* Marca da FEY: a cada 15 s as barras "acendem" em onda; o resto do tempo ela só brilha de leve. */
-.fey-live path { transform-box: fill-box; transform-origin: center; animation: fey-wave 15s ease-in-out infinite; animation-delay: calc(var(--i, 0) * 0.14s); }
+.fey-live path { transform-box: fill-box; transform-origin: center; animation: fey-wave 8s ease-in-out infinite; animation-delay: calc(var(--i, 0) * 0.14s); }
 @keyframes fey-wave {
   0%, 88%, 100% { transform: none; opacity: 1; }
   91% { transform: translateX(-7%) scaleX(0.94); opacity: 0.35; }

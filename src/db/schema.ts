@@ -61,6 +61,8 @@ export const users = pgTable("users", {
   /** Liga/desliga cada meta só para esta pessoa (nulo = segue a global). */
   goalAttendedOn: boolean("goal_attended_on"),
   goalScheduledOn: boolean("goal_scheduled_on"),
+  /** Metas extras do SDR (ligações, convertidos) e "desligar todas": calls, calls_on, converted, converted_on, off_all (ausente = herda a global). */
+  goalsExtra: jsonb("goals_extra").$type<Record<string, number>>().notNull().default(sql`'{}'::jsonb`),
   /** Permissão dada pelo Adm: pode alterar metas da equipe. */
   canManageGoals: boolean("can_manage_goals").notNull().default(false),
   /** Ajustes do Adm só para esta pessoa (abas, blocos do painel...). Vazio = usa o padrão do cargo. */
