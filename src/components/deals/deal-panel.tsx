@@ -46,6 +46,7 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDele
   const [note, setNote] = useState("");
   const [nextAt, setNextAt] = useState("");
   const [nextNote, setNextNote] = useState("");
+  const [outcome, setOutcome] = useState<"ganho" | "perdido">("ganho");
   const [reason, setReason] = useState("");
   const [confirmLost, setConfirmLost] = useState(false);
   const [sf, setSf] = useState(deal.salesforceUrl ?? "");
@@ -170,20 +171,40 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDele
                 </form>
               )}
               {tab === "encerrar" && (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2 rounded-xl border border-ok/40 p-4">
-                    <p className="flex items-center gap-2 font-semibold text-ok"><Trophy size={16} aria-hidden /> Venda fechada</p>
-                    <input className={inputCls} inputMode="decimal" placeholder="Valor fechado (R$)" aria-label="Valor fechado" value={f.closedValue} onChange={(e) => set("closedValue", e.target.value)} />
-                    <input className={inputCls} inputMode="decimal" placeholder="Valor real após impostos (R$)" aria-label="Valor real após impostos" value={f.realValue} onChange={(e) => set("realValue", e.target.value)} />
-                    <DateInput label="Data fechada" value={f.closedOn} onChange={(v) => set("closedOn", v)} />
-                    <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.isReactivation} onChange={(e) => set("isReactivation", e.target.checked)} /> Cliente reativado (voltou a comprar)</label>
-                    <button type="button" className={`${btnPrimary} w-full`} disabled={pending} onClick={() => run(() => closeDealAction(deal.id, { won: true, value: f.closedValue || (lastQuote?.totalCents ? brl(lastQuote.totalCents) : ""), closedOn: f.closedOn || null, data: { isReactivation: f.isReactivation, orderNumber: f.orderNumber, realValue: f.realValue } }))}>Fechar venda</button>
+                <div className="flex flex-1 flex-col gap-4">
+                  <div role="radiogroup" aria-label="Resultado" className="grid grid-cols-2 gap-2 rounded-xl bg-sunk/60 p-1">
+                    {([["ganho", "Venda fechada", Trophy, "text-ok"], ["perdido", "Negócio perdido", XCircle, "text-danger"]] as const).map(([k, l, I, c]) => (
+                      <button key={k} type="button" role="radio" aria-checked={outcome === k} onClick={() => setOutcome(k)} className={`inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition ${outcome === k ? `bg-panel shadow-md ${c}` : "text-muted hover:text-ink"}`}><I size={16} aria-hidden />{l}</button>
+                    ))}
                   </div>
-                  <div className="space-y-2 rounded-xl border border-danger/40 p-4">
-                    <p className="flex items-center gap-2 font-semibold text-danger"><XCircle size={16} aria-hidden /> Negócio perdido</p>
-                    <input className={inputCls} placeholder="Motivo (preço, concorrente, sem interesse…)" value={reason} onChange={(e) => setReason(e.target.value)} />
-                    <button type="button" className={`${btnGhost} w-full !border-danger text-danger`} disabled={pending || !reason.trim()} onClick={() => setConfirmLost(true)}>Marcar como perdida</button>
-                  </div>
+                  {outcome === "ganho" ? (
+                    <div className="flex flex-1 flex-col gap-3">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Field label="Valor fechado (R$)"><input className={inputCls} inputMode="decimal" placeholder={lastQuote?.totalCents ? brl(lastQuote.totalCents) : "0,00"} value={f.closedValue} onChange={(e) => set("closedValue", e.target.value)} /></Field>
+                        <Field label="Valor real após impostos (R$)"><input className={inputCls} inputMode="decimal" placeholder="Opcional" value={f.realValue} onChange={(e) => set("realValue", e.target.value)} /></Field>
+                        <Field label="Data fechada"><DateInput label="Data fechada" value={f.closedOn} onChange={(v) => set("closedOn", v)} /></Field>
+                        <Field label="Cliente"><button type="button" role="switch" aria-checked={f.isReactivation} onClick={() => set("isReactivation", !f.isReactivation)} className={`flex w-full items-center gap-3 rounded-lg border px-3.5 py-2.5 text-left text-sm transition ${f.isReactivation ? "border-accent bg-accent/10" : "border-line hover:bg-sunk"}`}><span className={`relative h-5 w-9 shrink-0 rounded-full transition ${f.isReactivation ? "bg-accent" : "bg-line"}`}><span className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-all ${f.isReactivation ? "left-[18px]" : "left-0.5"}`} /></span>Reativado (voltou a comprar)</button></Field>
+                      </div>
+                      <p className="text-xs text-muted">Em branco, o valor fechado é o total da última cotação.</p>
+                      <div className="mt-auto">
+                        <button type="button" className={`${btnPrimary} w-full`} disabled={pending} onClick={() => run(() => closeDealAction(deal.id, { won: true, value: f.closedValue || (lastQuote?.totalCents ? brl(lastQuote.totalCents) : ""), closedOn: f.closedOn || null, data: { isReactivation: f.isReactivation, orderNumber: f.orderNumber, realValue: f.realValue } }))}><Trophy size={16} aria-hidden /> Fechar venda</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-1 flex-col gap-3">
+                      <Field label="Motivo da perda">
+                        <textarea className={`${inputCls} min-h-24`} placeholder="O que aconteceu? (preço, concorrente, sem interesse…)" value={reason} onChange={(e) => setReason(e.target.value)} />
+                      </Field>
+                      <div className="flex flex-wrap gap-1.5">
+                        {["Preço", "Fechou com concorrente", "Sem interesse", "Sem resposta", "Prazo de entrega"].map((r) => (
+                          <button key={r} type="button" onClick={() => setReason(r)} className="rounded-full border border-line px-3 py-1 text-xs font-medium text-muted transition hover:border-accent hover:text-accent">{r}</button>
+                        ))}
+                      </div>
+                      <div className="mt-auto">
+                        <button type="button" className={`${btnGhost} w-full !border-danger text-danger`} disabled={pending || !reason.trim()} onClick={() => setConfirmLost(true)}><XCircle size={16} aria-hidden /> Marcar como perdida</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </SectionCard>
