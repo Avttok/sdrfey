@@ -58,28 +58,38 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   redirect(user.mustChangePassword ? "/trocar-senha" : "/painel");
 }
 
-/** Sair: lembra a conta neste aparelho para entrar de novo com 1 clique (sem senha). */
+const quickOpts = { httpOnly: true, sameSite: "lax" as const, secure: process.env.NODE_ENV === "production", path: "/", maxAge: QUICK_SECONDS };
+async function quickList() {
+  const v = (await cookies()).get(QUICK_COOKIE)?.value;
+  return v ? await readQuick(v) : [];
+}
+
+/** Sair: lembra a conta neste aparelho (até 6) para entrar de novo com 1 clique, sem senha. */
 export async function logoutAction() {
   const jar = await cookies();
   const session = jar.get(SESSION_COOKIE)?.value ? await readToken(jar.get(SESSION_COOKIE)!.value) : null;
   if (session) {
     const [u] = await db.select({ name: users.name, active: users.active, v: users.sessionVersion }).from(users).where(eq(users.id, session.uid)).limit(1);
     if (u?.active && u.v === session.v) {
-      jar.set(QUICK_COOKIE, await signQuick({ uid: session.uid, v: session.v, name: u.name, rem: session.rem }), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: QUICK_SECONDS });
+      const list = (await quickList()).filter((a) => a.uid !== session.uid);
+      jar.set(QUICK_COOKIE, await signQuick([{ uid: session.uid, v: session.v, name: u.name, rem: session.rem }, ...list]), quickOpts);
     }
   }
   await clearSessionCookie();
   redirect("/login");
 }
 
-/** Entrar com 1 clique na conta lembrada neste aparelho. */
-export async function quickLoginAction() {
-  const jar = await cookies();
-  const q = jar.get(QUICK_COOKIE)?.value ? await readQuick(jar.get(QUICK_COOKIE)!.value) : null;
+/** Entrar com 1 clique em uma das contas lembradas neste aparelho. */
+export async function quickLoginAction(formData: FormData) {
+  const uid = Number(formData.get("uid"));
+  const list = await quickList();
+  const q = list.find((a) => a.uid === uid);
   if (!q) redirect("/login");
   const [user] = await db.select().from(users).where(eq(users.id, q.uid)).limit(1);
   if (!user || !user.active || user.sessionVersion !== q.v || (user.lockedUntil && user.lockedUntil > new Date())) {
-    jar.delete(QUICK_COOKIE);
+    const rest = list.filter((a) => a.uid !== uid);
+    const jar = await cookies();
+    if (rest.length) jar.set(QUICK_COOKIE, await signQuick(rest), quickOpts); else jar.delete(QUICK_COOKIE);
     redirect("/login");
   }
   await db.update(users).set({ failedAttempts: 0, lockedUntil: null, lastLoginAt: new Date() }).where(eq(users.id, user.id));
@@ -88,9 +98,12 @@ export async function quickLoginAction() {
   redirect(user.mustChangePassword ? "/trocar-senha" : "/painel");
 }
 
-/** "Esquecer este aparelho": apaga a conta lembrada. */
-export async function forgetQuickAction() {
-  (await cookies()).delete(QUICK_COOKIE);
+/** Tira uma conta (ou todas, sem `uid`) da lista deste aparelho. */
+export async function forgetQuickAction(formData: FormData) {
+  const uid = Number(formData.get("uid"));
+  const jar = await cookies();
+  const rest = Number.isFinite(uid) && formData.get("uid") ? (await quickList()).filter((a) => a.uid !== uid) : [];
+  if (rest.length) jar.set(QUICK_COOKIE, await signQuick(rest), quickOpts); else jar.delete(QUICK_COOKIE);
   redirect("/login");
 }
 

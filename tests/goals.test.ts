@@ -59,9 +59,9 @@ describe("ritmo", () => {
 
 import { readQuick, signQuick } from "@/modules/auth/token";
 describe("login de 1 clique", () => {
-  it("assina e lê o cookie; lixo é recusado", async () => {
-    const t = await signQuick({ uid: 3, v: 2, name: "Ruan", rem: true });
-    expect(await readQuick(t)).toEqual({ uid: 3, v: 2, name: "Ruan", rem: true });
-    expect(await readQuick("lixo")).toBeNull();
+  it("guarda várias contas; lixo é recusado", async () => {
+    const accs = [{ uid: 3, v: 2, name: "Ruan", rem: true }, { uid: 4, v: 1, name: "Thais", rem: false }];
+    expect(await readQuick(await signQuick(accs))).toEqual(accs);
+    expect(await readQuick("lixo")).toEqual([]);
   });
 });

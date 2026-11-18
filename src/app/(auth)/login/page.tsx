@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CalendarCheck, MessageCircle, Shuffle } from "lucide-react";
+import { CalendarCheck, MessageCircle, Shuffle, X } from "lucide-react";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { getCurrentUser } from "@/modules/auth/guard";
@@ -20,10 +20,11 @@ const FEATURES = [
   { icon: CalendarCheck, title: "Até o agendamento", text: "Metas do dia, visitas marcadas e tudo no histórico." },
 ];
 
-export default async function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ outra?: string }> }) {
   if (await getCurrentUser()) redirect("/");
   const qc = (await cookies()).get(QUICK_COOKIE)?.value;
-  const quick = qc ? await readQuick(qc) : null;
+  const quick = qc ? await readQuick(qc) : [];
+  const other = (await searchParams).outra === "1";
   return (
     <main className="grid min-h-screen lg:grid-cols-[1.15fr_1fr]">
       <section className="relative flex flex-col justify-between gap-10 overflow-hidden px-6 py-8 text-white sm:px-12 sm:py-12" style={{ backgroundImage: "linear-gradient(145deg, #0b1020 0%, #1e1b4b 45%, #312e81 100%)" }}>
@@ -46,7 +47,7 @@ export default async function LoginPage() {
             ))}
           </ul>
         </div>
-        <p className="relative hidden text-xs text-white/50 lg:block">SDR FEY · Gestão de leads da equipe</p>
+        <p className="relative hidden text-xs text-white/50 lg:block">Made by Ruan</p>
       </section>
 
       <section className="relative flex flex-col px-6 py-8 sm:px-12">
@@ -55,20 +56,29 @@ export default async function LoginPage() {
           <div className="rounded-3xl border border-line bg-panel p-7 shadow-xl sm:p-8">
             <span aria-hidden className="mb-5 block h-1 w-14 rounded-full bg-grad" />
             <h2 className="display mb-1.5 text-3xl">Bem-vindo de volta</h2>
-            {quick ? (
-              <div className="space-y-4">
-                <p className="text-sm text-muted">Você saiu da conta neste aparelho. Entre de novo com um clique.</p>
-                <form action={quickLoginAction}>
-                  <SubmitButton className="!h-auto w-full !justify-start gap-3 !px-4 !py-3 text-left">
-                    <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white/25 text-base font-bold">{quick.name.trim().slice(0, 1).toUpperCase()}</span>
-                    <span className="min-w-0"><span className="block text-xs font-normal opacity-80">Entrar como</span><span className="block truncate text-base font-semibold">{quick.name}</span></span>
-                  </SubmitButton>
-                </form>
-                <form action={forgetQuickAction}><button type="submit" className="w-full text-center text-sm text-muted underline-offset-2 hover:underline">Usar outra conta</button></form>
+            {quick.length > 0 && !other ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted">Contas neste aparelho. Entre com um clique, sem senha.</p>
+                <ul className="space-y-2">
+                  {quick.map((q) => (
+                    <li key={q.uid} className="flex items-stretch gap-1.5">
+                      <form action={quickLoginAction} className="min-w-0 flex-1">
+                        <input type="hidden" name="uid" value={q.uid} />
+                        <SubmitButton className="!h-auto w-full !justify-start gap-3 !px-3.5 !py-2.5 text-left">
+                          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/25 text-sm font-bold">{q.name.trim().slice(0, 1).toUpperCase()}</span>
+                          <span className="min-w-0"><span className="block text-[11px] font-normal opacity-80">Entrar como</span><span className="block truncate text-sm font-semibold">{q.name}</span></span>
+                        </SubmitButton>
+                      </form>
+                      <form action={forgetQuickAction}><input type="hidden" name="uid" value={q.uid} /><button type="submit" aria-label={`Esquecer ${q.name} neste aparelho`} title="Esquecer esta conta" className="grid h-full w-10 place-items-center rounded-xl border border-line text-muted transition hover:border-danger/60 hover:text-danger"><X size={16} aria-hidden /></button></form>
+                    </li>
+                  ))}
+                </ul>
+                <a href="/login?outra=1" className="block w-full rounded-xl border border-line px-4 py-2.5 text-center text-sm font-medium transition hover:bg-sunk">Entrar com usuário e senha</a>
               </div>
             ) : (<>
               <p className="mb-7 text-sm text-muted">Entre com o usuário e a senha que você recebeu.</p>
               <LoginForm />
+              {quick.length > 0 && <a href="/login" className="mt-4 block text-center text-sm text-muted underline-offset-2 hover:underline">Voltar às contas deste aparelho</a>}
             </>)}
           </div>
         </div>
