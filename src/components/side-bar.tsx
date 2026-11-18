@@ -15,7 +15,7 @@ export function SideBar({ hrefs, name, username, hex, onHex, accentKey, roles, i
   const toggle = () => { const next = !collapsed; setCollapsed(next); void setNavCollapsedAction(next); };
   const Icon = collapsed ? PanelLeftOpen : PanelLeftClose;
   return (
-    <aside className={`sticky top-0 hidden h-dvh shrink-0 flex-col gap-5 border-r border-line bg-panel px-3 py-5 transition-[width] duration-200 lg:flex ${collapsed ? "w-[4.75rem]" : "w-64"}`}>
+    <aside className={`sticky top-0 hidden h-screen shrink-0 flex-col gap-5 border-r border-line bg-panel px-3 py-5 transition-[width] duration-200 lg:flex ${collapsed ? "w-[4.75rem]" : "w-64"}`}>
       <div className={`flex items-center ${collapsed ? "flex-col gap-3" : "justify-between px-3"}`}>
         {collapsed ? <Link href="/painel" aria-label="SDR FEY, ir para o início" className="grid size-10 place-items-center rounded-xl"><FeyMark size={30} /></Link> : <Link href="/painel" aria-label="SDR FEY, ir para o início"><Logo /></Link>}
         <button type="button" onClick={toggle} aria-label={collapsed ? "Expandir barra" : "Minimizar barra"} title={collapsed ? "Expandir barra" : "Minimizar barra"} className="grid size-8 place-items-center rounded-lg text-muted transition hover:bg-sunk hover:text-ink"><Icon size={18} aria-hidden /></button>

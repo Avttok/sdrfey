@@ -361,7 +361,7 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread }: { channel
   return (
     <>
       {open && (
-        <section aria-label="Chat" className="fixed inset-x-3 bottom-20 z-40 flex h-[min(34rem,calc(100dvh-7rem))] flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl sm:inset-x-auto sm:right-5 sm:w-[24rem]">
+        <section aria-label="Chat" className="fixed inset-x-3 bottom-20 z-40 flex h-[min(34rem,calc(100vh-7rem))] flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl sm:inset-x-auto sm:right-5 sm:w-[24rem]">
           <header className="flex items-center gap-2 border-b border-line px-4 py-3">
             <span className="grid size-8 place-items-center rounded-lg bg-grad-soft text-accent"><MessageCircle size={16} aria-hidden /></span>
             <div className="min-w-0 flex-1"><h2 className="text-sm font-semibold leading-tight">Chat · {cur?.label}</h2><p className="truncate text-[11px] text-muted">{cur?.hint}</p></div>

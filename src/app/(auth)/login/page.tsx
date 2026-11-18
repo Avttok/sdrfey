@@ -19,7 +19,7 @@ const FEATURES = [
 export default async function LoginPage() {
   if (await getCurrentUser()) redirect("/");
   return (
-    <main className="grid min-h-dvh lg:grid-cols-[1.15fr_1fr]">
+    <main className="grid min-h-screen lg:grid-cols-[1.15fr_1fr]">
       <section className="relative flex flex-col justify-between gap-10 overflow-hidden px-6 py-8 text-white sm:px-12 sm:py-12" style={{ backgroundImage: "linear-gradient(145deg, #0b1020 0%, #1e1b4b 45%, #312e81 100%)" }}>
         <span aria-hidden className="pointer-events-none absolute -left-24 -top-24 size-[26rem] rounded-full bg-[#3b82f6]/40 blur-3xl" />
         <span aria-hidden className="pointer-events-none absolute -bottom-32 right-[-6rem] size-[30rem] rounded-full bg-[#ec4899]/30 blur-3xl" />

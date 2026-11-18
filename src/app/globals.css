@@ -50,13 +50,14 @@ html {
 }
 
 body {
-  min-height: 100dvh;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   background:
     radial-gradient(70rem 34rem at 0% -8%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 70%),
     radial-gradient(56rem 30rem at 100% 8%, color-mix(in srgb, var(--accent-2, var(--accent)) 16%, transparent), transparent 70%),
     radial-gradient(60rem 30rem at 50% 108%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%),
     var(--bg);
-  background-attachment: fixed;
   color: var(--ink);
   font-family: var(--app-font, var(--font-sans));
   font-stretch: 100%;

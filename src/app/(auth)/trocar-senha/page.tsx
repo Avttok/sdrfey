@@ -10,7 +10,7 @@ export default async function ChangePasswordPage() {
   const user = await requireUser({ allowMustChange: true });
 
   return (
-    <main className="min-h-dvh">
+    <main className="min-h-screen">
       <div className="mx-auto w-full max-w-md px-6 py-12">
         <Logo />
         <h1 className="display mt-10 text-3xl">
