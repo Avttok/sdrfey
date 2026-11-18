@@ -5,10 +5,11 @@ import { useState } from "react";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary } from "@/components/ui";
 import { NAV } from "@/config/nav";
+import { setUserNavAction } from "@/modules/admin/user-prefs";
 import { setNavPrefsAction } from "@/modules/users/actions";
 
 /** Posição da barra de navegação (topo ou lateral) e ordem dos itens. */
-export function NavPrefsForm({ layout: initialLayout, hrefs }: { layout: "top" | "side"; hrefs: string[] }) {
+export function NavPrefsForm({ layout: initialLayout, hrefs, userId }: { layout: "top" | "side"; hrefs: string[]; /** Só o Adm: edita a barra de outra pessoa. */ userId?: number }) {
   const [layout, setLayout] = useState(initialLayout);
   const [order, setOrder] = useState(hrefs);
   const { run, pending } = useRun();
@@ -44,7 +45,7 @@ export function NavPrefsForm({ layout: initialLayout, hrefs }: { layout: "top" |
         </ol>
       </div>
       <div className="flex flex-wrap gap-2">
-        <button type="button" className={btnPrimary} disabled={!dirty || pending} onClick={() => run(() => setNavPrefsAction({ layout, order }))}>Salvar barra</button>
+        <button type="button" className={btnPrimary} disabled={!dirty || pending} onClick={() => run(() => (userId ? setUserNavAction(userId, { layout, order }) : setNavPrefsAction({ layout, order })))}>Salvar barra</button>
         <button type="button" className={btnGhost} disabled={pending} onClick={() => { setLayout("top"); setOrder(NAV.filter((n) => hrefs.includes(n.href)).map((n) => n.href)); }}>Restaurar padrão</button>
       </div>
     </div>

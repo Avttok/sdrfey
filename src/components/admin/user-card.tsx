@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Clock, KeyRound, Pencil, ShieldCheck, Trash2, X } from "lucide-react";
+import { Check, Clock, KeyRound, Pencil, RotateCcw, ShieldCheck, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useRun } from "@/components/use-run";
@@ -8,8 +8,11 @@ import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { ACCENTS, resolveAccent, swatchBg } from "@/config/theme";
 import { ROLE_META, ROLES, type Role } from "@/config/roles";
 import { deleteUserAction, resetPasswordAction, updateUserAction } from "@/modules/admin/users";
+import { resetUserSettingsAction } from "@/modules/admin/user-prefs";
+import { RESET_KEYS, type ResetKey } from "@/modules/admin/user-prefs-spec";
+import { NavPrefsForm } from "@/components/nav-prefs-form";
 
-export type UserRow = { accent: string | null; id: number; username: string; name: string; roles: Role[]; active: boolean; dailyGoal: number | null; canManageGoals: boolean; inMetrics: boolean; permissions: Record<string, boolean>; hex: string; lastLoginAt: string | null; online: boolean };
+export type UserRow = { accent: string | null; id: number; username: string; name: string; roles: Role[]; active: boolean; dailyGoal: number | null; canManageGoals: boolean; inMetrics: boolean; permissions: Record<string, boolean>; hex: string; lastLoginAt: string | null; online: boolean; navLayout: "top" | "side"; navHrefs: string[] };
 
 const ROLE_TONE: Record<Role, string> = { user: "#3b82f6", seller: "#22c55e", manager: "#eab308", admin: "#ef4444" };
 
@@ -17,6 +20,7 @@ const ROLE_TONE: Record<Role, string> = { user: "#3b82f6", seller: "#22c55e", ma
 export function UserCard({ u, isMe }: { u: UserRow; isMe: boolean }) {
   const [open, setOpen] = useState(false);
   const [f, setF] = useState(u);
+  const [reset, setReset] = useState<Set<ResetKey>>(new Set());
   const { run, pending } = useRun();
   const { ask, dialog } = useConfirm(pending);
   const toggleRole = (r: Role) => setF({ ...f, roles: f.roles.includes(r) ? f.roles.filter((x) => x !== r) : [...f.roles, r] });
@@ -44,7 +48,7 @@ export function UserCard({ u, isMe }: { u: UserRow; isMe: boolean }) {
 
       {open && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label={`Editar ${u.name}`} onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
-          <div className={`${panelCls} max-h-[90vh] w-full max-w-lg space-y-5 overflow-y-auto p-6 shadow-2xl`}>
+          <div className={`${panelCls} !bg-panel max-h-[90vh] w-full max-w-lg space-y-5 overflow-y-auto p-6 shadow-2xl`}>
             <div className="flex items-start gap-3">
               <span className="grid size-11 place-items-center rounded-2xl text-sm font-bold" style={{ background: `color-mix(in srgb, ${u.hex} 26%, transparent)`, color: `color-mix(in srgb, ${u.hex} 80%, var(--ink))` }}>{u.name.slice(0, 2).toUpperCase()}</span>
               <div className="flex-1"><h2 className="display text-xl">Editar pessoa</h2><p className="text-xs text-muted">@{u.username} · metas ficam em Metas e permissões em Permissões</p></div>
@@ -72,6 +76,24 @@ export function UserCard({ u, isMe }: { u: UserRow; isMe: boolean }) {
               <Toggle on={f.active} disabled={isMe} onChange={(v) => setF({ ...f, active: v })} title="Acesso liberado" hint={isMe ? "Você não pode bloquear a si mesmo." : "Desligar bloqueia o login imediatamente."} />
               <Toggle on={f.inMetrics} onChange={(v) => setF({ ...f, inMetrics: v })} title="Aparece nas métricas" hint="Dashboard, Metas e ranking." />
             </div>
+            <details className="rounded-xl border border-line">
+              <summary className="cursor-pointer select-none px-3.5 py-2.5 text-sm font-medium">Barra de navegação de {u.name.split(" ")[0]} (posição e ordem dos menus)</summary>
+              <div className="border-t border-line p-3.5"><NavPrefsForm userId={u.id} layout={u.navLayout} hrefs={u.navHrefs} /></div>
+            </details>
+            <details className="rounded-xl border border-line">
+              <summary className="cursor-pointer select-none px-3.5 py-2.5 text-sm font-medium">Restaurar configurações ao padrão</summary>
+              <div className="space-y-3 border-t border-line p-3.5">
+                <ul className="grid gap-1.5 sm:grid-cols-2">
+                  {RESET_KEYS.map((r) => (
+                    <li key={r.key}><label className="flex cursor-pointer items-start gap-2 rounded-lg bg-sunk px-3 py-2 text-sm"><input type="checkbox" className="mt-0.5 size-4" checked={reset.has(r.key)} onChange={(e) => { const n = new Set(reset); if (e.target.checked) n.add(r.key); else n.delete(r.key); setReset(n); }} /><span><span className="block font-medium">{r.label}</span><span className="block text-xs text-muted">{r.hint}</span></span></label></li>
+                  ))}
+                </ul>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" className={btnGhost} disabled={pending || reset.size === 0} onClick={() => ask({ title: "Restaurar o que você marcou?", body: `Os itens marcados de ${u.name} voltam ao padrão.`, label: "Sim, restaurar", icon: RotateCcw, tone: "warn", onConfirm: () => run(() => resetUserSettingsAction(u.id, [...reset]), undefined, () => { setReset(new Set()); setOpen(false); }) })}><RotateCcw size={15} aria-hidden /> Restaurar marcados</button>
+                  <button type="button" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => ask({ title: `Restaurar TUDO de ${u.name}?`, body: "Cor, barra, mapa, fonte, metas próprias, permissões individuais, métricas, gestor e bloqueio voltam ao padrão. Nome, usuário, senha, cargos e acesso não mudam.", label: "Sim, restaurar tudo", icon: RotateCcw, tone: "warn", onConfirm: () => run(() => resetUserSettingsAction(u.id, ["all"]), undefined, () => setOpen(false)) })}><RotateCcw size={15} aria-hidden /> Restaurar tudo</button>
+                </div>
+              </div>
+            </details>
             <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
               <button type="button" className={btnPrimary} disabled={pending} onClick={() => run(() => updateUserAction(u.id, { name: f.name, roles: f.roles, active: f.active, dailyGoal: u.dailyGoal, canManageGoals: u.canManageGoals, inMetrics: f.inMetrics, permissions: u.permissions, accent: f.accent }), undefined, () => setOpen(false))}>Salvar</button>
               <button type="button" className={btnGhost} disabled={pending} onClick={() => ask({ title: "Redefinir a senha?", body: `A senha de ${u.name} volta para a inicial e a pessoa terá que criar uma nova no próximo acesso.`, label: "Sim, redefinir", icon: KeyRound, tone: "warn", onConfirm: () => run(() => resetPasswordAction(u.id)) })}><KeyRound size={15} aria-hidden /> Redefinir senha</button>
