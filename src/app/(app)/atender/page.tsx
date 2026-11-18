@@ -50,7 +50,7 @@ export default async function AttendPage() {
         <div className="absolute -bottom-32 -right-20 size-[34rem] rounded-full bg-accent/20 blur-3xl" />
         <div className="absolute left-1/2 top-1/2 size-[24rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/10 blur-3xl" />
       </div>
-      <div data-fit-screen className="spawn-in relative grid place-items-center overflow-y-auto overflow-x-hidden p-3 sm:p-6">
+      <div className="spawn-in relative -my-3 grid flex-1 min-h-[22rem] place-items-center overflow-y-auto overflow-x-hidden p-3 sm:p-6">
         <div className="relative grid w-full max-w-6xl items-center gap-6 text-center md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_auto] md:gap-8 md:text-left">
           <div className="space-y-3">
             <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-grad text-on-accent shadow-xl shadow-accent/40 md:mx-0 md:size-16"><Shuffle size={28} aria-hidden /></span>
