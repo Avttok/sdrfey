@@ -1,5 +1,4 @@
 import { visibleUsers } from "@/modules/auth/visibility";
-import { NoScroll } from "@/components/no-scroll";
 import { releaseExpiredLocks } from "@/modules/leads/sorter";
 import type { Metadata } from "next";
 import { Play, Shuffle } from "lucide-react";
@@ -46,25 +45,29 @@ export default async function AttendPage() {
   if (!lead) {
     return (
       <>
-      <NoScroll />
-      <div className="relative grid h-full min-h-[18rem] place-items-center overflow-y-auto overflow-x-hidden rounded-3xl border border-line/60 p-6 text-center sm:p-12" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 26%, var(--panel)) 0%, color-mix(in srgb, var(--accent) 8%, var(--panel)) 48%, color-mix(in srgb, var(--accent) 20%, var(--panel)) 100%)" }}>
-        <div aria-hidden className="pointer-events-none absolute -left-24 -top-24 size-[28rem] rounded-full bg-accent/25 blur-3xl" />
-        <div aria-hidden className="pointer-events-none absolute -bottom-32 -right-20 size-[32rem] rounded-full bg-accent/20 blur-3xl" />
-        <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 size-[22rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/10 blur-3xl" />
-        <div className="relative w-full max-w-2xl space-y-8">
-          <span className="mx-auto grid size-20 place-items-center rounded-3xl bg-grad text-on-accent shadow-xl shadow-accent/40"><Shuffle size={36} aria-hidden /></span>
-          <div>
-            <h1 className="display text-4xl sm:text-5xl">Pronto para o próximo lead?</h1>
-            <p className="mx-auto mt-2 max-w-md text-muted">O sistema escolhe um lead livre para você. Se quiser um específico, use ATENDER na aba Leads ou no seu histórico.</p>
+      <div aria-hidden className="spawn-fade pointer-events-none fixed inset-0 -z-10" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 26%, var(--bg)) 0%, color-mix(in srgb, var(--accent) 7%, var(--bg)) 48%, color-mix(in srgb, var(--accent) 20%, var(--bg)) 100%)" }}>
+        <div className="absolute -left-24 -top-24 size-[30rem] rounded-full bg-accent/25 blur-3xl" />
+        <div className="absolute -bottom-32 -right-20 size-[34rem] rounded-full bg-accent/20 blur-3xl" />
+        <div className="absolute left-1/2 top-1/2 size-[24rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/10 blur-3xl" />
+      </div>
+      <div data-fit-screen className="spawn-in relative grid place-items-center overflow-y-auto overflow-x-hidden p-3 sm:p-6">
+        <div className="relative grid w-full max-w-6xl items-center gap-6 text-center md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_auto] md:gap-8 md:text-left">
+          <div className="space-y-3">
+            <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-grad text-on-accent shadow-xl shadow-accent/40 md:mx-0 md:size-16"><Shuffle size={28} aria-hidden /></span>
+            <h1 className="display text-3xl lg:text-4xl">Pronto para o próximo lead?</h1>
+            <p className="mx-auto max-w-md text-sm text-muted md:mx-0">O sistema escolhe um lead livre para você. Se quiser um específico, use ATENDER na aba Leads ou no seu histórico.</p>
           </div>
-          {(goals.attended.on || goals.scheduled.on) && (
-            <div className="mx-auto grid max-w-sm gap-4 text-left">
-              {goals.attended.on && <GoalBar label="Atendidos hoje" value={done?.n ?? 0} qty={goals.attended.qty} />}
-              {goals.scheduled.on && <GoalBar label="Agendados hoje" value={sched?.n ?? 0} qty={goals.scheduled.qty} alt />}
-            </div>
-          )}
-          {!goals.attended.on && !goals.scheduled.on && <p className="text-sm text-muted">Hoje: <b className="figure text-ink">{done?.n ?? 0}</b> {plural(done?.n ?? 0, "atendido", "atendidos")} · <b className="figure text-ink">{sched?.n ?? 0}</b> {plural(sched?.n ?? 0, "agendado", "agendados")}</p>}
-          <form action={startAction}>
+          <div className="mx-auto w-full max-w-sm text-left">
+            {(goals.attended.on || goals.scheduled.on) ? (
+              <div className="grid gap-4">
+                {goals.attended.on && <GoalBar label="Atendidos hoje" value={done?.n ?? 0} qty={goals.attended.qty} />}
+                {goals.scheduled.on && <GoalBar label="Agendados hoje" value={sched?.n ?? 0} qty={goals.scheduled.qty} alt />}
+              </div>
+            ) : (
+              <p className="text-center text-sm text-muted">Hoje: <b className="figure text-ink">{done?.n ?? 0}</b> {plural(done?.n ?? 0, "atendido", "atendidos")} · <b className="figure text-ink">{sched?.n ?? 0}</b> {plural(sched?.n ?? 0, "agendado", "agendados")}</p>
+            )}
+          </div>
+          <form action={startAction} className="flex justify-center">
             <SubmitButton><Play size={18} aria-hidden /> Shuffler</SubmitButton>
           </form>
         </div>

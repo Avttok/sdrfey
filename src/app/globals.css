@@ -159,10 +159,19 @@ body.dragging, body.dragging * { user-select: none !important; cursor: grabbing 
 @keyframes medal-pulse { 0% { box-shadow: 0 0 0 0 rgb(245 197 66 / 0.55); } 70%, 100% { box-shadow: 0 0 0 8px rgb(245 197 66 / 0); } }
 
 /* Brilho que pulsa de leve atrás do rodapé. */
-@keyframes glow-pulse { 0%, 100% { opacity: 0.18; transform: scale(0.92); } 50% { opacity: 0.6; transform: scale(1.08); } }
+@keyframes glow-pulse { 0%, 100% { opacity: 0.06; transform: scale(0.95); } 50% { opacity: 0.26; transform: scale(1.05); } }
 .glow-pulse { animation: glow-pulse 3.2s ease-in-out infinite; }
 
-/* Tela que se adapta à janela sem rolar (início do Shuffler): a coluna do app tem a altura da janela e o miolo encolhe. */
-html.fit-screen, html.fit-screen body { height: 100dvh; overflow: hidden; }
-html.fit-screen .app-col { height: 100dvh; }
-html.fit-screen .app-col > main { min-height: 0; }
+/* Tela que se adapta à janela sem rolar (início do Shuffler). Usa :has(), então só vale enquanto a tela está no DOM e nunca "gruda" ao navegar. */
+html:has([data-fit-screen]), html:has([data-fit-screen]) body { height: 100dvh; overflow: hidden; }
+html:has([data-fit-screen]) .app-col { height: 100dvh; }
+html:has([data-fit-screen]) .app-col > main { min-height: 0; display: flex; flex-direction: column; padding-top: 1rem; padding-bottom: 0.5rem; }
+html:has([data-fit-screen]) .app-col > main > [data-fit-screen] { flex: 1 1 0; min-height: 0; }
+html:has([data-fit-screen]) .app-col > footer { padding-bottom: 0.75rem; }
+
+/* Os painéis "surgem" ao entrar na tela; o fundo do Shuffler aparece suave. */
+@keyframes spawn-in { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes spawn-fade { from { opacity: 0; } to { opacity: 1; } }
+.spawn-in { animation: spawn-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.spawn-fade { animation: spawn-fade 0.6s ease both; }
+@media (prefers-reduced-motion: reduce) { .spawn-in, .spawn-fade, .glow-pulse { animation: none; } }

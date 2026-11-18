@@ -166,7 +166,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
   );
 
   return (
-    <div className="space-y-5">
+    <div className="spawn-in space-y-5">
       <ConfirmDialog open={priorOpen} tone="warn" icon={History} busy={pending} title="Este lead já foi atendido" confirmLabel="Buscar outro lead" cancelLabel="Atender mesmo assim"
         onCancel={() => setPriorAck(lead.id)} onConfirm={seek}>
         {previous && (

@@ -4,7 +4,10 @@ import { Activity, Database, RefreshCw, X } from "lucide-react";
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { btnGhost } from "@/components/ui";
-import { dbHealthAction, type DbHealth, type Level } from "@/modules/admin/db-health";
+import { Trash2, Sparkles } from "lucide-react";
+import { useConfirm } from "@/components/confirm-dialog";
+import { useToast } from "@/components/toast";
+import { dbHealthAction, dbMaintenanceAction, type DbHealth, type Level } from "@/modules/admin/db-health";
 
 const N = new Intl.NumberFormat("pt-BR");
 const bytes = (b: number | null) => {
@@ -40,6 +43,8 @@ export function DbHealthButton({ total }: { total: number }) {
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [mounted, setMounted] = useState(false);
+  const { ask, dialog } = useConfirm();
+  const toast = useToast();
   useEffect(() => setMounted(true), []);
 
   const load = useCallback(() => start(async () => {
@@ -53,6 +58,13 @@ export function DbHealthButton({ total }: { total: number }) {
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
   }, [open]);
+
+  const maintain = (input: Parameters<typeof dbMaintenanceAction>[0], title: string, body: React.ReactNode, label: string, danger: boolean) =>
+    ask({ title, body, label, tone: danger ? "danger" : "accent", icon: danger ? Trash2 : Sparkles, onConfirm: async () => {
+      const r = await dbMaintenanceAction(input);
+      toast(r.ok ? "ok" : "bad", r.message);
+      if (r.ok) load();
+    } });
 
   const worst: Level | null = data ? (data.checks.some((c) => c.level === "bad") ? "bad" : data.checks.some((c) => c.level === "warn") ? "warn" : "ok") : null;
 
@@ -119,10 +131,13 @@ export function DbHealthButton({ total }: { total: number }) {
                   </section>
 
                   <section>
-                    <h3 className="mb-2 text-sm font-semibold">Maiores tabelas</h3>
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold">Maiores tabelas</h3>
+                      {data.isAdmin && <button type="button" className={`${btnGhost} !py-1 text-xs`} onClick={() => maintain({ kind: "vacuum" }, "Limpar todas as tabelas?", "Roda a limpeza (vacuum) do banco: recupera o espaço de linhas mortas e atualiza as estatísticas. Não apaga nenhum dado e pode levar alguns segundos.", "Limpar tudo", false)}><Sparkles size={13} aria-hidden /> Limpar tudo</button>}
+                    </div>
                     <div className="overflow-x-auto rounded-xl border border-line/60">
                       <table className="w-full min-w-[30rem] text-sm">
-                        <thead className="bg-sunk/60 text-left text-xs text-muted"><tr><th className="px-3 py-2">Tabela</th><th className="px-3 py-2 text-right">Linhas</th><th className="px-3 py-2 text-right">Tamanho</th><th className="px-3 py-2 text-right">Mortas</th><th className="px-3 py-2">Últ. limpeza</th></tr></thead>
+                        <thead className="bg-sunk/60 text-left text-xs text-muted"><tr><th className="px-3 py-2">Tabela</th><th className="px-3 py-2 text-right">Linhas</th><th className="px-3 py-2 text-right">Tamanho</th><th className="px-3 py-2 text-right">Mortas</th><th className="px-3 py-2">Últ. limpeza</th>{data.isAdmin && <th className="px-3 py-2" />}</tr></thead>
                         <tbody>
                           {data.tables.map((t) => (
                             <tr key={t.name} className="border-t border-line/50">
@@ -131,6 +146,7 @@ export function DbHealthButton({ total }: { total: number }) {
                               <td className="figure px-3 py-1.5 text-right">{bytes(t.bytes)}</td>
                               <td className="figure px-3 py-1.5 text-right">{N.format(t.dead)}</td>
                               <td className="px-3 py-1.5 text-xs text-muted">{when(t.lastVacuum)}</td>
+                              {data.isAdmin && <td className="px-3 py-1.5 text-right">{t.dead > 0 && <button type="button" className="text-xs font-semibold text-accent hover:underline" onClick={() => maintain({ kind: "vacuum", table: t.name }, `Limpar a tabela ${t.name}?`, `Recupera ${N.format(t.dead)} linhas mortas. Nenhum dado é apagado.`, "Limpar", false)}>Limpar</button>}</td>}
                             </tr>
                           ))}
                         </tbody>
@@ -143,7 +159,7 @@ export function DbHealthButton({ total }: { total: number }) {
                       <h3 className="mb-1 text-sm font-semibold">Índices nunca usados</h3>
                       <p className="mb-2 text-xs text-muted">Ocupam espaço e deixam as gravações mais lentas. Só vale remover depois de bastante uso real.</p>
                       <ul className="space-y-1 text-sm">
-                        {data.indexes.unused.map((i) => <li key={i.name} className="flex justify-between gap-3 rounded-lg bg-sunk/60 px-3 py-1.5"><span className="truncate">{i.name} <span className="text-muted">({i.table})</span></span><span className="figure text-muted">{bytes(i.bytes)}</span></li>)}
+                        {data.indexes.unused.map((i) => <li key={i.name} className="flex justify-between gap-3 rounded-lg bg-sunk/60 px-3 py-1.5"><span className="truncate">{i.name} <span className="text-muted">({i.table})</span></span><span className="flex items-center gap-2"><span className="figure text-muted">{bytes(i.bytes)}</span>{data.isAdmin && <button type="button" className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-danger hover:bg-danger/10" onClick={() => maintain({ kind: "drop_index", name: i.name }, "Remover este índice?", <>O índice <b>{i.name}</b> (tabela {i.table}) será apagado. Nada some dos dados, mas buscas que dependiam dele podem ficar mais lentas.</>, "Remover índice", true)}><Trash2 size={13} aria-hidden /> Remover</button>}</span></li>)}
                       </ul>
                     </section>
                   )}
@@ -155,6 +171,7 @@ export function DbHealthButton({ total }: { total: number }) {
         </div>,
         document.body,
       )}
+      {dialog}
     </>
   );
 }

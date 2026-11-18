@@ -177,6 +177,41 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread }: { channel
   chRef.current = channel;
   /** Mensagens já carregadas de cada grupo: ao reabrir o chat elas aparecem na hora e só o que é novo é buscado. */
   const cacheRef = useRef<Record<string, { msgs: ChatMsg[]; more: boolean }>>({});
+  const justOpened = useRef(false);
+  const lsKey = `sdrfey:chat:${meId}`;
+  const [restored, setRestored] = useState(false);
+
+  // ao abrir o site: recupera o que ficou salvo (aberto/fechado, grupo, mensagens) e já busca as mensagens, sem marcar como lidas
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(lsKey);
+      if (raw) {
+        const j = JSON.parse(raw) as { open?: boolean; channel?: string; cache?: Record<string, { msgs: ChatMsg[]; more: boolean }> };
+        if (j.cache) for (const [k, v] of Object.entries(j.cache)) if (channels.some((c) => c.key === k) && Array.isArray(v?.msgs)) cacheRef.current[k] = v;
+        if (j.channel && channels.some((c) => c.key === j.channel)) setChannel(j.channel);
+        if (j.open) { justOpened.current = true; setOpen(true); }
+      }
+    } catch { /* sem armazenamento: segue sem salvar */ }
+    setRestored(true);
+    for (const c of channels) {
+      void fetch(`/api/chat?channel=${encodeURIComponent(c.key)}`, { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j: { messages?: ChatMsg[] } | null) => {
+          if (!j?.messages || cacheRef.current[c.key]) return;
+          cacheRef.current[c.key] = { msgs: j.messages, more: j.messages.length >= 40 };
+        })
+        .catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      const cache: Record<string, { msgs: ChatMsg[]; more: boolean }> = {};
+      for (const [k, v] of Object.entries(cacheRef.current)) cache[k] = { msgs: v.msgs.slice(-40), more: v.more };
+      localStorage.setItem(lsKey, JSON.stringify({ open, channel, cache }));
+    } catch { /* cheio ou bloqueado */ }
+  }, [restored, open, channel, msgs, lsKey]);
 
   /** Uma consulta ao servidor. Nunca roda duas ao mesmo tempo; falhas viram aviso "sem conexão" e novas tentativas. */
   const poll = useCallback(async (reset = false): Promise<void> => {
@@ -186,7 +221,7 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread }: { channel
     const cur = reset ? [] : msgsRef.current;
     const last = cur.length ? cur[cur.length - 1].id : 0;
     const u = new URLSearchParams();
-    if (open) { u.set("channel", ch); u.set("open", "1"); if (last) { u.set("after", String(last)); if (tick.current++ % 2 === 0) u.set("from", String(cur[0].id)); } }
+    if (open) { u.set("channel", ch); u.set("open", "1"); if (justOpened.current) { u.set("mark", "1"); justOpened.current = false; } if (last) { u.set("after", String(last)); if (tick.current++ % 2 === 0) u.set("from", String(cur[0].id)); } }
     try {
       const r = await fetch(`/api/chat?${u}`, { cache: "no-store" });
       if (r.status === 401) { fails.current = 99; setOffline(true); return; }
@@ -215,6 +250,7 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread }: { channel
     if (!open) return;
     stick.current = true;
     const c = cacheRef.current[channel];
+    justOpened.current = true;
     if (c) { msgsRef.current = c.msgs; tick.current = 0; setMsgs(c.msgs); setMore(c.more); setLoaded(true); void poll(false); }
     else { setLoaded(false); setMsgs([]); msgsRef.current = []; void poll(true); }
   }, [open, channel, poll]);

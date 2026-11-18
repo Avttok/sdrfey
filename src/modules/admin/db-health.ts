@@ -4,10 +4,12 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { hasRole } from "@/config/roles";
 import { requireUser } from "@/modules/auth/guard";
+import { logAudit } from "@/modules/audit/log";
 
 export type Level = "ok" | "warn" | "bad";
 export type HealthCheck = { label: string; level: Level; detail: string };
 export type DbHealth = {
+  isAdmin: boolean;
   at: string;
   latencyMs: number;
   version: string | null;
@@ -80,10 +82,33 @@ export async function dbHealthAction(): Promise<{ ok: true; data: DbHealth } | {
   return {
     ok: true,
     data: {
-      at: new Date().toISOString(), latencyMs, version: meta?.v?.split(" on ")[0] ?? null, sizeBytes: meta ? num(meta.size) : null, uptimeSec: meta?.up ? Math.round(Number(meta.up)) : null,
+      isAdmin: hasRole(me.roles, "admin"), at: new Date().toISOString(), latencyMs, version: meta?.v?.split(" on ")[0] ?? null, sizeBytes: meta ? num(meta.size) : null, uptimeSec: meta?.up ? Math.round(Number(meta.up)) : null,
       connections, cacheHitPct, xactCommit: stat ? num(stat.commit) : null, xactRollback: stat ? num(stat.rollback) : null, deadlocks: stat ? num(stat.deadlocks) : null,
       tables, indexes: { total: idxs ? num(idxs.total) : 0, bytes: idxs ? num(idxs.bytes) : 0, unused: (unused ?? []).map((u) => ({ name: u.name, table: u.tbl, bytes: num(u.bytes) })) },
       leads: leadsOut, checks, errors,
     },
   };
+}
+
+/** Manutenção do banco: só o Adm. Os nomes são conferidos contra o catálogo do banco antes de qualquer comando. */
+export async function dbMaintenanceAction(input: { kind: "vacuum"; table?: string } | { kind: "drop_index"; name: string }): Promise<{ ok: boolean; message: string }> {
+  const me = await requireUser();
+  if (!hasRole(me.roles, "admin")) return { ok: false, message: "Só o Adm pode fazer isso." };
+  try {
+    if (input.kind === "vacuum") {
+      const names = rows<{ name: string }>(await db.execute(sql`select relname as name from pg_stat_user_tables`)).map((r) => r.name);
+      const targets = input.table ? names.filter((n) => n === input.table) : names;
+      if (!targets.length) return { ok: false, message: "Tabela não encontrada." };
+      for (const t of targets) await db.execute(sql`vacuum (analyze) ${sql.identifier(t)}`);
+      await logAudit(db, { userId: me.id, entity: "setting", action: "limpou o banco (vacuum)", field: "Banco de dados", newValue: input.table ?? "todas as tabelas" });
+      return { ok: true, message: input.table ? `Tabela ${input.table} limpa.` : `${targets.length} tabelas limpas.` };
+    }
+    const found = rows<{ name: string }>(await db.execute(sql`select s.indexrelname as name from pg_stat_user_indexes s join pg_index i on i.indexrelid = s.indexrelid where s.idx_scan = 0 and not i.indisunique and not i.indisprimary and s.indexrelname = ${input.name}`));
+    if (!found.length) return { ok: false, message: "Esse índice não existe mais, está em uso ou é obrigatório." };
+    await db.execute(sql`drop index ${sql.identifier(input.name)}`);
+    await logAudit(db, { userId: me.id, entity: "setting", action: "removeu índice sem uso", field: "Banco de dados", oldValue: input.name });
+    return { ok: true, message: `Índice ${input.name} removido.` };
+  } catch (e) {
+    return { ok: false, message: `Não deu certo: ${e instanceof Error ? e.message.slice(0, 120) : "erro desconhecido"}` };
+  }
 }

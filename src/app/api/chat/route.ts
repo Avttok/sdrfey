@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     messages = await listMessages(me, channel, { after, before });
     const from = num("from");
     if (from && after) [gone, reactions] = await Promise.all([deletedSince(channel, from), reactionsSince(me, channel, from)]);
-    if (q.get("open") === "1" && (!after || messages.length)) await markRead(me, channel, Math.max(after ?? 0, ...messages.map((m) => m.id)));
+    if (q.get("open") === "1" && (!after || messages.length || q.get("mark") === "1")) await markRead(me, channel, Math.max(after ?? 0, ...messages.map((m) => m.id)));
   }
   return NextResponse.json({ enabled: true, unread: await unreadByChannel(me), messages, gone, reactions }, { headers: { "Cache-Control": "no-store" } });
 }
