@@ -21,10 +21,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="app-col flex min-w-0 flex-1 flex-col">
           <AppHeader user={user} badges={badges} groupNav={groupNav} />
           <main className="mx-auto flex w-full max-w-[92rem] flex-1 flex-col px-3 py-7 pb-10 sm:px-5 lg:px-6">{children}</main>
-          <footer className="px-4 pb-6 text-center text-xs text-muted"><span className="relative inline-block px-4 py-1.5"><span aria-hidden className="glow-pulse absolute inset-0 rounded-full bg-accent/50 blur-lg" /><span className="relative font-medium">Made by Ruan Carlos</span></span></footer>
+          <footer className="relative z-40 px-4 pb-6 text-center text-xs text-muted"><span className="relative inline-block px-4 py-1.5"><span aria-hidden className="glow-pulse absolute inset-0 rounded-full bg-accent/50 blur-lg" /><span className="relative font-medium">Made by Ruan Carlos</span></span></footer>
         </div>
       </div>
-      <div aria-hidden className="pointer-events-none fixed inset-x-0 bottom-0 z-30 h-6 bg-gradient-to-t from-bg/80 to-transparent" />
+      <div aria-hidden className="pointer-events-none fixed inset-x-0 bottom-0 z-30 h-24 bg-gradient-to-t from-bg/90 via-bg/60 to-transparent" />
       <Suspense fallback={null}><ChatMount user={user} /></Suspense>
     </ToastProvider>
   );

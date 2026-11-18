@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Pagination } from "@/components/pagination";
 import Link from "next/link";
 import { and, asc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 import { Map, MapPin, UserCheck, Users } from "lucide-react";
@@ -53,7 +54,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
       <Suspense fallback={null}><RepFilters ufs={ufs} teams={teams} managers={managers} /></Suspense>
       <p className="text-sm font-medium text-muted">{nf.format(n)} {n === 1 ? "representante" : "representantes"}{c.length ? " com esses filtros" : ""}</p>
       <RepsAdmin isAdmin={me.roles.includes("admin")} canEdit={!!me.permissions["rep.edit"]} rows={rows.map((r) => ({ id: r.id, sapCode: r.sapCode, repName: r.repName ?? "", managerName: r.managerName ?? "", team: r.team ?? "", cnpj: r.cnpj ?? "", address: r.address ?? "", cep: r.cep ?? "", city: r.city ?? "", uf: r.uf ?? "", active: r.active, visits: vis.find((v) => v.sap === r.sapCode)?.n ?? 0, lastVisit: vis.find((v) => v.sap === r.sapCode)?.last ?? null }))} />
-      {pages > 1 && <nav className="flex items-center justify-center gap-3 text-sm" aria-label="Páginas">{page > 1 && <Link className={btnGhost} href={href(page - 1)}>Anterior</Link>}<span>Página {page} de {pages}</span>{page < pages && <Link className={btnGhost} href={href(page + 1)}>Próxima</Link>}</nav>}
+      <Pagination page={page} pages={pages} href={href} />
     </div>
   );
 }

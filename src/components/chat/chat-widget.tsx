@@ -166,6 +166,18 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread }: { channel
   const [pickFor, setPickFor] = useState<number | null>(null);
   const [menu, setMenu] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  // área realmente visível (teclado aberto, barras do navegador): o chat nunca passa dela
+  const [vv, setVv] = useState<{ h: number; inset: number } | null>(null);
+  useEffect(() => {
+    const v = window.visualViewport;
+    if (!v) return;
+    const f = () => setVv({ h: v.height, inset: Math.max(0, window.innerHeight - (v.offsetTop + v.height)) });
+    f();
+    v.addEventListener("resize", f); v.addEventListener("scroll", f); window.addEventListener("resize", f);
+    return () => { v.removeEventListener("resize", f); v.removeEventListener("scroll", f); window.removeEventListener("resize", f); };
+  }, []);
+  const btnBottom = (vv?.inset ?? 0) + 20;
+  const panelStyle = vv ? { bottom: btnBottom + 60, height: Math.max(180, Math.min(544, vv.h - 60 - 20 - 16 - 8)) } : undefined;
   const fails = useRef(0);
   const busy = useRef(false);
   const tick = useRef(0);
@@ -361,7 +373,7 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread }: { channel
   return (
     <>
       {open && (
-        <section aria-label="Chat" className="fixed inset-x-3 bottom-20 z-40 flex h-[min(34rem,calc(100vh-7rem))] flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl sm:inset-x-auto sm:right-5 sm:w-[24rem]">
+        <section aria-label="Chat" style={panelStyle} className="fixed inset-x-3 bottom-20 z-40 flex h-[min(34rem,calc(100vh-7rem))] max-h-[calc(100%-1rem)] flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl sm:inset-x-auto sm:right-5 sm:w-[24rem]">
           <header className="flex items-center gap-2 border-b border-line px-4 py-3">
             <span className="grid size-8 place-items-center rounded-lg bg-grad-soft text-accent"><MessageCircle size={16} aria-hidden /></span>
             <div className="min-w-0 flex-1"><h2 className="text-sm font-semibold leading-tight">Chat · {cur?.label}</h2><p className="truncate text-[11px] text-muted">{cur?.hint}</p></div>
@@ -408,7 +420,7 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread }: { channel
           </footer>
         </section>
       )}
-      <button type="button" aria-label={open ? "Fechar chat" : total ? `Abrir chat (${total} não lidas)` : "Abrir chat"} aria-expanded={open} onClick={() => setOpen(!open)} className="fixed bottom-5 right-5 z-40 grid size-14 place-items-center rounded-full bg-grad text-on-accent shadow-xl transition hover:scale-105 active:scale-95">
+      <button type="button" aria-label={open ? "Fechar chat" : total ? `Abrir chat (${total} não lidas)` : "Abrir chat"} aria-expanded={open} onClick={() => setOpen(!open)} style={vv ? { bottom: btnBottom } : undefined} className="fixed bottom-5 right-5 z-40 grid size-14 place-items-center rounded-full bg-grad text-on-accent shadow-xl transition hover:scale-105 active:scale-95">
         {open ? <X size={24} aria-hidden /> : <MessageCircle size={24} aria-hidden />}
         {!open && total > 0 && <span className="figure absolute -right-1 -top-1 min-w-5 rounded-full border-2 border-bg bg-danger px-1 text-center text-[11px] font-bold leading-4 text-white">{total > 99 ? "99+" : total}</span>}
       </button>

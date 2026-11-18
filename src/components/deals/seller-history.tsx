@@ -1,4 +1,5 @@
 import { plural } from "@/lib/format";
+import { Pagination } from "@/components/pagination";
 import { CircleDollarSign, FileText, History, PhoneCall, Search, Trophy } from "lucide-react";
 import Link from "next/link";
 import { DateField } from "@/components/date-field";
@@ -60,7 +61,7 @@ export async function SellerHistory({ userId, sp }: { userId: number; sp: Record
         ))}
         {rows.length === 0 && <li className={`${panelCls} p-10 text-center text-sm text-muted`}>Nenhuma negociação com esses filtros.</li>}
       </ul>
-      {pages > 1 && <nav aria-label="Páginas" className="flex items-center justify-center gap-3 text-sm">{pg > 1 && <Link prefetch={false} className={btnGhost} href={pageHref(pg - 1)}>Anterior</Link>}<span>Página {pg} de {pages}</span>{pg < pages && <Link prefetch={false} className={btnGhost} href={pageHref(pg + 1)}>Próxima</Link>}</nav>}
+      <Pagination page={pg} pages={pages} href={pageHref} />
     </div>
   );
 }

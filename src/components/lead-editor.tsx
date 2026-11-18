@@ -22,7 +22,7 @@ import { saveLeadLinksAction } from "@/modules/deals/actions";
 import { addPersonAction, addVisitAction, deleteVisitAction, changeTagAction, forceReleaseAction, removePersonAction, resetLeadFromPageAction, updateLeadAction } from "@/modules/leads/edit";
 import type { LeadView, TagCatalog } from "@/modules/leads/view";
 
-export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedBy, showMap, meId, sellerView, dealId, inDeal, dealSeller }: { dealSeller?: { name: string; hex: string } | null; inDeal?: boolean; sellerView?: boolean; dealId?: number | null; showMap: boolean; meId: number; lead: LeadView; catalog: TagCatalog; owners: { id: number; name: string }[]; canEdit: boolean; canRelease: boolean; lockedBy: { name: string; hex: string } | null }) {
+export function LeadEditor({ afterLeft, afterRight, lead, catalog, owners, canEdit, canRelease, lockedBy, showMap, meId, sellerView, dealId, inDeal, dealSeller }: { afterLeft?: React.ReactNode; afterRight?: React.ReactNode; dealSeller?: { name: string; hex: string } | null; inDeal?: boolean; sellerView?: boolean; dealId?: number | null; showMap: boolean; meId: number; lead: LeadView; catalog: TagCatalog; owners: { id: number; name: string }[]; canEdit: boolean; canRelease: boolean; lockedBy: { name: string; hex: string } | null }) {
   const toast = useToast();
   const active = lead.registrationStatus ? lead.registrationStatus.toUpperCase() === "ATIVA" : null;
   const name0 = lead.tradeName ?? lead.company;
@@ -104,6 +104,7 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
             <div className="flex flex-wrap gap-1.5">{g.tags.map((t) => <TagChip key={t.key} label={t.label} color={t.color} on={on.has(`${g.key}:${t.key}`)} onClick={canEdit && !sellerView ? () => toggleTag(g.key, t.key, g.exclusive) : undefined} />)}</div></div>
         ))}
       </SectionCard>
+      {afterLeft}
       </div>
       <div className="space-y-5">
       <SectionCard icon={Link2} title="Perfis do cliente">
@@ -154,6 +155,7 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
         onConfirm={() => { const id = delVisit!; setDelVisit(null); run(() => deleteVisitAction(lead.id, id)); }}>
         O registro da visita é removido do lead e da aba Visitas. A ação fica no Registro de atividades.
       </ConfirmDialog>
+      {afterRight}
       </div>
       </div>
     </div>

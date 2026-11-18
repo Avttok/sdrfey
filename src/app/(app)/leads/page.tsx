@@ -1,4 +1,5 @@
 import { visibleUsers } from "@/modules/auth/visibility";
+import { Pagination } from "@/components/pagination";
 import { PersonBubble } from "@/components/person-bubble";
 import type { Metadata } from "next";
 import { PageHead } from "@/components/page-head";
@@ -91,11 +92,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
       </ul>
 
       {pages > 1 && (
-        <nav className="flex items-center justify-center gap-3 text-sm" aria-label="Páginas">
-          {filters.page > 1 && <Link className="underline" href={pageHref(filters.page - 1)}>Anterior</Link>}
-          <span>Página {filters.page} de {pages}</span>
-          {filters.page < pages && <Link className="underline" href={pageHref(filters.page + 1)}>Próxima</Link>}
-        </nav>
+        <Pagination page={filters.page} pages={pages} href={pageHref} total={total} label="leads" />
       )}
     </div>
   );

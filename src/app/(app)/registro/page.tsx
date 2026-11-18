@@ -1,4 +1,5 @@
 import { visibleUsers } from "@/modules/auth/visibility";
+import { Pagination } from "@/components/pagination";
 import { describeMeta } from "@/lib/audit-meta";
 import type { Metadata } from "next";
 import { PageHead } from "@/components/page-head";
@@ -107,7 +108,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
         </section>
       ))}
       {rows.length === 0 && <div className={`${panelCls} p-10 text-center text-muted`}>Nenhum registro com esses filtros.</div>}
-      {pages > 1 && <nav className="flex items-center justify-center gap-3 text-sm" aria-label="Páginas">{f.page > 1 && <Link className={btnGhost} href={href(f.page - 1)}>Anterior</Link>}<span>Página {f.page} de {pages}</span>{f.page < pages && <Link className={btnGhost} href={href(f.page + 1)}>Próxima</Link>}</nav>}
+      <Pagination page={f.page} pages={pages} href={href} />
     </div>
   );
 }

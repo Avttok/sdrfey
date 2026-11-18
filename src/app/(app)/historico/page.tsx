@@ -1,4 +1,5 @@
 import { db } from "@/db";
+import { Pagination } from "@/components/pagination";
 import { sql } from "drizzle-orm";
 import type { Metadata } from "next";
 import { PageHead } from "@/components/page-head";
@@ -132,7 +133,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
           </ul>
         </section>
       ))}
-      {pages > 1 && <nav aria-label="Páginas" className="flex items-center justify-center gap-3 text-sm">{pg > 1 && <Link prefetch={false} className={btnGhost} href={pageHref(pg - 1)}>Anterior</Link>}<span>Página {pg} de {pages}</span>{pg < pages && <Link prefetch={false} className={btnGhost} href={pageHref(pg + 1)}>Próxima</Link>}</nav>}
+      <Pagination page={pg} pages={pages} href={pageHref} />
     </div>
   );
 }
