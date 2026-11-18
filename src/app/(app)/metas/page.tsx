@@ -1,4 +1,4 @@
-import { visibleUsers } from "@/modules/auth/visibility";
+import { metricUsers, visibleUsers } from "@/modules/auth/visibility";
 import { Handshake, Headset, Target } from "lucide-react";
 import { MetasShell, type MetasTab } from "@/components/metas-shell";
 import { SdrOverview } from "@/components/goals-overview";
@@ -51,7 +51,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const manage = viewAll;
   const onlySelf = !viewAll;
 
-  const sellers = showSellers ? await db.select().from(users).where(and(eq(users.active, true), sql`'seller' = any(${users.roles})`, onlySelf ? eq(users.id, me.id) : undefined, visibleUsers(me))).orderBy(asc(users.name)) : [];
+  const sellers = showSellers ? await db.select().from(users).where(and(eq(users.active, true), sql`'seller' = any(${users.roles})`, onlySelf ? eq(users.id, me.id) : undefined, metricUsers(me))).orderBy(asc(users.name)) : [];
   const gset = await getSellerGoalSettings();
   const views = await Promise.all(sellers.map(async (u) => {
     const m = await getSellerMonth(u.id, monthStr);

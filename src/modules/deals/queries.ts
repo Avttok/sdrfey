@@ -62,7 +62,7 @@ export async function listDeals(meId: number, team: boolean, opts: { includeTest
     .innerJoin(leads, eq(leads.id, deals.leadId))
     .leftJoin(seller, eq(seller.id, deals.sellerId))
     .leftJoin(sdr, eq(sdr.id, deals.sdrId))
-    .where(and(sql`(${deals.sellerId} is null or ${seller.inMetrics} or ${deals.sellerId} = ${meId} or coalesce((select 'admin' = any(u.roles) from users u where u.id = ${meId}), false))`, team ? undefined : sql`(${deals.sellerId} = ${meId} or ${deals.sellerId} is null)`, opts.includeTest ? undefined : eq(deals.isTest, false)))
+    .where(and(sql`(${deals.sellerId} is null or ${seller.inMetrics} or ${deals.sellerId} = ${meId})`, team ? undefined : sql`(${deals.sellerId} = ${meId} or ${deals.sellerId} is null)`, opts.includeTest ? undefined : eq(deals.isTest, false)))
     .orderBy(desc(deals.updatedAt));
   const iso = (v: Date | null) => (v ? v.toISOString() : null);
   const out = rows.map(({ d, ...x }) => {
