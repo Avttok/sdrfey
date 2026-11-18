@@ -203,6 +203,10 @@ export const visits = pgTable(
     repSap: text("rep_sap"),
     repCity: text("rep_city"),
     repKm: integer("rep_km"),
+    /** "rep" = visita de representante; "seller" = visita dos Vendedores SDR (o vendedor entra pelo Salesforce e confirma). */
+    kind: text("kind").$type<"rep" | "seller">().notNull().default("rep"),
+    /** Vendedor escolhido para a visita (kind = seller); vazio = grupo dos vendedores. */
+    sellerId: integer("seller_id").references(() => users.id, { onDelete: "set null" }),
     canceledAt: timestamp("canceled_at", { withTimezone: true }),
     /** Visita de representante leva dias para ser confirmada: pendente → confirmada → realizada (ou cancelada). */
     status: text("status").$type<"pendente" | "confirmada" | "realizada" | "cancelada">().notNull().default("pendente"),

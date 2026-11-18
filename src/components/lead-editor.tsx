@@ -2,6 +2,7 @@
 
 import { PersonBubble } from "@/components/person-bubble";
 
+import { EoxIcon, SalesforceIcon } from "@/components/brand-icons";
 import { ArrowLeft, Ban, CalendarCheck, Copy, ExternalLink, Handshake, Link2, MapPin, Pencil, Phone, Plus, Tag, Trash2, RotateCcw, UnlockKeyhole, Users } from "lucide-react";
 import Link from "next/link";
 import { SectionCard } from "@/components/section-card";
@@ -66,8 +67,8 @@ export function LeadEditor({ lead, catalog, owners, canEdit, canRelease, lockedB
             {lead.tags.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{lead.tags.map((t) => <TagChip key={t.id} label={t.label} color={t.color} />)}</div>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {lead.salesforceUrl && <a href={lead.salesforceUrl} target="_blank" rel="noreferrer" className={btnGhost}><ExternalLink size={15} aria-hidden /> Salesforce</a>}
-            {lead.eoxUrl && <a href={lead.eoxUrl} target="_blank" rel="noreferrer" className={btnGhost}><ExternalLink size={15} aria-hidden /> CRM (EOX)</a>}
+            {lead.salesforceUrl && <a href={lead.salesforceUrl} target="_blank" rel="noreferrer" className={btnGhost}><SalesforceIcon size={15} /> Salesforce</a>}
+            {lead.eoxUrl && <a href={lead.eoxUrl} target="_blank" rel="noreferrer" className={btnGhost}><EoxIcon size={15} /> CRM (EOX)</a>}
             {sellerView ? (dealId ? <Link href={`/negociacoes/${dealId}`} className={btnPrimary}><Handshake size={16} aria-hidden /> Abrir negociação</Link> : null) : lockedBy ? <PersonBubble name={lockedBy.name} hex={lockedBy.hex} prefix="Em atendimento" /> : inDeal ? <span className="rounded-full bg-accent/12 px-3 py-1.5 text-sm font-semibold text-accent">Com os vendedores</span> : <><AttendButton leadId={lead.id} />{dealId ? <Link href={`/negociacoes/${dealId}`} className={btnGhost}><Handshake size={16} aria-hidden /> Abrir negociação</Link> : null}</>}
             {!sellerView && canEdit && !lockedBy && <button type="button" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => setConfirmReset(true)}><RotateCcw size={15} aria-hidden /> Resetar lead</button>}
             {lockedBy && canRelease && <button type="button" className={btnGhost} disabled={pending} onClick={() => run(() => forceReleaseAction(lead.id))}><UnlockKeyhole size={15} aria-hidden /> Liberar lead</button>}

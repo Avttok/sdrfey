@@ -9,6 +9,7 @@ import { AlertTriangle, LayoutDashboard, CalendarCheck, Clock, Database, Flame, 
 import { Suspense } from "react";
 import { DashboardFilters } from "@/components/dashboard-filters";
 import { panelCls } from "@/components/ui";
+import { VisitCodeChip } from "@/components/visit-row";
 import { bubbleHex } from "@/config/theme";
 import { SalesDashboard } from "@/components/deals/sales-dashboard";
 import { hasSellerPart, isSellerOnly } from "@/config/roles";
@@ -175,7 +176,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         )}
         {can("panel.agendamentos") && (
           <Block icon={CalendarCheck} title="Agendamentos recentes">
-            {d.recentVisits.length ? <ul className="space-y-1.5 text-sm">{d.recentVisits.map((v) => <li key={v.code + v.at} className="flex flex-wrap items-center gap-2"><span className="rounded-md bg-sunk px-2 py-0.5 text-xs">{v.code}</span><span className="min-w-0 flex-1 truncate">{v.company}</span><span className="flex items-center gap-2 text-xs text-muted">{v.name && <PersonBubble name={v.name} hex={bubbleHex(v.accent, v.uid ?? 0, v.roles ?? undefined)} />}{fmtDateTime(v.at)}</span></li>)}</ul> : <p className="text-sm text-muted">Nenhuma visita agendada ainda.</p>}
+            {d.recentVisits.length ? <ul className="space-y-1.5 text-sm">{d.recentVisits.map((v) => <li key={v.code + v.at} className="flex flex-wrap items-center gap-2"><VisitCodeChip code={v.code} /><span className="min-w-0 flex-1 truncate">{v.company}</span><span className="flex items-center gap-2 text-xs text-muted">{v.name && <PersonBubble name={v.name} hex={bubbleHex(v.accent, v.uid ?? 0, v.roles ?? undefined)} />}{fmtDateTime(v.at)}</span></li>)}</ul> : <p className="text-sm text-muted">Nenhuma visita agendada ainda.</p>}
           </Block>
         )}
       </div>

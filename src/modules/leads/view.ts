@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { bubbleHex } from "@/config/theme";
 import { db, emailTemplates, leadChannels, leadPeople, leads, leadTags, tagGroups, tags, users, visits } from "@/db";
 import { mergeInfo, parseBrasilApi, parseReceitaWs } from "@/modules/enrich/parse";
@@ -26,7 +26,7 @@ export async function getLeadView(leadId: number) {
     db.select({ id: tags.id, groupKey: tags.groupKey, key: tags.key, label: tags.label, color: tags.color }).from(leadTags).innerJoin(tags, eq(tags.id, leadTags.tagId)).innerJoin(tagGroups, eq(tagGroups.key, tags.groupKey)).where(and(eq(leadTags.leadId, leadId), eq(tags.active, true))).orderBy(asc(tagGroups.sort), asc(tags.sort), asc(tags.label)),
     db.select().from(leadChannels).where(eq(leadChannels.leadId, leadId)).orderBy(asc(leadChannels.id)),
     db.select().from(leadPeople).where(eq(leadPeople.leadId, leadId)).orderBy(asc(leadPeople.id)),
-    db.select({ id: visits.id, code: visits.code, createdAt: visits.createdAt, visitDate: visits.visitDate, link: visits.link, repName: visits.repName, repSap: visits.repSap, repCity: visits.repCity, repKm: visits.repKm, userId: visits.userId, canceledAt: visits.canceledAt, status: visits.status, confirmedAt: visits.confirmedAt, by: users.name, byId: users.id, byAccent: users.accent, byRoles: users.roles }).from(visits).leftJoin(users, eq(users.id, visits.userId)).where(eq(visits.leadId, leadId)).orderBy(desc(visits.id)),
+    db.select({ id: visits.id, code: visits.code, createdAt: visits.createdAt, visitDate: visits.visitDate, link: visits.link, repName: visits.repName, repSap: visits.repSap, repCity: visits.repCity, repKm: visits.repKm, kind: visits.kind, sellerName: sql<string | null>`(select name from users su where su.id = ${visits.sellerId})`, userId: visits.userId, canceledAt: visits.canceledAt, status: visits.status, confirmedAt: visits.confirmedAt, by: users.name, byId: users.id, byAccent: users.accent, byRoles: users.roles }).from(visits).leftJoin(users, eq(users.id, visits.userId)).where(eq(visits.leadId, leadId)).orderBy(desc(visits.id)),
     nearestRep(lead.city, lead.uf),
   ]);
   const info = mergeInfo(parseBrasilApi(lead.brasilApiData), parseReceitaWs(lead.receitaWsData));
@@ -52,7 +52,7 @@ export async function getLeadView(leadId: number) {
     tags: tagRows,
     channels: channels.map((c) => ({ id: c.id, personId: c.personId, kind: c.kind, value: c.value, label: c.label, origin: c.origin, wrong: c.wrong })),
     people: people.map((p) => ({ id: p.id, name: p.name, roleTitle: p.roleTitle, extension: p.extension })),
-    visits: visitRows.map((v) => ({ id: v.id, code: v.code, at: v.createdAt.toISOString(), visitDate: v.visitDate, link: v.link, repName: v.repName, repSap: v.repSap, repCity: v.repCity, repKm: v.repKm, byUserId: v.userId, canceled: !!v.canceledAt, status: v.canceledAt ? ("cancelada" as const) : v.status, confirmedAt: v.confirmedAt?.toISOString() ?? null, by: v.by, byHex: v.by ? bubbleHex(v.byAccent, v.byId ?? 0, v.byRoles ?? undefined) : null })),
+    visits: visitRows.map((v) => ({ id: v.id, code: v.code, at: v.createdAt.toISOString(), visitDate: v.visitDate, link: v.link, repName: v.repName, repSap: v.repSap, repCity: v.repCity, repKm: v.repKm, kind: v.kind, sellerName: v.sellerName, byUserId: v.userId, canceled: !!v.canceledAt, status: v.canceledAt ? ("cancelada" as const) : v.status, confirmedAt: v.confirmedAt?.toISOString() ?? null, by: v.by, byHex: v.by ? bubbleHex(v.byAccent, v.byId ?? 0, v.byRoles ?? undefined) : null })),
     rep,
   };
 }

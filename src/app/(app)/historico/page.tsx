@@ -51,6 +51,14 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
   const byDay = new Map<string, HistRow[]>();
   for (const r of rows) { const k = dayKey(r.saved_at); byDay.set(k, [...(byDay.get(k) ?? []), r]); }
   const days = [...byDay.entries()];
+  // A lista é paginada: desenhar centenas de cartões de uma vez travava a tela (e o scroll).
+  const PAGE = 30;
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE));
+  const pg = Math.min(pages, Math.max(1, Number(typeof sp.p === "string" ? sp.p : 1) || 1));
+  const pageByDay = new Map<string, HistRow[]>();
+  for (const r of rows.slice((pg - 1) * PAGE, pg * PAGE)) { const k = dayKey(r.saved_at); pageByDay.set(k, [...(pageByDay.get(k) ?? []), r]); }
+  const pageDays = [...pageByDay.entries()];
+  const pageHref = (n: number) => { const u = new URLSearchParams(); for (const [k, v] of Object.entries(sp)) if (typeof v === "string" && k !== "p") u.set(k, v); if (n > 1) u.set("p", String(n)); return `/historico${u.size ? `?${u}` : ""}`; };
   const spark = days.slice(0, 14).reverse();
   const max = Math.max(1, ...spark.map(([, v]) => v.length));
   const label = (k: string) => (k === todayKey ? "Hoje" : k === yKey ? "Ontem" : fmtDate(`${k}T12:00:00-03:00`));
@@ -60,10 +68,10 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
     <div className="space-y-6">
       {tabs}
       <PageHead icon={History} title="Meu histórico" subtitle="Tudo o que você atendeu e salvou. Use ATENDER para voltar a um lead.">
-        <Link className={btnGhost} href={preset(1)}>Hoje</Link>
-        <Link className={btnGhost} href={preset(7)}>7 dias</Link>
-        <Link className={btnGhost} href={preset(30)}>30 dias</Link>
-        <Link className={btnGhost} href="/historico">Tudo</Link>
+        <Link prefetch={false} className={btnGhost} href={preset(1)}>Hoje</Link>
+        <Link prefetch={false} className={btnGhost} href={preset(7)}>7 dias</Link>
+        <Link prefetch={false} className={btnGhost} href={preset(30)}>30 dias</Link>
+        <Link prefetch={false} className={btnGhost} href="/historico">Tudo</Link>
       </PageHead>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -106,14 +114,14 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
 
       {days.length === 0 ? (
         <div className={`${panelCls} p-10 text-center text-muted`}>{hasFilter ? "Nada encontrado com esses filtros." : "Você ainda não atendeu nenhum lead."}</div>
-      ) : days.map(([k, list]) => (
+      ) : pageDays.map(([k, list]) => (
         <section key={k} className="space-y-2">
           <h2 className="flex items-baseline gap-2 text-sm font-semibold"><span className="display text-lg">{label(k)}</span><span className="font-normal text-muted">{plural(list.length, "atendimento", "atendimentos")}</span></h2>
           <ul className="space-y-2">
             {list.map((r) => (
               <li key={r.session_id} className={`${panelCls} flex flex-wrap items-start gap-3 p-4 transition hover:border-accent/50`}>
                 <div className="min-w-0 flex-1 space-y-1.5">
-                  <Link href={`/leads/${r.lead_id}`} className="block truncate font-medium hover:underline">{r.trade_name ?? r.company}</Link>
+                  <Link prefetch={false} href={`/leads/${r.lead_id}`} className="block truncate font-medium hover:underline">{r.trade_name ?? r.company}</Link>
                   <p className="text-xs text-muted">{hourFmt.format(new Date(r.saved_at))} · {fmtCnpj(r.cnpj)}{r.city ? ` · ${r.city}/${r.uf}` : ""} · tempo {fmtDuration(r.seconds)}{r.visits ? ` · visita ${r.visits}` : ""}</p>
                   {r.tags.length > 0 && <div className="flex flex-wrap gap-1.5">{r.tags.map((t) => <TagChip key={t.key + t.group} label={t.label} color={t.color} />)}</div>}
                   {r.notes && <p className="line-clamp-2 rounded-md bg-sunk px-2.5 py-1.5 text-xs text-muted">{r.notes}</p>}
@@ -124,6 +132,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
           </ul>
         </section>
       ))}
+      {pages > 1 && <nav aria-label="Páginas" className="flex items-center justify-center gap-3 text-sm">{pg > 1 && <Link prefetch={false} className={btnGhost} href={pageHref(pg - 1)}>Anterior</Link>}<span>Página {pg} de {pages}</span>{pg < pages && <Link prefetch={false} className={btnGhost} href={pageHref(pg + 1)}>Próxima</Link>}</nav>}
     </div>
   );
 }

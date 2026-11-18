@@ -4,7 +4,7 @@ import { and, eq, gt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { chatMessages, chatReactions, db, users } from "@/db";
 import { logAudit } from "@/modules/audit/log";
-import type { Role } from "@/config/roles";
+import { publicRoles, type Role } from "@/config/roles";
 import { requireUser } from "@/modules/auth/guard";
 import { canUseChannel, REACTION_EMOJIS } from "./channels";
 import { chatEnabled, isMod, listMessages, type ChatMsg } from "./data";
@@ -87,7 +87,7 @@ export async function chatProfileAction(userId: number): Promise<R<{ profile: Ch
   const admin = me.roles.includes("admin");
   if (!u.inMetrics && !admin && u.id !== me.id) return bad("Conta não encontrada.");
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(chatMessages).where(and(eq(chatMessages.userId, userId), sql`${chatMessages.deletedAt} is null`));
-  return { ok: true, profile: { id: u.id, name: u.name, username: u.username, roles: u.roles as Role[], sent: n, active: u.active, lastLoginAt: admin ? u.lastLoginAt?.toISOString() ?? null : null, isAdminView: admin } };
+  return { ok: true, profile: { id: u.id, name: u.name, username: u.username, roles: publicRoles(u.roles as Role[], admin), sent: n, active: u.active, lastLoginAt: admin ? u.lastLoginAt?.toISOString() ?? null : null, isAdminView: admin } };
 }
 
 /** Só o Adm: apaga todas as mensagens de um grupo, ou todas as de uma pessoa (em um grupo ou em todos). */

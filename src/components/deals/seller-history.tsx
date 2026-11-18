@@ -16,6 +16,10 @@ export async function SellerHistory({ userId, sp }: { userId: number; sp: Record
   const stage = one("etapa") as DealStage | undefined;
   const f: SellerHistFilters = { q: one("q"), stage: stage && stage in STAGE_META ? stage : undefined, from: date("from"), to: date("to") };
   const rows = await sellerHistory(userId, f);
+  const PAGE = 30;
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE));
+  const pg = Math.min(pages, Math.max(1, Number(one("p")) || 1));
+  const pageHref = (n: number) => { const u = new URLSearchParams(); for (const [k, v] of Object.entries(sp)) if (typeof v === "string" && k !== "p") u.set(k, v); if (n > 1) u.set("p", String(n)); return `/historico${u.size ? `?${u}` : ""}`; };
   const won = rows.filter((r) => r.stage === "ganho");
   const total = won.reduce((a, r) => a + (r.valueCents ?? 0), 0);
   const stat = (I: typeof Trophy, t: string, v: string, s?: string) => (
@@ -31,18 +35,19 @@ export async function SellerHistory({ userId, sp }: { userId: number; sp: Record
         {stat(FileText, "Cotações enviadas", String(rows.reduce((a, r) => a + r.quotes, 0)))}
       </div>
       <form className={`${panelCls} flex flex-wrap items-end gap-3 p-4`} action="/historico">
+        {sp.aba === "vendas" && <input type="hidden" name="aba" value="vendas" />}
         <label className="block min-w-48 flex-1 text-sm"><span className="mb-1 block text-muted">Buscar cliente</span><input name="q" defaultValue={f.q} className={inputCls} placeholder="Nome da empresa" /></label>
         <label className="block w-44 text-sm"><span className="mb-1 block text-muted">Etapa</span>
           <select name="etapa" defaultValue={f.stage ?? ""} className={inputCls}><option value="">Todas</option>{(Object.keys(STAGE_META) as DealStage[]).map((s) => <option key={s} value={s}>{STAGE_META[s].label}</option>)}</select></label>
         <div className="w-40 text-sm"><span className="mb-1 block text-muted">De</span><DateField name="from" label="De" defaultValue={f.from} /></div>
         <div className="w-40 text-sm"><span className="mb-1 block text-muted">Até</span><DateField name="to" label="Até" defaultValue={f.to} /></div>
         <button className={btnPrimary}><Search size={16} aria-hidden /> Filtrar</button>
-        <Link href="/historico" className={`${btnGhost} !py-3`}>Limpar</Link>
+        <Link prefetch={false} href={sp.aba === "vendas" ? "/historico?aba=vendas" : "/historico"} className={`${btnGhost} !py-3`}>Limpar</Link>
       </form>
       <ul className="space-y-2.5">
-        {rows.map((r) => (
+        {rows.slice((pg - 1) * PAGE, pg * PAGE).map((r) => (
           <li key={r.id}>
-            <Link href={`/negociacoes/${r.id}`} className={`${panelCls} group flex flex-wrap items-center gap-x-4 gap-y-2 p-4 transition hover:border-accent/50 hover:shadow-md`}>
+            <Link prefetch={false} href={`/negociacoes/${r.id}`} className={`${panelCls} group flex flex-wrap items-center gap-x-4 gap-y-2 p-4 transition hover:border-accent/50 hover:shadow-md`}>
               <span aria-hidden className="h-10 w-1 shrink-0 rounded-full" style={{ background: STAGE_META[r.stage].color }} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold group-hover:text-accent">{r.company}</span>
@@ -55,6 +60,7 @@ export async function SellerHistory({ userId, sp }: { userId: number; sp: Record
         ))}
         {rows.length === 0 && <li className={`${panelCls} p-10 text-center text-sm text-muted`}>Nenhuma negociação com esses filtros.</li>}
       </ul>
+      {pages > 1 && <nav aria-label="Páginas" className="flex items-center justify-center gap-3 text-sm">{pg > 1 && <Link prefetch={false} className={btnGhost} href={pageHref(pg - 1)}>Anterior</Link>}<span>Página {pg} de {pages}</span>{pg < pages && <Link prefetch={false} className={btnGhost} href={pageHref(pg + 1)}>Próxima</Link>}</nav>}
     </div>
   );
 }

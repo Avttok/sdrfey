@@ -1,6 +1,6 @@
 import { and, desc, eq, gt, inArray, isNotNull, lt, sql } from "drizzle-orm";
 import { chatMessages, chatReactions, chatReads, db, users } from "@/db";
-import type { Role } from "@/config/roles";
+import { publicRoles, type Role } from "@/config/roles";
 import { bubbleHex } from "@/config/theme";
 import type { CurrentUser } from "@/modules/auth/guard";
 import { getSettings } from "@/modules/settings/get";
@@ -31,7 +31,7 @@ export async function listMessages(me: CurrentUser, channel: string, o: { after?
   const mod = isMod(me);
   const rx = await reactionsFor(me, list.map(({ m }) => m.id));
   return list.map(({ m, name, accent, roles }) => ({
-    id: m.id, channel: m.channel, userId: m.userId, name: name ?? "Conta removida", roles: (roles ?? []) as Role[], reactions: rx[m.id] ?? [], hex: m.userId ? bubbleHex(accent, m.userId, roles ?? undefined) : "#888780",
+    id: m.id, channel: m.channel, userId: m.userId, name: name ?? "Conta removida", roles: publicRoles((roles ?? []) as Role[], me.roles.includes("admin")), reactions: rx[m.id] ?? [], hex: m.userId ? bubbleHex(accent, m.userId, roles ?? undefined) : "#888780",
     body: m.body, at: m.createdAt.toISOString(),
     share: m.shareKind && m.shareId ? { kind: m.shareKind, id: m.shareId, label: m.shareLabel ?? "" } : null,
     canDelete: mod || m.userId === me.id,

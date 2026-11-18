@@ -7,10 +7,15 @@ export type Role = (typeof ROLES)[number];
 
 export const ROLE_META: Record<Role, { label: string; defaultAccent: string; rank: number }> = {
   user: { label: "SDR", defaultAccent: "azul", rank: 1 },
-  seller: { label: "Vendedor", defaultAccent: "verde", rank: 1 },
+  seller: { label: "Vendas", defaultAccent: "verde", rank: 1 },
   manager: { label: "Gestor", defaultAccent: "amarelo", rank: 2 },
   admin: { label: "Adm", defaultAccent: "vermelho", rank: 3 },
 };
+
+/** Cargos que os outros podem ver: o "Adm" só aparece para o próprio Adm (a equipe não vê quem é admin). */
+export function publicRoles(roles: readonly Role[], viewerIsAdmin: boolean): Role[] {
+  return viewerIsAdmin ? [...roles] : roles.filter((r) => r !== "admin");
+}
 
 /** O cargo mais alto da pessoa (define a cor padrão). */
 export function topRole(roles: readonly Role[]): Role {

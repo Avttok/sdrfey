@@ -47,7 +47,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
   /** Para onde o lead vai ao final: ninguém, vendedores (negociação imediata) ou representante (visita). */
   const [dest, setDest] = useState<"none" | "sellers" | "reps">("none");
   const [sellerId, setSellerId] = useState<number | null>(null);
-  const showVisit = dest === "reps";
+  const showVisit = dest === "reps" || dest === "sellers";
   const [newValue, setNewValue] = useState("");
   const [tplId, setTplId] = useState(templates[0]?.id ?? 0);
   const [emailTo, setEmailTo] = useState("");
@@ -324,7 +324,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
             <div className="space-y-3">
               <p className="text-sm font-medium">Encaminhar este lead</p>
               <div role="radiogroup" aria-label="Encaminhar lead" className="grid gap-2 sm:grid-cols-3">
-                {([["none", "Sem encaminhamento", "Só registrar o atendimento"], ["sellers", "Vendedores", "Negociação imediata: o vendedor liga e fecha"], ["reps", "Representante", "Agenda uma visita (leva dias para confirmar)"]] as const).map(([k, t, d]) => (
+                {([["none", "Sem encaminhamento", "Só registrar o atendimento"], ["sellers", "Vendedores SDR", "Negociação imediata; o vendedor entra na visita pelo Salesforce e confirma"], ["reps", "Representante", "Agenda uma visita (leva dias para confirmar)"]] as const).map(([k, t, d]) => (
                   <button key={k} type="button" role="radio" aria-checked={dest === k} onClick={() => setDest(k)} className={`rounded-xl border-2 px-3 py-2.5 text-left transition ${dest === k ? "border-accent bg-accent/10" : "border-line hover:bg-sunk"}`}>
                     <span className="block text-sm font-semibold">{t}</span><span className="block text-xs text-muted">{d}</span>
                   </button>
@@ -340,12 +340,12 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
                   <p className="min-w-60 flex-1 text-xs text-muted">Qualifica o lead, cria a negociação na hora e avisa os vendedores. A observação abaixo vai junto para eles.</p>
                 </div>
               )}
-              {dest === "reps" && (
+              {(dest === "reps" || dest === "sellers") && (
                 <div className="flex flex-wrap items-end gap-3">
                   <label className="block w-48 text-sm"><span className="mb-1 block text-muted">Código da visita</span><input className={inputCls} placeholder="V-12345" value={visit} onChange={(e) => setVisit(e.target.value)} /></label>
                   <div className="block w-48 text-sm"><span className="mb-1 block text-muted">Data da visita</span><DateInput label="Data da visita" value={visitDate} onChange={setVisitDate} /></div>
                   <label className="block min-w-60 flex-1 text-sm"><span className="mb-1 block text-muted">Link da visita (Salesforce, opcional)</span><input className={inputCls} placeholder="https://…" value={visitLink} onChange={(e) => setVisitLink(e.target.value)} /></label>
-                  <p className="w-full text-xs text-muted">Agendar visita qualifica o lead automaticamente e guarda o representante mais próximo e a distância.</p>
+                  <p className="w-full text-xs text-muted">{dest === "sellers" ? "Visita dos Vendedores SDR: o vendedor entra pelo Salesforce e confirma. Informe o código e a data (opcional, mas se informar o código a data é obrigatória)." : "Agendar visita qualifica o lead automaticamente e guarda o representante mais próximo e a distância."}</p>
                 </div>
               )}
             </div>

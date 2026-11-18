@@ -109,7 +109,8 @@ describe("cargos, cores e senhas", () => {
   it("cor padrão segue o cargo mais alto, e a escolha da pessoa vence", () => {
     expect(resolveAccent(null, ["user"]).key).toBe("azul");
     expect(resolveAccent(null, ["user", "manager"]).key).toBe("amarelo");
-    expect(resolveAccent(null, ["user", "manager", "admin"]).key).toBe("vermelho");
+    expect(resolveAccent(null, ["user", "manager", "admin"]).key).toBe("amarelo"); // o Adm não aparece na cor: a equipe não vê quem é admin
+    expect(resolveAccent(null, ["admin"]).key).toBe("vermelho");
     expect(resolveAccent("verde", ["admin"]).key).toBe("verde");
     expect(resolveAccent("invalida", ["user"]).key).toBe("azul");
   });

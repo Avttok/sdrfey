@@ -1,5 +1,6 @@
 "use client";
 
+import { EoxIcon, SalesforceIcon } from "@/components/brand-icons";
 import { CalendarDays, Check, CheckCircle2, Clock, ExternalLink, MapPin, Pencil, Trash2, UserRound, X } from "lucide-react";
 import { useState } from "react";
 import { DateInput } from "@/components/date-input";
@@ -18,6 +19,10 @@ const STATUS = {
   realizada: { label: "Realizada", cls: "bg-ok/15 text-ok", Icon: CheckCircle2 },
   cancelada: { label: "Cancelada", cls: "bg-danger/15 text-danger", Icon: X },
 } as const;
+
+export function VisitCodeChip({ code }: { code: string }) {
+  return <span className="inline-flex h-7 min-w-[5.5rem] items-center justify-center rounded-lg bg-grad px-2.5 font-mono text-[13px] font-bold tracking-wide text-on-accent">{code}</span>;
+}
 
 export function VisitStatusChip({ status }: { status: keyof typeof STATUS }) {
   const { label, cls, Icon } = STATUS[status];
@@ -49,7 +54,7 @@ export function VisitRow({ leadId, v, canManage, onDelete }: { leadId: number; v
   return (
     <li className={`overflow-hidden rounded-xl border border-line bg-sunk text-sm ${v.canceled ? "opacity-60" : ""}`}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3.5 py-2.5">
-        <span className="inline-flex h-7 min-w-[5.5rem] items-center justify-center rounded-lg bg-grad px-2.5 font-mono text-[13px] font-bold tracking-wide text-on-accent">{v.code}</span>
+        <VisitCodeChip code={v.code} />
         <span className="inline-flex min-w-0 flex-1 items-center gap-1.5 font-medium"><CalendarDays size={15} className="shrink-0 text-muted" aria-hidden /><span className="truncate">{v.visitDate ? fmtDate(v.visitDate) : "Sem data"}</span></span>
         <VisitStatusChip status={v.status} />
         {canManage && (
@@ -62,6 +67,10 @@ export function VisitRow({ leadId, v, canManage, onDelete }: { leadId: number; v
       <dl className="grid gap-x-6 gap-y-1.5 border-t border-line bg-panel/50 px-3.5 py-2.5 text-xs sm:grid-cols-[auto_1fr]">
         <dt className="inline-flex items-center gap-1.5 text-muted"><UserRound size={12} aria-hidden /> Agendada</dt>
         <dd className="flex flex-wrap items-center gap-1.5"><span>{fmtDateTime(v.at)}</span>{v.by && v.byHex && <><span className="text-muted">por</span><PersonBubble name={v.by} hex={v.byHex} /></>}</dd>
+        {v.kind === "seller" && <>
+          <dt className="inline-flex items-center gap-1.5 text-muted"><UserRound size={12} aria-hidden /> Vendedores SDR</dt>
+          <dd><b className="font-semibold">{v.sellerName ?? "Grupo dos vendedores"}</b> entra pelo Salesforce e confirma</dd>
+        </>}
         {v.repName && <>
           <dt className="inline-flex items-center gap-1.5 text-muted"><MapPin size={12} aria-hidden /> Representante</dt>
           <dd><b className="font-semibold">{v.repName}</b>{v.repSap ? ` · SAP ${v.repSap}` : ""}{v.repCity ? ` · ${v.repCity}` : ""}{v.repKm != null ? ` · ${v.repKm} km` : ""}</dd>
@@ -71,7 +80,7 @@ export function VisitRow({ leadId, v, canManage, onDelete }: { leadId: number; v
           <dd>{fmtDateTime(v.confirmedAt)}</dd>
         </>}
         {v.link && <>
-          <dt className="inline-flex items-center gap-1.5 text-muted"><ExternalLink size={12} aria-hidden /> Salesforce</dt>
+          <dt className="inline-flex items-center gap-1.5 text-muted"><SalesforceIcon size={12} /> Salesforce</dt>
           <dd><a href={v.link} target="_blank" rel="noreferrer" className="font-medium text-accent underline">Abrir visita</a></dd>
         </>}
       </dl>

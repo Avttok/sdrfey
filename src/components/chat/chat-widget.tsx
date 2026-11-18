@@ -173,6 +173,8 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread }: { channel
   msgsRef.current = msgs;
   const chRef = useRef(channel);
   chRef.current = channel;
+  /** Mensagens já carregadas de cada grupo: ao reabrir o chat elas aparecem na hora e só o que é novo é buscado. */
+  const cacheRef = useRef<Record<string, { msgs: ChatMsg[]; more: boolean }>>({});
 
   /** Uma consulta ao servidor. Nunca roda duas ao mesmo tempo; falhas viram aviso "sem conexão" e novas tentativas. */
   const poll = useCallback(async (reset = false): Promise<void> => {
@@ -193,6 +195,7 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread }: { channel
       setUnread(open ? { ...j.unread, [ch]: 0 } : j.unread);
       if (!open || chRef.current !== ch) return;
       if (reset) { setMsgs(j.messages); setMore(j.messages.length >= 40); setLoaded(true); }
+      else if (j.messages.length >= 40) { setMsgs(j.messages); setMore(true); } // ficou muito tempo fora: recomeça do fim
       else {
         setMsgs((prev) => {
           const gone = new Set(j.gone); const seen = new Set(prev.map((m) => m.id));
@@ -206,7 +209,14 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread }: { channel
   }, [open]);
 
   // troca de canal / abertura: recarrega
-  useEffect(() => { if (open) { setLoaded(false); setMsgs([]); stick.current = true; void poll(true); } }, [open, channel, poll]);
+  useEffect(() => {
+    if (!open) return;
+    stick.current = true;
+    const c = cacheRef.current[channel];
+    if (c) { msgsRef.current = c.msgs; tick.current = 0; setMsgs(c.msgs); setMore(c.more); setLoaded(true); void poll(false); }
+    else { setLoaded(false); setMsgs([]); msgsRef.current = []; void poll(true); }
+  }, [open, channel, poll]);
+  useEffect(() => { if (loaded && msgs.every((m) => m.channel === channel)) cacheRef.current[channel] = { msgs, more }; }, [msgs, more, loaded, channel]);
   // atualização contínua: rápida com o chat aberto, lenta fechado; pausa com a aba escondida; recua se o servidor falhar
   const pollRef = useRef(poll);
   pollRef.current = poll;

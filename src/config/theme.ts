@@ -32,7 +32,7 @@ export function isChoosableAccent(value: string | null | undefined): value is Ac
 
 /** Cor efetiva: a escolhida pela pessoa ou a padrão do cargo mais alto. */
 export function resolveAccent(accent: string | null | undefined, roles: readonly Role[]) {
-  const key = isAccentKey(accent) ? accent : ROLE_META[topRole(roles)].defaultAccent;
+  const key = isAccentKey(accent) ? accent : ROLE_META[topRole(roles.filter((r) => r !== "admin").length ? roles.filter((r) => r !== "admin") : roles)].defaultAccent;
   const found = ACCENTS.find((a) => a.key === key) ?? ACCENTS[0];
   return { key: found.key, hex: found.hex, onAccent: readableOn(found.hex) };
 }

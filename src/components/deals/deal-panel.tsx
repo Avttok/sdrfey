@@ -1,5 +1,6 @@
 "use client";
 
+import { EoxIcon, SalesforceIcon } from "@/components/brand-icons";
 import { Building2, Plus, Package, Trash2, Tags, CalendarClock, Check, ExternalLink, FileText, Link2, Mail, MessageCircle, NotebookPen, Phone, PhoneCall, RotateCcw, Trophy, UserPlus, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -89,9 +90,9 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDele
             <div className="space-y-1.5">
               <p className="flex items-center justify-between text-xs font-medium text-muted">Perfis do cliente <button type="button" className="font-medium text-accent hover:underline" onClick={() => setEditLinks(!editLinks)}>{editLinks ? "Fechar" : "Editar links"}</button></p>
               {!editLinks && <div className="grid grid-cols-2 gap-2">
-                {([["Salesforce", deal.salesforceUrl, "#0070d2"], ["CRM (EOX)", deal.eoxUrl, "#692E81"]] as const).map(([label, url, brand]) => url
-                  ? <a key={label} href={url} target="_blank" rel="noreferrer" style={{ background: brand, borderColor: brand }} className={`${btnGhost} w-full !text-white hover:brightness-110`}><ExternalLink size={15} aria-hidden /> {label}</a>
-                  : <button key={label} type="button" onClick={() => setEditLinks(true)} className={`${btnGhost} w-full border-dashed !text-muted hover:!text-ink`}><Plus size={15} aria-hidden /> {label}</button>)}
+                {([["Salesforce", deal.salesforceUrl, "#0070d2", SalesforceIcon], ["CRM (EOX)", deal.eoxUrl, "#692E81", EoxIcon]] as const).map(([label, url, brand, Ico]) => url
+                  ? <a key={label} href={url} target="_blank" rel="noreferrer" style={{ background: brand, borderColor: brand }} className={`${btnGhost} w-full !text-white hover:brightness-110`}><Ico size={15} /> {label}</a>
+                  : <button key={label} type="button" onClick={() => setEditLinks(true)} className={`${btnGhost} w-full border-dashed !text-muted hover:!text-ink`}><Ico size={15} /> {label}</button>)}
               </div>}
               {editLinks && (
                 <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); run(() => saveLeadLinksAction(deal.leadId, { salesforceUrl: sf, eoxUrl: eox }), undefined, () => setEditLinks(false)); }}>

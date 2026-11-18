@@ -18,7 +18,7 @@ const SECTIONS = [
   { group: "Painel", title: "Blocos do Dashboard", hint: "O que aparece no Dashboard", icon: LayoutDashboard },
   { group: "Funções", title: "Funções", hint: "O que a pessoa pode fazer", icon: MousePointerClick },
 ] as const;
-const ROLE_LABEL: Record<RoleKey, string> = { user: "SDR", seller: "Vendedor", manager: "Gestor" };
+const ROLE_LABEL: Record<RoleKey, string> = { user: "SDR", seller: "Vendas", manager: "Gestor" };
 
 /**
  * Escolha quem editar (cargo ou pessoa) e ajuste tudo numa lista só — sem rolagem lateral.

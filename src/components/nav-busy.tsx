@@ -14,7 +14,7 @@ export function NavBusy() {
   useEffect(() => setNavigating(false), [path, sp]);
   useEffect(() => {
     const click = (e: MouseEvent) => {
-      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       const a = (e.target as Element).closest?.("a[href]") as HTMLAnchorElement | null;
       if (!a || (a.target && a.target !== "_self") || a.hasAttribute("download")) return;
       const url = new URL(a.href, location.href);
@@ -22,8 +22,9 @@ export function NavBusy() {
       if (url.pathname === location.pathname && url.search === location.search) return;
       setNavigating(true);
     };
-    document.addEventListener("click", click);
-    return () => document.removeEventListener("click", click);
+    // fase de captura: o Link do Next cancela o clique antes de chegar aqui
+    document.addEventListener("click", click, true);
+    return () => document.removeEventListener("click", click, true);
   }, []);
   useEffect(() => {
     if (!navigating) return;

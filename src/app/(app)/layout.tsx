@@ -18,9 +18,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <Presence />
         <Suspense fallback={null}><NavBusy /></Suspense>
         {user.navLayout === "side" && <SideBarFor user={user} badges={badges} groupNav={groupNav} />}
-        <div className="min-w-0 flex-1">
+        <div className="flex min-h-dvh min-w-0 flex-1 flex-col">
           <AppHeader user={user} badges={badges} groupNav={groupNav} />
-          <main className="mx-auto w-full max-w-7xl px-4 py-8 pb-24 sm:px-6">{children}</main>
+          <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 pb-10 sm:px-6">{children}</main>
+          <footer className="px-4 pb-6 text-center text-xs text-muted">Made by Ruan Carlos</footer>
         </div>
       </div>
       <Suspense fallback={null}><ChatMount user={user} /></Suspense>

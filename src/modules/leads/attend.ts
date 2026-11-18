@@ -40,7 +40,7 @@ async function assertMine(tx: typeof db, userId: number, leadId: number) {
 export async function saveAttendance(userId: number, input: SaveInput): Promise<void> {
   if (input.channels.length === 0) throw new UserError("Marque ao menos um meio de contato usado.");
   const toSellers = input.handoff?.to === "sellers";
-  const visitCode = toSellers ? null : input.visitCode?.trim().toUpperCase() || null;
+  const visitCode = input.handoff?.to === "none" ? null : input.visitCode?.trim().toUpperCase() || null;
   if (visitCode && !VISIT_RE.test(visitCode)) throw new UserError("Código da visita inválido. Exemplo: V-12345.");
   const visitDate = input.visitDate && /^\d{4}-\d{2}-\d{2}$/.test(input.visitDate) ? input.visitDate : null;
   if (visitCode && !visitDate) throw new UserError("Informe a data da visita.");
@@ -72,9 +72,9 @@ export async function saveAttendance(userId: number, input: SaveInput): Promise<
     await setLeadTags(tx, { leadId: lead.id, userId, add, remove });
 
     if (visitCode) {
-      const rep = await nearestRep(lead.city, lead.uf);
-      await tx.insert(visits).values({ leadId: lead.id, userId, code: visitCode, visitDate, link: visitLink, ...repSnapshot(rep) });
-      await logAudit(tx, { userId, leadId: lead.id, entity: "visit", action: "agendou visita", field: "Agenda", oldValue: null, newValue: visitCode, meta: { dataDaVisita: visitDate, representante: rep?.repName ?? null, km: rep?.km ?? null } });
+      const rep = toSellers ? null : await nearestRep(lead.city, lead.uf);
+      await tx.insert(visits).values({ leadId: lead.id, userId, code: visitCode, visitDate, link: visitLink, ...(toSellers ? { kind: "seller" as const, sellerId: input.handoff?.sellerId ?? null } : repSnapshot(rep)) });
+      await logAudit(tx, { userId, leadId: lead.id, entity: "visit", action: "agendou visita", field: "Agenda", oldValue: null, newValue: visitCode, meta: { dataDaVisita: visitDate, modalidade: toSellers ? "Vendedores SDR" : "Representante", representante: rep?.repName ?? null, km: rep?.km ?? null } });
     }
 
     if (toSellers) await createDealTx(tx, { leadId: lead.id, sdrId: userId, sellerId: input.handoff?.sellerId ?? null, note: input.handoff?.note ?? input.note ?? null, isTest: lead.isTest });

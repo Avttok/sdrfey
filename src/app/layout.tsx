@@ -11,7 +11,7 @@ import { resolveAccent } from "@/config/theme";
 import { getCurrentUser } from "@/modules/auth/guard";
 
 export const metadata: Metadata = {
-  title: { default: "SDR FEY", template: "%s · SDR FEY" },
+  title: { default: "SDR", template: "SDR - %s" },
   description: "Sorteio e acompanhamento de leads",
 };
 

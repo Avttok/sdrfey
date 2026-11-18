@@ -3,6 +3,7 @@
 import { cleanVisitLink, repSnapshot, resetLead } from "@/modules/leads/attend";
 import { nearestRep } from "@/modules/reps/nearest";
 import { and, eq } from "drizzle-orm";
+import { hasSellerPart } from "@/config/roles";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db, leadPeople, leads, visits } from "@/db";
@@ -65,7 +66,7 @@ async function visitForEditing(leadId: number, visitId: number) {
   const me = await requireUser();
   const [v] = await db.select().from(visits).where(and(eq(visits.id, visitId), eq(visits.leadId, leadId)));
   if (!v) return { me, v: null, allowed: false };
-  return { me, v, allowed: v.userId === me.id || !!me.permissions["lead.edit"] };
+  return { me, v, allowed: v.userId === me.id || !!me.permissions["lead.edit"] || (v.kind === "seller" && hasSellerPart(me.roles)) };
 }
 
 /** Apaga o registro de uma visita (fica no Registro de atividades). */

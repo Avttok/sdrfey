@@ -5,7 +5,7 @@ export type ChannelKey = "geral" | "user" | "seller" | "manager";
 export const CHANNELS: { key: ChannelKey; label: string; hint: string }[] = [
   { key: "geral", label: "Geral", hint: "Todos do sistema" },
   { key: "user", label: "SDR", hint: "Só quem é SDR" },
-  { key: "seller", label: "Vendedores", hint: "Só quem é Vendedor" },
+  { key: "seller", label: "Vendas", hint: "Só quem é de Vendas" },
   { key: "manager", label: "Gestores", hint: "Só quem é Gestor" },
 ];
 

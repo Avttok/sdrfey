@@ -17,7 +17,7 @@ export const SETTING_DEFAULTS = {
   alert_days: 3,
   /** Período que o dashboard abre por padrão: 1 (hoje), 7 ou 30 dias. */
   dash_default_days: 1,
-  /** 1 = contas com mais de um cargo veem as abas em grupos (SDR, Vendedor, Gestor, Adm). */
+  /** 1 = contas com mais de um cargo veem as abas em grupos (SDR, Vendas, Gestor, Adm). */
   nav_group: 1,
   /** 1 = chat interno ligado para todos (botão flutuante). */
   chat_on: 1,

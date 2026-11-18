@@ -36,7 +36,7 @@ export function SellerGoalsForm({ global, people, canGlobal, editableIds, showGl
               </tr>
             ))}
           </tbody>
-          <tfoot><tr><td colSpan={2} className="pt-2 text-right text-xs text-muted">Soma dos pesos</td><td className={`pt-2 font-bold ${sum === 100 ? "text-ok" : "text-danger"}`}>{sum}%</td></tr></tfoot>
+          <tfoot><tr className="border-t border-line"><td colSpan={2} className="pr-3 pt-3 text-right text-sm font-medium text-muted">Soma dos pesos</td><td className="pt-3"><span className={`block w-24 px-3 text-right text-sm font-bold ${sum === 100 ? "text-ok" : "text-danger"}`}>{sum}%</span></td></tr></tfoot>
         </table>
       </div>}
       {people.length > 0 && (
