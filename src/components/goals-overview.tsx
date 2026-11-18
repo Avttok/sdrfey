@@ -27,7 +27,7 @@ export function Ring({ pct, size = 64, children }: { pct: number; size?: number;
 /** Quadro único para quem está com todas as metas desligadas. */
 export function GoalsOff({ name, hex }: { name?: string; hex?: string }) {
   return (
-    <section className={`${panelCls} p-5`}>
+    <section className={`${panelCls} self-start p-5`}>
       {name && <p className="mb-2 flex items-center gap-2 font-semibold"><span aria-hidden className="size-3 rounded-full" style={{ background: hex }} />{name}</p>}
       <p className="rounded-xl bg-sunk/60 px-4 py-5 text-center text-sm font-medium text-muted">Metas desativadas</p>
     </section>
@@ -35,7 +35,7 @@ export function GoalsOff({ name, hex }: { name?: string; hex?: string }) {
 }
 
 /** Resumo do dia: total da equipe e, por pessoa, uma meta embaixo da outra com ritmo e previsão. Meta desligada nem aparece. */
-export function SdrOverview({ global, people, paces, showTeam }: { global: Global; people: GoalPerson[]; paces: Record<number, Partial<Record<Kind, SdrPace>>>; showTeam: boolean }) {
+export function SdrOverview({ global, people, paces, showTeam, isToday = true, dayLabel = "hoje" }: { global: Global; people: GoalPerson[]; paces: Record<number, Partial<Record<Kind, SdrPace>>>; showTeam: boolean; isToday?: boolean; dayLabel?: string }) {
   const cfg = people.map((p) => KS.map((k) => {
     const on = !p.off && (p.own[k].on ?? global[k].on), qty = p.own[k].qty ?? global[k].qty;
     return { k, on, qty, n: p.today[k], pct: on && qty ? (p.today[k] / qty) * 100 : 0 };
@@ -51,7 +51,7 @@ export function SdrOverview({ global, people, paces, showTeam }: { global: Globa
   return (
     <div className="space-y-4">
       {showTeam && totals.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 15rem), 1fr))" }}>
           {totals.map((t) => { const M = META[t.k]; return (
             <section key={t.k} className={`${panelCls} flex items-center gap-4 p-5`}>
               <Ring pct={t.pct} size={72} />
@@ -66,7 +66,7 @@ export function SdrOverview({ global, people, paces, showTeam }: { global: Globa
         {order.map((i) => {
           const p = people[i];
           const rows = cfg[i].filter((c) => c.on);
-          if (rows.length === 0) return <li key={p.id}><GoalsOff name={p.name} hex={p.hex} /></li>;
+          if (rows.length === 0) return <li key={p.id} className="flex flex-col"><GoalsOff name={p.name} hex={p.hex} /></li>;
           return (
             <li key={p.id} className={`${panelCls} space-y-4 ${single ? "p-6" : "p-5"}`}>
               <p className="flex items-center gap-2 text-lg font-semibold"><span aria-hidden className="size-3 rounded-full" style={{ background: p.hex }} /><span className="truncate">{p.name}</span></p>
@@ -80,9 +80,10 @@ export function SdrOverview({ global, people, paces, showTeam }: { global: Globa
                         <span className="flex-1 font-semibold">{M.short}</span>
                         <b className={`figure text-sm ${done ? "text-ok" : ""}`}>{Math.round(c.pct)}%</b>
                       </div>
-                      <p className="figure mt-1 text-sm"><b className="text-xl">{c.n}</b> <span className="text-muted">de {c.qty} hoje</span></p>
+                      <p className="figure mt-1 text-sm"><b className="text-xl">{c.n}</b> <span className="text-muted">de {c.qty} {dayLabel}</span></p>
                       <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-sunk"><div className={`h-full rounded-full transition-[width] duration-700 ${done ? "bg-ok" : "bg-grad"}`} style={{ width: `${Math.min(100, c.pct)}%` }} /></div>
-                      {pc && (
+                      {!isToday && <p className="mt-2.5 flex items-center gap-1.5 text-xs text-muted">{done ? <><Trophy size={13} className="shrink-0 text-ok" aria-hidden /><b className="text-ok">Meta batida{c.n > c.qty ? ` (+${c.n - c.qty})` : ""}</b></> : <>Ficou <b className="figure text-ink">{c.qty - c.n}</b> abaixo da meta</>}</p>}
+                      {isToday && pc && (
                         <div className="mt-2.5 space-y-1.5 text-xs text-muted">
                           <p className="flex items-start gap-1.5">
                             {done ? <><Trophy size={13} className="mt-px shrink-0 text-ok" aria-hidden /><span><b className="text-ok">Meta batida!</b>{c.n > c.qty ? ` +${c.n - c.qty} acima.` : ""}</span></>

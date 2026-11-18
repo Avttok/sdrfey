@@ -3,7 +3,7 @@
 import { Eye, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 
-export type MetasTab = { key: string; label: string; sub: string; icon: React.ReactNode; view: React.ReactNode; edit?: React.ReactNode };
+export type MetasTab = { key: string; label: string; sub: string; icon: React.ReactNode; view: React.ReactNode; edit?: React.ReactNode; /** filtro de período (dia ou mês), só no Resumo */ filter?: React.ReactNode };
 
 /** Casca da tela de Metas: uma aba por área (SDR, Vendas) e, dentro dela, "Resumo" (só ver) ou "Editar metas". */
 export function MetasShell({ tabs }: { tabs: MetasTab[] }) {
@@ -25,6 +25,7 @@ export function MetasShell({ tabs }: { tabs: MetasTab[] }) {
           </div>
         )}
         <p className="min-w-0 flex-1 text-sm text-muted">{cur.sub}</p>
+        {mode === "view" && cur.filter}
         {cur.edit && (
           <div role="tablist" aria-label="Modo" className="inline-flex gap-1 rounded-xl border border-line/60 bg-panel/70 p-1 text-sm">
             {([["view", "Resumo", Eye], ["edit", "Editar metas", SlidersHorizontal]] as const).map(([m, l, I]) => (

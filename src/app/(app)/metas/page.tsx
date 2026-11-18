@@ -2,6 +2,8 @@ import { visibleUsers } from "@/modules/auth/visibility";
 import { Handshake, Headset, Target } from "lucide-react";
 import { MetasShell, type MetasTab } from "@/components/metas-shell";
 import { SdrOverview } from "@/components/goals-overview";
+import { PeriodFilter } from "@/components/period-filter";
+import { SellerTeamTiles } from "@/components/deals/seller-team-tiles";
 import { panelCls } from "@/components/ui";
 import { PageHead } from "@/components/page-head";
 import type { Metadata } from "next";
@@ -23,10 +25,18 @@ import { attainment, resolveSellerGoals, SELLER_METRICS } from "@/config/seller-
 export const metadata: Metadata = { title: "Metas" };
 export const dynamic = "force-dynamic";
 
-export default async function Page() {
+export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const me = await requirePerm("tab.metas");
-  const today = sql`(date_trunc('day', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo')`;
-  const month = sql`(date_trunc('month', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo')`;
+  const sp = await searchParams;
+  const one = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : "");
+  const spDate = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(d);
+  const todayStr = spDate(new Date());
+  /** Filtros: dia (SDR) e mês (Vendas). Só passado ou hoje. */
+  const dayStr = /^\d{4}-\d{2}-\d{2}$/.test(one("d")) && one("d") <= todayStr ? one("d") : todayStr;
+  const monthStr = /^\d{4}-\d{2}$/.test(one("m")) && one("m") <= todayStr.slice(0, 7) ? one("m") : todayStr.slice(0, 7);
+  const isToday = dayStr === todayStr, isThisMonth = monthStr === todayStr.slice(0, 7);
+  const dayFrom = sql`((${dayStr}::date)::timestamp at time zone 'America/Sao_Paulo')`;
+  const dayTo = sql`(((${dayStr}::date)::timestamp + interval '1 day') at time zone 'America/Sao_Paulo')`;
   const s = await getSettings();
   const scope = goalScope(me.permissions);
   const canGlobal = scope === "all";
@@ -44,15 +54,13 @@ export default async function Page() {
   const sellers = showSellers ? await db.select().from(users).where(and(eq(users.active, true), sql`'seller' = any(${users.roles})`, onlySelf ? eq(users.id, me.id) : undefined, visibleUsers(me))).orderBy(asc(users.name)) : [];
   const gset = await getSellerGoalSettings();
   const views = await Promise.all(sellers.map(async (u) => {
-    const m = await getSellerMonth(u.id);
+    const m = await getSellerMonth(u.id, monthStr);
     const { targets, weights, enabled, allOff } = resolveSellerGoals(gset, u.sellerGoals ?? {});
     return { u, m, targets, weights, enabled, allOff, overall: attainment(m.actual, targets, weights, enabled).overall };
   }));
   const globalVals = Object.fromEntries(SELLER_METRICS.flatMap((m) => [[m.key, gset[m.key] ?? m.target], [`w_${m.key}`, gset[`w_${m.key}`] ?? m.weight], [`off_${m.key}`, gset[`off_${m.key}`] ?? 0]])) as Record<string, number>;
   const sellerPeople = views.map(({ u, overall }) => ({ id: u.id, name: u.name, hex: bubbleHex(u.accent, u.id, u.roles), own: (u.sellerGoals ?? {}) as Record<string, number>, overall }));
   const mine = views.find((v) => v.u.id === me.id);
-  const spDate = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(d);
-  const todayStr = spDate(new Date());
   const [yy, mm] = todayStr.split("-").map(Number);
   const mctx: MonthCtx = { today: todayStr, first: `${todayStr.slice(0, 7)}-01`, last: `${todayStr.slice(0, 7)}-${String(new Date(yy, mm, 0).getDate()).padStart(2, "0")}` };
   const pacesOf = (v: { m: { actual: Record<string, number> }; targets: Record<string, number> }) => Object.fromEntries(SELLER_METRICS.map((m) => [m.key, sellerPace(v.m.actual[m.key], v.targets[m.key], mctx)]));
@@ -62,12 +70,12 @@ export default async function Page() {
     const [list, done, sched, calls, conv] = await Promise.all([
       db.select().from(users).where(and(eq(users.active, true), eq(users.inMetrics, true), sql`not (${users.roles} = array['seller']::text[])`, visibleUsers(me), onlySelf ? eq(users.id, me.id) : undefined)).orderBy(asc(users.name)),
       db.select({ id: attendanceSessions.userId, n: sql<number>`count(*)::int` }).from(attendanceSessions)
-        .where(sql`${attendanceSessions.outcome} = 'saved' and not ${attendanceSessions.isTest} and ${attendanceSessions.savedAt} >= ${today}`).groupBy(attendanceSessions.userId),
+        .where(sql`${attendanceSessions.outcome} = 'saved' and not ${attendanceSessions.isTest} and ${attendanceSessions.savedAt} >= ${dayFrom} and ${attendanceSessions.savedAt} < ${dayTo}`).groupBy(attendanceSessions.userId),
       db.execute<{ id: number; n: number }>(sql`select u as id, count(*)::int as n from (
-          select v.user_id as u from visits v join leads l on l.id = v.lead_id where v.canceled_at is null and not l.is_test and v.created_at >= ${today}
-          union all select d.sdr_id from deals d where not d.is_test and d.created_at >= ${today}) x group by u`),
-      db.execute<{ id: number; n: number }>(sql`select i.user_id as id, count(*)::int as n from interactions i where not i.is_test and i.channel = 'ligacao' and i.at >= ${today} group by 1`),
-      db.execute<{ id: number; n: number }>(sql`select d.sdr_id as id, count(*)::int as n from deals d where not d.is_test and d.created_at >= ${today} group by 1`),
+          select v.user_id as u from visits v join leads l on l.id = v.lead_id where v.canceled_at is null and not l.is_test and v.created_at >= ${dayFrom} and v.created_at < ${dayTo}
+          union all select d.sdr_id from deals d where not d.is_test and d.created_at >= ${dayFrom} and d.created_at < ${dayTo}) x group by u`),
+      db.execute<{ id: number; n: number }>(sql`select i.user_id as id, count(*)::int as n from interactions i where not i.is_test and i.channel = 'ligacao' and i.at >= ${dayFrom} and i.at < ${dayTo} group by 1`),
+      db.execute<{ id: number; n: number }>(sql`select d.sdr_id as id, count(*)::int as n from deals d where not d.is_test and d.created_at >= ${dayFrom} and d.created_at < ${dayTo} group by 1`),
     ]);
     const n = (rows: { id: number | null; n: number }[], id: number) => rows.find((d) => d.id === id)?.n ?? 0;
     return {
@@ -90,11 +98,12 @@ export default async function Page() {
     const paces: Record<number, Partial<Record<GoalKind, ReturnType<typeof sdrPace>>>> = {};
     for (const p of sdr.people) {
       const mine = (rows as unknown as { uid: number; k: string; day: string; n: number; first: string | null }[]).filter((r) => r.uid === p.id) as DayRow[];
-      paces[p.id] = Object.fromEntries(SDR_KINDS.map((d) => [d.k, sdrPace(mine, d.k, p.own[d.k].qty ?? sdr.global[d.k].qty)]));
+      paces[p.id] = !isToday ? {} : Object.fromEntries(SDR_KINDS.map((d) => [d.k, sdrPace(mine, d.k, p.own[d.k].qty ?? sdr.global[d.k].qty)]));
     }
     tabs.push({
       key: "sdr", label: "Atendimento", icon: <Headset size={16} aria-hidden />, sub: "Metas diárias: atendidos, agendados, ligações e convertidos.",
-      view: <SdrOverview global={sdr.global} people={sdr.people} paces={paces} showTeam={manage && sdr.people.length > 1} />,
+      view: <SdrOverview global={sdr.global} people={sdr.people} paces={paces} isToday={isToday} dayLabel={isToday ? "hoje" : `em ${dayStr.slice(8)}/${dayStr.slice(5, 7)}`} showTeam={manage && sdr.people.length > 1} />,
+      filter: <PeriodFilter kind="day" value={dayStr} max={todayStr} />,
       edit: canEditSdr || manage ? <GoalsForm canGlobal={canGlobal} editableIds={editableIds} showGlobal={manage} global={sdr.global} people={sdr.people} /> : undefined,
     });
   }
@@ -105,15 +114,16 @@ export default async function Page() {
       key: "vendas", label: "Vendas", icon: <Handshake size={16} aria-hidden />, sub: "Metas mensais, cada uma com o seu peso.",
       view: (
         <div className="space-y-4">
-          {manage && counted.length > 1 && <section className={`${panelCls} flex flex-wrap items-center gap-x-6 gap-y-2 p-5`}><div><p className="text-sm text-muted">Meta geral da equipe no mês</p><p className="figure text-4xl font-bold leading-none">{avg}%</p></div><div className="h-3 min-w-40 flex-1 overflow-hidden rounded-full bg-sunk"><div className={`h-full rounded-full ${avg >= 100 ? "bg-ok" : "bg-grad"}`} style={{ width: `${Math.min(100, avg)}%` }} /></div></section>}
-          {mine && <SellerGoalPanel wide={views.length === 1} paces={pacesOf(mine)} actual={mine.m.actual} targets={mine.targets} weights={mine.weights} enabled={mine.enabled} allOff={mine.allOff} bonusReais={mine.m.bonusReais} bonusSales={mine.m.bonusSales} monthLabel={mine.m.monthLabel} />}
+          {manage && counted.length > 0 && <SellerTeamTiles rows={counted.map((v) => ({ actual: v.m.actual, targets: v.targets, enabled: v.enabled, overall: v.overall }))} monthLabel={views[0]?.m.monthLabel ?? ""} />}
+          {mine && <SellerGoalPanel wide={views.length === 1} paces={isThisMonth ? pacesOf(mine) : undefined} actual={mine.m.actual} targets={mine.targets} weights={mine.weights} enabled={mine.enabled} allOff={mine.allOff} bonusReais={mine.m.bonusReais} bonusSales={mine.m.bonusSales} monthLabel={mine.m.monthLabel} />}
           {manage && views.filter((v) => v.u.id !== me.id).length > 0 && (
             <div className="panel-grid">
-              {views.filter((v) => v.u.id !== me.id).map((v) => <SellerGoalPanel key={v.u.id} wide={views.length === 1} paces={pacesOf(v)} compact name={v.u.name} hex={bubbleHex(v.u.accent, v.u.id, v.u.roles)} actual={v.m.actual} targets={v.targets} weights={v.weights} enabled={v.enabled} allOff={v.allOff} bonusReais={v.m.bonusReais} bonusSales={v.m.bonusSales} monthLabel={v.m.monthLabel} />)}
+              {views.filter((v) => v.u.id !== me.id).map((v) => <SellerGoalPanel key={v.u.id} wide={views.length === 1} paces={isThisMonth ? pacesOf(v) : undefined} compact name={v.u.name} hex={bubbleHex(v.u.accent, v.u.id, v.u.roles)} actual={v.m.actual} targets={v.targets} weights={v.weights} enabled={v.enabled} allOff={v.allOff} bonusReais={v.m.bonusReais} bonusSales={v.m.bonusSales} monthLabel={v.m.monthLabel} />)}
             </div>
           )}
         </div>
       ),
+      filter: <PeriodFilter kind="month" value={monthStr} max={todayStr.slice(0, 7)} />,
       edit: manage || (scope && mine) ? <SellerGoalsForm canGlobal={canGlobal} editableIds={editableIds} showGlobal={manage} global={globalVals} people={sellerPeople} /> : undefined,
     });
   }
