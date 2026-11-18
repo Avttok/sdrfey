@@ -5,6 +5,7 @@ import { ToastProvider } from "@/components/toast";
 import { AppHeader, SideBarFor } from "@/components/app-header";
 import { navBadges } from "@/modules/deals/queries";
 import { getSettings } from "@/modules/settings/get";
+import { BottomFade } from "@/components/bottom-fade";
 import { ChatMount } from "@/components/chat/chat-mount";
 import { requireUser } from "@/modules/auth/guard";
 
@@ -24,7 +25,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <footer className="relative z-40 px-4 pb-6 text-center text-xs text-muted"><span className="relative inline-block px-4 py-1.5"><span aria-hidden className="glow-pulse absolute inset-0 rounded-full bg-accent/50 blur-lg" /><span className="relative font-medium">Made by Ruan Carlos</span></span></footer>
         </div>
       </div>
-      <div aria-hidden className="pointer-events-none fixed inset-x-0 bottom-0 z-30 h-24 bg-gradient-to-t from-bg/90 via-bg/60 to-transparent" />
+      <BottomFade />
       <Suspense fallback={null}><ChatMount user={user} /></Suspense>
     </ToastProvider>
   );
