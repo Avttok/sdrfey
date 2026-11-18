@@ -1,6 +1,6 @@
 "use client";
 
-import { EoxIcon, SalesforceIcon } from "@/components/brand-icons";
+import { BrandLink } from "@/components/brand-icons";
 import { Check, ChevronDown, ChevronUp, ExternalLink, FileText, FileUp, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -169,7 +169,7 @@ export function QuoteCard({ dealId, q, terms, extraPct, onTerm, leadCnpj, editab
           <h3 className="font-semibold leading-tight">Cotação {q.number ?? `#${q.id}`}{isLast && <span className="ml-2 rounded-full bg-accent/12 px-2 py-0.5 align-middle text-[11px] font-semibold text-accent">Mais recente</span>}</h3>
           <p className="text-xs text-muted">{q.quoteDate ? fmtDate(q.quoteDate) : fmtDate(q.createdAt)}{q.freight ? ` · Frete ${q.freight}` : ""}{q.paymentTerms ? ` · ${q.paymentTerms}` : ""}{q.validityDays ? ` · validade ${q.validityDays} dias` : ""}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">{q.link && <a href={q.link} target="_blank" rel="noreferrer" style={{ background: "#0070d2", borderColor: "#0070d2" }} className={`${btnGhost} !min-h-9 !px-3 !text-sm !text-white hover:brightness-110`}><SalesforceIcon size={14} /> Abrir no Salesforce</a>}{editable && <><button type="button" className={`${btnGhost} !min-h-9 !px-3 !text-sm`} onClick={() => setEdit(true)}><Pencil size={14} aria-hidden /> Editar</button><button type="button" aria-label="Apagar cotação" className={`${btnGhost} !min-h-9 !px-2.5 text-danger`} disabled={pending} onClick={() => setDel(true)}><Trash2 size={15} aria-hidden /></button></>}</div>
+        <div className="flex flex-wrap items-center gap-1.5">{q.link && <BrandLink kind="sf" small href={q.link} label="Abrir no Salesforce" />}{editable && <><button type="button" className={`${btnGhost} !min-h-9 !px-3 !text-sm`} onClick={() => setEdit(true)}><Pencil size={14} aria-hidden /> Editar</button><button type="button" aria-label="Apagar cotação" className={`${btnGhost} !min-h-9 !px-2.5 text-danger`} disabled={pending} onClick={() => setDel(true)}><Trash2 size={15} aria-hidden /></button></>}</div>
       </header>
       <QuoteValues q={q} />
       {q.note && <p className="whitespace-pre-wrap rounded-lg bg-sunk px-3 py-2 text-sm text-muted">{q.note}</p>}

@@ -74,7 +74,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                 {sellerView ? (l.deal_stage && <StageChip stage={l.deal_stage as DealStage} />) : <>
                   {l.locked_by_name && <PersonBubble name={l.locked_by_name} hex={bubbleHex(l.locked_by_accent, l.locked_by_id ?? 0, l.locked_roles ?? undefined)} prefix="Atendendo" />}
                   {l.owner_name && <PersonBubble name={l.owner_name} hex={bubbleHex(l.owner_accent, l.owner_id ?? 0, l.owner_roles ?? undefined)} />}
-                  {!l.owner_name && !l.locked_by_name && <span className="rounded-full border border-line px-2.5 py-0.5 text-xs text-muted">Livre</span>}
+                  {l.seller_name && <PersonBubble name={l.seller_name} hex={bubbleHex(l.seller_accent, l.seller_id ?? 0, l.seller_roles ?? undefined)} prefix="Vendas" />}
+                  {!l.owner_name && !l.locked_by_name && !l.seller_name && <span className="rounded-full border border-line px-2.5 py-0.5 text-xs text-muted">Livre</span>}
                   {l.deal_id ? <span className="rounded-full bg-accent/12 px-2.5 py-1 text-xs font-semibold text-accent">Com os vendedores</span> : !l.locked_by_name && me.permissions["tab.comecar"] && <AttendButton leadId={l.id} compact />}
                 </>}
               </div>

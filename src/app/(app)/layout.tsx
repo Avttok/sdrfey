@@ -20,7 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {user.navLayout === "side" && <SideBarFor user={user} badges={badges} groupNav={groupNav} />}
         <div className="flex min-h-dvh min-w-0 flex-1 flex-col">
           <AppHeader user={user} badges={badges} groupNav={groupNav} />
-          <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 pb-10 sm:px-6">{children}</main>
+          <main className="mx-auto w-full max-w-[92rem] flex-1 px-3 py-7 pb-10 sm:px-5 lg:px-6">{children}</main>
           <footer className="px-4 pb-6 text-center text-xs text-muted">Made by Ruan Carlos</footer>
         </div>
       </div>

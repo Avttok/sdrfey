@@ -1,6 +1,6 @@
 "use client";
 
-import { EoxIcon, SalesforceIcon } from "@/components/brand-icons";
+import { BrandLink, SalesforceIcon } from "@/components/brand-icons";
 import { CalendarDays, Check, CheckCircle2, Clock, ExternalLink, MapPin, Pencil, Trash2, UserRound, X } from "lucide-react";
 import { useState } from "react";
 import { DateInput } from "@/components/date-input";
@@ -81,7 +81,7 @@ export function VisitRow({ leadId, v, canManage, onDelete }: { leadId: number; v
         </>}
         {v.link && <>
           <dt className="inline-flex items-center gap-1.5 text-muted"><SalesforceIcon size={12} /> Salesforce</dt>
-          <dd><a href={v.link} target="_blank" rel="noreferrer" className="font-medium text-accent underline">Abrir visita</a></dd>
+          <dd><BrandLink kind="sf" small href={v.link} label="Abrir visita" /></dd>
         </>}
       </dl>
       {canManage && !v.canceled && (next || v.status !== "pendente") && (

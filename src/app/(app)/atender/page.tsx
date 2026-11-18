@@ -42,13 +42,14 @@ export default async function AttendPage() {
 
   if (!lead) {
     return (
-      <div className={`${panelCls} relative mx-auto max-w-3xl overflow-hidden p-8 text-center sm:p-12`}>
-        <div aria-hidden className="pointer-events-none absolute -left-20 -top-20 size-72 rounded-full bg-accent/15 blur-3xl" />
-        <div aria-hidden className="pointer-events-none absolute -bottom-24 -right-16 size-72 rounded-full bg-accent/10 blur-3xl" />
-        <div className="relative space-y-6">
-          <span className="mx-auto grid size-16 place-items-center rounded-2xl bg-grad text-on-accent shadow-lg shadow-accent/30"><Shuffle size={30} aria-hidden /></span>
+      <div className="relative grid min-h-[calc(100dvh-9rem)] place-items-center overflow-hidden rounded-3xl border border-line/60 p-6 text-center sm:p-12" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 26%, var(--panel)) 0%, color-mix(in srgb, var(--accent) 8%, var(--panel)) 48%, color-mix(in srgb, var(--accent) 20%, var(--panel)) 100%)" }}>
+        <div aria-hidden className="pointer-events-none absolute -left-24 -top-24 size-[28rem] rounded-full bg-accent/25 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-32 -right-20 size-[32rem] rounded-full bg-accent/20 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 size-[22rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/10 blur-3xl" />
+        <div className="relative w-full max-w-2xl space-y-8">
+          <span className="mx-auto grid size-20 place-items-center rounded-3xl bg-grad text-on-accent shadow-xl shadow-accent/40"><Shuffle size={36} aria-hidden /></span>
           <div>
-            <h1 className="display text-3xl sm:text-4xl">Pronto para o próximo lead?</h1>
+            <h1 className="display text-4xl sm:text-5xl">Pronto para o próximo lead?</h1>
             <p className="mx-auto mt-2 max-w-md text-muted">O sistema escolhe um lead livre para você. Se quiser um específico, use ATENDER na aba Leads ou no seu histórico.</p>
           </div>
           {(goals.attended.on || goals.scheduled.on) && (

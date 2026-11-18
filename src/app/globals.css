@@ -52,8 +52,9 @@ html {
 body {
   min-height: 100dvh;
   background:
-    radial-gradient(70rem 32rem at 0% -8%, color-mix(in srgb, var(--accent) 11%, transparent), transparent 70%),
-    radial-gradient(52rem 28rem at 100% 0%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 70%),
+    radial-gradient(70rem 34rem at 0% -8%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 70%),
+    radial-gradient(56rem 30rem at 100% 8%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 70%),
+    radial-gradient(60rem 30rem at 50% 108%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%),
     var(--bg);
   background-attachment: fixed;
   color: var(--ink);
@@ -71,6 +72,7 @@ body {
 }
 
 .figure {
+  white-space: nowrap;
   font-stretch: 112%;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -101,7 +103,7 @@ input[type="checkbox"], input[type="radio"], input[type="range"] { accent-color:
 /* ───────────── Degradês: sempre derivados da cor de destaque de cada pessoa ───────────── */
 @utility bg-grad { background-image: linear-gradient(135deg, color-mix(in oklab, var(--accent) 80%, white), var(--accent) 48%, color-mix(in oklab, var(--accent) 80%, black)); }
 @utility bg-grad-soft { background-image: linear-gradient(135deg, color-mix(in srgb, var(--accent) 24%, transparent), color-mix(in srgb, var(--accent) 8%, transparent)); }
-@utility bg-grad-panel { background-image: linear-gradient(135deg, color-mix(in srgb, var(--accent) 9%, var(--panel)), var(--panel) 55%); }
+@utility bg-grad-panel { background-image: linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent 60%); }
 @utility text-grad { background-image: linear-gradient(90deg, var(--accent), color-mix(in oklab, var(--accent) 55%, #a855f7)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 @utility bg-grad-danger { background-image: linear-gradient(135deg, #f87171, #dc2626 55%, #b91c1c); }
 

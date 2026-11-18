@@ -29,11 +29,30 @@ const pct = (a: number, b: number) => (b ? `${Math.min(100, Math.round((a / b) *
 function Bar({ label, value, max, color, right }: { label: string; value: number; max: number; color: string; right?: string }) {
   return (
     <div className="mb-2.5 flex items-center gap-3 text-sm last:mb-0">
-      <span className="w-24 shrink-0 truncate text-muted">{label}</span>
+      <span className="w-20 shrink-0 truncate text-muted sm:w-24">{label}</span>
       <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-sunk"><span className="block h-full rounded-full transition-[width] duration-700" style={{ width: `${max ? Math.max(value ? 3 : 0, Math.round((value / max) * 100)) : 0}%`, background: color }} /></span>
-      <span className="figure w-24 text-right text-xs font-medium">{right ?? nf.format(value)}</span>
+      <span className="figure min-w-24 shrink-0 whitespace-nowrap text-right text-xs font-medium">{right ?? nf.format(value)}</span>
     </div>
   );
+}
+const TONES = { danger: "var(--danger)", warn: "var(--warn)", info: "var(--accent)", ok: "var(--ok)" } as const;
+/** Cartão de alerta: número grande, texto curto e atalho. Fica calmo (verde) quando não há pendência. */
+function AlertTile({ icon: I, tone, n, text, hint, href }: { icon: typeof Clock; tone: keyof typeof TONES; n: number; text: string; hint: string; href?: string }) {
+  const c = n > 0 ? TONES[tone] : TONES.ok;
+  const body = (
+    <>
+      <span className="grid size-10 shrink-0 place-items-center rounded-xl" style={{ background: `color-mix(in srgb, ${c} 16%, transparent)`, color: c }}><I size={19} aria-hidden /></span>
+      <span className="figure min-w-[5.5rem] text-3xl leading-none" style={{ color: n > 0 ? c : undefined }}>{nf.format(n)}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-medium leading-snug">{n > 0 ? text : "Tudo em dia"}</span>
+        <span className="block text-xs text-muted">{hint}</span>
+      </span>
+    </>
+  );
+  const cls = "flex items-center gap-3 rounded-xl border border-line/60 bg-sunk/40 p-3.5 transition";
+  return href && n > 0
+    ? <Link href={href} className={`${cls} hover:-translate-y-0.5 hover:border-accent/50 hover:bg-sunk/70`} style={{ borderLeft: `3px solid ${c}` }}>{body}</Link>
+    : <div className={cls} style={{ borderLeft: `3px solid ${c}` }}>{body}</div>;
 }
 const Block = ({ icon: I, title, children }: { icon: typeof Clock; title: string; children: React.ReactNode }) => (
   <section className={`${panelCls} p-5`}>
@@ -167,16 +186,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <div className="panel-grid">
         {can("panel.alertas") && (
           <Block icon={AlertTriangle} title="Alertas">
-            <ul className="space-y-2 text-sm">
-              <li className="flex items-center gap-2"><Flame size={16} className="text-danger" aria-hidden /><span className="flex-1">{d.alerts.hot === 1 ? "1 lead quente sem contato" : `${nf.format(d.alerts.hot)} leads quentes sem contato`} há mais de 3 dias</span><Link className="underline" href="/leads?tag=temperatura:quente">Ver</Link></li>
-              {d.alerts.pendingVisits > 0 && <li className="flex items-center gap-2"><CalendarCheck size={16} className="text-warn" aria-hidden /><span className="flex-1">{plural(d.alerts.pendingVisits, "visita aguardando", "visitas aguardando")} confirmação do representante há mais de 3 dias</span><Link href="/visitas" className="text-xs underline">ver</Link></li>}
-              <li className="flex items-center gap-2"><Database size={16} aria-hidden /><span className="flex-1">{plural(d.alerts.noInfo, "lead ainda sem", "leads ainda sem")} consulta de CNPJ</span></li>
-            </ul>
+            <div className="grid gap-2.5">
+              <AlertTile icon={Flame} tone="danger" n={d.alerts.hot} text={d.alerts.hot === 1 ? "lead quente sem contato" : "leads quentes sem contato"} hint="há mais de 3 dias" href="/leads?tag=temperatura:quente" />
+              <AlertTile icon={CalendarCheck} tone="warn" n={d.alerts.pendingVisits} text={d.alerts.pendingVisits === 1 ? "visita sem confirmação" : "visitas sem confirmação"} hint="do representante, há mais de 3 dias" href="/visitas" />
+              <AlertTile icon={Database} tone="info" n={d.alerts.noInfo} text={d.alerts.noInfo === 1 ? "lead sem consulta de CNPJ" : "leads sem consulta de CNPJ"} hint="dados da empresa pendentes" />
+            </div>
           </Block>
         )}
         {can("panel.agendamentos") && (
           <Block icon={CalendarCheck} title="Agendamentos recentes">
-            {d.recentVisits.length ? <ul className="space-y-1.5 text-sm">{d.recentVisits.map((v) => <li key={v.code + v.at} className="flex flex-wrap items-center gap-2"><VisitCodeChip code={v.code} /><span className="min-w-0 flex-1 truncate">{v.company}</span><span className="flex items-center gap-2 text-xs text-muted">{v.name && <PersonBubble name={v.name} hex={bubbleHex(v.accent, v.uid ?? 0, v.roles ?? undefined)} />}{fmtDateTime(v.at)}</span></li>)}</ul> : <p className="text-sm text-muted">Nenhuma visita agendada ainda.</p>}
+            {d.recentVisits.length ? <ul className="space-y-1.5 text-sm">{d.recentVisits.map((v) => <li key={v.id}><Link href={`/visitas?v=${v.id}`} className="flex flex-wrap items-center gap-2 rounded-lg px-1.5 py-1 transition hover:bg-sunk/60"><VisitCodeChip code={v.code} /><span className="min-w-0 flex-1 truncate">{v.company}</span><span className="flex items-center gap-2 text-xs text-muted">{v.name && <PersonBubble name={v.name} hex={bubbleHex(v.accent, v.uid ?? 0, v.roles ?? undefined)} />}{fmtDateTime(v.at)}</span></Link></li>)}</ul> : <p className="text-sm text-muted">Nenhuma visita agendada ainda.</p>}
           </Block>
         )}
       </div>
