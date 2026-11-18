@@ -17,8 +17,8 @@ export async function getSalesStats(period: Period, sellerIds: number[]) {
     db.execute<{ n: number; v: number }>(sql`select count(*)::int as n, coalesce(sum(value_cents),0)::bigint as v from deals where seller_id in (${U}) and stage = 'cotacao' and not is_test`),
     db.execute<{ n: number; v: number }>(sql`select count(*)::int as n, coalesce(sum(${soldCents}),0)::bigint as v from deals d where d.seller_id in (${U}) and d.stage = 'ganho' and not d.is_test and ${closedDay} between ${period.from}::date and ${period.to}::date`),
     db.execute<{ n: number }>(sql`select count(*)::int as n from deals where seller_id in (${U}) and stage = 'perdido' and not is_test and closed_at between ${from} and ${to}`),
-    db.execute<{ n: number }>(sql`select count(*)::int as n from deal_events e join deals d on d.id = e.deal_id where not d.is_test and e.user_id in (${U}) and e.kind in ('ligacao','whatsapp','email') and e.at between ${from} and ${to}`),
-    db.execute<{ n: number; v: number }>(sql`select count(*)::int as n, coalesce(sum(e.value_cents),0)::bigint as v from deal_events e join deals d on d.id = e.deal_id where not d.is_test and e.user_id in (${U}) and e.kind = 'cotacao' and e.at between ${from} and ${to}`),
+    db.execute<{ n: number }>(sql`select count(*)::int as n from deal_events e join deals d on d.id = e.deal_id where not d.is_test and d.seller_id in (${U}) and e.kind in ('ligacao','whatsapp','email') and e.at between ${from} and ${to}`),
+    db.execute<{ n: number; v: number }>(sql`select count(*)::int as n, coalesce(sum(e.value_cents),0)::bigint as v from deal_events e join deals d on d.id = e.deal_id where not d.is_test and d.seller_id in (${U}) and e.kind = 'cotacao' and e.at between ${from} and ${to}`),
     db.execute<{ n: number }>(sql`select count(*)::int as n from deals where seller_id in (${U}) and not is_test and claimed_at between ${from} and ${to}`),
     db.execute<{ minutes: number | null }>(sql`select avg(extract(epoch from (fc.at - d.claimed_at)) / 60)::float as minutes from deals d
       join lateral (select min(e.at) as at from deal_events e where e.deal_id = d.id and e.kind in ('ligacao','whatsapp','email') and e.at >= d.claimed_at) fc on fc.at is not null
@@ -27,10 +27,10 @@ export async function getSalesStats(period: Period, sellerIds: number[]) {
       select u.id, u.name, u.accent, u.roles,
         (select count(*)::int from deals d where d.seller_id = u.id and d.stage = 'ganho' and not d.is_test and ${closedDay} between ${period.from}::date and ${period.to}::date) as won,
         (select coalesce(sum(${soldCents}),0)::bigint from deals d where d.seller_id = u.id and d.stage = 'ganho' and not d.is_test and ${closedDay} between ${period.from}::date and ${period.to}::date) as value,
-        (select count(*)::int from deal_events e join deals d on d.id = e.deal_id where not d.is_test and e.user_id = u.id and e.kind in ('ligacao','whatsapp','email') and e.at between ${from} and ${to}) as contacts,
+        (select count(*)::int from deal_events e join deals d on d.id = e.deal_id where not d.is_test and d.seller_id = u.id and e.kind in ('ligacao','whatsapp','email') and e.at between ${from} and ${to}) as contacts,
         (select count(*)::int from deals d where d.seller_id = u.id and d.stage not in ('ganho','perdido') and not d.is_test) as open,
-        (select count(*)::int from deal_events e join deals d on d.id = e.deal_id where not d.is_test and e.user_id = u.id and e.kind = 'cotacao' and e.at between ${from} and ${to}) as quotes,
-        (select coalesce(sum(e.value_cents),0)::bigint from deal_events e join deals d on d.id = e.deal_id where not d.is_test and e.user_id = u.id and e.kind = 'cotacao' and e.at between ${from} and ${to}) as "quotesValue"
+        (select count(*)::int from deal_events e join deals d on d.id = e.deal_id where not d.is_test and d.seller_id = u.id and e.kind = 'cotacao' and e.at between ${from} and ${to}) as quotes,
+        (select coalesce(sum(e.value_cents),0)::bigint from deal_events e join deals d on d.id = e.deal_id where not d.is_test and d.seller_id = u.id and e.kind = 'cotacao' and e.at between ${from} and ${to}) as "quotesValue"
       from users u where u.id in (${U}) order by won desc, value desc, quotes desc, u.name`),
     db.execute<{ id: number; company: string; value: number | null; at: Date; name: string | null }>(sql`
       select d.id, l.company, ${soldCents} as value, d.closed_at as at, u.name from deals d join leads l on l.id = d.lead_id left join users u on u.id = d.seller_id

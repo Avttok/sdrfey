@@ -27,7 +27,7 @@ export function Ring({ pct, size = 64, children }: { pct: number; size?: number;
 /** Quadro único para quem está com todas as metas desligadas. */
 export function GoalsOff({ name, hex }: { name?: string; hex?: string }) {
   return (
-    <section className={`${panelCls} self-start p-5`}>
+    <section className={`${panelCls} w-full p-5`}>
       {name && <p className="mb-2 flex items-center gap-2 font-semibold"><span aria-hidden className="size-3 rounded-full" style={{ background: hex }} />{name}</p>}
       <p className="rounded-xl bg-sunk/60 px-4 py-5 text-center text-sm font-medium text-muted">Metas desativadas</p>
     </section>
@@ -66,7 +66,7 @@ export function SdrOverview({ global, people, paces, showTeam, isToday = true, d
         {order.map((i) => {
           const p = people[i];
           const rows = cfg[i].filter((c) => c.on);
-          if (rows.length === 0) return <li key={p.id} className="flex flex-col"><GoalsOff name={p.name} hex={p.hex} /></li>;
+          if (rows.length === 0) return <li key={p.id} className="self-start"><GoalsOff name={p.name} hex={p.hex} /></li>;
           return (
             <li key={p.id} className={`${panelCls} space-y-4 ${single ? "p-6" : "p-5"}`}>
               <p className="flex items-center gap-2 text-lg font-semibold"><span aria-hidden className="size-3 rounded-full" style={{ background: p.hex }} /><span className="truncate">{p.name}</span></p>

@@ -2,7 +2,7 @@ import { and, desc, eq, gte, lte, sql, type SQL } from "drizzle-orm";
 import { auditLog, db, leads, users } from "@/db";
 import { dayEnd, dayStart } from "@/lib/format";
 
-export const ENTITY_LABEL: Record<string, string> = { lead: "Lead", visit: "Lead", user: "Usuário", tag: "Tag", setting: "Configuração", import: "Importação", rep: "Representante", template: "Modelo de e-mail", session: "Atendimento", goal: "Meta" };
+export const ENTITY_LABEL: Record<string, string> = { lead: "Lead", visit: "Lead", user: "Usuário", tag: "Tag", setting: "Configuração", import: "Importação", rep: "Representante", template: "Modelo de e-mail", session: "Atendimento", goal: "Meta", deal: "Negociação", purge: "Exclusão" };
 
 export type AuditFilters = { from?: string; to?: string; user?: string; type?: string; q?: string; page: number; viewer?: { id: number; roles: string[] } };
 export const AUDIT_PAGE = 50;

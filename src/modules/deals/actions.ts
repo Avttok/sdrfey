@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fetchCnpjInfo } from "@/modules/enrich/enrich";
 import { getExtraTaxPct, normalizeItem, syncDealFromQuotes, totalsOf, upsertPaymentTerm, upsertProducts } from "@/modules/quotes/db";
-import { leadChannels, dealEvents, dealQuoteItems, dealQuotes, deals, paymentTerms, interactions, leads, tags, users, type DealStage } from "@/db";
+import { leadChannels, dealEvents, dealQuoteItems, dealQuotes, deals, paymentTerms, interactions, leads, tags, users, visits, type DealStage } from "@/db";
 import { desc } from "drizzle-orm";
 import { TAG } from "@/config/tags";
 import { enrichLead } from "@/modules/enrich/enrich";
@@ -148,6 +148,35 @@ export async function reassignDealAction(id: number, sellerId: number | null): P
   });
   refresh(id);
   return { ok: true, message: "Negociação atualizada." };
+}
+
+/**
+ * Devolve o lead à lista do SDR que o repassou (repasse por engano). A negociação é desfeita, as visitas
+ * ainda não realizadas são canceladas e o lead volta ao Shuffler daquele SDR, liberado na hora.
+ * O vendedor responsável só devolve enquanto não há cotação (novo/contato); a gestão devolve em qualquer etapa aberta.
+ */
+export async function returnDealToSdrAction(id: number, reason?: string): Promise<ActionResult> {
+  const r = await load(id);
+  if ("error" in r) return fail(r.error);
+  const { me, deal } = r;
+  const team = !!me.permissions["deals.team"] || me.roles.includes("admin");
+  if (closed(deal.stage)) return fail("Negociação encerrada não volta para o SDR.");
+  if (!deal.sdrId) return fail("Esta negociação não veio de um SDR (foi aberta por vendedor), então não há para quem devolver.");
+  const [sdrUser] = await db.select({ id: users.id, name: users.name, active: users.active }).from(users).where(eq(users.id, deal.sdrId));
+  if (!sdrUser?.active) return fail("O SDR que repassou este lead não está mais ativo. Peça ao gestor para reatribuir.");
+  const s = await snapshot(id);
+  if (!s) return fail("Negociação não encontrada.");
+  if (!team && (deal.stage !== "novo" && deal.stage !== "contato" || s.snap.cotacoes.length > 0)) return fail("Já há cotação ou negociação em andamento. Peça ao gestor para devolver este lead ao SDR.");
+  const why = reason?.trim().slice(0, 300) || null;
+  await db.transaction(async (tx) => {
+    await tx.delete(deals).where(eq(deals.id, id));
+    const canceled = await tx.update(visits).set({ canceledAt: new Date() }).where(and(eq(visits.leadId, deal.leadId), eq(visits.kind, "seller"), sql`${visits.canceledAt} is null`, sql`${visits.status} <> 'realizada'`)).returning({ id: visits.id });
+    await setLeadTags(tx, { leadId: deal.leadId, userId: me.id, remove: [{ group: TAG.group.agenda, key: TAG.agendado }], reason: "Devolvido ao SDR" });
+    await tx.update(leads).set({ ownerId: deal.sdrId, lockedBy: null, lockedAt: null, nextEligibleAt: null, returnAt: null, updatedAt: new Date() }).where(eq(leads.id, deal.leadId));
+    await logAudit(tx, { userId: me.id, leadId: deal.leadId, entity: "deal", action: "devolveu lead ao SDR", field: "Negociação", oldValue: `${s.snap.empresa} · ${s.snap.etapa}`, newValue: `SDR ${sdrUser.name}`, meta: { negociacao: id, motivo: why, visitasCanceladas: canceled.length, ...s.snap } });
+  });
+  revalidatePath("/negociacoes"); revalidatePath("/painel"); revalidatePath("/metas"); revalidatePath("/historico"); revalidatePath("/leads"); revalidatePath("/visitas"); revalidatePath("/atender");
+  return { ok: true, message: `Lead devolvido para ${sdrUser.name}. Ele já pode ser atendido de novo no Shuffler.` };
 }
 
 /** Links do cliente no Salesforce e no CRM (EOX). Vendedor edita pela negociação; SDR/gestor pela página do lead. */

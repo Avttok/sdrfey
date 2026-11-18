@@ -1,7 +1,7 @@
 "use client";
 
 import { EoxIcon, SalesforceIcon } from "@/components/brand-icons";
-import { Building2, Plus, Package, Trash2, Tags, CalendarClock, Check, ExternalLink, FileText, Link2, Mail, MessageCircle, NotebookPen, Phone, PhoneCall, RotateCcw, Trophy, UserPlus, XCircle } from "lucide-react";
+import { Building2, Plus, Package, Trash2, Tags, CalendarClock, Check, ExternalLink, FileText, Link2, Mail, MessageCircle, NotebookPen, Phone, PhoneCall, RotateCcw, Trophy, Undo2, UserPlus, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -13,7 +13,7 @@ import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { DEAL_EVENT_LABEL, fmtBRL, OPEN_STAGES, STAGE_META } from "@/config/deals";
 import type { DealStage } from "@/db/schema";
 import { chatproUrl, fmtDateTime, fmtPhone } from "@/lib/format";
-import { claimDealAction, closeDealAction, logContactAction, reassignDealAction, reopenDealAction, saveDealDataAction, saveLeadLinksAction, deleteDealAction, resetDealAction, setDealColorAction, setStageAction } from "@/modules/deals/actions";
+import { claimDealAction, closeDealAction, logContactAction, reassignDealAction, reopenDealAction, saveDealDataAction, saveLeadLinksAction, deleteDealAction, resetDealAction, returnDealToSdrAction, setDealColorAction, setStageAction } from "@/modules/deals/actions";
 import { QuoteCard, QuoteEditor, QuoteValues, type QuoteView } from "./quote-card";
 import { useRouter } from "next/navigation";
 import { ColorPicker } from "./color-picker";
@@ -41,7 +41,8 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDele
   const [kinds, setKinds] = useState<Kind[]>(["ligacao"]);
   const [newQuote, setNewQuote] = useState(false);
   const [termList, setTermList] = useState(terms);
-  const [confirm, setConfirm] = useState<"reset" | "delete" | null>(null);
+  const [confirm, setConfirm] = useState<"reset" | "delete" | "return" | null>(null);
+  const [returnWhy, setReturnWhy] = useState("");
   const router = useRouter();
   const [note, setNote] = useState("");
   const [nextAt, setNextAt] = useState("");
@@ -248,6 +249,12 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDele
           </SectionCard>
         )}
 
+        {mine && !closed && deal.sdrId && (team || ((deal.stage === "novo" || deal.stage === "contato") && quotes.length === 0)) && (
+          <SectionCard icon={Undo2} title="Repassado por engano?">
+            <p className="text-sm text-muted">Devolve o lead para {deal.sdrName ?? "o SDR"}: a negociação some daqui, a visita ainda não realizada é cancelada e o lead volta ao Shuffler dele para ser atendido de novo.</p>
+            <button type="button" className={`${btnGhost} w-full`} disabled={pending} onClick={() => { setReturnWhy(""); setConfirm("return"); }}><Undo2 size={15} aria-hidden /> Devolver ao SDR</button>
+          </SectionCard>
+        )}
         {team && !closed && (
           <SectionCard icon={UserPlus} title="Vendedor responsável">
             <select aria-label="Trocar vendedor" className={inputCls} value={deal.sellerId ?? ""} disabled={pending} onChange={(e) => run(() => reassignDealAction(deal.id, e.target.value ? Number(e.target.value) : null))}>
@@ -272,8 +279,11 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDele
         <VisitsPanel visits={visits} />
       </div>
 
-      <ConfirmDialog open={confirm !== null} tone="danger" icon={Trash2} title={confirm === "delete" ? "Apagar esta negociação?" : "Resetar esta negociação?"} confirmLabel={confirm === "delete" ? "Sim, apagar" : "Sim, resetar"} busy={pending} onCancel={() => setConfirm(null)} onConfirm={() => { const c = confirm; setConfirm(null); if (c === "delete") run(() => deleteDealAction(deal.id), undefined, () => router.push("/negociacoes")); else run(() => resetDealAction(deal.id)); }}>
-        {confirm === "delete" ? "A negociação, as cotações e o histórico serão apagados. Um registro completo fica guardado na auditoria do admin." : "As cotações e o histórico serão apagados e a negociação volta ao início. Um registro completo fica na auditoria do admin."}
+      <ConfirmDialog open={confirm !== null} tone="danger" icon={confirm === "return" ? Undo2 : Trash2} title={confirm === "delete" ? "Apagar esta negociação?" : confirm === "return" ? "Devolver ao SDR?" : "Resetar esta negociação?"} confirmLabel={confirm === "delete" ? "Sim, apagar" : confirm === "return" ? "Sim, devolver" : "Sim, resetar"} busy={pending} onCancel={() => setConfirm(null)} onConfirm={() => { const c = confirm; setConfirm(null); if (c === "delete") run(() => deleteDealAction(deal.id), undefined, () => router.push("/negociacoes")); else if (c === "return") run(() => returnDealToSdrAction(deal.id, returnWhy), undefined, () => router.push("/negociacoes"), "Devolvendo…"); else run(() => resetDealAction(deal.id)); }}>
+        {confirm === "delete" ? "A negociação, as cotações e o histórico serão apagados. Um registro completo fica guardado na auditoria do admin." : confirm === "return" ? (
+          <span className="block space-y-3"><span className="block">A negociação com {deal.company} sai da lista dos vendedores e o lead volta para {deal.sdrName ?? "o SDR"}. O registro fica na auditoria.</span>
+            <input className={inputCls} placeholder="Motivo (opcional)" maxLength={300} value={returnWhy} onChange={(e) => setReturnWhy(e.target.value)} aria-label="Motivo da devolução" /></span>
+        ) : "As cotações e o histórico serão apagados e a negociação volta ao início. Um registro completo fica na auditoria do admin."}
       </ConfirmDialog>
       <ConfirmDialog open={confirmLost} tone="danger" icon={XCircle} title="Marcar como perdida?" confirmLabel="Sim, perdida" busy={pending} onCancel={() => setConfirmLost(false)} onConfirm={() => { setConfirmLost(false); run(() => closeDealAction(deal.id, { won: false, reason })); }}>
         A negociação com {deal.company} será encerrada. Você pode reabri-la depois.

@@ -11,7 +11,7 @@ export type DealAlert = { kind: DealAlertKind; tone: "danger" | "warn" | "info";
 export type DealRow = {
   id: number; leadId: number; stage: DealStage; company: string; city: string | null; uf: string | null; contactName: string | null;
   phone: string | null; email: string | null; salesforceUrl: string | null; eoxUrl: string | null;
-  sellerId: number | null; sellerName: string | null; sdrName: string | null; handoffNote: string | null;
+  sellerId: number | null; sellerName: string | null; sdrId: number | null; sdrName: string | null; handoffNote: string | null;
   valueCents: number | null; netValueCents: number | null; mainCents: number | null; createdAt: string; claimedAt: string | null; quoteSentAt: string | null; lastContactAt: string | null;
   nextActionAt: string | null; nextActionNote: string | null; lostReason: string | null; closedAt: string | null;
   freight: "CIF" | "FOB" | "RED" | null; sapCode: string | null; orderNumber: string | null; quoteNumber: string | null; quoteDate: string | null; closedOn: string | null;
@@ -68,7 +68,7 @@ export async function listDeals(meId: number, team: boolean, opts: { includeTest
   const out = rows.map(({ d, ...x }) => {
     const row = {
       id: d.id, leadId: d.leadId, stage: d.stage, company: x.company, city: x.city, uf: x.uf, contactName: x.contactName, phone: x.phones?.[0] ?? null, email: x.email,
-      salesforceUrl: x.salesforceUrl, eoxUrl: x.eoxUrl, sellerId: d.sellerId, sellerName: x.sellerName, sdrName: x.sdrName, handoffNote: d.handoffNote,
+      salesforceUrl: x.salesforceUrl, eoxUrl: x.eoxUrl, sellerId: d.sellerId, sellerName: x.sellerName, sdrId: d.sdrId, sdrName: x.sdrName, handoffNote: d.handoffNote,
       valueCents: d.valueCents, netValueCents: d.netValueCents, mainCents: d.realValueCents ?? d.netValueCents ?? d.closedValueCents ?? d.valueCents, createdAt: d.createdAt.toISOString(), claimedAt: iso(d.claimedAt), quoteSentAt: iso(d.quoteSentAt), lastContactAt: iso(d.lastContactAt),
       nextActionAt: iso(d.nextActionAt), nextActionNote: d.nextActionNote, lostReason: d.lostReason, closedAt: iso(d.closedAt),
       freight: d.freight, sapCode: d.sapCode ?? x.leadSap, orderNumber: d.orderNumber, quoteNumber: d.quoteNumber, quoteDate: d.quoteDate, closedOn: d.closedOn,

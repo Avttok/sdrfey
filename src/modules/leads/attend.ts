@@ -40,7 +40,10 @@ async function assertMine(tx: typeof db, userId: number, leadId: number) {
 export async function saveAttendance(userId: number, input: SaveInput): Promise<void> {
   if (input.channels.length === 0) throw new UserError("Marque ao menos um meio de contato usado.");
   const toSellers = input.handoff?.to === "sellers";
+  const leaving = input.handoff?.to === "sellers" || input.handoff?.to === "reps";
   const visitCode = input.handoff?.to === "none" ? null : input.visitCode?.trim().toUpperCase() || null;
+  // o lead só sai para vendedor ou representante com a visita preenchida (código e data)
+  if (leaving && !visitCode) throw new UserError("Para encaminhar o lead, preencha o código da visita (ex.: V-12345).");
   if (visitCode && !VISIT_RE.test(visitCode)) throw new UserError("Código da visita inválido. Exemplo: V-12345.");
   const visitDate = input.visitDate && /^\d{4}-\d{2}-\d{2}$/.test(input.visitDate) ? input.visitDate : null;
   if (visitCode && !visitDate) throw new UserError("Informe a data da visita.");

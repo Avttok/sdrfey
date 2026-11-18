@@ -127,15 +127,18 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
     if (tpl && to) window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(renderTemplate(tpl.subject, vars))}`;
   };
 
+  /** Antes de salvar: encaminhar exige visita preenchida (o servidor confere de novo). */
+  const visitMissing = showVisit && (!visit.trim() || !visitDate);
   const payload = () => ({ leadId: lead.id, channels: [...used], temperature, qualification, situations: [...situations], note, visitCode: showVisit ? visit : null, visitDate: showVisit ? visitDate : null, visitLink: showVisit ? visitLink || null : null, handoff: { to: dest, sellerId: dest === "sellers" ? sellerId : null, note: null } });
   /** Salva e sorteia o próximo lead. */
-  const save = () => run(async () => {
+  const blocked = () => { if (!visitMissing) return false; toast("warn", "Para encaminhar o lead, preencha o código e a data da visita."); return true; };
+  const save = () => blocked() || run(async () => {
     const r = await saveAction(payload());
     if (r.ok) await startAction();
     return r;
   });
   /** Salva, libera o lead e volta à tela do botão Shuffler (pausa: o lead não fica contando tempo). */
-  const saveAndStop = () => run(async () => {
+  const saveAndStop = () => blocked() || run(async () => {
     const r = await saveAction(payload());
     if (r.ok) { router.replace("/atender"); router.refresh(); }
     return r;
@@ -345,10 +348,10 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
               )}
               {(dest === "reps" || dest === "sellers") && (
                 <div className="flex flex-wrap items-end gap-3">
-                  <label className="block w-48 text-sm"><span className="mb-1 block text-muted">Código da visita</span><input className={inputCls} placeholder="V-12345" value={visit} onChange={(e) => setVisit(e.target.value)} /></label>
-                  <div className="block w-48 text-sm"><span className="mb-1 block text-muted">Data da visita</span><DateInput label="Data da visita" value={visitDate} onChange={setVisitDate} /></div>
+                  <label className="block w-48 text-sm"><span className="mb-1 block text-muted">Código da visita <span className="text-danger">*</span></span><input className={inputCls} placeholder="V-12345" value={visit} onChange={(e) => setVisit(e.target.value)} /></label>
+                  <div className="block w-48 text-sm"><span className="mb-1 block text-muted">Data da visita <span className="text-danger">*</span></span><DateInput label="Data da visita" value={visitDate} onChange={setVisitDate} /></div>
                   <label className="block min-w-60 flex-1 text-sm"><span className="mb-1 block text-muted">Link da visita (Salesforce, opcional)</span><input className={inputCls} placeholder="https://…" value={visitLink} onChange={(e) => setVisitLink(e.target.value)} /></label>
-                  <p className="w-full text-xs text-muted">{dest === "sellers" ? "Visita dos Vendedores SDR: o vendedor entra pelo Salesforce e confirma. Informe o código e a data (opcional, mas se informar o código a data é obrigatória)." : "Agendar visita qualifica o lead automaticamente e guarda o representante mais próximo e a distância."}</p>
+                  <p className="w-full text-xs text-muted">{dest === "sellers" ? "Obrigatório: o lead só vai para os vendedores com a visita registrada (código e data). O vendedor entra pelo Salesforce e confirma." : "Obrigatório: o lead só vai para o representante com a visita registrada (código e data). Agendar qualifica o lead e guarda o representante mais próximo e a distância."}</p>
                 </div>
               )}
             </div>

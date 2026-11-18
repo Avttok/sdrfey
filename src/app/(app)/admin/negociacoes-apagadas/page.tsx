@@ -12,16 +12,16 @@ type Snap = { empresa?: string; cnpj?: string; vendedor?: string | null; etapa?:
 export default async function Page() {
   const rows = await db.select({ id: auditLog.id, at: auditLog.at, action: auditLog.action, leadId: auditLog.leadId, meta: auditLog.meta, by: users.name })
     .from(auditLog).leftJoin(users, eq(users.id, auditLog.userId))
-    .where(and(eq(auditLog.entity, "deal"), inArray(auditLog.action, ["apagou negociação", "resetou negociação"]))).orderBy(desc(auditLog.at)).limit(200);
+    .where(and(eq(auditLog.entity, "deal"), inArray(auditLog.action, ["apagou negociação", "resetou negociação", "devolveu lead ao SDR"]))).orderBy(desc(auditLog.at)).limit(200);
   return (
     <div className="space-y-5">
-      <PageHead icon={Archive} size="md" title="Negociações apagadas" subtitle="Tudo que gestores e admins apagaram ou resetaram, com a foto do que existia." />
+      <PageHead icon={Archive} size="md" title="Negociações apagadas" subtitle="Tudo que foi apagado, resetado ou devolvido ao SDR, com a foto do que existia." />
       {rows.length === 0 && <p className="rounded-xl bg-sunk px-4 py-6 text-center text-sm text-muted">Nada foi apagado ou resetado até agora.</p>}
       <ul className="space-y-3">
-        {rows.map((r) => { const s = (r.meta ?? {}) as Snap; const del = r.action.startsWith("apagou"); return (
+        {rows.map((r) => { const s = (r.meta ?? {}) as Snap; const del = r.action.startsWith("apagou"); const back = r.action.startsWith("devolveu"); return (
           <li key={r.id} className="space-y-2 rounded-2xl border border-line bg-panel p-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${del ? "bg-danger/12 text-danger" : "bg-warn/15 text-warn"}`}>{del ? "Apagada" : "Resetada"}</span>
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${del ? "bg-danger/12 text-danger" : "bg-warn/15 text-warn"}`}>{del ? "Apagada" : back ? "Devolvida ao SDR" : "Resetada"}</span>
               <h2 className="min-w-0 flex-1 break-words font-semibold">{s.empresa ?? "—"}</h2>
               <span className="text-xs text-muted">{fmtDateTime(r.at.toISOString())} · por {r.by ?? "—"}</span>
             </div>
