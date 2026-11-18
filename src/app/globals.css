@@ -188,3 +188,29 @@ body.dragging, body.dragging * { user-select: none !important; cursor: grabbing 
 @keyframes shake { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-12deg); } 75% { transform: rotate(12deg); } }
 .animate-shake { animation: shake 0.5s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .animate-floppy, .animate-shake { animation: none; } }
+
+/* Ícones do menu: animam quando o mouse passa (cada um com o seu jeito). */
+.nav-item .nav-ico svg { transform-origin: 50% 60%; }
+@media (prefers-reduced-motion: no-preference) {
+  .nav-item:hover .nav-ico svg { animation: ico-wiggle 0.6s ease-in-out; }
+  .nav-item:hover .nav-ico[data-ico="painel"] svg { animation: ico-swing 0.8s ease-in-out; }
+  .nav-item:hover .nav-ico[data-ico="leads"] svg, .nav-item:hover .nav-ico[data-ico="g-pessoas"] svg { animation: ico-hop 0.6s ease-out; }
+  .nav-item:hover .nav-ico[data-ico="representantes"] svg { animation: ico-drop 0.7s ease-out; }
+  .nav-item:hover .nav-ico[data-ico="metas"] svg { animation: ico-pulse 0.7s ease-in-out; }
+  .nav-item:hover .nav-ico[data-ico="historico"] svg { animation: ico-spin-back 0.7s ease-in-out; }
+  .nav-item:hover .nav-ico[data-ico="atender"] svg { animation: ico-nudge 0.6s ease-in-out; }
+  .nav-item:hover .nav-ico[data-ico="visitas"] svg, .nav-item:hover .nav-ico[data-ico="g-info"] svg { animation: ico-wiggle 0.6s ease-in-out; }
+  .nav-item:hover .nav-ico[data-ico="negociacoes"] svg { animation: ico-shake 0.55s ease-in-out; }
+  .nav-item:hover .nav-ico[data-ico="registro"] svg { animation: ico-slide 0.6s ease-in-out; }
+  .nav-item:hover .nav-ico[data-ico="admin"] svg, .nav-item:hover .nav-ico[data-ico="g-gestão"] svg { animation: ico-pulse 0.7s ease-in-out; }
+  .nav-item:hover .nav-ico[data-ico="g-sdr"] svg { animation: ico-hop 0.6s ease-out; }
+}
+@keyframes ico-wiggle { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-14deg); } 45% { transform: rotate(12deg); } 70% { transform: rotate(-7deg); } }
+@keyframes ico-swing { 0% { transform: rotate(0); } 30% { transform: rotate(35deg); } 60% { transform: rotate(-25deg); } 100% { transform: rotate(0); } }
+@keyframes ico-hop { 0%, 100% { transform: translateY(0); } 35% { transform: translateY(-4px) scale(1.1); } 65% { transform: translateY(0); } 80% { transform: translateY(-1.5px); } }
+@keyframes ico-drop { 0% { transform: translateY(-5px); } 55% { transform: translateY(1px) scaleY(0.9); } 100% { transform: translateY(0); } }
+@keyframes ico-pulse { 0%, 100% { transform: scale(1); } 40% { transform: scale(1.3); } 70% { transform: scale(0.92); } }
+@keyframes ico-spin-back { from { transform: rotate(0); } to { transform: rotate(-360deg); } }
+@keyframes ico-nudge { 0%, 100% { transform: translateX(0); } 40% { transform: translateX(4px) scale(1.1); } 70% { transform: translateX(-1px); } }
+@keyframes ico-shake { 0%, 100% { transform: translateX(0) rotate(0); } 20% { transform: translateX(-2px) rotate(-8deg); } 40% { transform: translateX(2px) rotate(8deg); } 60% { transform: translateX(-2px) rotate(-5deg); } 80% { transform: translateX(1px) rotate(3deg); } }
+@keyframes ico-slide { 0%, 100% { transform: translateY(0); } 30% { transform: translateY(-3px); } 60% { transform: translateY(2px); } }

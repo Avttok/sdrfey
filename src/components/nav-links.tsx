@@ -50,8 +50,8 @@ export function NavLinks({ hrefs, vertical = false, collapsed = false, badges = 
     const active = isActive(href);
     return (
       <Link key={href} href={href} aria-current={active ? "page" : undefined} aria-label={collapsed ? label : undefined} title={collapsed ? label : undefined}
-        className={`flex items-center whitespace-nowrap rounded-xl text-sm font-medium transition-all ${collapsed ? "justify-center px-0 py-3" : `gap-2.5 px-3 ${vertical || inMenu ? "py-2.5" : "py-2"}`} ${active ? "bg-grad-soft text-accent shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_30%,transparent)]" : "text-muted hover:bg-sunk hover:text-ink"}`}>
-        <span className="relative grid place-items-center">
+        className={`nav-item flex items-center whitespace-nowrap rounded-xl text-sm font-medium transition-all ${collapsed ? "justify-center px-0 py-3" : `gap-2.5 px-3 ${vertical || inMenu ? "py-2.5" : "py-2"}`} ${active ? "bg-grad-soft text-accent shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_30%,transparent)]" : "text-muted hover:bg-sunk hover:text-ink"}`}>
+        <span className="nav-ico relative grid place-items-center" data-ico={href.slice(1)}>
           <Pending Icon={Icon} />
           {badges[href] ? <span aria-hidden className="absolute -right-1.5 -top-1.5 size-2.5 rounded-full border-2 border-panel bg-danger" /> : null}
         </span>
@@ -68,8 +68,8 @@ export function NavLinks({ hrefs, vertical = false, collapsed = false, badges = 
       <div key={label} id={isOpen ? "nav-menu" : undefined} className="shrink-0">
         <button type="button" aria-haspopup="menu" aria-expanded={isOpen}
           onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setPos({ left: Math.max(8, Math.min(r.left, window.innerWidth - 232)), top: r.bottom + 6 }); setOpen(isOpen ? null : label); }}
-          className={`relative flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition-all ${active ? "bg-grad-soft text-accent shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_30%,transparent)]" : "text-muted hover:bg-sunk hover:text-ink"}`}>
-          {(() => { const I = GROUP_ICONS[label]; return I ? <I size={17} aria-hidden /> : null; })()}{label}<ChevronDown size={14} aria-hidden className={`transition ${isOpen ? "rotate-180" : ""}`} />
+          className={`nav-item relative flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition-all ${active ? "bg-grad-soft text-accent shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_30%,transparent)]" : "text-muted hover:bg-sunk hover:text-ink"}`}>
+          {(() => { const I = GROUP_ICONS[label]; return I ? <span className="nav-ico grid place-items-center" data-ico={`g-${label.toLowerCase()}`}><I size={17} aria-hidden /></span> : null; })()}{label}<ChevronDown size={14} aria-hidden className={`transition ${isOpen ? "rotate-180" : ""}`} />
           {hasBadge && <span aria-hidden className="absolute right-1 top-1 size-2 rounded-full border-2 border-panel bg-danger" />}
         </button>
         {isOpen && (
