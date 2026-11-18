@@ -36,7 +36,7 @@ export function AndamentosPanel({ events, title = "Andamentos registrados", show
               <button key={k} type="button" role="tab" aria-selected={g === k} onClick={() => setG(k)} className={`rounded-full border px-3 py-1 text-xs font-medium transition ${g === k ? "border-accent bg-accent/12 text-accent" : "border-line text-muted hover:bg-sunk"}`}>{l} <span className="figure">{counts[k]}</span></button>
             ))}
           </div>
-          <ol className="relative max-h-[28rem] space-y-4 overflow-y-auto border-l border-line pl-5 pr-1">
+          <div className="max-h-[28rem] overflow-y-auto py-1 pl-4 pr-1"><ol className="relative space-y-4 border-l border-line pl-5">
             {shown.map((e) => { const I = ICON[e.kind] ?? NotebookPen; return (
               <li key={e.id} className="relative text-sm">
                 <span className="absolute -left-[31px] grid size-6 place-items-center rounded-full border border-line bg-panel text-accent"><I size={12} aria-hidden /></span>
@@ -46,7 +46,7 @@ export function AndamentosPanel({ events, title = "Andamentos registrados", show
               </li>
             ); })}
             {shown.length === 0 && <li className="text-sm text-muted">Nada neste filtro.</li>}
-          </ol>
+          </ol></div>
         </>
       )}
     </SectionCard>

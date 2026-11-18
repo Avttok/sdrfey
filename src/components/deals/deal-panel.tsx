@@ -246,7 +246,7 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDele
         )}
       </div>
 
-      <div className="grid items-start gap-4 xl:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2">
         <AndamentosPanel events={events.map((e) => ({ ...e, dealId: deal.id }))} title="Andamentos registrados" />
         <VisitsPanel visits={visits} />
       </div>

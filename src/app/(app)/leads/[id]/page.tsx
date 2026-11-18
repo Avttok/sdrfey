@@ -49,7 +49,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     <div className="space-y-4">
       <LeadEditor dealSeller={dealSeller} sellerView={sellerView} dealId={dealId} meId={me.id} showMap={me.mapMode === "map"} lead={lead} catalog={catalog} owners={owners} canEdit={!!me.permissions["lead.edit"] || ownDeal} inDeal={!!anyDeal} canRelease={!!me.permissions["lead.release"]} lockedBy={locker[0] ? { name: locker[0].name, hex: bubbleHex(locker[0].accent, locker[0].id, locker[0].roles) } : null} />
       {comm && (
-        <div className="grid items-start gap-4 xl:grid-cols-2">
+        <div className="grid gap-4 xl:grid-cols-2">
           <SalesSummaryPanel deals={comm.deals} quotes={comm.quotes} />
           <AndamentosPanel events={comm.events} showDeal title="Andamentos da negociação" />
           {sellerView && <VisitsPanel visits={comm.visits} />}
