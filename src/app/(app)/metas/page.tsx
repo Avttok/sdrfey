@@ -16,7 +16,7 @@ import { hasSdrPart, hasSellerPart } from "@/config/roles";
 import { requirePerm } from "@/modules/auth/guard";
 import { goalScope } from "@/modules/auth/goal-scope";
 import { getSettings } from "@/modules/settings/get";
-import { sdrPace, sellerPace, type DayRow, type MonthCtx } from "@/config/pace";
+import { sdrPace, sellerPace, workdays, type DayRow, type MonthCtx } from "@/config/pace";
 import { goalsOff, ownGoals, SDR_KINDS, type GoalKind } from "@/modules/settings/goals";
 import { getSellerGoalSettings, getSellerMonth } from "@/modules/deals/goals";
 import { SellerGoalPanel } from "@/components/deals/seller-goal-panel";
@@ -63,6 +63,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const mine = views.find((v) => v.u.id === me.id);
   const [yy, mm] = todayStr.split("-").map(Number);
   const mctx: MonthCtx = { today: todayStr, first: `${todayStr.slice(0, 7)}-01`, last: `${todayStr.slice(0, 7)}-${String(new Date(yy, mm, 0).getDate()).padStart(2, "0")}` };
+  const monthWd = workdays(mctx.first, mctx.last);
+  const monthName = new Date(yy, mm - 1, 1).toLocaleDateString("pt-BR", { month: "long" });
   const pacesOf = (v: { m: { actual: Record<string, number> }; targets: Record<string, number> }) => Object.fromEntries(SELLER_METRICS.map((m) => [m.key, sellerPace(v.m.actual[m.key], v.targets[m.key], mctx)]));
   const both = showSdr && showSellers;
 
@@ -104,7 +106,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
       key: "sdr", label: "Atendimento", icon: <Headset size={16} aria-hidden />, sub: "Metas diárias: atendidos, agendados, ligações e convertidos.",
       view: <SdrOverview global={sdr.global} people={sdr.people} paces={paces} isToday={isToday} dayLabel={isToday ? "hoje" : `em ${dayStr.slice(8)}/${dayStr.slice(5, 7)}`} showTeam={manage && sdr.people.length > 1} />,
       filter: <PeriodFilter kind="day" value={dayStr} max={todayStr} />,
-      edit: canEditSdr || manage ? <GoalsForm canGlobal={canGlobal} editableIds={editableIds} showGlobal={manage} global={sdr.global} people={sdr.people} /> : undefined,
+      edit: canEditSdr || manage ? <GoalsForm wd={monthWd} monthLabel={monthName} canGlobal={canGlobal} editableIds={editableIds} showGlobal={manage} global={sdr.global} people={sdr.people} /> : undefined,
     });
   }
   if (showSellers) {
@@ -124,7 +126,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
         </div>
       ),
       filter: <PeriodFilter kind="month" value={monthStr} max={todayStr.slice(0, 7)} />,
-      edit: manage || (scope && mine) ? <SellerGoalsForm canGlobal={canGlobal} editableIds={editableIds} showGlobal={manage} global={globalVals} people={sellerPeople} /> : undefined,
+      edit: manage || (scope && mine) ? <SellerGoalsForm wd={monthWd} monthLabel={monthName} canGlobal={canGlobal} editableIds={editableIds} showGlobal={manage} global={globalVals} people={sellerPeople} /> : undefined,
     });
   }
 

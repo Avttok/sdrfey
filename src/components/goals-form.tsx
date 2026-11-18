@@ -4,7 +4,8 @@ import type { LucideIcon } from "lucide-react";
 import { KIND_ICON } from "@/components/goal-icons";
 import { useState } from "react";
 import { useRun } from "@/components/use-run";
-import { btnPrimary, inputCls, panelCls } from "@/components/ui";
+import { btnPrimary, panelCls } from "@/components/ui";
+import { UnitInput, UnitToggle, type Unit } from "@/components/goal-unit";
 import { saveGoalsAction, type PersonGoalInput } from "@/modules/admin/goals";
 import { SDR_KINDS, type GoalKind } from "@/modules/settings/goals";
 
@@ -23,7 +24,12 @@ export function Switch({ on, onChange, label, disabled }: { on: boolean; onChang
 }
 
 /** `showGlobal`: só gestão/Adm vê o padrão da equipe. Quem só vê o seu recebe um cartão "Minha meta". */
-export function GoalsForm({ global, people, canGlobal, editableIds, showGlobal = canGlobal }: { global: Global; people: GoalPerson[]; canGlobal: boolean; editableIds: number[]; showGlobal?: boolean }) {
+export function GoalsForm({ global, people, canGlobal, editableIds, showGlobal = canGlobal, wd, monthLabel }: { global: Global; people: GoalPerson[]; canGlobal: boolean; editableIds: number[]; showGlobal?: boolean; wd: number; monthLabel: string }) {
+  const [unit, setUnit] = useState<Unit>("dia");
+  const W = Math.max(1, wd);
+  /** Guardamos por dia; no modo mensal mostra dia × dias úteis e, ao digitar, arredonda para cima por dia. */
+  const toView = (q: number) => (unit === "mes" ? q * W : q);
+  const fromView = (v: number) => (unit === "mes" ? Math.ceil(v / W) : Math.round(v));
   const [g, setG] = useState<Global>(global);
   const [per, setPer] = useState<Record<number, Record<Kind, PersonGoalInput>>>(Object.fromEntries(people.map((p) => [p.id, p.own])));
   const [off, setOff] = useState<Record<number, boolean>>(Object.fromEntries(people.map((p) => [p.id, p.off])));
@@ -43,6 +49,7 @@ export function GoalsForm({ global, people, canGlobal, editableIds, showGlobal =
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
+      <UnitToggle unit={unit} onChange={setUnit} wd={W} monthLabel={monthLabel} />
       {showGlobal && <div className="grid gap-4 md:grid-cols-2">
         {KINDS.map(({ k, title, sub, Icon }) => (
           <section key={k} className={`${panelCls} p-5 transition-opacity ${g[k].on ? "" : "opacity-60"}`}>
@@ -51,8 +58,9 @@ export function GoalsForm({ global, people, canGlobal, editableIds, showGlobal =
               <div className="flex-1"><h2 className="display text-xl">{title}</h2><p className="text-sm text-muted">{sub}. Vale para quem não tem meta própria.</p></div>
               <Switch on={g[k].on} disabled={!canEdit} label={`${title} ativa`} onChange={(on) => setG({ ...g, [k]: { ...g[k], on } })} />
             </div>
-            <label className="mt-4 flex items-center gap-3 text-sm">Quantidade por dia
-              <input type="number" min={0} aria-label={`${title}: quantidade global`} disabled={!canEdit || !g[k].on} className={`${inputCls} !w-28 text-center`} value={g[k].qty} onChange={(e) => setG({ ...g, [k]: { ...g[k], qty: Number(e.target.value) } })} />
+            <label className="mt-4 flex flex-wrap items-center gap-3 text-sm">Quantidade por {unit === "mes" ? "mês" : "dia"}
+              <UnitInput ariaLabel={`${title}: quantidade global`} disabled={!canEdit || !g[k].on} className="!w-28 text-center" stored={g[k].qty} toView={toView} fromView={fromView} onCommit={(v) => setG({ ...g, [k]: { ...g[k], qty: v ?? 0 } })} />
+              <span className="text-xs text-muted">= <b className="figure text-ink">{unit === "mes" ? g[k].qty : g[k].qty * W}</b> {unit === "mes" ? "por dia útil" : `por mês (${W} dias úteis)`}</span>
             </label>
           </section>
         ))}
@@ -76,10 +84,10 @@ export function GoalsForm({ global, people, canGlobal, editableIds, showGlobal =
                     <div className="mb-1.5 flex items-center gap-2.5">
                       <Switch on={on} disabled={!mayEdit(p.id) || !!off[p.id]} label={`${title} de ${p.name} ativa`} onChange={(v) => upd(p.id, k, { on: v })} />
                       <span className="flex-1 text-sm">{label}</span>
-                      <input type="number" min={0} aria-label={`${title} de ${p.name}`} disabled={!mayEdit(p.id) || !on} className={`${inputCls} !w-24 text-center`} placeholder={String(g[k].qty)} title="Vazio = meta global" value={per[p.id][k].qty ?? ""} onChange={(e) => upd(p.id, k, { qty: e.target.value === "" ? null : Number(e.target.value) })} />
+                      <UnitInput ariaLabel={`${title} de ${p.name}`} disabled={!mayEdit(p.id) || !on} className="!w-24 text-center" placeholder={g[k].qty} title="Vazio = meta global" stored={per[p.id][k].qty} toView={toView} fromView={fromView} onCommit={(v) => upd(p.id, k, { qty: v })} />
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-sunk"><div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} /></div>
-                    <p className="mt-1 text-xs text-muted">{on ? <>Hoje: <b className="figure text-ink">{p.today[k]}</b> de {qty}</> : "Meta desligada"}</p>
+                    <p className="mt-1 text-xs text-muted">{on ? <>Hoje: <b className="figure text-ink">{p.today[k]}</b> de {qty} · meta do mês ≈ <b className="figure text-ink">{qty * W}</b></> : "Meta desligada"}</p>
                   </div>
                 );
               })}
