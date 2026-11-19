@@ -170,6 +170,8 @@ export const leads = pgTable(
     enrichTriedAt: timestamp("enrich_tried_at", { withTimezone: true }),
 
     source: text("source"),
+    /** Lote de importação que criou o lead (permite desfazer o lote). */
+    importBatchId: integer("import_batch_id"),
     /** 'prospect' = lead novo (Shuffler do SDR). 'inativo' = já cadastrado na Fey (EOX/Salesforce), trabalhado pelos vendedores no Shuffler de vendas. */
     kind: text("kind").$type<"prospect" | "inativo">().notNull().default("prospect"),
     createdAt: now(),
@@ -712,3 +714,17 @@ export const chatMentions = pgTable(
   },
   (t) => [primaryKey({ columns: [t.messageId, t.userId] }), index("chat_mentions_pending_idx").on(t.userId, t.notifiedAt)],
 );
+
+/** Histórico de importações de CSV (leads, representantes e negociações). Só os lotes de leads podem ser desfeitos. */
+export const importBatches = pgTable("import_batches", {
+  id: serial("id").primaryKey(),
+  kind: text("kind").$type<"leads" | "inativos" | "reps" | "deals">().notNull(),
+  fileName: text("file_name").notNull(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+  total: integer("total").notNull().default(0),
+  inserted: integer("inserted").notNull().default(0),
+  skipped: integer("skipped").notNull().default(0),
+  undoneAt: timestamp("undone_at", { withTimezone: true }),
+  undoneCount: integer("undone_count"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

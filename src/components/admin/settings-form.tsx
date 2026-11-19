@@ -1,51 +1,71 @@
 "use client";
 
+import { Clock, LayoutDashboard, MessageCircle, PanelTop, Shuffle } from "lucide-react";
 import { useState } from "react";
 import { useRun } from "@/components/use-run";
-import { btnPrimary, inputCls, panelCls } from "@/components/ui";
+import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { saveSettingsAction } from "@/modules/admin/config";
 import type { SettingKey } from "@/modules/settings/get";
 
-const FIELDS: { key: SettingKey; label: string; hint: string }[] = [
-  { key: "lock_minutes", label: "Minutos até liberar um lead parado", hint: "Passou disso sem atividade, o lead volta ao sorteio." },
-  { key: "skip_hours", label: "Horas que um lead pulado fica escondido", hint: "Só some para quem pulou." },
-  { key: "sem_contato_days", label: "Dias até “Sem contato” voltar ao sorteio", hint: "Dias corridos." },
-  { key: "rework_days", label: "Dias até um lead já trabalhado voltar ao sorteio", hint: "Quando nenhuma situação define outro prazo. Dias corridos." },
-];
+type Field = { key: SettingKey; label: string; hint: string; unit?: string; kind?: "number" | "toggle" | "period"; min?: number };
 
-const SYSTEM: { key: SettingKey; label: string; hint: string; kind: "number" | "toggle" | "period" }[] = [
-  { key: "alert_days", label: "Dias para um lead quente ou visita pendente virar alerta", hint: "Aparece no bloco Alertas do dashboard.", kind: "number" },
-  { key: "dash_default_days", label: "Período que o dashboard abre por padrão", hint: "Cada pessoa ainda pode trocar o filtro na hora.", kind: "period" },
-  { key: "chat_on", label: "Chat interno", hint: "Botão flutuante com chat geral e por cargo. Desligado, some para todos (as conversas ficam guardadas).", kind: "toggle" },
-  { key: "nav_group", label: "Abas em menus", hint: "Agrupa as abas em menus (Pessoas, Info, SDR, Gestão). Desligado, aparecem todas soltas.", kind: "toggle" },
+const GROUPS: { title: string; sub: string; icon: typeof Clock; fields: Field[] }[] = [
+  { title: "Regras do sorteio", sub: "Quando um lead volta ou some do sorteio", icon: Shuffle, fields: [
+    { key: "lock_minutes", label: "Liberar lead parado", hint: "Sem atividade por esse tempo, o lead volta ao sorteio.", unit: "minutos" },
+    { key: "skip_hours", label: "Lead pulado fica escondido", hint: "Só some para quem pulou.", unit: "horas" },
+    { key: "sem_contato_days", label: "“Sem contato” volta ao sorteio", hint: "Dias corridos.", unit: "dias" },
+    { key: "rework_days", label: "Lead já trabalhado volta ao sorteio", hint: "Quando nenhuma situação define outro prazo. Dias corridos.", unit: "dias" },
+  ] },
+  { title: "Dashboard", sub: "Alertas e período padrão", icon: LayoutDashboard, fields: [
+    { key: "alert_days", label: "Lead quente ou visita parada vira alerta", hint: "Aparece no bloco Alertas do dashboard.", unit: "dias", min: 1 },
+    { key: "dash_default_days", label: "Período que o dashboard abre", hint: "Cada pessoa ainda pode trocar o filtro.", kind: "period" },
+  ] },
+  { title: "Menu", sub: "Como as abas aparecem", icon: PanelTop, fields: [
+    { key: "nav_group", label: "Abas em menus agrupados", hint: "Pessoas, Info, SDR, Gestão. Desligado, aparecem todas soltas.", kind: "toggle" },
+  ] },
+  { title: "Comunicação", sub: "Chat interno", icon: MessageCircle, fields: [
+    { key: "chat_on", label: "Chat interno", hint: "Botão flutuante. Desligado, some para todos (as conversas ficam guardadas).", kind: "toggle" },
+  ] },
 ];
 
 export function SettingsForm({ initial }: { initial: Record<SettingKey, number> }) {
   const [v, setV] = useState(initial);
   const { run, pending } = useRun();
+  const dirty = JSON.stringify(v) !== JSON.stringify(initial);
+  const set = (k: SettingKey, n: number) => setV({ ...v, [k]: n });
   return (
-    <form className={`${panelCls} space-y-3 p-5 sm:p-6`} onSubmit={(e) => { e.preventDefault(); run(() => saveSettingsAction(v)); }}>
-      <h2 className="display text-xl">Regras do sorteio</h2>
-      <div className="divide-y divide-line">
-        {FIELDS.map((f) => (
-          <label key={f.key} className="grid items-center gap-x-6 gap-y-1 py-3 text-sm sm:grid-cols-[1fr_8rem]">
-            <span><span className="block font-medium">{f.label}</span><span className="mt-0.5 block text-xs text-muted">{f.hint}</span></span>
-            <input type="number" min={0} className={`${inputCls} text-center`} value={v[f.key]} onChange={(e) => setV({ ...v, [f.key]: Number(e.target.value) })} />
-          </label>
+    <form className="space-y-4 pb-20" onSubmit={(e) => { e.preventDefault(); run(() => saveSettingsAction(v)); }}>
+      <div className="grid gap-4 xl:grid-cols-2">
+        {GROUPS.map((g) => (
+          <section key={g.title} className={`${panelCls} overflow-hidden ${g.fields.length > 2 ? "xl:row-span-2" : ""}`}>
+            <header className="flex items-center gap-3 border-b border-line bg-sunk/60 px-4 py-3">
+              <span className="grid size-9 place-items-center rounded-xl bg-grad-soft text-accent"><g.icon size={18} aria-hidden /></span>
+              <div><h2 className="text-sm font-semibold">{g.title}</h2><p className="text-xs text-muted">{g.sub}</p></div>
+            </header>
+            <ul className="divide-y divide-line/60">
+              {g.fields.map((f) => (
+                <li key={f.key} className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3.5">
+                  <label htmlFor={`p-${f.key}`} className="min-w-52 flex-1 text-sm"><span className="block font-medium">{f.label}</span><span className="mt-0.5 block text-xs text-muted">{f.hint}</span></label>
+                  {f.kind === "toggle" ? (
+                    <button type="button" id={`p-${f.key}`} role="switch" aria-checked={v[f.key] === 1} aria-label={f.label} onClick={() => set(f.key, v[f.key] === 1 ? 0 : 1)} className={`relative h-7 w-12 shrink-0 rounded-full transition ${v[f.key] === 1 ? "bg-grad" : "border border-line bg-sunk"}`}><span className={`absolute top-0.5 size-6 rounded-full bg-white shadow transition-all ${v[f.key] === 1 ? "left-[1.45rem]" : "left-0.5"}`} /></button>
+                  ) : f.kind === "period" ? (
+                    <select id={`p-${f.key}`} className={`${inputCls} !w-36`} value={v[f.key]} onChange={(e) => set(f.key, Number(e.target.value))}><option value={1}>Hoje</option><option value={7}>7 dias</option><option value={30}>30 dias</option></select>
+                  ) : (
+                    <span className="flex items-center gap-2"><input id={`p-${f.key}`} type="number" min={f.min ?? 0} className={`${inputCls} !w-24 text-center`} value={v[f.key]} onChange={(e) => set(f.key, Number(e.target.value))} /><span className="w-14 text-xs text-muted">{f.unit}</span></span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
         ))}
       </div>
-      <h2 className="display pt-2 text-xl">Painel e menu</h2>
-      <div className="divide-y divide-line">
-        {SYSTEM.map((f) => (
-          <label key={f.key} className="grid items-center gap-x-6 gap-y-1 py-3 text-sm sm:grid-cols-[1fr_8rem]">
-            <span><span className="block font-medium">{f.label}</span><span className="mt-0.5 block text-xs text-muted">{f.hint}</span></span>
-            {f.kind === "number" && <input type="number" min={1} className={`${inputCls} text-center`} value={v[f.key]} onChange={(e) => setV({ ...v, [f.key]: Number(e.target.value) })} />}
-            {f.kind === "period" && <select className={inputCls} value={v[f.key]} onChange={(e) => setV({ ...v, [f.key]: Number(e.target.value) })}><option value={1}>Hoje</option><option value={7}>7 dias</option><option value={30}>30 dias</option></select>}
-            {f.kind === "toggle" && <select className={inputCls} value={v[f.key]} onChange={(e) => setV({ ...v, [f.key]: Number(e.target.value) })}><option value={1}>Ligado</option><option value={0}>Desligado</option></select>}
-          </label>
-        ))}
-      </div>
-      <button type="submit" disabled={pending} className={btnPrimary}>Salvar parâmetros</button>
+      {dirty && (
+        <div role="status" className="fixed inset-x-0 bottom-5 z-30 mx-auto flex w-[min(34rem,calc(100%-2rem))] items-center gap-3 rounded-2xl border border-accent bg-panel p-3 pl-4 shadow-2xl">
+          <span className="flex-1 text-sm font-medium">Alterações ainda não salvas</span>
+          <button type="button" className={btnGhost} disabled={pending} onClick={() => setV(initial)}>Descartar</button>
+          <button type="submit" disabled={pending} className={btnPrimary}>Salvar parâmetros</button>
+        </div>
+      )}
     </form>
   );
 }

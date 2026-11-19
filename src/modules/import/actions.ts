@@ -2,8 +2,8 @@
 
 import { plural } from "@/lib/format";
 import { revalidatePath } from "next/cache";
-import { sql } from "drizzle-orm";
-import { db } from "@/db";
+import { eq, sql } from "drizzle-orm";
+import { db, importBatches } from "@/db";
 import { requireAdmin } from "@/modules/auth/guard";
 import { LEAD_COLUMNS, REP_COLUMNS } from "./columns";
 import { commonChecks, inspectFile, LEAD_LABELS, REP_LABELS, type FileInsight } from "./insight";
@@ -90,15 +90,23 @@ export async function applyImportAction(formData: FormData): Promise<ImportResul
   const me = await requireAdmin();
   const f = await readFile(formData);
   if (f.error !== undefined) return { ok: false, message: f.error };
+  const guard = await previewImportAction(formData);
+  if (!guard.ok) return { ok: false, message: guard.message };
+  const blocker = guard.insight.checks.find((c) => c.level === "bad");
+  if (blocker) return { ok: false, message: `Importação bloqueada: ${blocker.text}` };
   if (f.kind === "leads") {
     const { drafts } = parseLeadRows(f.headers, f.rows);
     const kind = formData.get("leadKind") === "inativo" ? "inativo" : "prospect";
-    const r = await applyLeadDrafts(drafts, { importedBy: me.id, sourceName: f.name, kind });
+    const [batch] = await db.insert(importBatches).values({ kind: kind === "inativo" ? "inativos" : "leads", fileName: f.name, userId: me.id, total: drafts.length }).returning({ id: importBatches.id });
+    const r = await applyLeadDrafts(drafts, { importedBy: me.id, sourceName: f.name, kind, batchId: batch.id });
+    await db.update(importBatches).set({ inserted: r.inserted, skipped: r.skippedExisting }).where(eq(importBatches.id, batch.id));
     revalidatePath("/leads");
+    revalidatePath("/admin/importar");
     return { ok: true, message: `${plural(r.inserted, kind === "inativo" ? "lead inativo importado" : "lead novo importado", kind === "inativo" ? "leads inativos importados" : "leads novos importados")}; ${r.skippedExisting} já ${r.skippedExisting === 1 ? "existia e foi mantido" : "existiam e foram mantidos"}${r.converted ? ` (${r.converted} passaram para inativo)` : ""}.`, details: [...r.unknownOwners.map((o) => `Responsável desconhecido ignorado: ${o}`), ...r.unknownTags.map((t) => `Tag desconhecida ignorada: ${t}`)] };
   }
   const { drafts } = parseRepRows(f.headers, f.rows);
   const r = await applyRepDrafts(drafts, { importedBy: me.id, sourceName: f.name });
+  await db.insert(importBatches).values({ kind: "reps", fileName: f.name, userId: me.id, total: drafts.length, inserted: r.total });
   revalidatePath("/representantes");
   return { ok: true, message: `${plural(r.total, "representante importado/atualizado", "representantes importados/atualizados")}.`, details: r.withoutCoords ? [`${r.withoutCoords} sem coordenadas (cidade não encontrada).`] : [] };
 }

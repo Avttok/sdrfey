@@ -239,6 +239,13 @@
       "when": 1795088534609,
       "tag": "0033_moedas_bloqueios",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1795098189569,
+      "tag": "0034_importacoes_historico",
+      "breakpoints": true
     }
   ]
 }

@@ -53,3 +53,17 @@ export async function coinHistoryAction(userId: number): Promise<{ id: number; a
   const rows = await db.select().from(coinLedger).where(and(eq(coinLedger.userId, userId), sql`${coinLedger.amount} <> 0`)).orderBy(desc(coinLedger.id)).limit(30);
   return rows.map((r) => ({ id: r.id, amount: r.amount, reason: r.reason, at: r.createdAt.toISOString() }));
 }
+
+const REWARD_KEYS = ["coin_attended", "coin_visit", "coin_deal", "coin_quote", "coin_billed", "coin_shuffled"] as const;
+/** Quanto cada feito paga. Vale para os próximos feitos; o que já foi pago não muda. */
+export async function setCoinRewardsAction(values: Record<(typeof REWARD_KEYS)[number], number>): Promise<ActionResult> {
+  const me = await requireAdmin();
+  for (const k of REWARD_KEYS) {
+    const v = Math.max(0, Math.min(1000, Math.floor(Number(values[k]) || 0)));
+    await db.insert(settings).values({ key: k, value: v, updatedBy: me.id }).onConflictDoUpdate({ target: settings.key, set: { value: v, updatedAt: new Date(), updatedBy: me.id } });
+  }
+  invalidateSettings();
+  await logAudit(db, { userId: me.id, entity: "setting", action: "mudou o valor das moedas por feito" });
+  revalidatePath("/admin/moedas");
+  return { ok: true, message: "Valores salvos. Valem para os próximos feitos." };
+}

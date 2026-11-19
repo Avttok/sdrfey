@@ -2,7 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import { users } from "@/db";
 import { getSettings } from "@/modules/settings/get";
 import { ACHIEVEMENTS, groupsFor } from "@/config/achievements";
-import { SHOP_BY_KEY, TASK_COINS, achievementCoins } from "@/config/shop";
+import { SHOP_BY_KEY, achievementCoins } from "@/config/shop";
 import { chatStyles, coinLedger, db, shopPurchases } from "@/db";
 import { achievementsOf } from "@/modules/achievements/stats";
 
@@ -21,7 +21,7 @@ export async function syncCoins(uid: number, roles: readonly string[]): Promise<
   // Bloqueado (pelo Adm, para todos ou só esta pessoa): os feitos são registrados com 0 moedas, então ao liberar não pagam o passado.
   const [[who], settings] = await Promise.all([db.select({ b: users.coinsEarnBlocked }).from(users).where(eq(users.id, uid)), getSettings()]);
   const blocked = !!who?.b || settings.coins_earn_on !== 1;
-  const T = blocked ? { attended: 0, visit: 0, deal: 0, quote: 0, billed: 0, shuffled: 0 } : TASK_COINS;
+  const T = blocked ? { attended: 0, visit: 0, deal: 0, quote: 0, billed: 0, shuffled: 0 } : rewardsOf(settings);
   await db.execute(sql`
     insert into coin_ledger (user_id, amount, reason, ref)
     select ${uid}::int, ${T.attended}::int, 'Lead atendido', 'att:' || id from attendance_sessions where user_id = ${uid} and outcome = 'saved' and not is_test
@@ -38,20 +38,24 @@ export async function syncCoins(uid: number, roles: readonly string[]): Promise<
   }
 }
 
+export type Rewards = { attended: number; visit: number; deal: number; quote: number; billed: number; shuffled: number };
+export const rewardsOf = (s: Record<string, number>): Rewards => ({ attended: s.coin_attended, visit: s.coin_visit, deal: s.coin_deal, quote: s.coin_quote, billed: s.coin_billed, shuffled: s.coin_shuffled });
+
 export async function coinBalance(uid: number): Promise<number> {
   const [r] = await db.select({ n: sql<number>`coalesce(sum(${coinLedger.amount}), 0)::int` }).from(coinLedger).where(eq(coinLedger.userId, uid));
   return r?.n ?? 0;
 }
 
-export type ShopState = { balance: number; owned: string[]; equipped: Record<string, string> };
+export type ShopState = { rewards: Rewards; balance: number; owned: string[]; equipped: Record<string, string> };
 export async function shopState(uid: number, roles: readonly string[]): Promise<ShopState> {
   await syncCoins(uid, roles);
-  const [balance, owned, [st]] = await Promise.all([
+  const [balance, owned, [st], cfg] = await Promise.all([
     coinBalance(uid),
     db.select({ k: shopPurchases.itemKey }).from(shopPurchases).where(eq(shopPurchases.userId, uid)),
     db.select().from(chatStyles).where(eq(chatStyles.userId, uid)),
+    getSettings(),
   ]);
-  return { balance, owned: owned.map((o) => o.k), equipped: st?.equipped ?? {} };
+  return { rewards: rewardsOf(cfg), balance, owned: owned.map((o) => o.k), equipped: st?.equipped ?? {} };
 }
 
 export { ACHIEVEMENTS, groupsFor, SHOP_BY_KEY };

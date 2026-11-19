@@ -26,7 +26,7 @@ const chunk = <T>(arr: T[], size: number): T[][] => {
  */
 export async function applyLeadDrafts(
   drafts: LeadDraft[],
-  opts: { importedBy: number | null; sourceName: string; kind?: "prospect" | "inativo" },
+  opts: { importedBy: number | null; sourceName: string; kind?: "prospect" | "inativo"; batchId?: number },
   database: Db = db,
 ): Promise<ApplyResult> {
   return database.transaction(async (tx) => {
@@ -107,6 +107,7 @@ export async function applyLeadDrafts(
               timesServed: d.timesServed,
               timesWorked: d.timesWorked,
               source: opts.sourceName,
+              importBatchId: opts.batchId ?? null,
               kind,
               ...(d.updatedAt ? { updatedAt: d.updatedAt } : {}),
             };

@@ -38,9 +38,9 @@ export function ChatShop({ myName, meId }: { myName: string; meId: number }) {
         </div>
         {how && (
           <ul className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-xl bg-panel px-3 py-2 text-xs text-muted">
-            <li>Lead atendido: <b className="figure text-ink">+{TASK_COINS.attended}</b></li><li>Visita agendada: <b className="figure text-ink">+{TASK_COINS.visit}</b></li>
-            <li>Negociação aberta: <b className="figure text-ink">+{TASK_COINS.deal}</b></li><li>Cotação enviada: <b className="figure text-ink">+{TASK_COINS.quote}</b></li>
-            <li>Venda faturada: <b className="figure text-ink">+{TASK_COINS.billed}</b></li><li>Inativo trabalhado: <b className="figure text-ink">+{TASK_COINS.shuffled}</b></li>
+            <li>Lead atendido: <b className="figure text-ink">+{(st?.rewards ?? TASK_COINS).attended}</b></li><li>Visita agendada: <b className="figure text-ink">+{(st?.rewards ?? TASK_COINS).visit}</b></li>
+            <li>Negociação aberta: <b className="figure text-ink">+{(st?.rewards ?? TASK_COINS).deal}</b></li><li>Cotação enviada: <b className="figure text-ink">+{(st?.rewards ?? TASK_COINS).quote}</b></li>
+            <li>Venda faturada: <b className="figure text-ink">+{(st?.rewards ?? TASK_COINS).billed}</b></li><li>Inativo trabalhado: <b className="figure text-ink">+{(st?.rewards ?? TASK_COINS).shuffled}</b></li>
             <li className="col-span-2 flex items-center gap-1"><Sparkles size={12} className="text-accent" aria-hidden /> Cada conquista também paga de 20 a 150 moedas.</li>
           </ul>
         )}

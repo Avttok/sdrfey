@@ -79,9 +79,10 @@ function Group({ g }: { g: { key: string; name: string; tags: TagRow[] } }) {
   };
 
   return (
-    <section className={`${panelCls} space-y-3 p-4 sm:p-5 ${dirty ? "ring-2 ring-accent" : ""}`}>
-      <div className="flex flex-wrap items-center gap-3">
-        <h2 className="display text-xl">{g.name}</h2><span className="figure rounded-full bg-sunk px-2 py-0.5 text-xs text-muted">{g.tags.length}</span>
+    <section className={`${panelCls} overflow-hidden ${dirty ? "ring-2 ring-accent" : ""}`}>
+      <div className="flex flex-wrap items-center gap-3 border-b border-line bg-sunk/60 px-4 py-3 sm:px-5">
+        <span aria-hidden className="size-2.5 rounded-full bg-grad" /><h2 className="text-base font-semibold">{g.name}</h2><span className="figure rounded-full bg-panel px-2 py-0.5 text-xs text-muted">{g.tags.length} tags</span>
+        <span className="hidden flex-wrap gap-1.5 md:flex">{g.tags.slice(0, 6).map((t) => <span key={t.id} title={t.label} className="size-3 rounded-full ring-1 ring-black/10" style={{ background: t.color }} />)}</span>
         {dirty && (
           <span className="ml-auto flex items-center gap-2">
             <span className="text-sm text-muted">Ordem alterada, ainda não salva</span>
@@ -90,7 +91,7 @@ function Group({ g }: { g: { key: string; name: string; tags: TagRow[] } }) {
           </span>
         )}
       </div>
-      <ul ref={ul} className="space-y-2.5">
+      <ul ref={ul} className="space-y-2.5 p-4 sm:p-5">
         {order.map((id) => <Row key={id} t={byId.get(id)!} onGrip={grip(id)} dragging={drag === id} />)}
         <Row isNew t={{ groupKey: g.key, label: "", color: "#64748b", blocksSorting: false, cooldownDays: null, active: true }} />
       </ul>

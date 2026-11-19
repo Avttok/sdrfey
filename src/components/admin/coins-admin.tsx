@@ -4,7 +4,7 @@ import { ChevronDown, Coins, Lock, LockOpen, Minus, Plus, ShoppingBag, TrendingU
 import { useState } from "react";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
-import { adjustCoinsAction, coinHistoryAction, setCoinsBlockAction, setCoinsGlobalAction } from "@/modules/coins/admin";
+import { adjustCoinsAction, coinHistoryAction, setCoinsBlockAction, setCoinRewardsAction, setCoinsGlobalAction } from "@/modules/coins/admin";
 
 export type CoinRow = { id: number; name: string; username: string; accent: string | null; roles: string[]; earnBlocked: boolean; spendBlocked: boolean; balance: number; earned: number; spent: number };
 type Hist = { id: number; amount: number; reason: string; at: string }[];
@@ -57,7 +57,26 @@ function Row({ r }: { r: CoinRow }) {
   );
 }
 
-export function CoinsAdmin({ rows, earnOn, spendOn }: { rows: CoinRow[]; earnOn: boolean; spendOn: boolean }) {
+const REWARD_FIELDS = [["coin_attended", "Lead atendido"], ["coin_visit", "Visita agendada"], ["coin_deal", "Negociação aberta"], ["coin_quote", "Cotação enviada"], ["coin_billed", "Venda faturada"], ["coin_shuffled", "Inativo trabalhado"]] as const;
+type RewardVals = Record<(typeof REWARD_FIELDS)[number][0], number>;
+
+function Rewards({ initial }: { initial: RewardVals }) {
+  const { run, pending } = useRun();
+  const [v, setV] = useState(initial);
+  const dirty = JSON.stringify(v) !== JSON.stringify(initial);
+  return (
+    <section className={`${panelCls} p-4`}>
+      <h2 className="font-semibold">Quanto cada feito paga</h2>
+      <p className="mb-3 text-xs text-muted">Vale para os próximos feitos; o que já foi pago não muda. As conquistas têm valor fixo pela dificuldade.</p>
+      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {REWARD_FIELDS.map(([k, label]) => <label key={k} className="block text-sm"><span className="mb-1 block text-muted">{label}</span><input type="number" min={0} max={1000} className={inputCls} value={v[k]} onChange={(e) => setV({ ...v, [k]: Number(e.target.value) })} /></label>)}
+      </div>
+      <div className="mt-3 flex gap-2"><button type="button" className={btnPrimary} disabled={!dirty || pending} onClick={() => run(() => setCoinRewardsAction(v))}>Salvar valores</button>{dirty && <button type="button" className={btnGhost} onClick={() => setV(initial)}>Descartar</button>}</div>
+    </section>
+  );
+}
+
+export function CoinsAdmin({ rows, earnOn, spendOn, rewards }: { rows: CoinRow[]; earnOn: boolean; spendOn: boolean; rewards: RewardVals }) {
   const { run, pending } = useRun();
   const total = rows.reduce((a, r) => a + r.balance, 0);
   return (
@@ -68,6 +87,7 @@ export function CoinsAdmin({ rows, earnOn, spendOn }: { rows: CoinRow[]; earnOn:
         <div className={`${panelCls} lift card-in flex items-center gap-3 p-4`} style={{ "--i": 2 } as React.CSSProperties}><span className="grid size-10 place-items-center rounded-xl bg-grad-soft text-accent"><ShoppingBag size={18} aria-hidden /></span><div className="min-w-0 flex-1"><p className="text-sm font-semibold">Gasto na loja (todos)</p><p className="text-xs text-muted">{spendOn ? "Ligado" : "Desligado: ninguém compra"}</p></div><Switch on={spendOn} label="Gasto de moedas para todos" disabled={pending} onClick={() => run(() => setCoinsGlobalAction("spend", !spendOn))} /></div>
       </div>
       <p className="flex items-center gap-2 text-xs text-muted"><Lock size={13} aria-hidden /> Com o ganho bloqueado, os feitos do período ficam registrados com 0 moedas: ao liberar de novo, o passado não é pago.<LockOpen size={13} className="ml-2" aria-hidden /> Os ajustes aparecem no extrato e no registro do sistema.</p>
+      <Rewards initial={rewards} />
       <section className={`${panelCls} overflow-hidden`}><ul className="divide-y divide-line/70">{rows.map((r) => <Row key={r.id} r={r} />)}</ul></section>
     </div>
   );

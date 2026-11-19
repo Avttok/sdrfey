@@ -101,7 +101,12 @@ export function EnrichAdmin({ initial, on: on0, cronReady, live: live0 }: { init
 
       <section className={`${panelCls} flex flex-wrap items-center gap-4 p-5`}>
         <div className="min-w-0 flex-1"><h2 className="font-semibold">Consulta automática</h2><p className="text-sm text-muted">Ligada: a tarefa agendada consulta os leads pendentes e os shufflers deixam de consultar sozinhos (o botão “Atualizar informações” continua).</p>
-          {on && !cronReady && <p className="mt-1 text-sm text-warn">Falta criar a variável CRON_SECRET na Vercel para a tarefa agendada rodar. O botão e o modo contínuo abaixo funcionam sem ela.</p>}</div>
+          <details className="mt-2 rounded-lg bg-sunk/60 text-sm"><summary className={`cursor-pointer select-none px-3 py-2 font-medium ${cronReady ? "text-ok" : on ? "text-warn" : "text-muted"}`}>{cronReady ? "Tarefa agendada pronta (CRON_SECRET configurada)" : "Tarefa agendada: falta configurar o CRON_SECRET"}</summary>
+            <ol className="list-decimal space-y-1 px-3 pb-3 pl-7 text-muted">
+              <li>Na Vercel: Settings → Environment Variables → crie <b className="text-ink">CRON_SECRET</b> com um texto longo e aleatório (ex.: 40 letras e números).</li>
+              <li>Faça um Redeploy. A Vercel passa a chamar <b className="text-ink">/api/cron/enrich</b> sozinha uma vez por dia (09:00 UTC).</li>
+              <li>No plano Hobby o cron só roda 1 vez por dia; para consultar mais, use o lote e o modo contínuo abaixo (funcionam sem o CRON_SECRET).</li>
+            </ol></details></div>
         <button type="button" role="switch" aria-checked={on} disabled={pending} onClick={() => start(async () => { const n = !on; setOn(n); await setAutoEnrichAction(n); })} className={`relative h-8 w-14 shrink-0 rounded-full transition ${on ? "bg-grad" : "bg-sunk border border-line"}`}><span className={`absolute top-1 size-6 rounded-full bg-white shadow transition-all ${on ? "left-7" : "left-1"}`} /></button>
       </section>
 

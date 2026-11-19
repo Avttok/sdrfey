@@ -31,6 +31,13 @@ export const SETTING_DEFAULTS = {
   /** 1 = a equipe ganha moedas / pode gastar na loja. O Adm desliga para todos de uma vez. */
   coins_earn_on: 1,
   coins_spend_on: 1,
+  /** Moedas pagas por feito (o Adm ajusta em Moedas e pontos). */
+  coin_attended: 1,
+  coin_visit: 5,
+  coin_deal: 8,
+  coin_quote: 3,
+  coin_billed: 25,
+  coin_shuffled: 1,
 } as const;
 export type SettingKey = keyof typeof SETTING_DEFAULTS;
 
