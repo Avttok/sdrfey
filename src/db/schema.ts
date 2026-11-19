@@ -30,6 +30,10 @@ export const users = pgTable("users", {
   accent: text("accent"),
   /** Ícone de perfil escolhido (chave de config/avatars.ts). Nulo = iniciais do nome. */
   avatar: text("avatar"),
+  /** Padrão do banner do perfil (chave de config/banners.ts). Nulo = padrão. */
+  banner: text("banner"),
+  /** Já passou uma vez pela tela de personalização do perfil. */
+  profileDone: boolean("profile_done").notNull().default(false),
   /** Barra de navegação: "top" (horizontal) ou "side" (vertical à esquerda). */
   navLayout: text("nav_layout").notNull().default("top"),
   /** Ordem preferida dos itens do menu (hrefs). Vazio = ordem padrão. */

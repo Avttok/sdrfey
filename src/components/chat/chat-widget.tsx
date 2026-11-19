@@ -1,5 +1,7 @@
 "use client";
 
+import { bannerStyle } from "@/config/banners";
+import { lsGet, lsSet } from "@/lib/use-cached";
 import { AvatarGlyph } from "@/components/avatar-glyph";
 import { CountUp } from "@/components/goal-tiles";
 
@@ -132,7 +134,7 @@ function ProfileDialog({ userId, hex, isAdmin, onClose, onPurged }: { userId: nu
   return (
     <div className="spawn-fade fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-label="Perfil" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={themeVars} className="spawn-in relative w-full max-w-sm overflow-hidden rounded-3xl border border-line bg-panel shadow-2xl">
-        <div className="relative h-32 overflow-hidden bg-grad">
+        <div className="relative h-32 overflow-hidden bg-grad" style={bannerStyle(p?.banner)}>
           <span aria-hidden className="sh-card absolute -left-6 -top-8 size-32 rounded-full bg-white/25 blur-2xl" style={{ "--d": "0s" } as React.CSSProperties} />
           <span aria-hidden className="sh-card absolute -bottom-10 right-2 size-40 rounded-full bg-black/20 blur-2xl" style={{ "--d": "-1.8s" } as React.CSSProperties} />
           <span aria-hidden className="pf-shine absolute inset-0" />
@@ -203,7 +205,8 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
   const [dmPick, setDmPick] = useState(false);
   const [dmQ, setDmQ] = useState("");
   const allChannels: Channel[] = [...channels, ...dms.map((d) => ({ key: d.key, label: d.name.split(" ")[0], hint: "Conversa direta" }))];
-  useEffect(() => { if (open && !people.length) void chatPeopleAction().then((r) => { if (r.ok) setPeople(r.people); }).catch(() => {}); }, [open, people.length]);
+  useEffect(() => { const c = lsGet<ChatPerson[]>(`people:${meId}`); if (c) setPeople(c); }, [meId]);
+  useEffect(() => { if (open) void chatPeopleAction().then((r) => { if (r.ok) { setPeople(r.people); lsSet(`people:${meId}`, r.people); } }).catch(() => {}); }, [open, meId]);
   const startDm = (p: ChatPerson) => { const key = dmKey(meId, p.id); setDms((cur) => (cur.some((d) => d.key === key) ? cur : [...cur, { key, withId: p.id, name: p.name, username: p.username, hex: p.hex }])); setChannel(key); setDmPick(false); setDmQ(""); setShop(false); };
   /** @ no fim do texto: sugere pessoas para marcar */
   const mention = /(?:^|\s)@([a-z0-9._-]*)$/i.exec(draft);
@@ -443,7 +446,7 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
             <button type="button" aria-label="Fechar chat" className="rounded-lg p-1.5 text-muted hover:bg-sunk" onClick={() => setOpen(false)}><X size={17} /></button>
           </header>
           {offline && <p role="status" className="flex items-center gap-2 bg-warn/15 px-4 py-1.5 text-xs font-medium text-warn"><WifiOff size={13} aria-hidden /> Sem conexão com o servidor. Tentando de novo…</p>}
-          {shop && <ChatShop myName={myName} />}
+          {shop && <ChatShop myName={myName} meId={meId} />}
           {!shop && (
             <div className="relative">
               <div role="tablist" aria-label="Grupos e conversas" className="flex items-center gap-1 overflow-x-auto border-b border-line px-2 py-1.5">

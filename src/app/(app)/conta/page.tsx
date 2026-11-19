@@ -1,3 +1,4 @@
+import { BannerPicker } from "@/components/banner-picker";
 import { AvatarPicker } from "@/components/avatar-picker";
 import type { Metadata } from "next";
 import { MapModePicker } from "@/components/map-mode-picker";
@@ -39,6 +40,7 @@ export default async function AccountPage() {
         <section className={`${panelCls} p-6`}>
           <h2 className="display mb-5 text-xl">Aparência</h2>
 
+          <div className="mb-6"><BannerPicker current={user.banner} /></div>
           <div className="mb-6"><AvatarPicker current={user.avatar} initials={user.name.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase()} /></div>
 
           <p className="mb-2 text-sm font-medium">Cor do sistema</p>

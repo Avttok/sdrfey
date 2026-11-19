@@ -8,6 +8,7 @@ import { db, users } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { clearSessionCookie, requireUser, setSessionCookie } from "./guard";
 import { AVATAR_BY_KEY } from "@/config/avatars";
+import { BANNER_BY_KEY } from "@/config/banners";
 import { isChoosableAccent } from "@/config/theme";
 import { QUICK_COOKIE, QUICK_SECONDS, SESSION_COOKIE, readQuick, readToken, signQuick } from "./token";
 import { checkPasswordRules, hashPassword, verifyPassword } from "./password";
@@ -149,7 +150,7 @@ export async function changePasswordAction(_prev: FormState, formData: FormData)
  * Primeiro acesso: em um passo só a pessoa define senha, nome, ícone de perfil e cor.
  * (O tema claro/noturno fica no navegador, não no servidor.)
  */
-export async function firstAccessAction(input: { current: string; next: string; confirm: string; name: string; avatar: string | null; accent: string | null }): Promise<FormState> {
+export async function firstAccessAction(input: { current: string; next: string; confirm: string; name: string; avatar: string | null; accent: string | null; banner?: string | null }): Promise<FormState> {
   const me = await requireUser({ allowMustChange: true });
   if (!me.mustChangePassword) return { error: "Este acesso já foi concluído." };
   const name = String(input.name ?? "").trim().replace(/\s+/g, " ");
@@ -162,11 +163,26 @@ export async function firstAccessAction(input: { current: string; next: string; 
   if (rule) return { error: rule };
   const avatar = input.avatar && AVATAR_BY_KEY.has(input.avatar) ? input.avatar : null;
   const accent = isChoosableAccent(input.accent) ? input.accent : null;
+  const banner = input.banner && BANNER_BY_KEY.has(input.banner) ? input.banner : null;
   const version = row.sessionVersion + 1;
-  await db.update(users).set({ passwordHash: await hashPassword(input.next), mustChangePassword: false, sessionVersion: version, name, avatar, accent }).where(eq(users.id, me.id));
+  await db.update(users).set({ passwordHash: await hashPassword(input.next), mustChangePassword: false, profileDone: true, sessionVersion: version, name, avatar, accent, banner }).where(eq(users.id, me.id));
   await logAudit(db, { userId: me.id, entity: "user", action: "concluiu o primeiro acesso", meta: { nome: name !== me.name, icone: !!avatar, cor: !!accent } });
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   const remember = token ? ((await readToken(token))?.rem ?? false) : false;
   await setSessionCookie(me.id, version, remember);
+  redirect("/painel");
+}
+
+/** Quem já tem senha própria passa uma vez pela personalização do perfil (sem trocar a senha). */
+export async function completeProfileAction(input: { name: string; avatar: string | null; accent: string | null; banner: string | null }): Promise<FormState> {
+  const me = await requireUser({ allowMustChange: true });
+  if (me.mustChangePassword) return { error: "Crie sua senha primeiro." };
+  const name = String(input.name ?? "").trim().replace(/\s+/g, " ");
+  if (name.length < 2 || name.length > 60) return { error: "O nome precisa ter de 2 a 60 caracteres." };
+  const avatar = input.avatar && AVATAR_BY_KEY.has(input.avatar) ? input.avatar : null;
+  const accent = isChoosableAccent(input.accent) ? input.accent : me.accent;
+  const banner = input.banner && BANNER_BY_KEY.has(input.banner) ? input.banner : null;
+  await db.update(users).set({ name, avatar, accent, banner, profileDone: true }).where(eq(users.id, me.id));
+  await logAudit(db, { userId: me.id, entity: "user", action: "personalizou o perfil", meta: { nome: name !== me.name, icone: !!avatar, banner: !!banner } });
   redirect("/painel");
 }

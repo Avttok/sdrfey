@@ -17,6 +17,8 @@ export type CurrentUser = {
   roles: Role[];
   accent: string | null;
   avatar: string | null;
+  banner: string | null;
+  profileDone: boolean;
   navLayout: "top" | "side";
   navOrder: string[];
   navCustom: NavCustom;
@@ -75,6 +77,8 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     roles: u.roles,
     accent: u.accent,
     avatar: u.avatar ?? null,
+    banner: u.banner ?? null,
+    profileDone: u.profileDone,
     navLayout: u.navLayout === "side" ? "side" : "top",
     navOrder: u.navOrder?.length ? u.navOrder : (((await settingValue("nav_order")) as string[] | undefined) ?? []),
     navCustom: mergeCustom(cleanCustom(await settingValue("nav_custom")), cleanCustom(await settingValue(`nav_custom_u${u.id}`))),
@@ -89,7 +93,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 export async function requireUser(opts: { allowMustChange?: boolean } = {}): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (user.mustChangePassword && !opts.allowMustChange) redirect("/trocar-senha");
+  if ((user.mustChangePassword || !user.profileDone) && !opts.allowMustChange) redirect("/trocar-senha");
   return user;
 }
 

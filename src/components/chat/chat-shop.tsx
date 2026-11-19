@@ -1,9 +1,10 @@
 "use client";
 
 import { Check, Coins, ShoppingBag, Loader2, Lock, Sparkles } from "lucide-react";
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { chatStyle } from "@/components/chat/styled";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useCached } from "@/lib/use-cached";
 import { useToast } from "@/components/toast";
 import { CATEGORIES, SHOP, SHOP_BY_KEY, TASK_COINS, type ShopCategory, type ShopItem } from "@/config/shop";
 import { buyItemAction, equipItemAction, shopStateAction } from "@/modules/coins/actions";
@@ -12,15 +13,14 @@ import type { ShopState } from "@/modules/coins/coins";
 const nf = new Intl.NumberFormat("pt-BR");
 
 /** Loja dentro do chat: pré-visualização ao vivo do seu nome e balão, e os itens por categoria. */
-export function ChatShop({ myName }: { myName: string }) {
+export function ChatShop({ myName, meId }: { myName: string; meId: number }) {
   const toast = useToast();
-  const [st, setSt] = useState<ShopState | null>(null);
   const [cat, setCat] = useState<ShopCategory>("font");
   const [trying, setTrying] = useState<ShopItem | null>(null);
   const [pending, start] = useTransition();
   const [how, setHow] = useState(false);
   const [buying, setBuying] = useState<ShopItem | null>(null);
-  useEffect(() => { let live = true; void shopStateAction().then((s) => live && setSt(s)); return () => { live = false; }; }, []);
+  const [st, setSt] = useCached<ShopState>(`shop:${meId}`, shopStateAction);
   if (!st) return <p className="flex flex-1 items-center justify-center gap-2 text-sm text-muted"><Loader2 size={15} className="animate-spin" aria-hidden /> Abrindo a loja…</p>;
 
   const preview = { ...st.equipped, ...(trying ? { [trying.cat]: trying.key } : {}) };

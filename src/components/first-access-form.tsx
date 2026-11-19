@@ -1,14 +1,16 @@
 "use client";
 
-import { Check, Eye, EyeOff, Loader2, Moon, Palette, Sun, UserRound, KeyRound, Smile } from "lucide-react";
+import { Check, Eye, EyeOff, Image as ImageIcon, Loader2, Moon, Palette, Sun, UserRound, KeyRound, Smile } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
+import { BannerGrid } from "@/components/banner-grid";
+import { bannerStyle } from "@/config/banners";
 import { AvatarGlyph } from "@/components/avatar-glyph";
 import { RoleBadge } from "@/components/role-badge";
 import { inputCls, labelCls } from "@/components/ui";
 import { AVATARS } from "@/config/avatars";
 import type { Role } from "@/config/roles";
 import { CHOOSABLE_ACCENTS, resolveAccent, swatchBg } from "@/config/theme";
-import { firstAccessAction } from "@/modules/auth/actions";
+import { completeProfileAction, firstAccessAction } from "@/modules/auth/actions";
 
 const initialsOf = (n: string) => n.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 
@@ -25,10 +27,11 @@ function Step({ n, icon: Icon, title, hint, children }: { n: number; icon: typeo
 }
 
 /** Primeiro acesso: nome, ícone, cor, tema e senha numa tela só, com uma prévia ao vivo. */
-export function FirstAccessForm({ name: name0, username, roles, accent: accent0 }: { name: string; username: string; roles: Role[]; accent: string | null }) {
+export function FirstAccessForm({ name: name0, username, roles, accent: accent0, needPassword = true }: { name: string; username: string; roles: Role[]; accent: string | null; needPassword?: boolean }) {
   const [name, setName] = useState(name0);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [accent, setAccent] = useState<string | null>(accent0);
+  const [banner, setBanner] = useState<string | null>(null);
   const [mode, setMode] = useState<"light" | "dark">("light");
   const [cur, setCur] = useState(""); const [next, setNext] = useState(""); const [conf, setConf] = useState("");
   const [show, setShow] = useState(false);
@@ -41,13 +44,13 @@ export function FirstAccessForm({ name: name0, username, roles, accent: accent0 
   const mismatch = conf.length > 0 && next !== conf;
   const submit = (e: React.FormEvent) => {
     e.preventDefault(); setErr("");
-    start(async () => { const r = await firstAccessAction({ current: cur, next, confirm: conf, name, avatar, accent }); if (r?.error) setErr(r.error); });
+    start(async () => { const r = needPassword ? await firstAccessAction({ current: cur, next, confirm: conf, name, avatar, accent, banner }) : await completeProfileAction({ name, avatar, accent, banner }); if (r?.error) setErr(r.error); });
   };
   const pw = show ? "text" : "password";
   return (
     <form onSubmit={submit} style={vars} className="space-y-4">
       {/* prévia */}
-      <div className="sh-rise relative overflow-hidden rounded-3xl bg-grad p-5 text-on-accent shadow-xl">
+      <div className="sh-rise relative overflow-hidden rounded-3xl bg-grad p-5 text-on-accent shadow-xl" style={bannerStyle(banner)}>
         <span aria-hidden className="sh-card absolute -right-8 -top-10 size-36 rounded-full bg-white/25 blur-2xl" style={{ "--d": "0s" } as React.CSSProperties} />
         <span aria-hidden className="sh-card absolute -bottom-12 left-10 size-32 rounded-full bg-black/20 blur-2xl" style={{ "--d": "-2s" } as React.CSSProperties} />
         <div className="relative flex items-center gap-4">
@@ -79,7 +82,11 @@ export function FirstAccessForm({ name: name0, username, roles, accent: accent0 
         </div>
       </Step>
 
-      <Step n={3} icon={Palette} title="Cor e tema" hint="Dá para mudar depois em Minha conta.">
+      <Step n={3} icon={ImageIcon} title="Banner do perfil" hint="Um padrão com a sua cor. A prévia lá em cima muda na hora.">
+        <BannerGrid value={banner} onPick={setBanner} />
+      </Step>
+
+      <Step n={4} icon={Palette} title="Cor e tema" hint="Dá para mudar depois em Minha conta.">
         <div className="flex flex-wrap gap-2.5">
           {CHOOSABLE_ACCENTS.map((a) => (
             <button key={a.key} type="button" title={a.label} aria-label={a.label} aria-pressed={accent === a.key} onClick={() => setAccent(a.key)} className="grid size-10 place-items-center rounded-full ring-offset-2 ring-offset-panel transition hover:scale-105 aria-pressed:ring-2 aria-pressed:ring-ink" style={{ background: swatchBg(a), color: a.key === "lima" ? "#1a1a1a" : "#fff" }}>{accent === a.key && <Check size={17} aria-hidden />}</button>
@@ -92,18 +99,18 @@ export function FirstAccessForm({ name: name0, username, roles, accent: accent0 
         </div>
       </Step>
 
-      <Step n={4} icon={KeyRound} title="Sua senha" hint="A provisória serve só para entrar agora. Pelo menos 8 caracteres, com letras e números.">
+      {needPassword && <Step n={5} icon={KeyRound} title="Sua senha" hint="A provisória serve só para entrar agora. Pelo menos 8 caracteres, com letras e números.">
         <div className="space-y-3">
           <div><label htmlFor="fa-cur" className={labelCls}>Senha provisória</label><input id="fa-cur" className={inputCls} type={pw} value={cur} onChange={(e) => setCur(e.target.value)} autoComplete="current-password" required /></div>
           <div><label htmlFor="fa-next" className={labelCls}>Nova senha</label><input id="fa-next" className={inputCls} type={pw} value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" minLength={8} required /></div>
           <div><label htmlFor="fa-conf" className={labelCls}>Repita a nova senha</label><input id="fa-conf" className={`${inputCls} ${mismatch ? "!border-danger" : ""}`} type={pw} value={conf} onChange={(e) => setConf(e.target.value)} autoComplete="new-password" required />{mismatch && <p className="mt-1 text-sm text-danger">As senhas não são iguais.</p>}</div>
           <button type="button" onClick={() => setShow((v) => !v)} className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline">{show ? <EyeOff size={15} aria-hidden /> : <Eye size={15} aria-hidden />} {show ? "Ocultar senhas" : "Mostrar senhas"}</button>
         </div>
-      </Step>
+      </Step>}
 
       {err && <p role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm font-medium text-danger">{err}</p>}
       <button type="submit" disabled={pending} className="sh-go inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-grad text-lg font-bold text-on-accent shadow-lg transition disabled:opacity-60">
-        {pending ? <><Loader2 size={20} className="animate-spin" aria-hidden /> Salvando…</> : "Salvar e entrar"}
+        {pending ? <><Loader2 size={20} className="animate-spin" aria-hidden /> Salvando…</> : needPassword ? "Salvar e entrar" : "Salvar e continuar"}
       </button>
     </form>
   );

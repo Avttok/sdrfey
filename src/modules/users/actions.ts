@@ -7,6 +7,7 @@ import { NAV } from "@/config/nav";
 import { isFontKey } from "@/config/fonts";
 import { isChoosableAccent } from "@/config/theme";
 import { AVATAR_BY_KEY } from "@/config/avatars";
+import { BANNER_BY_KEY } from "@/config/banners";
 import { logAudit } from "@/modules/audit/log";
 import { requireUser } from "@/modules/auth/guard";
 
@@ -18,6 +19,15 @@ export async function setAvatarAction(key: string | null): Promise<{ ok: boolean
   await logAudit(db, { userId: me.id, entity: "user", action: "alterou", field: "ícone de perfil", oldValue: me.avatar, newValue: next });
   revalidatePath("/", "layout");
   return { ok: true, message: next ? "Ícone de perfil salvo." : "Voltou para as iniciais." };
+}
+
+export async function setBannerAction(key: string | null): Promise<{ ok: boolean; message?: string }> {
+  const me = await requireUser();
+  const next = key && BANNER_BY_KEY.has(key) ? key : null;
+  await db.update(users).set({ banner: next }).where(eq(users.id, me.id));
+  await logAudit(db, { userId: me.id, entity: "user", action: "alterou", field: "banner do perfil", oldValue: me.banner, newValue: next });
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Banner salvo." };
 }
 
 export async function setAccentAction(formData: FormData) {
