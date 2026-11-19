@@ -1,7 +1,8 @@
 "use client";
 
 import { ImportEditor } from "@/components/import-editor";
-import { AlertTriangle, CheckCircle2, FileSpreadsheet, Upload, X } from "lucide-react";
+import Papa from "papaparse";
+import { AlertTriangle, CheckCircle2, FileSpreadsheet, FileText, Layers, Upload, X } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { Spinner } from "@/components/spinner";
@@ -14,7 +15,7 @@ import { DEAL_GUIDE } from "@/config/import-guide";
 import { ImportExample } from "@/components/import-example";
 import { DEAL_TEMPLATE_HEADERS, DEAL_TEMPLATE_ROWS } from "@/modules/import/deals-parse";
 import { hasBlocker, ImportInsight, needsAck } from "@/components/import-insight";
-import { applyDealImportAction, previewDealImportAction, type DealImportPreview } from "@/modules/import/deals-actions";
+import { applyDealImportAction, previewDealImportAction, readSheetsAction, type DealImportPreview } from "@/modules/import/deals-actions";
 
 const nf = new Intl.NumberFormat("pt-BR");
 function Stat({ label, value, tone }: { label: string; value: number; tone?: "ok" | "warn" | "bad" }) {
@@ -38,10 +39,41 @@ export function DealImportForm({ sellers, terms = [] }: { sellers: { id: number;
   const [pending, start] = useTransition();
   useBusyWhile(pending);
   const input = useRef<HTMLInputElement>(null);
-  const fd = (f: File | null = file) => { const d = new FormData(); if (f) d.set("file", f); if (sellers) d.set("sellerId", String(seller)); return d; };
-  const pick = (f: File | null | undefined) => { setFile(f ?? null); setPrev(null); setDetails([]); };
-  const reset = () => { setPrev(null); setFile(null); if (input.current) input.current.value = ""; };
-  const check = (f?: File) => start(async () => { const r = await previewDealImportAction(fd(f)); setAck(false); setPrev(r); if (!r.ok) toast("bad", r.message); });
+  const pdfInput = useRef<HTMLInputElement>(null);
+  const [pdfs, setPdfs] = useState<File[]>([]);
+  const [policy, setPolicy] = useState<"skip" | "fill" | "overwrite">("skip");
+  const [book, setBook] = useState<{ name: string; sheets: { name: string; rows: number; cols: number; csv: string }[]; pick: Set<number> } | null>(null);
+  const fd = (f: File | null = file, p: File[] = pdfs) => { const d = new FormData(); if (f) d.set("file", f); if (sellers) d.set("sellerId", String(seller)); for (const x of p) d.append("pdf", x); d.set("dupPolicy", policy); return d; };
+  const pick = (f: File | null | undefined) => {
+    setPrev(null); setDetails([]); setBook(null);
+    if (f && /\.xlsx?$/i.test(f.name)) {
+      setFile(null);
+      start(async () => {
+        const body = new FormData(); body.set("file", f);
+        const r = await readSheetsAction(body);
+        if (!r.ok) return toast("bad", r.message);
+        setBook({ name: f.name, sheets: r.sheets, pick: new Set(r.sheets.map((_, i) => i)) });
+      });
+      return;
+    }
+    setFile(f ?? null);
+  };
+  /** Junta as abas marcadas num só CSV (colunas de abas diferentes são unidas pelo nome do cabeçalho). */
+  const useSheets = () => {
+    if (!book) return;
+    const chosen = book.sheets.filter((_, i) => book.pick.has(i));
+    const heads: string[] = []; const all: Record<string, string>[] = [];
+    for (const sh of chosen) {
+      const p = Papa.parse<Record<string, string>>(sh.csv, { header: true, skipEmptyLines: true });
+      for (const h of p.meta.fields ?? []) if (!heads.includes(h)) heads.push(h);
+      all.push(...p.data);
+    }
+    const csv = Papa.unparse({ fields: heads, data: all.map((r) => heads.map((h) => r[h] ?? "")) });
+    const f = new File([csv], book.name.replace(/\.xlsx?$/i, "") + (chosen.length === 1 ? ` (${chosen[0].name})` : " (abas juntas)") + ".csv", { type: "text/csv" });
+    setBook(null); setFile(f); check(f);
+  };
+  const reset = () => { setPrev(null); setFile(null); setBook(null); setPdfs([]); setPolicy("skip"); if (input.current) input.current.value = ""; };
+  const check = (f?: File, p?: File[]) => start(async () => { const r = await previewDealImportAction(fd(f ?? file, p ?? pdfs)); setAck(false); setPrev(r); if (!r.ok) toast("bad", r.message); });
   const apply = () => start(async () => { const r = await applyDealImportAction(fd()); toast(r.ok ? "ok" : "bad", r.message); setDetails(r.details ?? []); if (r.ok) reset(); });
 
   return (
@@ -56,7 +88,7 @@ export function DealImportForm({ sellers, terms = [] }: { sellers: { id: number;
       </section>
 
       <section className={`${panelCls} p-5`}>
-        <Step n={2} done={!!prev?.ok}>Escolha o arquivo CSV</Step>
+        <Step n={2} done={!!prev?.ok}>Escolha o arquivo (CSV ou Excel .xlsx)</Step>
         <div onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDrag(false); }}
           onDrop={(e) => { e.preventDefault(); setDrag(false); pick(e.dataTransfer.files?.[0]); }}
           className={`flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center transition-colors ${drag ? "border-accent bg-sunk [&_*]:pointer-events-none" : "border-line"}`}>
@@ -72,18 +104,61 @@ export function DealImportForm({ sellers, terms = [] }: { sellers: { id: number;
           ) : (
             <>
               <Upload size={36} className="text-muted" aria-hidden />
-              <p className="font-medium">Arraste o CSV para cá</p>
+              <p className="font-medium">Arraste o CSV ou o Excel para cá</p>
               <button type="button" className={btnGhost} onClick={() => input.current?.click()}>Escolher arquivo</button>
             </>
           )}
-          <input ref={input} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
+          <input ref={input} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
         </div>
       </section>
+
+      {book && (
+        <section className={`${panelCls} space-y-3 p-5`}>
+          <h2 className="flex items-center gap-2 text-lg font-semibold"><Layers size={18} aria-hidden /> Abas de {book.name}</h2>
+          <p className="text-sm text-muted">Marque as abas que têm negociações. Elas serão juntadas num só arquivo, que você ainda pode editar antes de importar.</p>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {book.sheets.map((sh, i) => (
+              <li key={sh.name + i}><label className="flex cursor-pointer items-center gap-3 rounded-xl border border-line bg-panel px-3 py-2.5 text-sm">
+                <input type="checkbox" checked={book.pick.has(i)} onChange={() => { const n = new Set(book.pick); if (n.has(i)) n.delete(i); else n.add(i); setBook({ ...book, pick: n }); }} />
+                <span className="min-w-0 flex-1"><b className="block truncate">{sh.name}</b><span className="text-xs text-muted">{nf.format(sh.rows)} linha(s) · {sh.cols} coluna(s)</span></span>
+              </label></li>
+            ))}
+          </ul>
+          <div className="flex gap-2"><button type="button" className={btnPrimary} disabled={book.pick.size === 0 || pending} onClick={useSheets}>Usar {book.pick.size} {book.pick.size === 1 ? "aba" : "abas"} e conferir</button><button type="button" className={btnGhost} onClick={reset}>Cancelar</button></div>
+        </section>
+      )}
 
       {prev?.ok && (
         <section className={`${panelCls} space-y-4 p-5`}>
           <Step n={3}>Confira antes de importar</Step>
           <ImportInsight info={prev.insight} ack={ack} onAck={setAck} />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <fieldset className="space-y-2 rounded-xl border border-line p-4 text-sm">
+              <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-muted">Se já existir no sistema</legend>
+              {([["skip", "Não adicionar nada", "Linhas repetidas são ignoradas."], ["fill", "Completar só o que falta", "Preenche campos vazios da negociação existente."], ["overwrite", "Substituir pela planilha", "Os dados da planilha passam por cima dos atuais."]] as const).map(([v, t, h]) => (
+                <label key={v} className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2 transition ${policy === v ? "border-accent bg-grad-soft" : "border-line"}`}>
+                  <input type="radio" name="dup" className="mt-1" checked={policy === v} onChange={() => setPolicy(v)} />
+                  <span><b className="block">{t}</b><span className="text-xs text-muted">{h}</span></span>
+                </label>
+              ))}
+              <p className="text-xs text-muted">{prev.matches > 0 ? `${nf.format(prev.matches)} linha(s) já existem no sistema.` : "Nenhuma linha desta planilha existe no sistema ainda."} Só vale para negociações já encontradas pelo CNPJ + pedido/cotação.</p>
+            </fieldset>
+            <div className="space-y-2 rounded-xl border border-line p-4 text-sm">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted">PDFs de cotação ou pedido (opcional)</p>
+              <p className="text-xs text-muted">Anexe 1 PDF por cliente. O CNPJ do PDF liga ele à linha da planilha e completa número, data, valor, condição e itens. Os arquivos não são guardados.</p>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className={btnGhost} disabled={pending} onClick={() => pdfInput.current?.click()}><FileText size={15} aria-hidden /> Anexar PDFs</button>
+                {pdfs.length > 0 && <button type="button" className={btnGhost} disabled={pending} onClick={() => { setPdfs([]); if (file) check(file, []); }}>Remover todos</button>}
+                {pdfs.length > 0 && <button type="button" className={btnPrimary} disabled={pending} onClick={() => check()}>Reconferir com os PDFs</button>}
+              </div>
+              <input ref={pdfInput} type="file" accept="application/pdf" multiple className="hidden" onChange={(e) => { const l = Array.from(e.target.files ?? []); e.target.value = ""; if (l.length) { const n = [...pdfs, ...l]; setPdfs(n); if (file) check(file, n); } }} />
+              {prev.pdfs.length > 0 && (
+                <ul className="max-h-44 space-y-1 overflow-y-auto">
+                  {prev.pdfs.map((p, i) => <li key={p.name + i} className="flex items-start gap-2 text-xs"><span aria-hidden className={`mt-1 size-2 shrink-0 rounded-full ${p.matched ? "bg-ok" : "bg-warn"}`} /><span className="min-w-0 flex-1"><b className="block truncate">{p.name}</b><span className="text-muted">{p.matched ? `Cotação ${p.quoteNumber ?? "s/n"} · ${p.items} itens · ` : ""}{p.note}</span></span></li>)}
+                </ul>
+              )}
+            </div>
+          </div>
           {file && <ImportEditor file={file} busy={pending} onApply={(f) => { setFile(f); check(f); }} />}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Stat label="Linhas no arquivo" value={prev.report.total} />
@@ -107,7 +182,7 @@ export function DealImportForm({ sellers, terms = [] }: { sellers: { id: number;
           )}
           {prev.report.warnings.map((w) => <p key={w} className="rounded-lg bg-sunk p-3 text-sm text-muted">{w}</p>)}
           {prev.report.rejected.length > 0 && <div className="rounded-lg border border-danger/40 p-3 text-sm"><p className="mb-1 font-medium text-danger">Linhas rejeitadas (primeiras {Math.min(8, prev.report.rejected.length)})</p>{prev.report.rejected.slice(0, 8).map((r) => <p key={r.line}>Linha {r.line}: {r.reason}{r.company ? ` (${r.company})` : ""}</p>)}</div>}
-          <button type="button" className={`${btnPrimary} !px-6 !py-3 text-base`} disabled={pending || prev.willCreate === 0 || hasBlocker(prev.insight.checks) || (needsAck(prev.insight.checks) && !ack)} onClick={() => (prev.inPortfolio.length ? setAsk(true) : apply())}>{pending ? <Spinner size={18} /> : <Upload size={18} aria-hidden />} {pending ? "Importando…" : `Importar ${prev.willCreate} ${prev.willCreate === 1 ? "negociação" : "negociações"}`}</button>
+          <button type="button" className={`${btnPrimary} !px-6 !py-3 text-base`} disabled={pending || (prev.willCreate === 0 && !(policy !== "skip" && prev.matches > 0)) || hasBlocker(prev.insight.checks) || (needsAck(prev.insight.checks) && !ack)} onClick={() => (prev.inPortfolio.length ? setAsk(true) : apply())}>{pending ? <Spinner size={18} /> : <Upload size={18} aria-hidden />} {pending ? "Importando…" : `Importar ${prev.willCreate} ${prev.willCreate === 1 ? "negociação" : "negociações"}`}</button>
         </section>
       )}
       {prev?.ok && (

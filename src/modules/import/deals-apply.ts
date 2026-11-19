@@ -1,12 +1,14 @@
 import { eq, inArray, sql } from "drizzle-orm";
-import { db, dealEvents, dealQuotes, deals, leadChannels, leads, users } from "@/db";
+import { db, dealEvents, dealQuoteItems, dealQuotes, deals, leadChannels, leads, users } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { leftPortfolio } from "@/modules/deals/portfolio";
-import { normTerm, syncDealFromQuotes, upsertPaymentTerm } from "@/modules/quotes/db";
+import { getExtraTaxPct, normalizeItem, normTerm, syncDealFromQuotes, totalsOf, upsertPaymentTerm, upsertProducts } from "@/modules/quotes/db";
 import type { DealDraft } from "./deals-parse";
 
 export type SkipReason = "aberta_propria" | "aberta_outro" | "fora_carteira" | "pedido_repetido" | "cotacao_repetida" | "perdida_repetida" | "venda_repetida";
-export type Plan = { create: DealDraft[]; skipped: { line: number; cnpj: string; reason: SkipReason; detail?: string }[]; newLeads: number; existingLeads: number; /** Clientes que entram e já estão (ou já estiveram) na carteira de algum vendedor. */ inPortfolio: { leadId: number; cnpj: string; company: string; sellers: string[]; line: number }[] };
+export type DupPolicy = "skip" | "fill" | "overwrite";
+export type Match = { draft: DealDraft; dealId: number };
+export type Plan = { create: DealDraft[]; /** Linhas que já existem no sistema (negociação encontrada): dependendo da escolha, completam ou substituem. */ matches: Match[]; skipped: { line: number; cnpj: string; reason: SkipReason; detail?: string }[]; newLeads: number; existingLeads: number; /** Clientes que entram e já estão (ou já estiveram) na carteira de algum vendedor. */ inPortfolio: { leadId: number; cnpj: string; company: string; sellers: string[]; line: number }[] };
 
 export const SKIP_LABEL: Record<SkipReason, string> = {
   aberta_propria: "Você já tem uma negociação aberta com esse cliente",
@@ -32,7 +34,8 @@ export async function planDealImport(drafts: DealDraft[], sellerId: number): Pro
   const goneSet = new Set((gone as { id: number; x: boolean }[]).filter((g) => g.x).map((g) => g.id));
   const dealLead = new Map(existing.map((d) => [d.id, d.leadId]));
   const quoteKeys = new Set(quotes.map((q) => `${dealLead.get(q.dealId)}|${q.number}`));
-  const plan: Plan = { create: [], skipped: [], newLeads: 0, existingLeads: 0, inPortfolio: [] };
+  const quoteDeal = new Map(quotes.map((q) => [`${dealLead.get(q.dealId)}|${q.number}`, q.dealId]));
+  const plan: Plan = { create: [], matches: [], skipped: [], newLeads: 0, existingLeads: 0, inPortfolio: [] };
   const sellerIds = [...new Set(existing.map((d) => d.sellerId).filter((x): x is number => !!x))];
   const sellerName = new Map((sellerIds.length ? await db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, sellerIds)) : []).map((u) => [u.id, u.name]));
   const company = new Map(leadRows.map((l) => [l.id, l.company]));
@@ -40,21 +43,25 @@ export async function planDealImport(drafts: DealDraft[], sellerId: number): Pro
   const newSet = new Set<string>();
   for (const d of drafts) {
     const lid = leadId.get(d.cnpj);
-    const skip = (reason: SkipReason, detail?: string) => plan.skipped.push({ line: d.line, cnpj: d.cnpj, reason, detail });
+    const skip = (reason: SkipReason, detail?: string, dealId?: number) => { plan.skipped.push({ line: d.line, cnpj: d.cnpj, reason, detail }); if (dealId) plan.matches.push({ draft: d, dealId }); };
     const closed = d.stage === "ganho" || d.stage === "perdido";
     if (lid) {
       const mine = existing.filter((x) => x.leadId === lid);
       if (!closed) {
         const open = mine.find((x) => x.stage !== "ganho" && x.stage !== "perdido");
-        if (open) { skip(open.sellerId === sellerId ? "aberta_propria" : "aberta_outro"); continue; }
+        if (open) { skip(open.sellerId === sellerId ? "aberta_propria" : "aberta_outro", undefined, open.sellerId === sellerId ? open.id : undefined); continue; }
         if (goneSet.has(lid)) { skip("fora_carteira"); continue; }
       } else {
-        if (d.orderNumber && mine.some((x) => x.orderNumber === d.orderNumber)) { skip("pedido_repetido", d.orderNumber); continue; }
-        if (d.quoteNumber && (quoteKeys.has(`${lid}|${d.quoteNumber}`) || mine.some((x) => x.quoteNumber === d.quoteNumber && x.stage === d.stage))) { skip("cotacao_repetida", d.quoteNumber); continue; }
-        if (d.stage === "ganho" && mine.some((x) => x.stage === "ganho" && x.closedOn === d.closedOn && x.closedValueCents === (d.closedCents ?? d.quoteCents) && (x.orderNumber ?? "") === (d.orderNumber ?? ""))) { skip("venda_repetida"); continue; }
-        if (d.stage === "perdido" && mine.some((x) => x.stage === "perdido" && (x.lostReason ?? "") === (d.lostReason ?? "") && x.closedOn === d.closedOn)) { skip("perdida_repetida"); continue; }
+        const po = d.orderNumber ? mine.find((x) => x.orderNumber === d.orderNumber) : undefined;
+        if (po) { skip("pedido_repetido", d.orderNumber ?? undefined, po.id); continue; }
+        const pq = d.quoteNumber ? (mine.find((x) => x.quoteNumber === d.quoteNumber && x.stage === d.stage)?.id ?? quoteDeal.get(`${lid}|${d.quoteNumber}`)) : undefined;
+        if (pq) { skip("cotacao_repetida", d.quoteNumber ?? undefined, pq); continue; }
+        const pv = d.stage === "ganho" ? mine.find((x) => x.stage === "ganho" && x.closedOn === d.closedOn && x.closedValueCents === (d.closedCents ?? d.quoteCents) && (x.orderNumber ?? "") === (d.orderNumber ?? "")) : undefined;
+        if (pv) { skip("venda_repetida", undefined, pv.id); continue; }
+        const pp = d.stage === "perdido" ? mine.find((x) => x.stage === "perdido" && (x.lostReason ?? "") === (d.lostReason ?? "") && x.closedOn === d.closedOn) : undefined;
+        if (pp) { skip("perdida_repetida", undefined, pp.id); continue; }
       } 
-      if (!closed && d.quoteNumber && quoteKeys.has(`${lid}|${d.quoteNumber}`)) { skip("cotacao_repetida", d.quoteNumber); continue; }
+      if (!closed && d.quoteNumber && quoteKeys.has(`${lid}|${d.quoteNumber}`)) { skip("cotacao_repetida", d.quoteNumber, quoteDeal.get(`${lid}|${d.quoteNumber}`)); continue; }
       plan.existingLeads++;
       const sellers = [...new Set(mine.map((x) => x.sellerId).filter((x): x is number => !!x).map((x) => sellerName.get(x) ?? "vendedor"))];
       if (sellers.length && !warned.has(lid)) { warned.add(lid); plan.inPortfolio.push({ leadId: lid, cnpj: d.cnpj, company: company.get(lid) ?? d.cnpj, sellers, line: d.line }); }
@@ -102,7 +109,14 @@ export async function applyDealImport(plan: Plan, o: { sellerId: number; userId:
         }).returning({ id: deals.id });
         await tx.insert(dealEvents).values({ dealId: deal.id, userId: o.userId, kind: "criado", note: `Importado da planilha (${o.fileName})` });
         if (d.quoteCents || d.quoteNumber) {
-          await tx.insert(dealQuotes).values({ dealId: deal.id, createdBy: o.userId, number: d.quoteNumber, quoteDate: d.quoteDate, totalCents: d.quoteCents ?? d.closedCents, netCents: d.netCents ?? d.quoteCents ?? d.closedCents, freight: d.freight, paymentTerms: term });
+          const [qrow] = await tx.insert(dealQuotes).values({ dealId: deal.id, createdBy: o.userId, number: d.quoteNumber, quoteDate: d.quoteDate, totalCents: d.quoteCents ?? d.closedCents, netCents: d.netCents ?? d.quoteCents ?? d.closedCents, freight: d.freight, paymentTerms: term , weightKg: d.weightKg ?? null }).returning({ id: dealQuotes.id });
+          if (d.items?.length) {
+            const list = d.items.map((it, n) => ({ ...normalizeItem(it), seq: (n + 1) * 10 }));
+            const t = totalsOf(list, 0, await getExtraTaxPct());
+            await tx.update(dealQuotes).set({ productsCents: t.productsCents, ipiCents: t.ipiCents, icmsCents: t.icmsCents, netCents: t.netCents }).where(eq(dealQuotes.id, qrow.id));
+            await tx.insert(dealQuoteItems).values(list.map((it) => ({ ...it, dealId: deal.id, quoteId: qrow.id, quoteNumber: d.quoteNumber })));
+            await upsertProducts(tx, list);
+          }
           await tx.insert(dealEvents).values({ dealId: deal.id, userId: o.userId, kind: "cotacao", valueCents: d.quoteCents, note: d.quoteNumber ? `Cotação ${d.quoteNumber}` : null });
           await syncDealFromQuotes(tx, deal.id);
         }
@@ -116,4 +130,37 @@ export async function applyDealImport(plan: Plan, o: { sellerId: number; userId:
   }
   await logAudit(db, { userId: o.userId, entity: "import", action: "importou negociações", field: o.fileName, newValue: `${created} negociações, ${leadsCreated} leads novos`, meta: { vendedor: o.sellerId, ignoradas: plan.skipped.length + raced } });
   return { created, leadsCreated, raced };
+}
+
+/** O que fazer com linhas que já existem: completar só o que falta ou substituir pelo que veio na planilha. */
+export async function applyDealMatches(matches: Match[], policy: DupPolicy, o: { userId: number; fileName: string }) {
+  if (policy === "skip" || matches.length === 0) return { updated: 0 };
+  let updated = 0;
+  const seen = new Set<number>();
+  for (const { draft: d, dealId } of matches) {
+    if (seen.has(dealId)) continue;
+    seen.add(dealId);
+    const [cur] = await db.select().from(deals).where(eq(deals.id, dealId));
+    if (!cur) continue;
+    const term = d.paymentTerms ? await upsertPaymentTerm(db, normTerm(d.paymentTerms)) : null;
+    const want: Record<string, unknown> = {
+      freight: d.freight, sapCode: d.sapCode, orderNumber: d.orderNumber, quoteNumber: d.quoteNumber, quoteDate: d.quoteDate, paymentTerms: term,
+      ...(cur.stage === "ganho" ? { closedOn: d.closedOn, closedValueCents: d.closedCents ?? d.quoteCents, realValueCents: d.realCents } : {}),
+      ...(cur.stage === "perdido" ? { lostReason: d.lostReason, closedOn: d.closedOn } : {}),
+      ...(cur.stage === "ganho" || cur.stage === "perdido" ? {} : { nextActionAt: d.nextAt ? noon(d.nextAt) : null }),
+      handoffNote: d.note,
+    };
+    const rec = cur as Record<string, unknown>;
+    const patch: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(want)) {
+      if (v === null || v === undefined || v === "") continue;
+      if (policy === "overwrite" || rec[k] === null || rec[k] === undefined || rec[k] === "") { if (rec[k] !== v) patch[k] = v; }
+    }
+    if (!Object.keys(patch).length) continue;
+    await db.update(deals).set({ ...patch, updatedAt: new Date() }).where(eq(deals.id, dealId));
+    await db.insert(dealEvents).values({ dealId, userId: o.userId, kind: "nota", note: `Planilha ${o.fileName}: ${policy === "overwrite" ? "informações substituídas" : "dados faltantes completados"} (${Object.keys(patch).length} campo(s))` });
+    await logAudit(db, { userId: o.userId, entity: "deal", action: policy === "overwrite" ? "substituiu dados pela planilha" : "completou dados pela planilha", field: "Negociação", newValue: Object.keys(patch).join(", "), meta: { negociacao: dealId } });
+    updated++;
+  }
+  return { updated };
 }

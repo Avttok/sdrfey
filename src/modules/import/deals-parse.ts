@@ -1,5 +1,6 @@
 import { headerKey, normalizeCnpj, isValidCnpj, normalizeEmail, splitPhones, cleanText } from "./normalize";
 import type { DealStage } from "@/db";
+import type { QuoteItem } from "@/modules/quotes/parse";
 
 /** Colunas aceitas na planilha do vendedor (sem acento, sem espaço, maiúsculo). */
 export const DEAL_COLUMNS = {
@@ -35,6 +36,8 @@ export type DealDraft = {
   quoteNumber: string | null; quoteDate: string | null; quoteCents: number | null; netCents: number | null;
   orderNumber: string | null; closedOn: string | null; closedCents: number | null; realCents: number | null; reactivation: boolean;
   lostReason: string | null; nextAt: string | null; note: string | null;
+  /** Vindos de um PDF anexado ao lead. */
+  items?: QuoteItem[]; weightKg?: number | null; fromPdf?: string;
 };
 export type DealImportReport = { total: number; valid: number; duplicatesInFile: number; rejected: { line: number; reason: string; company?: string }[]; warnings: string[]; missingColumns: string[] };
 

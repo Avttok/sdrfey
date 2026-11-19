@@ -6,14 +6,40 @@ import { getSettings } from "@/modules/settings/get";
 import { db, importBatches, users } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
 import { decodeCsv, parseCsv } from "./csv";
+import { readXlsxSheets } from "./sheets";
 import { enrichPendingDeals } from "@/modules/enrich/batch";
-import { applyDealImport, planDealImport, SKIP_LABEL, type Plan, type SkipReason } from "./deals-apply";
+import { applyDealImport, applyDealMatches, planDealImport, type DupPolicy, SKIP_LABEL, type Plan, type SkipReason } from "./deals-apply";
+import { attachPdfs, type PdfMatch } from "./deals-pdf";
 import { DEAL_COLUMNS, parseDealRows, type DealImportReport } from "./deals-parse";
 import { commonChecks, DEAL_LABELS, inspectFile, type FileInsight } from "./insight";
 
 export type DealImportPreview =
   | { ok: false; message: string }
-  | { ok: true; insight: FileInsight; fileName: string; report: DealImportReport; willCreate: number; newLeads: number; existingLeads: number; byStage: Record<string, number>; skipped: { reason: string; count: number; samples: string[] }[]; skippedTotal: number; inPortfolio: Plan["inPortfolio"] };
+  | { ok: true; insight: FileInsight; fileName: string; report: DealImportReport; willCreate: number; newLeads: number; existingLeads: number; byStage: Record<string, number>; skipped: { reason: string; count: number; samples: string[] }[]; skippedTotal: number; inPortfolio: Plan["inPortfolio"]; matches: number; pdfs: PdfMatch[] };
+export type SheetsResult = { ok: true; sheets: { name: string; rows: number; cols: number; csv: string }[] } | { ok: false; message: string };
+/** Abre a planilha enviada: .xlsx devolve uma entrada por aba; .csv devolve uma só. Nada é gravado. */
+export async function readSheetsAction(formData: FormData): Promise<SheetsResult> {
+  await requirePerm("tab.negociacoes");
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { ok: false, message: "Escolha um arquivo." };
+  const cfg = await getSettings();
+  if (file.size > cfg.import_max_mb * 1024 * 1024) return { ok: false, message: `Arquivo grande demais (máximo ${cfg.import_max_mb} MB).` };
+  try {
+    if (/\.xlsx$/i.test(file.name)) {
+      const sheets = await readXlsxSheets(await file.arrayBuffer(), cfg.import_max_rows);
+      if (!sheets.length) return { ok: false, message: "Não encontrei dados em nenhuma aba." };
+      return { ok: true, sheets };
+    }
+    if (/\.xls$/i.test(file.name)) return { ok: false, message: "Arquivo .xls antigo: salve como .xlsx ou .csv e envie de novo." };
+    const { headers, rows } = parseCsv(decodeCsv(Buffer.from(await file.arrayBuffer())));
+    return { ok: true, sheets: [{ name: "CSV", rows: rows.length, cols: headers.length, csv: "" }] };
+  } catch {
+    return { ok: false, message: "Não consegui abrir o arquivo." };
+  }
+}
+
+const policyOf = (fd: FormData): DupPolicy => { const v = String(fd.get("dupPolicy") ?? ""); return v === "fill" || v === "overwrite" ? v : "skip"; };
+
 export type DealImportResult = { ok: boolean; message: string; details?: string[] };
 
 
@@ -41,9 +67,10 @@ async function load(formData: FormData) {
   try {
     const { headers, rows } = parseCsv(decodeCsv(Buffer.from(await file.arrayBuffer())));
     const r = parseDealRows(headers, rows);
+    const pdfs: PdfMatch[] = await attachPdfs(r.drafts, formData.getAll("pdf").filter((x): x is File => x instanceof File && x.size > 0), (await getSettings()).pdf_max_mb * 1024 * 1024);
     const base = inspectFile({ fileName: file.name, size: file.size, headers, rows, spec: DEAL_COLUMNS, labels: DEAL_LABELS, optional: ["Etapa", "Condição de pagamento", "Valor da cotação", "Telefone"] });
     if (r.report.missingColumns.length) return { error: `Faltam colunas obrigatórias: ${r.report.missingColumns.join(", ")}.` } as const;
-    return { error: undefined, name: file.name, base, ...r } as const;
+    return { error: undefined, name: file.name, base, pdfs, ...r } as const;
   } catch {
     return { error: "Não consegui ler o arquivo. Confira se é um CSV." };
   }
@@ -67,7 +94,7 @@ export async function previewDealImportAction(formData: FormData): Promise<DealI
   if (!f.base.columns.some((c) => c.field === "Etapa")) checks.push({ level: "warn", text: "Sem coluna de Etapa: todas as negociações entram na etapa inicial (Novo)." });
   const stageEmpty = f.base.columns.find((c) => c.field === "Etapa" && f.base.totalRows && c.filled / f.base.totalRows < 0.5);
   if (stageEmpty) checks.push({ level: "warn", text: "A coluna Etapa está vazia em mais da metade das linhas: elas entram como Novo." });
-  return { ok: true, insight: { ...f.base, checks }, fileName: f.name, report: f.report, willCreate: plan.create.length, newLeads: plan.newLeads, existingLeads: plan.existingLeads, byStage, skippedTotal: plan.skipped.length, inPortfolio: plan.inPortfolio, skipped: [...groups].map(([r, g]) => ({ reason: SKIP_LABEL[r], ...g })) };
+  return { ok: true, insight: { ...f.base, checks }, fileName: f.name, report: f.report, willCreate: plan.create.length, newLeads: plan.newLeads, existingLeads: plan.existingLeads, byStage, skippedTotal: plan.skipped.length, matches: plan.matches.length, pdfs: f.pdfs, inPortfolio: plan.inPortfolio, skipped: [...groups].map(([r, g]) => ({ reason: SKIP_LABEL[r], ...g })) };
 }
 
 /** 2º passo: grava só o que é novo. Nada existente é sobrescrito ou duplicado. */
@@ -82,10 +109,12 @@ export async function applyDealImportAction(formData: FormData): Promise<DealImp
   if (blocker) return { ok: false, message: `Importação bloqueada: ${blocker.text}` };
   const plan = await planDealImport(f.drafts, s.sellerId);
   const r = await applyDealImport(plan, { sellerId: s.sellerId, userId: s.me.id, fileName: f.name });
+  const policy = policyOf(formData);
+  const m = await applyDealMatches(plan.matches, policy, { userId: s.me.id, fileName: f.name });
   await db.insert(importBatches).values({ kind: "deals", fileName: f.name, userId: s.me.id, total: plan.create.length + plan.skipped.length, inserted: r.created, skipped: plan.skipped.length });
   /* antes de aparecer no kanban, cada lead novo passa pela consulta de CNPJ (os primeiros já; o resto fica aguardando) */
   const enr = r.created > 0 ? await enrichPendingDeals(10, 40_000, s.me.id) : null;
   for (const p of ["/negociacoes", "/leads", "/painel", "/metas"]) revalidatePath(p);
-  const skipped = plan.skipped.length + r.raced;
-  return { ok: true, message: `${r.created} ${r.created === 1 ? "negociação importada" : "negociações importadas"}${r.leadsCreated ? ` (${r.leadsCreated} ${r.leadsCreated === 1 ? "lead novo" : "leads novos"})` : ""}; ${skipped} já existiam ou foram ignoradas.${enr ? ` Consulta de CNPJ: ${enr.tried} consultado(s)${enr.left ? `; ${enr.left} aguardam a consulta e aparecem no kanban depois (use "Consultar agora" em Negociações)` : ""}.` : ""}`, details: f.report.rejected.slice(0, 5).map((x) => `Linha ${x.line} rejeitada: ${x.reason}`) };
+  const skipped = plan.skipped.length + r.raced - m.updated;
+  return { ok: true, message: `${m.updated ? `${m.updated} ${m.updated === 1 ? "negociação existente " : "negociações existentes "}${policy === "overwrite" ? "atualizada(s) com os dados da planilha" : "completada(s) com o que faltava"}; ` : ""}${r.created} ${r.created === 1 ? "negociação importada" : "negociações importadas"}${r.leadsCreated ? ` (${r.leadsCreated} ${r.leadsCreated === 1 ? "lead novo" : "leads novos"})` : ""}; ${skipped} já existiam ou foram ignoradas.${enr ? ` Consulta de CNPJ: ${enr.tried} consultado(s)${enr.left ? `; ${enr.left} aguardam a consulta e aparecem no kanban depois (use "Consultar agora" em Negociações)` : ""}.` : ""}`, details: f.report.rejected.slice(0, 5).map((x) => `Linha ${x.line} rejeitada: ${x.reason}`) };
 }
