@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { db, leadChannels, leads, leadTags, tagGroups, tags } from "@/db";
+import { db, enrichLog, leadChannels, leads, leadTags, tagGroups, tags } from "@/db";
 import { TAG } from "@/config/tags";
 import { logAudit } from "@/modules/audit/log";
 import { setLeadTags } from "@/modules/tags/apply";
@@ -50,7 +50,25 @@ async function ensureAutoTag(tx: Parameters<Parameters<typeof db.transaction>[0]
  * Consulta BrasilAPI e ReceitaWS, guarda cada resposta crua separada, soma telefones/e-mails novos
  * e, se a empresa não estiver ATIVA, desqualifica e descarta automaticamente.
  */
-export async function enrichLead(leadId: number, userId: number | null = null): Promise<EnrichResult> {
+export type EnrichOrigin = "lote" | "cron" | "manual" | "auto" | "novo";
+
+/** Consulta o CNPJ e registra o resultado no histórico (tela do Adm). */
+export async function enrichLead(leadId: number, userId: number | null = null, origin: EnrichOrigin = "manual"): Promise<EnrichResult> {
+  const t0 = Date.now();
+  const log = async (ok: boolean, r?: EnrichResult, err?: string) => {
+    try {
+      const why = err ?? (r && !ok ? [r.why.brasilapi && `BrasilAPI: ${r.why.brasilapi}`, r.why.receitaws && `ReceitaWS: ${r.why.receitaws}`].filter(Boolean).join(" · ") : null);
+      await db.insert(enrichLog).values({ leadId, origin, ok, ms: Date.now() - t0, userId, status: r?.info?.status ?? null, phones: r?.newPhones ?? 0, emails: r?.newEmails ?? 0, why: why ? why.slice(0, 300) : null });
+    } catch { /* o histórico nunca derruba a consulta */ }
+  };
+  try {
+    const r = await enrichCore(leadId, userId);
+    await log(r.state === "ok", r);
+    return r;
+  } catch (e) { await log(false, undefined, e instanceof Error ? e.message : "erro"); throw e; }
+}
+
+async function enrichCore(leadId: number, userId: number | null): Promise<EnrichResult> {
   const [lead] = await db.select().from(leads).where(eq(leads.id, leadId));
   if (!lead) throw new Error("Lead não encontrado.");
 

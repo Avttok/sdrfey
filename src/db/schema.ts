@@ -338,6 +338,26 @@ export const leadChannels = pgTable(
 
 /* ───────────── Atendimento ───────────── */
 
+/** Histórico de cada consulta de CNPJ (automática, em lote ou manual): alimenta a tela "Consulta de CNPJ" do Adm. */
+export const enrichLog = pgTable(
+  "enrich_log",
+  {
+    id: serial("id").primaryKey(),
+    leadId: integer("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+    /** lote | cron | manual | auto | novo */
+    origin: text("origin").notNull(),
+    ok: boolean("ok").notNull(),
+    ms: integer("ms").notNull().default(0),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    status: text("status"),
+    phones: integer("phones").notNull().default(0),
+    emails: integer("emails").notNull().default(0),
+    why: text("why"),
+  },
+  (t) => [index("enrich_log_at_idx").on(t.at), index("enrich_log_lead_idx").on(t.leadId)],
+);
+
 /** Cada contato feito com um lead (ligação, WhatsApp, e-mail...). */
 export const interactions = pgTable(
   "interactions",

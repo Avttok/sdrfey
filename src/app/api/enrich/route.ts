@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     if (l?.at) return NextResponse.json({ ok: true, message: "" });
   }
   try {
-    const r = await refreshInfo(leadId as number, me.id);
+    const r = await refreshInfo(leadId as number, me.id, manual ? "manual" : "auto");
     revalidatePath("/atender");
     revalidatePath(`/leads/${leadId}`);
     return NextResponse.json(r);

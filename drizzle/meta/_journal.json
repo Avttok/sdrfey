@@ -225,6 +225,13 @@
       "when": 1795064266730,
       "tag": "0031_consulta_cnpj",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1795064701636,
+      "tag": "0032_consulta_cnpj_historico",
+      "breakpoints": true
     }
   ]
 }

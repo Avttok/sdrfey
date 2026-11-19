@@ -60,7 +60,7 @@ export async function claimNext(userId: number, opts: { test?: boolean } = {}): 
         and not exists (select 1 from deals dd where dd.lead_id = l.id)
         and not exists (select 1 from lead_skips s
                         where s.lead_id = l.id and s.user_id = ${userId} and s.until > now())
-      order by random() limit 1
+      order by (l.enriched_at is not null and not exists (select 1 from interactions i where i.lead_id = l.id)) desc, random() limit 1
       for update skip locked)
     returning id`);
   if (!rows[0]) return null;

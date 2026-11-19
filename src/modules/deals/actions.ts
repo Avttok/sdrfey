@@ -393,7 +393,7 @@ export async function createDealManualAction(input: NewDealInput): Promise<Actio
     [lead] = await db.insert(leads).values({ cnpj, company: input.company.trim().slice(0, 200) || fallback, contactName: input.contactName.trim().slice(0, 120) || null, phones: phone ? [phone] : [], email: email || null, ...addr, source: "vendedor" }).returning();
     await logAudit(db, { userId: me.id, leadId: lead.id, entity: "lead", action: "criou lead pela negociação", field: "Lead", newValue: lead.company });
     try {
-      const r = await enrichLead(lead.id, me.id);
+      const r = await enrichLead(lead.id, me.id, "novo");
       if (r.info?.tradeName && lead.company.startsWith("CNPJ ")) await db.update(leads).set({ company: r.info.tradeName }).where(eq(leads.id, lead.id));
     } catch { /* sem internet/APIs: o cadastro fica só com o que foi digitado */ }
   }
@@ -433,7 +433,7 @@ export async function createDealManualAction(input: NewDealInput): Promise<Actio
       await logAudit(tx, { userId: me.id, leadId, entity: "deal", action: "abriu negociação", field: "Negociação", newValue: isNew ? "novo lead" : "lead existente", meta: { negociacao: d.id, itens: items.length } });
       return d.id;
     });
-    if (!isNew && !lead.enrichedAt) { try { await enrichLead(leadId, me.id); } catch { /* sem internet/APIs: segue sem a consulta */ } }
+    if (!isNew && !lead.enrichedAt) { try { await enrichLead(leadId, me.id, "novo"); } catch { /* sem internet/APIs: segue sem a consulta */ } }
     revalidatePath("/negociacoes"); revalidatePath("/painel"); revalidatePath("/leads");
     return { ok: true, message: "Negociação criada.", id };
   } catch (e) {

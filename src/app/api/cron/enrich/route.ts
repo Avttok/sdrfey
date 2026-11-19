@@ -9,5 +9,5 @@ export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
   if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) return NextResponse.json({ error: "não autorizado" }, { status: 401 });
   if (!(await autoEnrichOn())) return NextResponse.json({ skipped: "desligado" });
-  return NextResponse.json(await enrichBatch(40, 50_000));
+  return NextResponse.json(await enrichBatch(40, 50_000, null, "cron"));
 }

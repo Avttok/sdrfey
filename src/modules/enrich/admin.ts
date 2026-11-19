@@ -30,3 +30,13 @@ export async function retryFailedEnrichAction(): Promise<{ ok: boolean }> {
   revalidatePath("/admin/consulta-cnpj");
   return { ok: true };
 }
+
+export async function enrichLiveAction() {
+  await requireAdmin();
+  return (await import("./live")).liveData();
+}
+
+export async function enrichLogAction(opts: { page: number; result: "all" | "ok" | "fail"; origin: string; q: string }) {
+  await requireAdmin();
+  return (await import("./live")).logPage({ page: Number(opts.page) || 1, result: opts.result === "ok" || opts.result === "fail" ? opts.result : "all", origin: String(opts.origin ?? "").slice(0, 10), q: String(opts.q ?? "").slice(0, 60) });
+}
