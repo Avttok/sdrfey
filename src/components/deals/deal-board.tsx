@@ -30,6 +30,7 @@ function Card({ d, meId, canClaim, i = 0 }: { d: DealRow; meId: number; canClaim
           {d.quoteNumber && <span className="figure inline-flex items-center gap-1"><FileText size={12} aria-hidden />Cot. {d.quoteNumber}</span>}
           {!d.city && !d.phone && !d.quoteNumber && <span>Sem dados de contato</span>}
         </p>
+        {(d.cycles ?? 1) > 1 && <p className="figure text-[11px] text-muted" title="Todo o histórico do cliente fica dentro da janela">{d.cycles} negociações neste cliente{d.billedCount ? ` · ${d.billedCount} faturada${d.billedCount > 1 ? "s" : ""}` : ""}</p>}
         {(d.alerts.length > 0 || d.expired) && (
           <span className="flex flex-wrap gap-1.5">
             {d.expired && <span className="inline-flex items-center rounded-full bg-sunk px-2.5 py-0.5 text-xs font-semibold text-muted">Fora da carteira</span>}

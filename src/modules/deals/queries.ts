@@ -9,6 +9,8 @@ export type DealAlertKind = "pool" | "novo" | "retorno" | "cobrar" | "parado";
 export type DealAlert = { kind: DealAlertKind; tone: "danger" | "warn" | "info"; text: string };
 
 export type DealRow = {
+  /** Preenchidos por onePerClient: quantas negociações o cliente já teve e o que já faturou. */
+  cycles?: number; billedCount?: number; billedCents?: number;
   id: number; leadId: number; stage: DealStage; company: string; city: string | null; uf: string | null; contactName: string | null;
   phone: string | null; email: string | null; salesforceUrl: string | null; eoxUrl: string | null;
   sellerId: number | null; sellerName: string | null; sdrId: number | null; sdrName: string | null; handoffNote: string | null;
@@ -52,6 +54,18 @@ const seller = alias(users, "seller");
 const sdr = alias(users, "sdr");
 
 /** Negociações visíveis para a pessoa: as dela e as do grupo (sem dono); com “deals.team”, todas. */
+/** Um cartão por cliente: a negociação aberta (a mais recente) ou, sem aberta, a última encerrada. O resto do histórico fica dentro da janela do cliente. */
+export function onePerClient(rows: DealRow[]): DealRow[] {
+  const by = new Map<number, DealRow[]>();
+  for (const r of rows) by.set(r.leadId, [...(by.get(r.leadId) ?? []), r]);
+  const isOpen = (d: DealRow) => d.stage !== "ganho" && d.stage !== "perdido";
+  return [...by.values()].map((g) => {
+    const rep = g.find(isOpen) ?? g[0];
+    const won = g.filter((d) => d.stage === "ganho");
+    return { ...rep, cycles: g.length, billedCount: won.length, billedCents: won.reduce((a, d) => a + (d.mainCents ?? 0), 0) };
+  }).sort((a, b) => (a.id === b.id ? 0 : rows.findIndex((r) => r.id === a.id) - rows.findIndex((r) => r.id === b.id)));
+}
+
 export async function listDeals(meId: number, team: boolean, opts: { includeTest?: boolean } = {}): Promise<DealRow[]> {
   const rows = await db
     .select({

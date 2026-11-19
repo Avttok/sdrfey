@@ -1,7 +1,7 @@
 "use client";
 
 import { EoxIcon, SalesforceIcon } from "@/components/brand-icons";
-import { Building2, Plus, Package, Trash2, Tags, CalendarClock, Check, ExternalLink, FileText, Link2, Mail, MessageCircle, NotebookPen, Phone, PhoneCall, RotateCcw, Trophy, Undo2, UserPlus, XCircle } from "lucide-react";
+import { Building2, History, Plus, Package, Trash2, Tags, CalendarClock, Check, ExternalLink, FileText, Link2, Mail, MessageCircle, NotebookPen, Phone, PhoneCall, RotateCcw, Trophy, Undo2, UserPlus, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -20,7 +20,9 @@ import { ColorPicker } from "./color-picker";
 import type { DealRow } from "@/modules/deals/queries";
 import { AlertChip, StageChip } from "./deal-ui";
 import { AndamentosTimeline, VisitsPanel } from "./commercial-panels";
-import type { CommVisit } from "@/modules/deals/lead-commercial";
+import type { CommEvent, CommVisit } from "@/modules/deals/lead-commercial";
+import type { ClientHistory } from "@/modules/deals/history";
+import { ClientHistoryView } from "./client-history";
 
 type Ev = { id: number; kind: string; note: string | null; valueCents: number | null; at: string; by: string | null };
 const STEPS = ["novo", "contato", "cotacao", "ganho"] as const;
@@ -33,7 +35,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 }
 const brl = (c: number | null) => (c == null ? "" : (c / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
-export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDelete, phones, meId, team, canClaim, sellers, visits }: { visits: CommVisit[]; deal: DealRow; events: Ev[]; quotes: QuoteView[]; tags: { group: string; label: string; color: string }[]; terms: string[]; extraPct: number; canDelete: boolean; phones: { value: string; label: string | null }[]; meId: number; team: boolean; canClaim: boolean; sellers: { id: number; name: string }[] }) {
+export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDelete, phones, meId, team, canClaim, sellers, visits, clientEvents, history }: { clientEvents: CommEvent[]; history: ClientHistory | null; visits: CommVisit[]; deal: DealRow; events: Ev[]; quotes: QuoteView[]; tags: { group: string; label: string; color: string }[]; terms: string[]; extraPct: number; canDelete: boolean; phones: { value: string; label: string | null }[]; meId: number; team: boolean; canClaim: boolean; sellers: { id: number; name: string }[] }) {
   const { run, pending } = useRun();
   const closed = deal.stage === "ganho" || deal.stage === "perdido";
   const mine = deal.sellerId === meId || team;
@@ -171,7 +173,7 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDele
                 </div>
               </form>
             )}
-            <div className={closed ? "" : "mt-4 border-t border-line/70 pt-4"}><AndamentosTimeline events={events.map((e) => ({ ...e, dealId: deal.id }))} maxH="max-h-[26rem]" /></div>
+            <div className={closed ? "" : "mt-4 border-t border-line/70 pt-4"}><AndamentosTimeline events={clientEvents.length ? clientEvents : events.map((e) => ({ ...e, dealId: deal.id }))} showDeal maxH="max-h-[26rem]" /></div>
           </SectionCard>
         )}
 
@@ -269,6 +271,12 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDele
 
       <div className="grid gap-4">
         <VisitsPanel visits={visits} />
+        {history && (
+          <SectionCard icon={History} title="Histórico completo do cliente">
+            <p className="mb-3 text-xs text-muted">Todas as negociações, cotações, faturamentos, andamentos e atendimentos deste cliente ficam aqui, numa janela só.</p>
+            <ClientHistoryView h={history} maxH="max-h-72" />
+          </SectionCard>
+        )}
       </div>
 
       <ConfirmDialog open={confirm !== null} tone="danger" icon={confirm === "return" ? Undo2 : Trash2} title={confirm === "delete" ? "Apagar esta negociação?" : confirm === "return" ? "Devolver ao SDR?" : "Resetar esta negociação?"} confirmLabel={confirm === "delete" ? "Sim, apagar" : confirm === "return" ? "Sim, devolver" : "Sim, resetar"} busy={pending} onCancel={() => setConfirm(null)} onConfirm={() => { const c = confirm; setConfirm(null); if (c === "delete") run(() => deleteDealAction(deal.id), undefined, () => router.push("/negociacoes")); else if (c === "return") run(() => returnDealToSdrAction(deal.id, returnWhy), undefined, () => router.push("/negociacoes"), "Devolvendo…"); else run(() => resetDealAction(deal.id)); }}>

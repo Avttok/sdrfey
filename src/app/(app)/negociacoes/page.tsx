@@ -11,7 +11,7 @@ import { db, paymentTerms } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
 import { PendingEnrich } from "@/components/deals/pending-enrich";
 import { pendingDealImports } from "@/modules/enrich/batch";
-import { listDeals } from "@/modules/deals/queries";
+import { listDeals, onePerClient } from "@/modules/deals/queries";
 
 export const metadata: Metadata = { title: "Negociações" };
 export const dynamic = "force-dynamic";
@@ -21,7 +21,8 @@ export default async function DealsPage() {
   const me = await requirePerm("tab.negociacoes");
   const team = !!me.permissions["deals.team"];
   const canClaim = me.roles.includes("seller") || team;
-  const [deals, waiting] = await Promise.all([listDeals(me.id, team), pendingDealImports()]);
+  const [all, waiting] = await Promise.all([listDeals(me.id, team), pendingDealImports()]);
+  const deals = onePerClient(all);
   const open = deals.filter((d) => d.stage !== "ganho" && d.stage !== "perdido");
   const mine = open.filter((d) => d.sellerId === me.id);
   const attention = open.filter((d) => d.alerts.length && (team || d.sellerId === me.id || !d.sellerId));

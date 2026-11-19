@@ -7,6 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { DealPanel } from "@/components/deals/deal-panel";
 import { db, users } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
+import { getClientHistory } from "@/modules/deals/history";
 import { getLeadCommercial } from "@/modules/deals/lead-commercial";
 import { getDeal, listDeals } from "@/modules/deals/queries";
 
@@ -22,12 +23,12 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
   if (!row) notFound();
   const extra = await getDeal(id);
   if (!extra) notFound();
-  const commercial = await getLeadCommercial(row.leadId, [id]);
+  const [commercial, history] = await Promise.all([getLeadCommercial(row.leadId), getClientHistory(row.leadId)]);
   const sellers = team ? await db.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.active, true), sql`'seller' = any(${users.roles})`, visibleUsers(me))).orderBy(asc(users.name)) : [];
   return (
     <div className="space-y-4">
       <Link href="/negociacoes" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink"><ArrowLeft size={15} aria-hidden /> Negociações</Link>
-      <DealPanel deal={row} events={extra.events} quotes={extra.quotes} tags={extra.tags} terms={extra.terms} extraPct={extra.extraPct} canDelete={!!me.permissions["deals.delete"]} phones={extra.phones} meId={me.id} team={team} canClaim={me.roles.includes("seller") || team} sellers={sellers} visits={commercial.visits} />
+      <DealPanel deal={row} events={extra.events} quotes={extra.quotes} tags={extra.tags} terms={extra.terms} extraPct={extra.extraPct} canDelete={!!me.permissions["deals.delete"]} phones={extra.phones} meId={me.id} team={team} canClaim={me.roles.includes("seller") || team} sellers={sellers} visits={commercial.visits} clientEvents={commercial.events} history={history} />
     </div>
   );
 }
