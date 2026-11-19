@@ -1,3 +1,5 @@
+import { eq } from "drizzle-orm";
+import { db, leads } from "@/db";
 import { revalidatePath } from "next/cache";
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser } from "@/modules/auth/guard";
@@ -14,8 +16,13 @@ export async function POST(req: NextRequest) {
   const me = await getCurrentUser();
   if (!me || me.mustChangePassword) return NextResponse.json({ ok: false, message: "Sessão expirada. Entre de novo." }, { status: 401 });
   if (!me.permissions["tab.comecar"] && !me.permissions["tab.leads"]) return NextResponse.json({ ok: false, message: "Sem permissão." }, { status: 403 });
-  const { leadId } = (await req.json().catch(() => ({}))) as { leadId?: number };
+  const { leadId, manual } = (await req.json().catch(() => ({}))) as { leadId?: number; manual?: boolean };
   if (!Number.isInteger(leadId) || (leadId as number) <= 0) return NextResponse.json({ ok: false, message: "Lead inválido." }, { status: 400 });
+  // Lead já consultado: só consulta de novo se a pessoa clicou em "Atualizar informações".
+  if (!manual) {
+    const [l] = await db.select({ at: leads.enrichedAt }).from(leads).where(eq(leads.id, leadId as number)).limit(1);
+    if (l?.at) return NextResponse.json({ ok: true, message: "" });
+  }
   try {
     const r = await refreshInfo(leadId as number, me.id);
     revalidatePath("/atender");

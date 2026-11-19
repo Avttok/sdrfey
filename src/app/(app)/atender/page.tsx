@@ -61,5 +61,5 @@ export default async function AttendPage() {
   }
 
   const previous = prev ? { by: prev.name ?? "Outra pessoa", at: new Date(prev.at).toISOString(), channels: prev.channels ?? [], note: prev.note } : null;
-  return <AttendFlow lead={lead} catalog={catalog!} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={previous} doneToday={done?.n ?? 0} scheduledToday={sched?.n ?? 0} goals={goals} sellers={sellers} />;
+  return <AttendFlow autoEnrichOn={(await getSettings()).auto_enrich === 1} lead={lead} catalog={catalog!} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={previous} doneToday={done?.n ?? 0} scheduledToday={sched?.n ?? 0} goals={goals} sellers={sellers} />;
 }

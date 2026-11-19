@@ -163,6 +163,8 @@ export const leads = pgTable(
     /** Data combinada para voltar a falar com o lead. */
     returnAt: timestamp("return_at", { withTimezone: true }),
     enrichedAt: timestamp("enriched_at", { withTimezone: true }),
+    /** Última tentativa de consulta automática de CNPJ (deu certo ou não): evita insistir no mesmo lead que falha. */
+    enrichTriedAt: timestamp("enrich_tried_at", { withTimezone: true }),
 
     source: text("source"),
     /** 'prospect' = lead novo (Shuffler do SDR). 'inativo' = já cadastrado na Fey (EOX/Salesforce), trabalhado pelos vendedores no Shuffler de vendas. */

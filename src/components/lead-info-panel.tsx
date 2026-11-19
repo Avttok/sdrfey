@@ -32,7 +32,7 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false, showMap =
     start(async () => {
       let r: { ok: boolean; message?: string } = { ok: false, message: "Não consegui consultar agora." };
       try {
-        const res = await fetch("/api/enrich", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ leadId: lead.id }) });
+        const res = await fetch("/api/enrich", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ leadId: lead.id, manual: isManual }) });
         r = await res.json();
       } catch { /* sem rede: mantém a mensagem padrão */ }
       setState(r.ok ? "idle" : "failed");

@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, MessagesSquare, PanelTop, Clock, Archive, Download, Eraser, FlaskConical, Handshake, KeyRound, Mail, Settings2, Tags, Upload, Users, type LucideIcon } from "lucide-react";
+import { Activity, MessagesSquare, PanelTop, Clock, Archive, Download, Eraser, FlaskConical, Handshake, KeyRound, Mail, Search, Settings2, Tags, Upload, Users, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -26,6 +26,7 @@ const SECTIONS: { title: string; items: { href: string; label: string; hint: str
     { href: "/admin/banco", label: "Saúde do sistema", hint: "Banco, conexões e números", icon: Activity },
     { href: "/admin/chat", label: "Chat (tudo)", hint: "Grupos e conversas diretas", icon: MessagesSquare },
     { href: "/admin/ao-vivo", label: "Ao vivo", hint: "Quem está online", icon: Clock },
+    { href: "/admin/consulta-cnpj", label: "Consulta de CNPJ", hint: "Buscar dados dos leads em lote", icon: Search },
     { href: "/admin/modo-teste", label: "Modo teste", hint: "Treinar sem sujar dados", icon: FlaskConical },
   ] },
 ];

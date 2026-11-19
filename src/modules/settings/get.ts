@@ -26,6 +26,8 @@ export const SETTING_DEFAULTS = {
   nav_group: 1,
   /** 1 = chat interno ligado para todos (botão flutuante). */
   chat_on: 1,
+  /** 1 = consulta automática de CNPJ em segundo plano ligada (os shufflers não consultam sozinhos). */
+  auto_enrich: 0,
 } as const;
 export type SettingKey = keyof typeof SETTING_DEFAULTS;
 

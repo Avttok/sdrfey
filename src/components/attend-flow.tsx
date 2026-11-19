@@ -52,7 +52,7 @@ const copy = async (text: string, toast: ReturnType<typeof useToast>) => {
   }
 };
 
-export function AttendFlow({ lead, catalog, templates, myName, showMap, previous, doneToday, scheduledToday, goals, sellers, sales }: { /** Modo vendedor (lead inativo): mesmo fluxo, destinos diferentes no fim. */ sales?: { shuffleId: number }; sellers: { id: number; name: string }[]; lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; previous: PreviousAttendance | null; doneToday: number; scheduledToday: number; goals: Goals }) {
+export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myName, showMap, previous, doneToday, scheduledToday, goals, sellers, sales }: { /** Consulta automática de CNPJ ligada pelo Adm: o shuffler não consulta sozinho. */ autoEnrichOn?: boolean; /** Modo vendedor (lead inativo): mesmo fluxo, destinos diferentes no fim. */ sales?: { shuffleId: number }; sellers: { id: number; name: string }[]; lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; previous: PreviousAttendance | null; doneToday: number; scheduledToday: number; goals: Goals }) {
   const toast = useToast();
   const [pending, start] = useTransition();
   const openedAt = useRef(Date.now());
@@ -257,7 +257,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
       <div key={step} className={`${panelCls} stagger p-5 sm:p-6 ${dir.current === "fwd" ? "step-fwd" : "step-back"}`}>
         {step === 0 && (
           <div className="space-y-6">
-            <LeadInfoPanel lead={lead} wide showMap={showMap} />
+            <LeadInfoPanel lead={lead} wide showMap={showMap} autoSearch={!autoEnrichOn} />
             <div className="grid gap-6 border-t border-line pt-5 lg:grid-cols-2">
             <section className="space-y-3">
               <h2 className="display text-xl">Contatos</h2>
