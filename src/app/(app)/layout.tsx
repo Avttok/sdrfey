@@ -8,14 +8,20 @@ import { getSettings } from "@/modules/settings/get";
 import { BottomFade } from "@/components/bottom-fade";
 import { SwRegister } from "@/components/sw-register";
 import { ChatMount } from "@/components/chat/chat-mount";
+import { AvatarProvider } from "@/components/person-bubble";
+import { db, users } from "@/db";
+import { isNotNull } from "drizzle-orm";
 import { requireUser } from "@/modules/auth/guard";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   const [settings, badges] = await Promise.all([getSettings(), navBadges(user).catch(() => ({}))]);
   const groupNav = settings.nav_group === 1;
+  const av = await db.select({ id: users.id, name: users.name, avatar: users.avatar }).from(users).where(isNotNull(users.avatar));
+  const avatars = { byId: Object.fromEntries(av.map((a) => [a.id, a.avatar!])), byName: Object.fromEntries(av.map((a) => [a.name, a.avatar!])) };
   return (
     <ToastProvider>
+      <AvatarProvider value={avatars}>
       <div className={`flex flex-1 flex-col ${user.navLayout === "side" ? "lg:flex-row" : ""}`}>
         <Presence />
         <Suspense fallback={null}><NavBusy /></Suspense>
@@ -29,6 +35,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <BottomFade />
       <SwRegister />
       <Suspense fallback={null}><ChatMount user={user} /></Suspense>
+      </AvatarProvider>
     </ToastProvider>
   );
 }

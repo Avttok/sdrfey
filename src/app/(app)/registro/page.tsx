@@ -77,7 +77,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
                       <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${TONE[first.entity] ?? "bg-sunk"}`}><Icon size={17} aria-hidden /></span>
                       <span className="min-w-0 flex-1">
                         <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                          {first.userName ? <PersonBubble name={first.userName} hex={bubbleHex(first.userAccent, first.userId ?? 0, first.userRoles ?? undefined)} /> : <span className="rounded-full border border-line px-2.5 py-0.5 text-xs text-muted">Sistema</span>}
+                          {first.userName ? <PersonBubble userId={first.userId} name={first.userName} hex={bubbleHex(first.userAccent, first.userId ?? 0, first.userRoles ?? undefined)} /> : <span className="rounded-full border border-line px-2.5 py-0.5 text-xs text-muted">Sistema</span>}
                           <span className="font-medium">{many ? `${plural(g.rows.length, "alteração", "alterações")}` : first.action}{!many && first.field ? ` · ${first.field}` : ""}</span>
                           {first.company && <span className="truncate text-muted">· {first.company}</span>}
                         </span>
