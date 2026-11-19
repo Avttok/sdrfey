@@ -1,4 +1,4 @@
-import { Gauge, Headset, Info, ShieldHalf, Contact, History, Play, CalendarCheck, ScrollText, ShieldCheck, Target, UserRound, Users, MapPin, Handshake, type LucideIcon } from "lucide-react";
+import { Gauge, Headset, Info, ShieldHalf, Contact, History, Play, CalendarCheck, ScrollText, ShieldCheck, Target, UserRound, Users, MapPin, Handshake, FileSpreadsheet, type LucideIcon } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: string; adminOnly?: boolean; /** Menu a que pertence. Menu com um item só aparece como link solto; sem grupo = link solto. */ group?: string };
 
@@ -17,8 +17,10 @@ export const NAV: NavItem[] = [
   { href: "/historico", label: "Histórico", icon: History, perm: "tab.historico", group: "Info" },
   { href: "/atender", label: "Shuffler", icon: Play, perm: "tab.comecar", group: "SDR" },
   { href: "/visitas", label: "Visitas", icon: CalendarCheck, perm: "tab.visitas", group: "SDR" },
+  { href: "/desempenho", label: "Desempenho", icon: FileSpreadsheet, perm: "tab.desempenho", group: "SDR" },
   { href: "/negociacoes", label: "Negociações", icon: Handshake, perm: "tab.negociacoes", group: "Vendas" },
   { href: "/shuffler-vendas", label: "Shuffler", icon: Play, perm: "tab.shuffler_vendas", group: "Vendas" },
+  { href: "/desempenho-vendas", label: "Desempenho", icon: FileSpreadsheet, perm: "tab.desempenho_vendas", group: "Vendas" },
   { href: "/registro", label: "Registro", icon: ScrollText, perm: "tab.registro", group: "Gestão" },
   { href: "/admin", label: "Adm", icon: ShieldCheck, adminOnly: true, group: "Gestão" },
   { href: "/conta", label: "Minha conta", icon: UserRound },

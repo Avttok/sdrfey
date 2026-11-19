@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, Building2, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Send, Plus, RotateCcw, History, SkipForward, Square, TriangleAlert, Trash2, X } from "lucide-react";
+import { Timer, UserRound, Flag, Ban, Building2, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Send, Plus, RotateCcw, History, SkipForward, Square, TriangleAlert, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ConfirmDialog, useConfirm } from "@/components/confirm-dialog";
@@ -21,6 +21,27 @@ import type { Goals } from "@/modules/settings/goals";
 export type PreviousAttendance = { by: string; at: string; channels: string[]; note: string | null };
 type Template = { id: number; name: string; subject: string; body: string; bodyHtml: string | null };
 const STEPS = ["Perfil", "E-mail", "WhatsApp", "Ligação", "Finalizar"] as const;
+const STEP_ICON = [UserRound, Mail, MessageCircle, Phone, Flag] as const;
+const STEP_HINT = ["Conheça a empresa e confira os contatos", "Envie o e-mail com o modelo certo", "Chame no WhatsApp com um toque", "Copie o número e ligue", "Registre o resultado e siga em frente"] as const;
+
+/** Título de cada etapa: ícone, nome e uma linha de ajuda. */
+function StepTitle({ i }: { i: number }) {
+  const I = STEP_ICON[i];
+  return (
+    <div className="step-title flex items-center gap-3">
+      <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-grad text-on-accent shadow-md shadow-accent/25"><I size={20} aria-hidden /></span>
+      <div className="min-w-0"><h2 className="display text-xl leading-tight">{STEPS[i]}</h2><p className="text-xs text-muted">{STEP_HINT[i]}</p></div>
+    </div>
+  );
+}
+
+/** Quanto tempo já se passou neste lead. */
+function Elapsed({ since }: { since: number }) {
+  const [now, setNow] = useState(since);
+  useEffect(() => { setNow(Date.now()); const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
+  const s = Math.max(0, Math.floor((now - since) / 1000));
+  return <span className="figure">{String(Math.floor(s / 60)).padStart(2, "0")}:{String(s % 60).padStart(2, "0")}</span>;
+}
 
 const copy = async (text: string, toast: ReturnType<typeof useToast>) => {
   try {
@@ -34,6 +55,7 @@ const copy = async (text: string, toast: ReturnType<typeof useToast>) => {
 export function AttendFlow({ lead, catalog, templates, myName, showMap, previous, doneToday, scheduledToday, goals, sellers, sales }: { /** Modo vendedor (lead inativo): mesmo fluxo, destinos diferentes no fim. */ sales?: { shuffleId: number }; sellers: { id: number; name: string }[]; lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; previous: PreviousAttendance | null; doneToday: number; scheduledToday: number; goals: Goals }) {
   const toast = useToast();
   const [pending, start] = useTransition();
+  const openedAt = useRef(Date.now());
   useBusyWhile(pending);
   const { ask, dialog } = useConfirm(pending);
   const [step, setStep] = useState(0);
@@ -203,11 +225,11 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
         <b className="text-ink">{lead.company}</b> não está com a situação ATIVA na Receita, então provavelmente não consegue negociar. Quer atender mesmo assim ou procurar um novo lead? Se buscar outro, este some só para você por 24 h e não conta na meta.
       </ConfirmDialog>
       {/* topo: empresa, metas do dia e passos */}
-      <header className={`${panelCls} relative overflow-hidden p-5 sm:p-6`}>
-        <div aria-hidden className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-accent/10 blur-2xl" />
+      <header className={`${panelCls} fx-rise relative overflow-hidden p-5 sm:p-6`}>
+        <div aria-hidden className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-accent/15 blur-2xl" /><div aria-hidden className="pointer-events-none absolute -bottom-20 -left-10 size-48 rounded-full bg-accent/10 blur-3xl" />
         <div className="relative flex flex-wrap items-start gap-x-8 gap-y-4">
           <div className="min-w-0 flex-1">
-            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-accent"><Building2 size={14} aria-hidden /> Lead sorteado</p>
+            <p className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-accent"><span className="inline-flex items-center gap-1.5"><Building2 size={14} aria-hidden /> Lead sorteado</span><span className="inline-flex items-center gap-1 rounded-full bg-accent/12 px-2 py-0.5 normal-case tracking-normal" title="Tempo neste lead"><Timer size={12} aria-hidden /><Elapsed since={openedAt.current} /></span></p>
             <h1 className="display mt-1 text-2xl sm:text-3xl">{lead.tradeName ?? lead.company}</h1>
             <p className="mt-1 text-sm text-muted">{fmtCnpj(lead.cnpj)}{lead.city ? ` · ${lead.city}/${lead.uf}` : ""}{lead.isTest ? " · MODO TESTE" : ""}</p>
           </div>
@@ -216,20 +238,23 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
             {!sales && goals.scheduled.on && <GoalBar label="Agendados hoje" value={scheduledToday} qty={goals.scheduled.qty} alt />}
           </div>
         </div>
-        <ol className="relative mt-5 flex items-center" aria-label="Passos do atendimento">
-          {visible.map((i, pos) => { const st = STEPS[i]; return (
+        <ol className="relative mt-6 flex items-center" aria-label="Passos do atendimento">
+          {visible.map((i, pos) => { const st = STEPS[i]; const SI = STEP_ICON[i]; const cur = i === step; const done = i < step; return (
             <li key={st} className={`flex items-center ${pos < visible.length - 1 ? "flex-1" : ""}`}>
-              <button type="button" onClick={() => go(i)} aria-current={i === step ? "step" : undefined} className="group flex flex-col items-center gap-1">
-                <span className={`grid size-9 place-items-center rounded-full text-sm font-bold transition-all ${i === step ? "scale-110 bg-grad text-on-accent shadow-lg shadow-accent/30" : i < step ? "bg-accent/20 text-accent" : "bg-sunk text-muted group-hover:bg-line"}`}>{i < step ? <Check size={16} aria-hidden /> : pos + 1}</span>
-                <span className={`text-xs font-medium ${i === step ? "text-ink" : "text-muted"}`}>{st}</span>
+              <button type="button" onClick={() => go(i)} aria-current={cur ? "step" : undefined} className="group flex flex-col items-center gap-1.5">
+                <span className={`relative grid size-11 place-items-center rounded-2xl text-sm font-bold transition-all duration-300 ${cur ? "-translate-y-0.5 scale-110 bg-grad text-on-accent shadow-lg shadow-accent/40" : done ? "bg-accent/20 text-accent" : "bg-sunk text-muted group-hover:-translate-y-0.5 group-hover:bg-line"}`}>
+                  {cur && <span aria-hidden className="step-ping absolute inset-0 rounded-2xl" />}
+                  {done ? <Check size={18} aria-hidden /> : <SI size={18} aria-hidden />}
+                </span>
+                <span className={`text-xs font-semibold transition-colors ${cur ? "text-ink" : "text-muted"}`}>{st}</span>
               </button>
-              {pos < visible.length - 1 && <span aria-hidden className="relative mx-1 mb-5 h-1 flex-1 overflow-hidden rounded-full bg-line"><span className="absolute inset-y-0 left-0 rounded-full bg-grad transition-[width] duration-500 ease-out" style={{ width: i < step ? "100%" : "0%" }} /></span>}
+              {pos < visible.length - 1 && <span aria-hidden className="relative mx-2 mb-5 h-1.5 flex-1 overflow-hidden rounded-full bg-line"><span className="absolute inset-y-0 left-0 rounded-full bg-grad transition-[width] duration-700 ease-out" style={{ width: i < step ? "100%" : "0%" }} /></span>}
             </li>
           ); })}
         </ol>
       </header>
 
-      <div key={step} className={`${panelCls} p-5 sm:p-6 ${dir.current === "fwd" ? "step-fwd" : "step-back"}`}>
+      <div key={step} className={`${panelCls} stagger p-5 sm:p-6 ${dir.current === "fwd" ? "step-fwd" : "step-back"}`}>
         {step === 0 && (
           <div className="space-y-6">
             <LeadInfoPanel lead={lead} wide showMap={showMap} />
@@ -277,7 +302,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
 
         {step === 1 && (
           <section className="space-y-3">
-            <h2 className="display text-xl">E-mail</h2>
+            <StepTitle i={1} />
             {goodEmails.length === 0 ? <p className="text-sm text-muted">Este lead não tem e-mail válido. Adicione no passo Contatos ou pule.</p> : (
               <>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -306,10 +331,10 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
 
         {step === 2 && (
           <section className="space-y-3">
-            <h2 className="display text-xl">WhatsApp</h2>
+            <StepTitle i={2} />
             <ul className="space-y-1.5">
               {goodPhones.map((p) => (
-                <li key={p.id} className="flex flex-wrap items-center gap-3 rounded-lg bg-sunk px-3 py-2">
+                <li key={p.id} className="lift flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-sunk/60 px-4 py-3"><span aria-hidden className="grid size-10 place-items-center rounded-xl bg-ok/15 text-ok"><MessageCircle size={18} /></span>
                   <span className="flex-1"><CopyVal text={p.value}><span className="figure text-lg">{fmtPhone(p.value)}</span></CopyVal></span>
                   <a href={chatproUrl(p.value)} target="_blank" rel="noreferrer" onClick={() => setUsed(new Set(used).add("whatsapp"))} className={btnPrimary}><MessageCircle size={16} aria-hidden /> Abrir no ChatPro</a>
                 </li>
@@ -322,10 +347,10 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
 
         {step === 3 && (
           <section className="space-y-3">
-            <h2 className="display text-xl">Ligação</h2>
+            <StepTitle i={3} />
             <p className="text-sm text-muted">Copie o número e cole no VoCallPhone.</p>
             <ul className="space-y-1.5">
-              {goodPhones.map((p) => <li key={p.id} className="flex items-center gap-3 rounded-lg bg-sunk px-3 py-2"><span className="figure text-lg">{fmtPhone(p.value)}</span><button type="button" className={btnGhost} onClick={() => { void copy(p.value, toast); setUsed(new Set(used).add("ligacao")); }}><Copy size={15} aria-hidden /> Copiar</button></li>)}
+              {goodPhones.map((p) => <li key={p.id} className="lift flex items-center gap-3 rounded-2xl border border-line bg-sunk/60 px-4 py-3"><span aria-hidden className="grid size-10 place-items-center rounded-xl bg-accent/15 text-accent"><Phone size={18} /></span><span className="figure flex-1 text-lg">{fmtPhone(p.value)}</span><button type="button" className={btnGhost} onClick={() => { void copy(p.value, toast); setUsed(new Set(used).add("ligacao")); }}><Copy size={15} aria-hidden /> Copiar</button></li>)}
               {goodPhones.length === 0 && <li className="text-sm text-muted">Sem telefone válido.</li>}
             </ul>
             <UsedToggle on={used.has("ligacao")} onClick={() => toggle(used, "ligacao", setUsed)} label="Ligação feita" />
@@ -334,7 +359,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
 
         {step === 4 && (
           <section className="space-y-5">
-            <h2 className="display text-xl">Finalizar</h2>
+            <StepTitle i={4} />
             <Group title={groups.meio?.name ?? "Meios de contato usados"}>{groups.meio?.tags.filter((t) => !t.autoOnly).map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={used.has(t.key)} onClick={() => toggle(used, t.key, setUsed)} />)}</Group>
             <Group title={groups.temperatura?.name ?? "Temperatura"}>{groups.temperatura?.tags.map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={temperature === t.key} onClick={() => setTemperature(temperature === t.key ? null : t.key)} />)}</Group>
             <Group title={groups.qualificacao?.name ?? "Qualificação"}>{groups.qualificacao?.tags.map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={qualification === t.key} onClick={() => setQualification(qualification === t.key ? null : (t.key as "qualificado"))} />)}</Group>
@@ -396,7 +421,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="sticky bottom-3 z-20 flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-panel/90 p-3 shadow-lg backdrop-blur">
         {step > 0 && <button type="button" className={btnGhost} onClick={() => go(prevStep(step))}><ChevronLeft size={16} aria-hidden /> Voltar</button>}
         {step < STEPS.length - 1 && <button type="button" className={btnPrimary} onClick={() => go(nextStep(step))}>Avançar <ChevronRight size={16} aria-hidden /></button>}
         <span className="flex-1" />

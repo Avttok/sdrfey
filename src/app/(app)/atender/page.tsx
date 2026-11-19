@@ -1,5 +1,5 @@
 import { visibleUsers } from "@/modules/auth/visibility";
-import { releaseExpiredLocks } from "@/modules/leads/sorter";
+import { hasAvailable, releaseExpiredLocks } from "@/modules/leads/sorter";
 import type { Metadata } from "next";
 import { and, eq, sql } from "drizzle-orm";
 import { AttendFlow } from "@/components/attend-flow";
@@ -47,8 +47,9 @@ export default async function AttendPage() {
   }
 
   if (!lead) {
+    const available = await hasAvailable(me.id);
     return (
-      <ShuffleHero avatar={me.avatar} roles={me.shownRoles} action={startAction}>
+      <ShuffleHero avatar={me.avatar} roles={me.shownRoles} action={startAction} empty={available ? undefined : { hint: "Todos os leads já foram trabalhados, estão com outra pessoa ou aguardando a hora de voltar. Avise o time e confira de novo daqui a pouco." }}>
         <GoalTiles items={[
           ...(goals.attended.on ? [{ k: "attended" as const, label: "Atendidos", value: done?.n ?? 0, qty: goals.attended.qty }] : []),
           ...(goals.scheduled.on ? [{ k: "scheduled" as const, label: "Agendados", value: sched?.n ?? 0, qty: goals.scheduled.qty }] : []),

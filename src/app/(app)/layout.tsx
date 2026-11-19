@@ -9,7 +9,9 @@ import { BottomFade } from "@/components/bottom-fade";
 import { SwRegister } from "@/components/sw-register";
 import { ChatMount } from "@/components/chat/chat-mount";
 import { AvatarProvider } from "@/components/person-bubble";
-import { db, users } from "@/db";
+import { db, tags, users } from "@/db";
+import { tagIconKey } from "@/config/tag-icons";
+import { TagIconProvider } from "@/components/tag-chip";
 import { isNotNull } from "drizzle-orm";
 import { requireUser } from "@/modules/auth/guard";
 
@@ -19,8 +21,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const groupNav = settings.nav_group === 1;
   const av = await db.select({ id: users.id, name: users.name, avatar: users.avatar }).from(users).where(isNotNull(users.avatar));
   const avatars = { byId: Object.fromEntries(av.map((a) => [a.id, a.avatar!])), byName: Object.fromEntries(av.map((a) => [a.name, a.avatar!])) };
+  const tagRows = await db.select({ label: tags.label, key: tags.key, group: tags.groupKey, icon: tags.icon }).from(tags);
+  const tagIcons = Object.fromEntries(tagRows.map((t) => [t.label.toUpperCase(), tagIconKey(t.icon, t.key, t.group)]));
   return (
     <ToastProvider>
+      <TagIconProvider value={tagIcons}>
       <AvatarProvider value={avatars}>
       <div className={`flex flex-1 flex-col ${user.navLayout === "side" ? "lg:flex-row" : ""}`}>
         <Presence />
@@ -36,6 +41,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <SwRegister />
       <Suspense fallback={null}><ChatMount user={user} /></Suspense>
       </AvatarProvider>
+      </TagIconProvider>
     </ToastProvider>
   );
 }

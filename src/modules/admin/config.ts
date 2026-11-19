@@ -54,7 +54,7 @@ export async function saveRolePermissionsAction(role: Exclude<Role, "admin">, ma
 }
 
 /* ───── Tags ───── */
-const tagInput = z.object({ id: z.number().int().optional(), groupKey: z.string().min(1), label: z.string().trim().min(1, "Informe o nome da tag.").max(40), color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Cor inválida."), blocksSorting: z.boolean(), cooldownDays: z.number().int().min(0).max(3650).nullable(), active: z.boolean() });
+const tagInput = z.object({ id: z.number().int().optional(), groupKey: z.string().min(1), label: z.string().trim().min(1, "Informe o nome da tag.").max(40), color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Cor inválida."), blocksSorting: z.boolean(), cooldownDays: z.number().int().min(0).max(3650).nullable(), active: z.boolean(), icon: z.string().max(30).nullable().optional() });
 
 export async function saveTagAction(input: z.input<typeof tagInput>): Promise<ActionResult> {
   const me = await requireAdmin();
@@ -64,7 +64,7 @@ export async function saveTagAction(input: z.input<typeof tagInput>): Promise<Ac
   if (d.id) {
     const [b] = await db.select().from(tags).where(eq(tags.id, d.id));
     if (!b) return fail("Tag não encontrada.");
-    await db.update(tags).set({ label: d.label, color: d.color, blocksSorting: d.blocksSorting, cooldownDays: d.cooldownDays, active: d.active }).where(eq(tags.id, d.id));
+    await db.update(tags).set({ label: d.label, color: d.color, blocksSorting: d.blocksSorting, cooldownDays: d.cooldownDays, active: d.active, icon: d.icon ?? null }).where(eq(tags.id, d.id));
     for (const [f, o, n] of [["Nome", b.label, d.label], ["Cor", b.color, d.color], ["Tira do sorteio", b.blocksSorting, d.blocksSorting], ["Volta ao sorteio (dias)", b.cooldownDays, d.cooldownDays], ["Ativa", b.active, d.active]] as const) {
       if (String(o) !== String(n)) await logAudit(db, { userId: me.id, entity: "tag", action: "alterou tag", field: `${b.label} · ${f}`, oldValue: o as never, newValue: n as never });
     }
@@ -73,7 +73,7 @@ export async function saveTagAction(input: z.input<typeof tagInput>): Promise<Ac
     if (!key) return fail("Nome inválido.");
     const [dup] = await db.select({ id: tags.id }).from(tags).where(sql`${tags.groupKey} = ${d.groupKey} and ${tags.key} = ${key}`);
     if (dup) return fail("Já existe uma tag com esse nome neste grupo.");
-    await db.insert(tags).values({ groupKey: d.groupKey, key, label: d.label, color: d.color, blocksSorting: d.blocksSorting, cooldownDays: d.cooldownDays, active: d.active });
+    await db.insert(tags).values({ groupKey: d.groupKey, key, label: d.label, color: d.color, blocksSorting: d.blocksSorting, cooldownDays: d.cooldownDays, active: d.active, icon: d.icon ?? null });
     await logAudit(db, { userId: me.id, entity: "tag", action: "criou tag", field: d.groupKey, newValue: d.label });
   }
   revalidatePath("/", "layout");

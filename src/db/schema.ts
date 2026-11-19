@@ -106,6 +106,8 @@ export const tags = pgTable(
     cooldownDays: integer("cooldown_days"),
     /** Só o sistema aplica (ex.: BOT). */
     autoOnly: boolean("auto_only").notNull().default(false),
+    /** Ícone da bolha (chave de config/tag-icons). Nulo = o padrão da tag. */
+    icon: text("icon"),
     createdAt: now(),
   },
   (t) => [uniqueIndex("tags_group_key_uq").on(t.groupKey, t.key)],

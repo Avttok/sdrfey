@@ -4,11 +4,12 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { GripVertical, Plus, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { TagChip } from "@/components/tag-chip";
+import { TAG_ICONS, tagIconKey } from "@/config/tag-icons";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { deleteTagAction, reorderTagsAction, saveTagAction } from "@/modules/admin/config";
 
-export type TagRow = { id?: number; groupKey: string; label: string; color: string; blocksSorting: boolean; cooldownDays: number | null; active: boolean; autoOnly?: boolean };
+export type TagRow = { id?: number; groupKey: string; label: string; color: string; blocksSorting: boolean; cooldownDays: number | null; active: boolean; autoOnly?: boolean; icon?: string | null; tagKey?: string };
 
 function Row({ t, isNew, onGrip, dragging }: { t: TagRow; isNew?: boolean; onGrip?: (e: React.PointerEvent) => void; dragging?: boolean }) {
   const [f, setF] = useState(t);
@@ -22,12 +23,19 @@ function Row({ t, isNew, onGrip, dragging }: { t: TagRow; isNew?: boolean; onGri
         ) : <span className="grid size-8 place-items-center text-muted"><Plus size={18} aria-hidden /></span>}
         <input type="color" aria-label="Cor" className="size-9 shrink-0 cursor-pointer rounded-lg border border-line bg-transparent p-0.5" value={f.color} onChange={(e) => setF({ ...f, color: e.target.value })} />
         <input className={`${inputCls} !w-44 !py-1.5`} aria-label="Nome" placeholder={isNew ? "Nova tag…" : "Nome da tag"} value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} />
-        {!isNew && <TagChip label={f.label || "—"} color={f.color} />}
+        {!isNew && <TagChip label={f.label || "—"} color={f.color} icon={tagIconKey(f.icon, t.tagKey ?? "", t.groupKey)} />}
         {t.autoOnly && <span className="rounded-full bg-sunk px-2 py-0.5 text-xs text-muted">só o sistema aplica</span>}
         <span className="flex-1" />
         <button type="button" className={isNew ? btnPrimary : btnGhost} disabled={pending} onClick={() => run(() => saveTagAction({ ...f, id: t.id }), undefined, () => isNew && setF(t))}>{isNew ? <><Plus size={15} aria-hidden /> Criar</> : "Salvar"}</button>
         {!isNew && <button type="button" aria-label="Excluir tag" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => ask({ title: "Excluir esta tag?", body: `A tag "${t.label}" será removida de todos os leads que a têm.`, label: "Sim, excluir", icon: Trash2, onConfirm: () => run(() => deleteTagAction(t.id!)) })}><Trash2 size={15} /></button>}
       </div>
+      <details className="mt-2.5 border-t border-line/70 pt-2.5 pl-1 text-[13px] text-muted">
+        <summary className="cursor-pointer select-none font-medium">Ícone da bolha {f.icon ? `· ${f.icon}` : "· padrão"}</summary>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <button type="button" onClick={() => setF({ ...f, icon: null })} className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium ${!f.icon ? "border-accent bg-accent/10 text-accent" : "border-line"}`}>Padrão</button>
+          {Object.entries(TAG_ICONS).map(([k, I]) => <button key={k} type="button" title={k} aria-label={k} aria-pressed={f.icon === k} onClick={() => setF({ ...f, icon: k })} className={`grid size-9 place-items-center rounded-lg border transition hover:-translate-y-0.5 ${f.icon === k ? "border-accent bg-accent/15 text-accent" : "border-line"}`}><I size={16} aria-hidden /></button>)}
+        </div>
+      </details>
       <div className="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line/70 pt-2.5 pl-1 text-[13px] text-muted">
         <label className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" className="size-4" checked={f.blocksSorting} onChange={(e) => setF({ ...f, blocksSorting: e.target.checked })} /> Tira do sorteio</label>
         <label className="flex items-center gap-1.5">Volta em <input type="number" min={0} className={`${inputCls} !w-16 !py-1 text-center`} placeholder="—" value={f.cooldownDays ?? ""} onChange={(e) => setF({ ...f, cooldownDays: e.target.value === "" ? null : Number(e.target.value) })} /> dias</label>

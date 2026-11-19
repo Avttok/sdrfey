@@ -53,6 +53,9 @@ export const PERMISSIONS: PermissionDef[] = [
 
   { key: "deals.team", label: "Ver e atender as negociações de toda a equipe (sem isso, só as próprias e as sem dono)", group: "Funções", defaults: ["manager"] },
   { key: "deals.delete", label: "Apagar e resetar negociações (tudo fica no Registro do Adm)", group: "Funções", defaults: ["manager"] },
+  { key: "tab.desempenho", label: "Aba SDR: Desempenho (exportar planilhas)", group: "Abas", defaults: ["user", "manager"] },
+  { key: "tab.desempenho_vendas", label: "Aba Vendas: Desempenho (exportar planilhas)", group: "Abas", defaults: ["seller", "manager"] },
+  { key: "desempenho.equipe", label: "Desempenho: exportar também os números de outras pessoas (sem isso, só os próprios)", group: "Funções", defaults: ["manager"] },
   { key: "visits.team", label: "Ver as visitas agendadas por toda a equipe (sem isso, só as próprias)", group: "Funções", defaults: ["manager"] },
   { key: "lead.edit", label: "Editar qualquer dado de um lead", group: "Funções", defaults: ["manager"] },
   { key: "lead.release", label: "Liberar lead que está com outra pessoa", group: "Funções", defaults: ["manager"] },

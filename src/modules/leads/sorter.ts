@@ -68,6 +68,21 @@ export async function claimNext(userId: number, opts: { test?: boolean } = {}): 
   return rows[0].id;
 }
 
+/** Existe algum lead que o sorteio poderia entregar agora a esta pessoa? (mesma regra do sorteio, sem reservar nada) */
+export async function hasAvailable(userId: number, opts: { test?: boolean } = {}): Promise<boolean> {
+  await releaseExpiredLocks();
+  const rows = await db.execute<{ x: number }>(sql`
+    select 1 as x from leads l
+    where l.locked_by is null and l.is_test = ${opts.test ?? false} and l.kind = 'prospect'
+      and (l.next_eligible_at is null or l.next_eligible_at <= now()) and (l.return_at is null or l.return_at <= now())
+      and (l.owner_id is null or l.owner_id = ${userId})
+      and not exists (select 1 from lead_tags lt join tags t on t.id = lt.tag_id where lt.lead_id = l.id and t.blocks_sorting)
+      and not exists (select 1 from deals dd where dd.lead_id = l.id)
+      and not exists (select 1 from lead_skips s where s.lead_id = l.id and s.user_id = ${userId} and s.until > now())
+    limit 1`);
+  return rows.length > 0;
+}
+
 /** "ATENDER" em um lead específico (da aba Leads ou do histórico): mesmo fluxo do sorteio. */
 export async function attendLead(userId: number, leadId: number): Promise<void> {
   await releaseExpiredLocks();
