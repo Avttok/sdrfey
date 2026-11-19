@@ -4,7 +4,7 @@ import { bubbleHex, resolveAccent } from "@/config/theme";
 import { achievementsOf } from "@/modules/achievements/stats";
 import { and, eq, gt, sql } from "drizzle-orm";
 import { z } from "zod";
-import { chatMentions, chatMessages, chatStyles, chatReactions, db, users } from "@/db";
+import { chatMentions, chatMessages, chatStyles, chatReactions, db, presence, users } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { publicRoles, type Role } from "@/config/roles";
 import { requireUser } from "@/modules/auth/guard";
@@ -97,7 +97,7 @@ export async function chatProfileAction(userId: number): Promise<R<{ profile: Ch
   const got = list.filter((a) => a.earned).sort((a, b) => b.goal - a.goal || a.key.localeCompare(b.key));
   const [st] = await db.select().from(chatStyles).where(eq(chatStyles.userId, u.id));
   const ac = resolveAccent(u.accent, u.roles as Role[]);
-  return { ok: true, profile: { theme: { hex: ac.hex, hex2: ac.hex2, on: ac.onAccent }, badges: got.map((a) => ({ key: a.key, name: a.name })), badgeTotal: list.length, style: st?.equipped ?? {}, avatar: u.avatar ?? null, banner: u.banner ?? null, id: u.id, name: u.name, username: u.username, roles: publicRoles(u.roles as Role[], admin), sent: n, active: u.active, lastLoginAt: admin ? u.lastLoginAt?.toISOString() ?? null : null, isAdminView: admin } };
+  return { ok: true, profile: { theme: { hex: ac.hex, hex2: ac.hex2, on: ac.onAccent }, badges: got.map((a) => ({ key: a.key, name: a.name })), badgeTotal: list.length, style: st?.equipped ?? {}, avatar: u.avatar ?? null, banner: u.banner ?? null, id: u.id, name: u.name, username: u.username, roles: publicRoles(u.roles as Role[], admin), sent: n, active: u.active, lastLoginAt: admin ? (await lastAccessOf(u.id, u.lastLoginAt))?.toISOString() ?? null : null, isAdminView: admin } };
 }
 
 /** Só o Adm: apaga todas as mensagens de um grupo, ou todas as de uma pessoa (em um grupo ou em todos). */
@@ -127,4 +127,11 @@ export async function chatPeopleAction(): Promise<R<{ people: ChatPerson[] }>> {
   if (!me) return bad("O chat está desligado.");
   const rows = await db.select({ id: users.id, name: users.name, username: users.username, accent: users.accent, roles: users.roles }).from(users).where(and(eq(users.active, true), sql`${users.id} <> ${me.id}`)).orderBy(users.name);
   return { ok: true, people: rows.map((u) => ({ id: u.id, name: u.name, username: u.username, hex: bubbleHex(u.accent, u.id, u.roles as Role[]) })) };
+}
+
+/** Último acesso: o mais recente entre o login e a última vez vista no sistema. */
+async function lastAccessOf(id: number, login: Date | null): Promise<Date | null> {
+  const [p] = await db.select({ at: presence.lastSeenAt }).from(presence).where(eq(presence.userId, id)).limit(1);
+  const l = [login, p?.at].filter((x): x is Date => !!x);
+  return l.length ? new Date(Math.max(...l.map((d) => d.getTime()))) : null;
 }

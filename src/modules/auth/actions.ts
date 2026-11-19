@@ -166,7 +166,7 @@ export async function firstAccessAction(input: { current: string; next: string; 
   const accent = isChoosableAccent(input.accent) ? input.accent : null;
   const banner = input.banner && BANNER_BY_KEY.has(input.banner) ? input.banner : null;
   const version = row.sessionVersion + 1;
-  await db.update(users).set({ passwordHash: await hashPassword(input.next), mustChangePassword: false, profileDone: true, sessionVersion: version, name, avatar, accent, banner }).where(eq(users.id, me.id));
+  await db.update(users).set({ passwordHash: await hashPassword(input.next), mustChangePassword: false, profileDone: true, sessionVersion: version, name, avatar, accent, banner, lastLoginAt: row.lastLoginAt ?? new Date() }).where(eq(users.id, me.id));
   await logAudit(db, { userId: me.id, entity: "user", action: "concluiu o primeiro acesso", meta: { nome: name !== me.name, icone: !!avatar, cor: !!accent } });
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   const remember = token ? ((await readToken(token))?.rem ?? false) : false;
