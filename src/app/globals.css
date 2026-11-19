@@ -166,7 +166,7 @@ body.dragging, body.dragging * { user-select: none !important; cursor: grabbing 
 /* Os painéis "surgem" ao entrar na tela; o fundo do Shuffler aparece suave. */
 @keyframes spawn-in { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: none; } }
 @keyframes spawn-fade { from { opacity: 0; } to { opacity: 1; } }
-.spawn-in { animation: spawn-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.spawn-in { animation: spawn-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
 .spawn-fade { animation: spawn-fade 0.6s ease both; }
 @media (prefers-reduced-motion: reduce) { .spawn-in, .spawn-fade, .glow-pulse { animation: none; } }
 

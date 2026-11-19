@@ -31,6 +31,7 @@ async function guard(fn: () => Promise<ActionResult | void>): Promise<ActionResu
 export async function startAction() {
   const me = await requirePerm("tab.comecar");
   await claimNext(me.id);
+  revalidatePath("/atender"); // limpa a tela "Bora?" guardada no navegador, senão o redirect para a mesma página não troca de etapa
   redirect("/atender");
 }
 
@@ -39,6 +40,7 @@ export async function attendAction(leadId: number): Promise<ActionResult> {
   const me = await requirePerm("tab.comecar");
   return guard(async () => {
     await attendLead(me.id, leadId);
+    revalidatePath("/atender");
     redirect("/atender");
   });
 }

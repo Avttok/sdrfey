@@ -27,8 +27,8 @@ export default async function ChangePasswordPage() {
     <main className="min-h-screen">
       <div className="mx-auto w-full max-w-xl px-5 py-10">
         <div className="flex items-center justify-between"><Logo /><ThemeToggle /></div>
-        <h1 className="display mt-8 text-3xl sm:text-4xl">{user.mustChangePassword ? "Vamos deixar tudo com a sua cara" : "Agora dá para deixar seu perfil com a sua cara"}</h1>
-        <p className="mb-6 mt-2 text-muted">{user.mustChangePassword ? "Escolha como você aparece, a cor e o tema, e crie sua senha. Leva um minuto." : "Escolha nome, ícone, banner, cor e tema. Sua senha continua a mesma. Você só vê esta tela uma vez e pode mudar tudo depois em Minha conta."}</p>
+        <h1 className="display mt-8 text-3xl sm:text-4xl">{user.mustChangePassword ? "Primeiro acesso: crie sua senha" : "Personalize seu perfil"}</h1>
+        <p className="mb-6 mt-2 text-muted">{user.mustChangePassword ? "Troque a senha provisória por uma só sua e escolha como você aparece, a cor e o tema. Leva um minuto." : "Escolha nome, ícone, banner, cor e tema. Não precisa trocar a senha: ela continua a mesma. Você pode mudar tudo depois em Minha conta."}</p>
         <FirstAccessForm needPassword={user.mustChangePassword} name={user.name} username={user.username} roles={user.shownRoles} accent={user.accent} />
       </div>
     </main>

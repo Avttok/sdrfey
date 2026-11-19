@@ -14,13 +14,13 @@ import { AlertChip, StageChip } from "./deal-ui";
 
 type Filter = "todas" | "minhas" | "grupo" | "avisos" | "fechadas";
 
-function Card({ d, meId, canClaim }: { d: DealRow; meId: number; canClaim: boolean }) {
+function Card({ d, meId, canClaim, i = 0 }: { d: DealRow; meId: number; canClaim: boolean; i?: number }) {
   const { run, pending } = useRun();
   const danger = d.alerts.some((a) => a.tone === "danger");
   const value = d.mainCents;
   const bar = d.color ?? STAGE_META[d.stage].color;
   return (
-    <li className={`${panelCls} group relative flex flex-col overflow-hidden transition hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-md ${danger ? "border-danger/50" : ""} ${d.expired ? "opacity-70" : ""}`} style={d.color ? { background: `color-mix(in srgb, ${d.color} 12%, var(--panel))` } : undefined}>
+    <li style={{ "--i": Math.min(i, 12), ...(d.color ? { background: `color-mix(in srgb, ${d.color} 12%, var(--panel))` } : {}) } as React.CSSProperties} className={`${panelCls} card-in group relative flex flex-col overflow-hidden transition hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-md ${danger ? "border-danger/50" : ""} ${d.expired ? "opacity-70" : ""}`} >
       <span aria-hidden className={`absolute inset-y-0 left-0 ${d.color ? "w-2" : "w-1"}`} style={{ background: bar }} />
       <Link href={`/negociacoes/${d.id}`} className="flex flex-1 flex-col gap-2 p-3.5 pl-5 outline-none after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-accent/50">
         <p className="line-clamp-2 h-9 text-[14px] font-semibold leading-[18px]" title={d.company}>{d.company}</p>
@@ -39,7 +39,7 @@ function Card({ d, meId, canClaim }: { d: DealRow; meId: number; canClaim: boole
       </Link>
       <div className="mt-auto flex items-center justify-between gap-2 border-t border-line/70 px-3.5 py-2.5 pl-5 text-xs text-muted">
         <span className="min-w-0 truncate" title={d.sdrName ? `SDR ${d.sdrName}` : undefined}>{d.sellerName ? <b className="font-semibold text-ink">{d.sellerId === meId ? "Você" : d.sellerName}</b> : "Sem vendedor"}</span>
-        <span className="flex shrink-0 items-center gap-2">{value ? <b className="figure text-sm text-ink">{fmtBRL(value)}</b> : null}</span>
+        <span className="flex shrink-0 items-center gap-2">{value ? <b className="figure rounded-full bg-grad-soft px-2.5 py-0.5 text-sm text-accent">{fmtBRL(value)}</b> : null}</span>
       </div>
       {!d.sellerId && canClaim && d.stage !== "ganho" && d.stage !== "perdido" && (
         <div className="px-3.5 pb-3.5 pl-5"><button type="button" disabled={pending} onClick={() => run(() => claimDealAction(d.id))} className={`${btnPrimary} relative z-10 w-full !py-2 !text-sm`}><UserPlus size={15} aria-hidden /> Assumir</button></div>
@@ -80,19 +80,19 @@ export function DealBoard({ deals, meId, canClaim, team }: { deals: DealRow[]; m
       </div>
       </FilterBar>
       {filter === "fechadas" || filter === "avisos" || filter === "grupo" ? (
-        shown.length ? <ul className="grid items-stretch gap-3 [grid-template-columns:repeat(auto-fill,minmax(17rem,1fr))]">{shown.map((d) => <Card key={d.id} d={d} meId={meId} canClaim={canClaim} />)}</ul> : <Empty text={needle ? "Nenhuma negociação com essa busca." : filter === "grupo" ? "Nenhuma negociação esperando vendedor." : filter === "avisos" ? "Tudo em dia: nenhum aviso." : "Nenhuma negociação encerrada ainda."} />
+        shown.length ? <ul className="grid items-stretch gap-3 [grid-template-columns:repeat(auto-fill,minmax(17rem,1fr))]">{shown.map((d, i) => <Card key={d.id} d={d} i={i} meId={meId} canClaim={canClaim} />)}</ul> : <Empty text={needle ? "Nenhuma negociação com essa busca." : filter === "grupo" ? "Nenhuma negociação esperando vendedor." : filter === "avisos" ? "Tudo em dia: nenhum aviso." : "Nenhuma negociação encerrada ainda."} />
       ) : shown.length === 0 && billedShown.length === 0 ? <Empty text={needle ? "Nenhuma negociação com essa busca." : "Nenhuma negociação aberta."} /> : (
         <div className="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(14.5rem,1fr))]">
           {BOARD_COLUMNS.map(({ key, stages }) => {
             const col = key === "ganho" ? billedShown : shown.filter((d) => stages.includes(d.stage));
             return (
-              <section key={key} className="min-w-0 space-y-3 rounded-2xl border border-line bg-sunk/50 p-2.5">
+              <section key={key} className="min-w-0 space-y-3 rounded-2xl border border-line border-t-[3px] bg-sunk/50 p-2.5" style={{ borderTopColor: STAGE_META[key].color }}>
                 <header className="flex items-center justify-between gap-2 px-1.5 pt-1">
                   <span className="whitespace-nowrap"><StageChip stage={key} /></span>
                   <span className="figure whitespace-nowrap text-sm text-muted">{col.length}</span>
                 </header>
                 {col.some((x) => x.mainCents) && <p className="figure -mt-1 px-1.5 text-xs text-muted">{fmtBRL(col.reduce((a, x) => a + (x.mainCents ?? 0), 0))}</p>}
-                <ul className="space-y-2.5">{col.map((d) => <Card key={d.id} d={d} meId={meId} canClaim={canClaim} />)}{col.length === 0 && <li className="rounded-xl border border-dashed border-line p-5 text-center text-xs text-muted">Vazio</li>}</ul>
+                <ul className="space-y-2.5">{col.map((d, i) => <Card key={d.id} d={d} i={i} meId={meId} canClaim={canClaim} />)}{col.length === 0 && <li className="rounded-xl border border-dashed border-line p-5 text-center text-xs text-muted">Vazio</li>}</ul>
               </section>
             );
           })}

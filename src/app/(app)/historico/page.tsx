@@ -90,7 +90,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
             {spark.map(([k, v]) => (
               <div key={k} className="group flex h-full flex-1 flex-col items-center justify-end gap-1" title={`${label(k)}: ${plural(v.length, "atendimento", "atendimentos")}`}>
                 <span className="figure text-[11px] text-muted opacity-0 transition group-hover:opacity-100">{v.length}</span>
-                <div className="w-full rounded-t-md bg-accent/70 transition-all group-hover:bg-accent" style={{ height: `${(v.length / max) * 100}%`, minHeight: 4 }} />
+                <div className="w-full rounded-t-md bg-grad opacity-70 transition-all group-hover:opacity-100" style={{ height: `${(v.length / max) * 100}%`, minHeight: 4 }} />
                 <span className="text-[10px] text-muted">{k.slice(8)}/{k.slice(5, 7)}</span>
               </div>
             ))}
@@ -120,13 +120,15 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
         <div className={`${panelCls} p-10 text-center text-muted`}>{hasFilter ? "Nada encontrado com esses filtros." : "Você ainda não atendeu nenhum lead."}</div>
       ) : pageDays.map(([k, list]) => (
         <section key={k} className="space-y-2">
-          <h2 className="flex items-baseline gap-2 text-sm font-semibold"><span className="display text-lg">{label(k)}</span><span className="font-normal text-muted">{plural(list.length, "atendimento", "atendimentos")}</span></h2>
+          <h2 className="sticky top-14 z-10 flex items-center gap-2 py-1 text-sm font-semibold"><span className="display rounded-full bg-grad px-3.5 py-1 text-base text-on-accent shadow">{label(k)}</span><span className="rounded-full bg-panel/80 px-2.5 py-0.5 font-normal text-muted backdrop-blur">{plural(list.length, "atendimento", "atendimentos")}</span><span aria-hidden className="h-px flex-1 bg-line" /></h2>
           <ul className="space-y-2">
             {list.map((r) => (
-              <li key={r.session_id} className={`${panelCls} flex flex-wrap items-start gap-3 p-4 transition hover:border-accent/50`}>
+              <li key={r.session_id} className={`${panelCls} lift card-in relative flex flex-wrap items-start gap-3 overflow-hidden p-4 pl-5`} style={{ "--i": Math.min(list.indexOf(r), 10) } as React.CSSProperties}>
+                <span aria-hidden className="absolute inset-y-0 left-0 w-1.5" style={{ background: r.tags.some((t) => t.group === "qualificacao" && t.key === "qualificado") ? "var(--accent)" : r.tags.some((t) => t.group === "qualificacao") ? "var(--danger)" : "var(--line)" }} />
+                <span className="figure mt-0.5 hidden shrink-0 rounded-xl bg-grad-soft px-2.5 py-1.5 text-center text-sm font-bold text-accent sm:block">{hourFmt.format(new Date(r.saved_at))}</span>
                 <div className="min-w-0 flex-1 space-y-1.5">
                   <Link prefetch={false} href={`/leads/${r.lead_id}`} className="block truncate font-medium hover:underline">{r.trade_name ?? r.company}</Link>
-                  <p className="text-xs text-muted">{hourFmt.format(new Date(r.saved_at))} · {fmtCnpj(r.cnpj)}{r.city ? ` · ${r.city}/${r.uf}` : ""} · tempo {fmtDuration(r.seconds)}{r.visits ? ` · visita ${r.visits}` : ""}</p>
+                  <p className="text-xs text-muted"><span className="sm:hidden">{hourFmt.format(new Date(r.saved_at))} · </span>{fmtCnpj(r.cnpj)}{r.city ? ` · ${r.city}/${r.uf}` : ""} · tempo {fmtDuration(r.seconds)}{r.visits ? ` · visita ${r.visits}` : ""}</p>
                   {r.tags.length > 0 && <div className="flex flex-wrap gap-1.5">{r.tags.map((t) => <TagChip key={t.key + t.group} label={t.label} color={t.color} />)}</div>}
                   {r.notes && <p className="line-clamp-2 rounded-md bg-sunk px-2.5 py-1.5 text-xs text-muted">{r.notes}</p>}
                 </div>
@@ -143,7 +145,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
 
 function Stat({ icon, label, value, hint }: { icon: React.ReactNode; label: string; value: string; hint?: string }) {
   return (
-    <div className={`${panelCls} flex items-center gap-3 p-4`}>
+    <div className={`${panelCls} stat-glow lift card-in flex items-center gap-3 p-4`}>
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-grad-soft text-accent">{icon}</span>
       <div className="min-w-0"><p className="text-xs text-muted">{label}</p><p className="figure text-2xl font-bold leading-tight">{value}</p>{hint && <p className="text-xs text-muted">{hint}</p>}</div>
     </div>

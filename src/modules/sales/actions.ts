@@ -20,6 +20,7 @@ const fail = (message: string): ActionResult => ({ ok: false, message });
 export async function startSalesShuffleAction() {
   const me = await requirePerm("tab.shuffler_vendas");
   await claimInactive(me.id);
+  revalidatePath("/shuffler-vendas");
   redirect("/shuffler-vendas");
 }
 

@@ -25,7 +25,7 @@ export async function SellerHistory({ userId, sp }: { userId: number; sp: Record
   const won = rows.filter((r) => r.stage === "ganho");
   const total = won.reduce((a, r) => a + (r.valueCents ?? 0), 0);
   const stat = (I: typeof Trophy, t: string, v: string, s?: string) => (
-    <div className={`${panelCls} p-4`}><div className="flex items-center justify-between"><p className="text-xs font-medium text-muted">{t}</p><span className="grid size-8 place-items-center rounded-lg bg-grad-soft text-accent"><I size={15} aria-hidden /></span></div><p className="figure mt-2 text-3xl font-bold leading-none">{v}</p>{s && <p className="mt-1.5 text-xs text-muted">{s}</p>}</div>
+    <div className={`${panelCls} stat-glow lift card-in p-4`}><div className="flex items-center justify-between"><p className="text-xs font-medium text-muted">{t}</p><span className="grid size-8 place-items-center rounded-lg bg-grad-soft text-accent"><I size={15} aria-hidden /></span></div><p className="figure mt-2 text-3xl font-bold leading-none">{v}</p>{s && <p className="mt-1.5 text-xs text-muted">{s}</p>}</div>
   );
   return (
     <div className="space-y-5">
@@ -49,15 +49,15 @@ export async function SellerHistory({ userId, sp }: { userId: number; sp: Record
       </form>
       </FilterBar>
       <ul className="space-y-2.5">
-        {rows.slice((pg - 1) * PAGE, pg * PAGE).map((r) => (
+        {rows.slice((pg - 1) * PAGE, pg * PAGE).map((r, idx) => (
           <li key={r.id}>
-            <Link prefetch={false} href={`/negociacoes/${r.id}`} className={`${panelCls} group flex flex-wrap items-center gap-x-4 gap-y-2 p-4 transition hover:border-accent/50 hover:shadow-md`}>
-              <span aria-hidden className="h-10 w-1 shrink-0 rounded-full" style={{ background: STAGE_META[r.stage].color }} />
+            <Link prefetch={false} href={`/negociacoes/${r.id}`} style={{ "--i": Math.min(idx, 10) } as React.CSSProperties} className={`${panelCls} lift card-in group relative flex flex-wrap items-center gap-x-4 gap-y-2 overflow-hidden p-4 pl-6`}>
+              <span aria-hidden className="absolute inset-y-0 left-0 w-1.5" style={{ background: STAGE_META[r.stage].color }} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold group-hover:text-accent">{r.company}</span>
                 <span className="block text-xs text-muted">{r.city ? `${r.city}/${r.uf} · ` : ""}recebida em {fmtDate(r.createdAt)} · {plural(r.contacts, "contato", "contatos")} · {plural(r.quotes, "cotação", "cotações")}{r.stage === "perdido" && r.lostReason ? ` · ${r.lostReason}` : ""}</span>
               </span>
-              {r.valueCents ? <b className="figure inline-flex items-center gap-1 text-sm"><CircleDollarSign size={14} className="text-muted" aria-hidden />{fmtBRL(r.valueCents)}</b> : null}
+              {r.valueCents ? <b className="figure inline-flex items-center gap-1 rounded-full bg-grad-soft px-2.5 py-0.5 text-sm text-accent"><CircleDollarSign size={14} aria-hidden />{fmtBRL(r.valueCents)}</b> : null}
               <StageChip stage={r.stage} />
             </Link>
           </li>
