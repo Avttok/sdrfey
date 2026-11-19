@@ -1,0 +1,1 @@
+ALTER TABLE "deals" ADD COLUMN "import_pending" boolean DEFAULT false NOT NULL;

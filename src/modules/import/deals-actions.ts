@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db, importBatches, users } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
 import { decodeCsv, parseCsv } from "./csv";
+import { enrichPendingDeals } from "@/modules/enrich/batch";
 import { applyDealImport, planDealImport, SKIP_LABEL, type Plan, type SkipReason } from "./deals-apply";
 import { DEAL_COLUMNS, parseDealRows, type DealImportReport } from "./deals-parse";
 import { commonChecks, DEAL_LABELS, inspectFile, type FileInsight } from "./insight";
@@ -81,7 +82,9 @@ export async function applyDealImportAction(formData: FormData): Promise<DealImp
   const plan = await planDealImport(f.drafts, s.sellerId);
   const r = await applyDealImport(plan, { sellerId: s.sellerId, userId: s.me.id, fileName: f.name });
   await db.insert(importBatches).values({ kind: "deals", fileName: f.name, userId: s.me.id, total: plan.create.length + plan.skipped.length, inserted: r.created, skipped: plan.skipped.length });
+  /* antes de aparecer no kanban, cada lead novo passa pela consulta de CNPJ (os primeiros já; o resto fica aguardando) */
+  const enr = r.created > 0 ? await enrichPendingDeals(10, 40_000, s.me.id) : null;
   for (const p of ["/negociacoes", "/leads", "/painel", "/metas"]) revalidatePath(p);
   const skipped = plan.skipped.length + r.raced;
-  return { ok: true, message: `${r.created} ${r.created === 1 ? "negociação importada" : "negociações importadas"}${r.leadsCreated ? ` (${r.leadsCreated} ${r.leadsCreated === 1 ? "lead novo" : "leads novos"})` : ""}; ${skipped} já existiam ou foram ignoradas.`, details: f.report.rejected.slice(0, 5).map((x) => `Linha ${x.line} rejeitada: ${x.reason}`) };
+  return { ok: true, message: `${r.created} ${r.created === 1 ? "negociação importada" : "negociações importadas"}${r.leadsCreated ? ` (${r.leadsCreated} ${r.leadsCreated === 1 ? "lead novo" : "leads novos"})` : ""}; ${skipped} já existiam ou foram ignoradas.${enr ? ` Consulta de CNPJ: ${enr.tried} consultado(s)${enr.left ? `; ${enr.left} aguardam a consulta e aparecem no kanban depois (use "Consultar agora" em Negociações)` : ""}.` : ""}`, details: f.report.rejected.slice(0, 5).map((x) => `Linha ${x.line} rejeitada: ${x.reason}`) };
 }

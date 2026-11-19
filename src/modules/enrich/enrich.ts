@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db, enrichLog, leadChannels, leads, leadTags, tagGroups, tags } from "@/db";
 import { TAG } from "@/config/tags";
 import { logAudit } from "@/modules/audit/log";
@@ -66,6 +66,10 @@ export async function enrichLead(leadId: number, userId: number | null = null, o
     await log(r.state === "ok", r);
     return r;
   } catch (e) { await log(false, undefined, e instanceof Error ? e.message : "erro"); throw e; }
+  finally {
+    /* consultado (com sucesso ou não): as negociações importadas deste lead já podem aparecer no kanban */
+    try { await db.execute(sql`update deals set import_pending = false where lead_id = ${leadId} and import_pending`); } catch { /* nunca derruba a consulta */ }
+  }
 }
 
 async function enrichCore(leadId: number, userId: number | null): Promise<EnrichResult> {
@@ -103,6 +107,8 @@ async function enrichCore(leadId: number, userId: number | null): Promise<Enrich
         ...(a ? { brasilApiData: rb } : {}),
         ...(b ? { receitaWsData: rw } : {}),
         tradeName: info.tradeName ?? lead.tradeName,
+        /* lead que entrou só com o CNPJ (importação de negociações): passa a ter o nome da Receita */
+        ...(/^CNPJ\s*\d*$/i.test(lead.company.trim()) || !lead.company.trim() ? { company: info.legalName ?? info.tradeName ?? lead.company } : {}),
         city: info.city ?? lead.city,
         uf: info.uf ?? lead.uf,
         registrationStatus: info.status ?? lead.registrationStatus,

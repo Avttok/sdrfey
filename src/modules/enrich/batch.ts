@@ -23,7 +23,7 @@ export async function enrichBatch(max: number, budgetMs = 25_000, userId: number
   const t0 = Date.now();
   let tried = 0, ok = 0, failed = 0;
   while (tried < max && Date.now() - t0 < budgetMs) {
-    const [next] = await db.execute<{ id: number }>(sql`select l.id from leads l where ${PENDING} order by l.enrich_tried_at nulls first, md5(l.id::text) limit 1`);
+    const [next] = await db.execute<{ id: number }>(sql`select l.id from leads l where ${PENDING} order by (exists (select 1 from deals d where d.lead_id = l.id and d.import_pending)) desc, l.enrich_tried_at nulls first, md5(l.id::text) limit 1`);
     if (!next) break;
     tried++;
     // marca antes: se a consulta travar ou cair, este lead não bloqueia a fila
@@ -36,4 +36,27 @@ export async function enrichBatch(max: number, budgetMs = 25_000, userId: number
 
 export async function autoEnrichOn(): Promise<boolean> {
   return (await getSettings()).auto_enrich === 1;
+}
+
+
+/** Negociações importadas esperando a consulta de CNPJ (ficam fora do kanban até lá). */
+export async function pendingDealImports(): Promise<number> {
+  const [r] = await db.execute<{ n: number }>(sql`select count(*)::int as n from deals where import_pending and not is_test`);
+  return r?.n ?? 0;
+}
+
+/** Consulta, um por vez, os leads das negociações importadas que ainda esperam. Quem falhar também é liberado (a consulta pode ser refeita depois). */
+export async function enrichPendingDeals(max = 10, budgetMs = 40_000, userId: number | null = null): Promise<{ tried: number; ok: number; failed: number; left: number }> {
+  const t0 = Date.now();
+  let tried = 0, ok = 0, failed = 0;
+  while (tried < max && Date.now() - t0 < budgetMs) {
+    const [next] = await db.execute<{ id: number }>(sql`select distinct l.id from leads l join deals d on d.lead_id = l.id where d.import_pending and not d.is_test order by l.id limit 1`);
+    if (!next) break;
+    tried++;
+    await db.execute(sql`update leads set enrich_tried_at = now() where id = ${next.id}`);
+    try { (await enrichLead(next.id, userId, "novo")).state === "ok" ? ok++ : failed++; } catch { failed++; }
+    await db.execute(sql`update deals set import_pending = false where lead_id = ${next.id}`);
+    await new Promise((r) => setTimeout(r, 1200));
+  }
+  return { tried, ok, failed, left: await pendingDealImports() };
 }

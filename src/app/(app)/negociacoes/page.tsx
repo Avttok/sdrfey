@@ -9,6 +9,8 @@ import { BOARD_COLUMNS, fmtBRL, STAGE_META } from "@/config/deals";
 import { asc, eq } from "drizzle-orm";
 import { db, paymentTerms } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
+import { PendingEnrich } from "@/components/deals/pending-enrich";
+import { pendingDealImports } from "@/modules/enrich/batch";
 import { listDeals } from "@/modules/deals/queries";
 
 export const metadata: Metadata = { title: "Negociações" };
@@ -19,7 +21,7 @@ export default async function DealsPage() {
   const me = await requirePerm("tab.negociacoes");
   const team = !!me.permissions["deals.team"];
   const canClaim = me.roles.includes("seller") || team;
-  const deals = await listDeals(me.id, team);
+  const [deals, waiting] = await Promise.all([listDeals(me.id, team), pendingDealImports()]);
   const open = deals.filter((d) => d.stage !== "ganho" && d.stage !== "perdido");
   const mine = open.filter((d) => d.sellerId === me.id);
   const attention = open.filter((d) => d.alerts.length && (team || d.sellerId === me.id || !d.sellerId));
@@ -40,6 +42,7 @@ export default async function DealsPage() {
         {canClaim && <Link href="/negociacoes/importar" className={btnGhost}><FileSpreadsheet size={16} aria-hidden /> Importar planilha</Link>}
         {canClaim && <NewDeal terms={(await db.select({ n: paymentTerms.name }).from(paymentTerms).where(eq(paymentTerms.active, true)).orderBy(asc(paymentTerms.name))).map((t) => t.n)} />}
       </PageHead>
+      {waiting > 0 && canClaim && <PendingEnrich n={waiting} />}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map(({ I, t, v, s, hot }, i) => (
           <div key={t} style={{ "--i": i } as React.CSSProperties} className={`${panelCls} stat-glow lift card-in p-4 ${hot ? "border-danger/50" : ""}`}>

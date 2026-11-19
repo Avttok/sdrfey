@@ -479,6 +479,8 @@ export const deals = pgTable(
     claimedAt: timestamp("claimed_at", { withTimezone: true }),
     closedAt: timestamp("closed_at", { withTimezone: true }),
     isTest: boolean("is_test").notNull().default(false),
+    /** Negociação importada que ainda espera a consulta de CNPJ: não aparece no kanban até ser consultada. */
+    importPending: boolean("import_pending").notNull().default(false),
     createdAt: now(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

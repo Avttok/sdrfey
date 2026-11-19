@@ -98,7 +98,7 @@ export async function applyDealImport(plan: Plan, o: { sellerId: number; userId:
           closedOn: d.stage === "ganho" ? d.closedOn : null, closedAt, closedValueCents: d.stage === "ganho" ? d.closedCents ?? d.quoteCents : null,
           realValueCents: d.stage === "ganho" ? d.realCents : null, isReactivation: d.reactivation, lostReason: d.stage === "perdido" ? d.lostReason : null,
           quoteSentAt: d.quoteCents ? (d.quoteDate ? noon(d.quoteDate) : new Date()) : null,
-          nextActionAt: closedAt ? null : d.nextAt ? noon(d.nextAt) : null, nextActionNote: closedAt || !d.nextAt ? null : "Retomar contato", isTest: lead.isTest,
+          nextActionAt: closedAt ? null : d.nextAt ? noon(d.nextAt) : null, nextActionNote: closedAt || !d.nextAt ? null : "Retomar contato", isTest: lead.isTest, importPending: !lead.isTest && !lead.enrichTriedAt && !lead.enrichedAt,
         }).returning({ id: deals.id });
         await tx.insert(dealEvents).values({ dealId: deal.id, userId: o.userId, kind: "criado", note: `Importado da planilha (${o.fileName})` });
         if (d.quoteCents || d.quoteNumber) {

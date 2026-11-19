@@ -246,6 +246,20 @@
       "when": 1795098189569,
       "tag": "0034_importacoes_historico",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1795099717815,
+      "tag": "0035_negociacoes_aguardando_cnpj",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1795099882529,
+      "tag": "0036_nomes_so_cnpj",
+      "breakpoints": true
     }
   ]
 }

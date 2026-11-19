@@ -483,3 +483,12 @@ export async function resetDealAction(id: number): Promise<ActionResult> {
   refresh(id);
   return { ok: true, message: "Negociação resetada." };
 }
+
+/** Consulta o CNPJ das negociações importadas que ainda não apareceram no kanban (10 por vez). */
+export async function enrichPendingDealsAction(): Promise<ActionResult> {
+  const me = await requirePerm("tab.negociacoes");
+  const { enrichPendingDeals } = await import("@/modules/enrich/batch");
+  const r = await enrichPendingDeals(10, 40_000, me.id);
+  revalidatePath("/negociacoes");
+  return { ok: true, message: r.tried === 0 ? "Nada aguardando." : `${r.tried} consultado(s)${r.left ? `; ainda faltam ${r.left}` : "; todas liberadas no kanban"}.` };
+}
