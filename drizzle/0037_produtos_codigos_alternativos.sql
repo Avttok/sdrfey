@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "alt_codes" text[] DEFAULT ARRAY[]::text[] NOT NULL;

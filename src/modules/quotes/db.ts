@@ -35,6 +35,10 @@ export function normalizeItem(i: QuoteItem, prevQty?: number): QuoteItem {
 export async function upsertProducts(tx: Tx, items: QuoteItem[]) {
   for (const i of items) {
     if (!i.productCode) continue;
+    /* o código veio como alternativo de um produto já cadastrado: atualiza aquele produto em vez de criar outro */
+    const viaAlt = await tx.update(products).set({ description: i.description, kind: i.kind, unit: i.unit, lastUnitCents: i.unitCents, seenCount: sql`${products.seenCount} + 1`, updatedAt: new Date() })
+      .where(sql`${i.productCode} = any(${products.altCodes}) and ${products.code} <> ${i.productCode}`).returning({ id: products.id });
+    if (viaAlt.length) continue;
     await tx.insert(products).values({ code: i.productCode, description: i.description, kind: i.kind, unit: i.unit, lastUnitCents: i.unitCents })
       .onConflictDoUpdate({ target: products.code, set: { description: i.description, kind: i.kind, unit: i.unit, lastUnitCents: i.unitCents, seenCount: sql`${products.seenCount} + 1`, updatedAt: new Date() } });
   }

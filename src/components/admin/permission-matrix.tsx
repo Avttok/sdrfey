@@ -67,12 +67,12 @@ export function PermissionMatrix({ users, roles: initialRoles, target: ext, onTa
         {person ? <>Editando <b className="text-ink">{person.name}</b>. “Padrão” segue o cargo; “Liberar” e “Bloquear” valem só para esta pessoa. O Adm sempre vê tudo.</> : <>Editando o padrão do cargo <b className="text-ink">{ROLE_LABEL[(target as { role: RoleKey }).role]}</b>. Vale para todos com esse cargo, exceto quem tem ajuste próprio.</>}
       </p>
 
-      <div className="grid gap-4 2xl:grid-cols-2">
+      <section className={`${panelCls} overflow-hidden`}>
         {SECTIONS.map((sec) => (
-          <section key={sec.group} className={`${panelCls} overflow-hidden `}>
-            <header className="flex items-center gap-3 border-b border-line bg-sunk/60 px-4 py-3">
-              <sec.icon size={18} className="text-accent" aria-hidden />
-              <div><h2 className="text-sm font-semibold">{sec.title}</h2><p className="text-xs text-muted">{sec.hint}</p></div>
+          <div key={sec.group}>
+            <header className="sticky top-14 z-10 flex items-center gap-3 border-y border-line bg-sunk px-4 py-2.5 first:border-t-0">
+              <sec.icon size={17} className="text-accent" aria-hidden />
+              <h2 className="text-sm font-semibold">{sec.title}</h2><p className="text-xs text-muted">{sec.hint}</p>
             </header>
             <ul className="divide-y divide-line/60">
               {PERMISSIONS.filter((p) => p.group === sec.group).map((p) => (
@@ -96,9 +96,9 @@ export function PermissionMatrix({ users, roles: initialRoles, target: ext, onTa
                 </li>
               ))}
             </ul>
-          </section>
+          </div>
         ))}
-      </div>
+      </section>
 
       {dirty && (
         <div role="status" className="fixed inset-x-0 bottom-5 z-30 mx-auto flex w-[min(34rem,calc(100%-2rem))] items-center gap-3 rounded-2xl border border-accent bg-panel p-3 pl-4 shadow-2xl">

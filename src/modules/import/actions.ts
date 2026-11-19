@@ -3,6 +3,7 @@
 import { plural } from "@/lib/format";
 import { revalidatePath } from "next/cache";
 import { eq, sql } from "drizzle-orm";
+import { getSettings } from "@/modules/settings/get";
 import { db, importBatches } from "@/db";
 import { requireAdmin } from "@/modules/auth/guard";
 import { LEAD_COLUMNS, REP_COLUMNS } from "./columns";
@@ -20,13 +21,13 @@ export type ImportPreview =
 
 export type ImportResult = { ok: boolean; message: string; details?: string[] };
 
-const MAX_BYTES = 8 * 1024 * 1024;
 
 async function readFile(formData: FormData) {
   const file = formData.get("file");
   const kind = formData.get("kind") === "reps" ? "reps" : "leads";
   if (!(file instanceof File) || file.size === 0) return { error: "Escolha um arquivo CSV." } as const;
-  if (file.size > MAX_BYTES) return { error: "Arquivo grande demais (máximo 8 MB)." } as const;
+  const maxMb = (await getSettings()).import_max_mb;
+  if (file.size > maxMb * 1024 * 1024) return { error: `Arquivo grande demais (máximo ${maxMb} MB).` } as const;
   try {
     const { headers, rows } = parseCsv(decodeCsv(Buffer.from(await file.arrayBuffer())));
     return { error: undefined, kind, headers, rows, name: file.name, size: file.size } as const;
@@ -47,7 +48,7 @@ export async function previewImportAction(formData: FormData): Promise<ImportPre
     const { drafts, report } = parseLeadRows(f.headers, f.rows);
     if (report.missingColumns.length) return { ok: false, message: `Faltam colunas obrigatórias: ${report.missingColumns.join(", ")}.` };
     const base = inspectFile({ fileName: f.name, size: f.size, headers: f.headers, rows: f.rows, spec: LEAD_COLUMNS, labels: LEAD_LABELS, optional: ["Telefone", "E-mail", "Contato", "Código SAP"] });
-    const checks = commonChecks(base, { rejected: report.rejected.length, valid: report.valid });
+    const checks = commonChecks(base, { rejected: report.rejected.length, valid: report.valid }, (await getSettings()).import_max_rows);
     const cnpjs = drafts.map((d) => d.cnpj);
     let existing = 0, existingProspects = 0;
     for (let k = 0; k < cnpjs.length; k += 2000) {
@@ -69,7 +70,7 @@ export async function previewImportAction(formData: FormData): Promise<ImportPre
   const { drafts, warnings } = parseRepRows(f.headers, f.rows);
   if (drafts.length === 0) return { ok: false, message: warnings[0] ?? "Nenhum representante encontrado no arquivo." };
   const base = inspectFile({ fileName: f.name, size: f.size, headers: f.headers, rows: f.rows, spec: REP_COLUMNS, labels: REP_LABELS, optional: ["Cidade", "UF", "Gestor", "Equipe"] });
-  const checks = commonChecks(base, { rejected: f.rows.length - drafts.length, valid: drafts.length });
+  const checks = commonChecks(base, { rejected: f.rows.length - drafts.length, valid: drafts.length }, (await getSettings()).import_max_rows);
   const saps = drafts.map((d) => d.sapCode);
   const [r] = await db.execute<{ n: number }>(sql`select count(*)::int as n from reps where sap_code in (${sql.join(saps.map((c) => sql`${c}`), sql`, `)})`);
   const existing = r?.n ?? 0;

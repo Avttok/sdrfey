@@ -38,6 +38,18 @@ export const SETTING_DEFAULTS = {
   coin_quote: 3,
   coin_billed: 25,
   coin_shuffled: 1,
+  /** Avisos das negociações (kanban de vendas). */
+  deal_new_untouched_hours: 2,
+  deal_pool_hours: 1,
+  deal_quote_chase_days: 2,
+  deal_stale_days: 3,
+  deal_followup_days: 2,
+  /** Horas até repetir a consulta de um CNPJ que não respondeu. */
+  enrich_retry_hours: 6,
+  /** Limites dos arquivos enviados. */
+  import_max_mb: 8,
+  import_max_rows: 20000,
+  pdf_max_mb: 5,
 } as const;
 export type SettingKey = keyof typeof SETTING_DEFAULTS;
 

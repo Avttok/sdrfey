@@ -38,11 +38,11 @@ export function inspectFile(opts: {
 }
 
 /** Avisos comuns a qualquer importação. */
-export function commonChecks(i: Omit<FileInsight, "checks">, o: { rejected: number; valid: number }): Check[] {
+export function commonChecks(i: Omit<FileInsight, "checks">, o: { rejected: number; valid: number }, bigRows = 20000): Check[] {
   const c: Check[] = [];
   if (i.columns.length <= 1) c.push({ level: "bad", text: "O arquivo tem uma coluna só. O separador pode estar errado (use vírgula ou ponto e vírgula)." });
   if (i.totalRows === 0) c.push({ level: "bad", text: "O arquivo não tem nenhuma linha de dados." });
-  if (i.totalRows > 20000) c.push({ level: "warn", text: `Arquivo muito grande (${i.totalRows.toLocaleString("pt-BR")} linhas). Considere dividir em partes.` });
+  if (i.totalRows > bigRows) c.push({ level: "warn", text: `Arquivo muito grande (${i.totalRows.toLocaleString("pt-BR")} linhas). Considere dividir em partes.` });
   const pct = i.totalRows ? Math.round((o.rejected / i.totalRows) * 100) : 0;
   if (pct >= 30) c.push({ level: "bad", text: `${pct}% das linhas foram rejeitadas. Provavelmente o tipo de importação ou as colunas estão erradas.` });
   else if (pct >= 10) c.push({ level: "warn", text: `${pct}% das linhas foram rejeitadas. Confira a lista de rejeitadas abaixo.` });

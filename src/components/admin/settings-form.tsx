@@ -20,6 +20,19 @@ const GROUPS: { title: string; sub: string; icon: typeof Clock; fields: Field[] 
     { key: "alert_days", label: "Lead quente ou visita parada vira alerta", hint: "Aparece no bloco Alertas do dashboard.", unit: "dias", min: 1 },
     { key: "dash_default_days", label: "Período que o dashboard abre", hint: "Cada pessoa ainda pode trocar o filtro.", kind: "period" },
   ] },
+  { title: "Negociações", sub: "Avisos do kanban de vendas e prazos", icon: LayoutDashboard, fields: [
+    { key: "deal_new_untouched_hours", label: "Negociação nova sem contato vira alerta", hint: "Depois desse tempo sem ninguém mexer.", unit: "horas", min: 1 },
+    { key: "deal_pool_hours", label: "Negociação no pool sem dono vira alerta", hint: "Esperando um vendedor assumir.", unit: "horas", min: 1 },
+    { key: "deal_quote_chase_days", label: "Cobrar cotação enviada após", hint: "Sem resposta do cliente.", unit: "dias", min: 1 },
+    { key: "deal_stale_days", label: "Negociação parada vira alerta", hint: "Sem nenhum andamento.", unit: "dias", min: 1 },
+    { key: "deal_followup_days", label: "Retorno padrão após enviar cotação", hint: "Prazo sugerido para o próximo contato.", unit: "dias", min: 1 },
+  ] },
+  { title: "Consulta de CNPJ e arquivos", sub: "Reenvio automático e limites de upload", icon: Shuffle, fields: [
+    { key: "enrich_retry_hours", label: "Tentar de novo um CNPJ sem resposta", hint: "Espera antes de repetir a consulta.", unit: "horas", min: 1 },
+    { key: "import_max_mb", label: "Tamanho máximo de planilha", hint: "CSV ou XLSX de importação.", unit: "MB", min: 1 },
+    { key: "import_max_rows", label: "Linhas que acendem o aviso de arquivo grande", hint: "Só avisa, não bloqueia.", unit: "linhas", min: 100 },
+    { key: "pdf_max_mb", label: "Tamanho máximo de PDF", hint: "Cotações e pedidos.", unit: "MB", min: 1 },
+  ] },
   { title: "Menu", sub: "Como as abas aparecem", icon: PanelTop, fields: [
     { key: "nav_group", label: "Abas em menus agrupados", hint: "Pessoas, Info, SDR, Gestão. Desligado, aparecem todas soltas.", kind: "toggle" },
   ] },

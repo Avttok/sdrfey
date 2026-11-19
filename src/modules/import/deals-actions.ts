@@ -2,6 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { getSettings } from "@/modules/settings/get";
 import { db, importBatches, users } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
 import { decodeCsv, parseCsv } from "./csv";
@@ -15,7 +16,6 @@ export type DealImportPreview =
   | { ok: true; insight: FileInsight; fileName: string; report: DealImportReport; willCreate: number; newLeads: number; existingLeads: number; byStage: Record<string, number>; skipped: { reason: string; count: number; samples: string[] }[]; skippedTotal: number; inPortfolio: Plan["inPortfolio"] };
 export type DealImportResult = { ok: boolean; message: string; details?: string[] };
 
-const MAX_BYTES = 8 * 1024 * 1024;
 
 /** Quem será o dono das negociações: o próprio vendedor, ou (gestor/adm) o vendedor escolhido. */
 type Me = Awaited<ReturnType<typeof requirePerm>>;
@@ -36,7 +36,8 @@ async function resolveSeller(formData: FormData): Promise<{ error: string } | { 
 async function load(formData: FormData) {
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return { error: "Escolha um arquivo CSV." };
-  if (file.size > MAX_BYTES) return { error: "Arquivo grande demais (máximo 8 MB)." };
+  const maxMb = (await getSettings()).import_max_mb;
+  if (file.size > maxMb * 1024 * 1024) return { error: `Arquivo grande demais (máximo ${maxMb} MB).` };
   try {
     const { headers, rows } = parseCsv(decodeCsv(Buffer.from(await file.arrayBuffer())));
     const r = parseDealRows(headers, rows);
@@ -59,7 +60,7 @@ export async function previewDealImportAction(formData: FormData): Promise<DealI
   for (const d of plan.create) byStage[d.stage] = (byStage[d.stage] ?? 0) + 1;
   const groups = new Map<SkipReason, { count: number; samples: string[] }>();
   for (const k of plan.skipped) { const g = groups.get(k.reason) ?? { count: 0, samples: [] }; g.count++; if (g.samples.length < 3) g.samples.push(`linha ${k.line}`); groups.set(k.reason, g); }
-  const checks = commonChecks(f.base, { rejected: f.report.rejected.length, valid: f.report.valid });
+  const checks = commonChecks(f.base, { rejected: f.report.rejected.length, valid: f.report.valid }, (await getSettings()).import_max_rows);
   if (plan.create.length === 0) checks.unshift({ level: "warn", text: "Nenhuma negociação nova vai ser criada com este arquivo." });
   if (plan.inPortfolio.length) checks.push({ level: "warn", text: `${plan.inPortfolio.length} cliente(s) já estão na carteira de outro vendedor. Você verá o histórico antes de confirmar.` });
   if (plan.skipped.length) checks.push({ level: "info", text: `${plan.skipped.length} linha(s) serão ignoradas para não duplicar negociações existentes.` });

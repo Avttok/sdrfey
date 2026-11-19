@@ -3,6 +3,7 @@
 import { and, eq, ne, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { getSettings } from "@/modules/settings/get";
 import { ALERT_RULES, parseMoneyToCents } from "@/config/deals";
 import { dealEvents, dealQuoteItems, dealQuotes, deals, paymentTerms, products } from "@/db";
 import { requireUser } from "@/modules/auth/guard";
@@ -74,7 +75,7 @@ export async function saveQuoteAction(dealId: number, quoteId: number | null, in
     const dup = await db.select({ id: dealQuotes.id }).from(dealQuotes).where(and(eq(dealQuotes.dealId, dealId), eq(dealQuotes.number, number), quoteId ? ne(dealQuotes.id, quoteId) : undefined));
     if (dup.length) return fail(`Já existe a cotação ${number} nesta negociação. Cada cotação é única: edite a existente.`);
   }
-  const days = input.followupDays && Number.isInteger(input.followupDays) && input.followupDays >= 1 && input.followupDays <= 30 ? input.followupDays : ALERT_RULES.defaultFollowupDays;
+  const days = input.followupDays && Number.isInteger(input.followupDays) && input.followupDays >= 1 && input.followupDays <= 30 ? input.followupDays : (await getSettings()).deal_followup_days;
   const wRaw = (input.weight ?? "").trim();
   const weightKg = wRaw ? Number(wRaw.replace(/\./g, "").replace(",", ".")) : null;
   if (wRaw && (weightKg === null || !Number.isFinite(weightKg) || weightKg < 0 || weightKg > 1e7)) return fail("Peso inválido. Exemplo: 423,94.");
@@ -128,6 +129,6 @@ export async function lookupProductAction(code: string): Promise<{ description: 
   await requireUser();
   const c = code.trim();
   if (!c) return null;
-  const [p] = await db.select().from(products).where(eq(products.code, c));
+  const [p] = await db.select().from(products).where(sql`${products.code} = ${c} or ${c} = any(${products.altCodes})`).orderBy(sql`(${products.code} = ${c}) desc`).limit(1);
   return p ? { description: p.description, kind: p.kind, unit: p.unit, lastUnitCents: p.lastUnitCents, weightKg: p.weightKg } : null;
 }

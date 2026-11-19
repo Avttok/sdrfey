@@ -1,5 +1,6 @@
 "use client";
 
+import { TableBrowser } from "@/components/admin/table-browser";
 import { Activity, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { btnGhost } from "@/components/ui";
@@ -42,6 +43,7 @@ export function DbHealthPanel() {
   const [pending, start] = useTransition();
   const { ask, dialog } = useConfirm();
   const toast = useToast();
+  const [browse, setBrowse] = useState<string | null>(null);
 
   const load = useCallback(() => start(async () => {
     const r = await dbHealthAction();
@@ -129,7 +131,7 @@ export function DbHealthPanel() {
 
                   <section>
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                      <h3 className="text-sm font-semibold">Maiores tabelas</h3>
+                      <h3 className="text-sm font-semibold">Tabelas do banco (clique no nome para ver e apagar registros)</h3>
                       {data.isAdmin && <button type="button" className={`${btnGhost} !py-1 text-xs`} onClick={() => maintain({ kind: "vacuum" }, "Limpar todas as tabelas?", "Roda a limpeza (vacuum) do banco: recupera o espaço de linhas mortas e atualiza as estatísticas. Não apaga nenhum dado e pode levar alguns segundos.", "Limpar tudo", false)}><Sparkles size={13} aria-hidden /> Limpar tudo</button>}
                     </div>
                     <div className="overflow-x-auto rounded-xl border border-line/60">
@@ -138,12 +140,12 @@ export function DbHealthPanel() {
                         <tbody>
                           {data.tables.map((t) => (
                             <tr key={t.name} className="border-t border-line/50">
-                              <td className="px-3 py-1.5 font-medium">{t.name}</td>
+                              <td className="px-3 py-1.5 font-medium">{data.isAdmin ? <button type="button" className="text-left font-medium text-accent hover:underline" onClick={() => setBrowse(t.name)} title="Ver e apagar registros">{t.name}</button> : t.name}</td>
                               <td className="figure px-3 py-1.5 text-right">{N.format(t.rows)}</td>
                               <td className="figure px-3 py-1.5 text-right">{bytes(t.bytes)}</td>
                               <td className="figure px-3 py-1.5 text-right">{N.format(t.dead)}</td>
                               <td className="px-3 py-1.5 text-xs text-muted">{when(t.lastVacuum)}</td>
-                              {data.isAdmin && <td className="px-3 py-1.5 text-right">{t.dead > 0 && <button type="button" className="text-xs font-semibold text-accent hover:underline" onClick={() => maintain({ kind: "vacuum", table: t.name }, `Limpar a tabela ${t.name}?`, `Recupera ${N.format(t.dead)} linhas mortas. Nenhum dado é apagado.`, "Limpar", false)}>Limpar</button>}</td>}
+                              {data.isAdmin && <td className="px-3 py-1.5 text-right"><button type="button" className="mr-3 text-xs font-semibold text-accent hover:underline" onClick={() => setBrowse(t.name)}>Registros</button>{t.dead > 0 && <button type="button" className="text-xs font-semibold text-accent hover:underline" onClick={() => maintain({ kind: "vacuum", table: t.name }, `Limpar a tabela ${t.name}?`, `Recupera ${N.format(t.dead)} linhas mortas. Nenhum dado é apagado.`, "Limpar", false)}>Limpar</button>}</td>}
                             </tr>
                           ))}
                         </tbody>
@@ -164,6 +166,7 @@ export function DbHealthPanel() {
                 </>
               )}
             </div>
+      {browse && <TableBrowser table={browse} onClose={() => setBrowse(null)} onChanged={load} />}
       {dialog}
     </div>
   );

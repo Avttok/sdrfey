@@ -91,12 +91,18 @@ export function EnrichAdmin({ initial, on: on0, cronReady, live: live0 }: { init
   return (
     <div className="space-y-4">
       <section className={`${panelCls} stat-glow space-y-4 p-5`}>
-        <div className="flex items-center gap-4">
-          <span className="grid size-14 place-items-center rounded-2xl bg-grad-soft text-accent"><DatabaseZap size={26} aria-hidden /></span>
-          <div className="min-w-0 flex-1"><p className="figure text-3xl font-bold leading-none">{live.stats.done.toLocaleString("pt-BR")} <span className="text-base font-medium text-muted">de {live.stats.total.toLocaleString("pt-BR")} consultados</span></p><p className="mt-1 text-sm text-muted">{live.stats.pending.toLocaleString("pt-BR")} esperando · {live.stats.failed.toLocaleString("pt-BR")} sem resposta (tento de novo em 6 h)</p></div>
-          <div className="text-right"><span className="figure text-2xl font-bold text-accent">{pct}%</span><p className={`mt-1 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${live.running ? "bg-grad-soft text-accent" : "bg-sunk text-muted"}`}><span className={`size-1.5 rounded-full ${live.running ? "animate-pulse bg-accent" : "bg-muted"}`} />{live.running ? "Consultando agora" : "Parado"}</p></div>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+          <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-grad-soft text-accent"><DatabaseZap size={26} aria-hidden /></span>
+          <div className="min-w-56 flex-1">
+            <p className="figure flex flex-wrap items-baseline gap-x-2 text-3xl font-bold leading-none">{live.stats.done.toLocaleString("pt-BR")}<span className="text-base font-medium text-muted">de {live.stats.total.toLocaleString("pt-BR")} consultados</span></p>
+            <p className="mt-1.5 text-sm text-muted">{live.stats.pending.toLocaleString("pt-BR")} esperando · {live.stats.failed.toLocaleString("pt-BR")} sem resposta (tento de novo em 6 h)</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            <span className="figure text-3xl font-bold leading-none text-accent">{pct}%</span>
+            <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${live.running ? "bg-grad-soft text-accent" : "bg-sunk text-muted"}`}><span className={`size-1.5 rounded-full ${live.running ? "animate-pulse bg-accent" : "bg-muted"}`} />{live.running ? "Consultando agora" : "Parado"}</span>
+          </div>
         </div>
-        <div className="h-3 overflow-hidden rounded-full bg-sunk"><div className="h-full rounded-full bg-grad transition-all duration-700" style={{ width: `${pct}%` }} /></div>
+        <div className="h-3 overflow-hidden rounded-full bg-sunk" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Leads consultados"><div className="h-full rounded-full bg-grad transition-all duration-700" style={{ width: `${Math.max(pct, live.stats.done ? 1 : 0)}%` }} /></div>
       </section>
 
       <section className={`${panelCls} flex flex-wrap items-center gap-4 p-5`}>
@@ -134,14 +140,17 @@ export function EnrichAdmin({ initial, on: on0, cronReady, live: live0 }: { init
           </div>
 
           <section className={`${panelCls} p-4`}>
-            <div className="mb-2 flex items-baseline justify-between"><h2 className="text-sm font-semibold">Últimas 24 horas</h2><p className="text-xs text-muted">{live.lastOkAt ? `última consulta ok há ${ago(live.lastOkAt, now)}` : "nenhuma consulta ainda"}</p></div>
-            <div className="flex h-24 items-end gap-1" aria-label="Consultas por hora">
-              {(() => { const max = Math.max(1, ...live.hours.map((h) => h.ok + h.fail)); return live.hours.map((h, i) => (
-                <div key={i} className="group flex h-full flex-1 flex-col items-center justify-end gap-1" title={`${h.h}: ${h.ok} ok, ${h.fail} falhas`}>
-                  <div className="flex w-full flex-col justify-end overflow-hidden rounded-t" style={{ height: `${((h.ok + h.fail) / max) * 100}%`, minHeight: h.ok + h.fail ? 3 : 0 }}><div className="bg-danger/70" style={{ flex: h.fail }} /><div className="bg-grad" style={{ flex: h.ok }} /></div>
-                  <span className="text-[9px] text-muted">{i % 3 === 0 ? h.h : ""}</span>
-                </div>)); })()}
-            </div>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1"><h2 className="text-sm font-semibold">Últimas 24 horas</h2>
+              <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted"><span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2.5 rounded-sm bg-accent" />consultadas</span><span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2.5 rounded-sm bg-danger/70" />sem resposta</span><span>{live.lastOkAt ? `última ok há ${ago(live.lastOkAt, now)}` : "nenhuma consulta ainda"}</span></p></div>
+            {(() => { const max = Math.max(1, ...live.hours.map((h) => h.ok + h.fail)); return (
+              <div aria-label="Consultas por hora" className="grid gap-x-1" style={{ gridTemplateColumns: `repeat(${live.hours.length}, minmax(0, 1fr))` }}>
+                {live.hours.map((h, i) => (
+                  <div key={`b${i}`} className="flex h-24 flex-col justify-end border-b border-line" title={`${h.h}: ${h.ok} ok, ${h.fail} sem resposta`}>
+                    <div className="flex w-full flex-col justify-end overflow-hidden rounded-t" style={{ height: `${((h.ok + h.fail) / max) * 100}%`, minHeight: h.ok + h.fail ? 4 : 0 }}><div className="bg-danger/70" style={{ flex: h.fail }} /><div className="bg-grad" style={{ flex: h.ok }} /></div>
+                  </div>
+                ))}
+                {live.hours.map((h, i) => <span key={`l${i}`} className="figure mt-1.5 h-3 overflow-visible whitespace-nowrap text-center text-[10px] leading-3 text-muted">{i % 3 === 0 ? h.h : ""}</span>)}
+              </div>); })()}
           </section>
 
           <div className="grid gap-4 lg:grid-cols-2">

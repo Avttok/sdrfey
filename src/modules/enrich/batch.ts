@@ -4,16 +4,19 @@ import { getSettings } from "@/modules/settings/get";
 import { enrichLead } from "./enrich";
 
 /** Lead que ainda não foi consultado e que não falhou nas últimas 6 horas. */
-const PENDING = sql`not l.is_test and l.enriched_at is null and (l.enrich_tried_at is null or l.enrich_tried_at < now() - interval '6 hours')`;
+let retryH = 6;
+const retry = () => sql`make_interval(hours => ${retryH})`;
+const PENDING_ = () => sql`not l.is_test and l.enriched_at is null and (l.enrich_tried_at is null or l.enrich_tried_at < now() - ${retry()})`;
 
 export type EnrichStats = { total: number; done: number; pending: number; failed: number };
 
 export async function enrichStats(): Promise<EnrichStats> {
+  retryH = (await getSettings()).enrich_retry_hours;
   const [r] = await db.execute<{ total: number; done: number; pending: number; failed: number }>(sql`
     select count(*)::int as total,
       count(*) filter (where l.enriched_at is not null)::int as done,
-      count(*) filter (where ${PENDING})::int as pending,
-      count(*) filter (where l.enriched_at is null and l.enrich_tried_at is not null and l.enrich_tried_at >= now() - interval '6 hours')::int as failed
+      count(*) filter (where ${PENDING_()})::int as pending,
+      count(*) filter (where l.enriched_at is null and l.enrich_tried_at is not null and l.enrich_tried_at >= now() - ${retry()})::int as failed
     from leads l where not l.is_test`);
   return r ?? { total: 0, done: 0, pending: 0, failed: 0 };
 }
@@ -22,8 +25,9 @@ export async function enrichStats(): Promise<EnrichStats> {
 export async function enrichBatch(max: number, budgetMs = 25_000, userId: number | null = null, origin: "lote" | "cron" = "lote"): Promise<{ tried: number; ok: number; failed: number; left: number }> {
   const t0 = Date.now();
   let tried = 0, ok = 0, failed = 0;
+  retryH = (await getSettings()).enrich_retry_hours;
   while (tried < max && Date.now() - t0 < budgetMs) {
-    const [next] = await db.execute<{ id: number }>(sql`select l.id from leads l where ${PENDING} order by (exists (select 1 from deals d where d.lead_id = l.id and d.import_pending)) desc, l.enrich_tried_at nulls first, md5(l.id::text) limit 1`);
+    const [next] = await db.execute<{ id: number }>(sql`select l.id from leads l where ${PENDING_()} order by (exists (select 1 from deals d where d.lead_id = l.id and d.import_pending)) desc, l.enrich_tried_at nulls first, md5(l.id::text) limit 1`);
     if (!next) break;
     tried++;
     // marca antes: se a consulta travar ou cair, este lead não bloqueia a fila

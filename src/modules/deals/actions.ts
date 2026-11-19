@@ -3,6 +3,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { getSettings } from "@/modules/settings/get";
 import { fetchCnpjInfo } from "@/modules/enrich/enrich";
 import { getExtraTaxPct, normalizeItem, syncDealFromQuotes, totalsOf, upsertPaymentTerm, upsertProducts } from "@/modules/quotes/db";
 import { leadChannels, dealEvents, dealQuoteItems, dealQuotes, deals, paymentTerms, interactions, leads, tags, users, visits, type DealStage } from "@/db";
@@ -415,7 +416,7 @@ export async function createDealManualAction(input: NewDealInput): Promise<Actio
       if (email) await tx.insert(leadChannels).values({ leadId, kind: "email", value: email, origin: "manual" }).onConflictDoNothing();
       const [d] = await tx.insert(deals).values({
         leadId, sdrId: null, sellerId: seller, stage: cents ? "cotacao" : "contato", handoffNote: note, claimedAt: seller ? new Date() : null,
-        lastContactAt: new Date(), quoteSentAt: cents ? new Date() : null, nextActionAt: cents ? new Date(Date.now() + ALERT_RULES.defaultFollowupDays * 86400_000) : null,
+        lastContactAt: new Date(), quoteSentAt: cents ? new Date() : null, nextActionAt: cents ? new Date(Date.now() + (await getSettings()).deal_followup_days * 86400_000) : null,
         nextActionNote: cents ? "Cobrar retorno da cotação" : null, color: input.color?.toLowerCase() ?? null, isTest: lead.isTest, ...dp.patch,
       }).returning({ id: deals.id });
       await tx.insert(dealEvents).values({ dealId: d.id, userId: me.id, kind: "criado", note: note ?? "Aberta pelo vendedor" });

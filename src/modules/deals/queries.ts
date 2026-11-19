@@ -3,6 +3,7 @@ import { alias } from "drizzle-orm/pg-core";
 import { getExtraTaxPct } from "@/modules/quotes/db";
 import { dealEvents, dealQuoteItems, dealQuotes, deals, db, leadChannels, leads, leadTags, paymentTerms, tagGroups, tags, users, type DealStage } from "@/db";
 import { ALERT_RULES } from "@/config/deals";
+import { getSettings } from "@/modules/settings/get";
 import { soldBeforeThisMonth } from "./portfolio";
 
 export type DealAlertKind = "pool" | "novo" | "retorno" | "cobrar" | "parado";
@@ -25,27 +26,27 @@ const hoursAgo = (iso: string, now: number) => (now - new Date(iso).getTime()) /
 const ago = (h: number) => (h < 1 ? "agora" : h < 24 ? `${Math.floor(h)} h` : `${Math.floor(h / 24)} d`);
 
 /** Avisos de uma negociação aberta. Tudo calculado na hora: não há o que “esquecer” de marcar. */
-export function dealAlerts(d: Pick<DealRow, "stage" | "sellerId" | "createdAt" | "claimedAt" | "quoteSentAt" | "lastContactAt" | "nextActionAt" | "nextActionNote">, now = Date.now()): DealAlert[] {
+export function dealAlerts(d: Pick<DealRow, "stage" | "sellerId" | "createdAt" | "claimedAt" | "quoteSentAt" | "lastContactAt" | "nextActionAt" | "nextActionNote">, now = Date.now(), rules: { newUntouchedHours: number; poolHours: number; quoteChaseDays: number; staleDays: number } = ALERT_RULES): DealAlert[] {
   if (d.stage === "ganho" || d.stage === "perdido") return [];
   const out: DealAlert[] = [];
   if (!d.sellerId) {
     const h = hoursAgo(d.createdAt, now);
-    out.push({ kind: "pool", tone: h >= ALERT_RULES.poolHours ? "danger" : "info", text: h >= ALERT_RULES.poolHours ? `Sem vendedor há ${ago(h)}` : "Aguardando vendedor" });
+    out.push({ kind: "pool", tone: h >= rules.poolHours ? "danger" : "info", text: h >= rules.poolHours ? `Sem vendedor há ${ago(h)}` : "Aguardando vendedor" });
     return out;
   }
   if (d.stage === "novo") {
     const h = hoursAgo(d.claimedAt ?? d.createdAt, now);
-    if (h >= ALERT_RULES.newUntouchedHours) out.push({ kind: "novo", tone: "danger", text: `Ligar agora · sem contato há ${ago(h)}` });
+    if (h >= rules.newUntouchedHours) out.push({ kind: "novo", tone: "danger", text: `Ligar agora · sem contato há ${ago(h)}` });
   }
   if (d.nextActionAt && new Date(d.nextActionAt).getTime() <= now) out.push({ kind: "retorno", tone: "danger", text: d.nextActionNote ? `Retorno vencido: ${d.nextActionNote}` : "Retorno vencido" });
   if (d.stage === "cotacao" && d.quoteSentAt) {
     const days = (now - new Date(d.quoteSentAt).getTime()) / 86400_000;
     const since = d.lastContactAt && new Date(d.lastContactAt) > new Date(d.quoteSentAt) ? (now - new Date(d.lastContactAt).getTime()) / 86400_000 : days;
-    if (since >= ALERT_RULES.quoteChaseDays && !out.some((a) => a.kind === "retorno")) out.push({ kind: "cobrar", tone: "warn", text: `Cobrar cotação · enviada há ${Math.floor(days)} d` });
+    if (since >= rules.quoteChaseDays && !out.some((a) => a.kind === "retorno")) out.push({ kind: "cobrar", tone: "warn", text: `Cobrar cotação · enviada há ${Math.floor(days)} d` });
   }
   if ((d.stage === "contato" || d.stage === "negociacao") && d.lastContactAt && !out.length) {
     const days = (now - new Date(d.lastContactAt).getTime()) / 86400_000;
-    if (days >= ALERT_RULES.staleDays) out.push({ kind: "parado", tone: "warn", text: `Sem contato há ${Math.floor(days)} d` });
+    if (days >= rules.staleDays) out.push({ kind: "parado", tone: "warn", text: `Sem contato há ${Math.floor(days)} d` });
   }
   return out;
 }
@@ -67,6 +68,8 @@ export function onePerClient(rows: DealRow[]): DealRow[] {
 }
 
 export async function listDeals(meId: number, team: boolean, opts: { includeTest?: boolean } = {}): Promise<DealRow[]> {
+  const cfg = await getSettings();
+  const rules = { newUntouchedHours: cfg.deal_new_untouched_hours, poolHours: cfg.deal_pool_hours, quoteChaseDays: cfg.deal_quote_chase_days, staleDays: cfg.deal_stale_days };
   const rows = await db
     .select({
       d: deals, company: leads.company, city: leads.city, uf: leads.uf, contactName: leads.contactName, phones: leads.phones, email: leads.email, address: leads.address, neighborhood: leads.neighborhood, zip: leads.zip, stateReg: leads.stateReg,
@@ -88,7 +91,7 @@ export async function listDeals(meId: number, team: boolean, opts: { includeTest
       freight: d.freight, sapCode: d.sapCode ?? x.leadSap, orderNumber: d.orderNumber, quoteNumber: d.quoteNumber, quoteDate: d.quoteDate, closedOn: d.closedOn,
       cnpj: x.leadCnpj, addressLine: [x.address, x.neighborhood, x.zip ? x.zip.replace(/^(\d{5})(\d{3})$/, "$1-$2") : null].filter(Boolean).join(" · ") || null, stateReg: x.stateReg, closedValueCents: d.closedValueCents, realValueCents: d.realValueCents, expired: soldBeforeThisMonth({ stage: d.stage, closedOn: d.closedOn, closedAt: iso(d.closedAt) }), paymentTerms: d.paymentTerms, color: d.color, isReactivation: d.isReactivation,
     };
-    return { ...row, alerts: dealAlerts(row) };
+    return { ...row, alerts: dealAlerts(row, Date.now(), rules) };
   });
   /* Quem vendeu em mês anterior saiu da carteira do vendedor; só gestor/admin ainda enxerga. */
   return team ? out : out.filter((d) => !d.expired);

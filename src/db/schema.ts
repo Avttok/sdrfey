@@ -568,6 +568,8 @@ export const products = pgTable(
     /** Peso de uma unidade vendida, em kg (opcional; o Adm preenche no catálogo). */
     weightKg: numeric("weight_kg", { precision: 12, scale: 4, mode: "number" }),
     seenCount: integer("seen_count").notNull().default(1),
+    /** Outros códigos do mesmo produto, usados por outras empresas/distribuidores: o cliente pode trazer qualquer um deles. */
+    altCodes: text("alt_codes").array().notNull().default(sql`ARRAY[]::text[]`),
     createdAt: now(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

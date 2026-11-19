@@ -45,17 +45,20 @@ export async function deletePaymentTermAction(id: number): Promise<ActionResult>
 }
 
 /** Catálogo de produtos: criar (id null) ou editar. */
-export async function saveProductAction(id: number | null, input: { code: string; description: string; kind: string; unit: string; price: string; weight?: string }): Promise<ActionResult> {
+export async function saveProductAction(id: number | null, input: { code: string; description: string; kind: string; unit: string; price?: string; weight?: string; altCodes?: string }): Promise<ActionResult> {
   const me = await requireAdmin();
   const code = input.code.trim().slice(0, 40);
   const description = input.description.trim().slice(0, 300);
   if (!code || !description) return bad("Código e descrição são obrigatórios.");
-  const price = input.price.trim() ? parseMoneyToCents(input.price) : null;
-  if (price === null && input.price.trim()) return bad("Preço inválido.");
+  /* preço e peso não aparecem mais no admin, mas continuam guardados: só mudam se vierem preenchidos */
+  const priceRaw = (input.price ?? "").trim();
+  const price = priceRaw ? parseMoneyToCents(priceRaw) : undefined;
+  if (price === null) return bad("Preço inválido.");
   const wRaw = (input.weight ?? "").trim();
-  const weightKg = wRaw ? Number(wRaw.replace(/\./g, "").replace(",", ".")) : null;
-  if (wRaw && (weightKg === null || !Number.isFinite(weightKg) || weightKg < 0 || weightKg > 100000)) return bad("Peso inválido. Exemplo: 0,015.");
-  const v = { weightKg, code, description, kind: input.kind.trim().slice(0, 40) || null, unit: input.unit.trim().slice(0, 8) || null, lastUnitCents: price };
+  const weightKg = wRaw ? Number(wRaw.replace(/\./g, "").replace(",", ".")) : undefined;
+  if (wRaw && (weightKg === undefined || !Number.isFinite(weightKg) || weightKg < 0 || weightKg > 100000)) return bad("Peso inválido. Exemplo: 0,015.");
+  const altCodes = [...new Set((input.altCodes ?? "").split(/[\n,;]+/).map((x) => x.trim().slice(0, 40)).filter((x) => x && x !== code))].slice(0, 50);
+  const v = { code, description, kind: input.kind.trim().slice(0, 40) || null, unit: input.unit.trim().slice(0, 8) || null, altCodes, ...(price !== undefined ? { lastUnitCents: price } : {}), ...(weightKg !== undefined ? { weightKg } : {}) };
   try {
     if (id) {
       const [old] = await db.select().from(products).where(eq(products.id, id));
