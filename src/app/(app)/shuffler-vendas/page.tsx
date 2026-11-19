@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { sql } from "drizzle-orm";
-import { SalesShuffleFlow } from "@/components/sales-shuffle-flow";
+import { AttendFlow } from "@/components/attend-flow";
 import { GoalPills } from "@/components/goal-tiles";
 import { ShuffleHero } from "@/components/shuffle-hero";
 import { db } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
-import { getClientHistory } from "@/modules/deals/history";
+import { getSettings } from "@/modules/settings/get";
+import { effectiveGoals } from "@/modules/settings/goals";
+import { getActiveTemplates, getLeadView, getTagCatalog } from "@/modules/leads/view";
 import { startSalesShuffleAction } from "@/modules/sales/actions";
 import { inactiveStock, openShuffle } from "@/modules/sales/shuffler";
 
@@ -15,8 +17,11 @@ export const dynamic = "force-dynamic";
 export default async function SalesShufflePage() {
   const me = await requirePerm("tab.shuffler_vendas");
   const open = await openShuffle(me.id);
-  const h = open ? await getClientHistory(open.leadId) : null;
-  if (open && h) return <SalesShuffleFlow shuffleId={open.id} h={h} />;
+  if (open) {
+    // mesmo fluxo do SDR (perfil, e-mail, WhatsApp, ligação, finalizar), só que com os destinos do vendedor
+    const [lead, catalog, templates, settings] = await Promise.all([getLeadView(open.leadId), getTagCatalog(), getActiveTemplates(), getSettings()]);
+    if (lead) return <AttendFlow sales={{ shuffleId: open.id }} lead={lead} catalog={catalog} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={null} doneToday={0} scheduledToday={0} goals={effectiveGoals(me, settings)} sellers={[]} />;
+  }
 
   const today = sql`(date_trunc('day', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo')`;
   const [[r], stock] = await Promise.all([
@@ -26,7 +31,7 @@ export default async function SalesShufflePage() {
     inactiveStock(),
   ]);
   return (
-    <ShuffleHero action={startSalesShuffleAction}>
+    <ShuffleHero avatar={me.avatar} roles={me.roles} action={startSalesShuffleAction}>
       <GoalPills items={[
         { icon: "shuffle", label: "Trabalhados hoje", value: r?.worked ?? 0 },
         { icon: "handshake", label: "Negociações abertas hoje", value: r?.deals ?? 0 },

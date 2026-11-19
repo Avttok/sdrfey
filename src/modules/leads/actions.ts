@@ -78,7 +78,7 @@ export async function discardAction(leadId: number, reason: string): Promise<Act
 }
 
 export async function resetLeadAction(leadId: number): Promise<ActionResult> {
-  const me = await requirePerm("tab.comecar");
+  const me = await requireUser();
   return guard(async () => {
     await resetLead(me.id, leadId);
     revalidatePath("/atender");
@@ -88,7 +88,7 @@ export async function resetLeadAction(leadId: number): Promise<ActionResult> {
 }
 
 export async function startedAction(leadId: number): Promise<void> {
-  const me = await requirePerm("tab.comecar");
+  const me = await requireUser();
   await markStarted(me.id, leadId);
 }
 

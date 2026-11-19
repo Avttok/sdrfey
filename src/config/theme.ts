@@ -27,6 +27,26 @@ export const ACCENTS: readonly Accent[] = [
   { key: "neon", label: "Neon", hex: "#84cc16", hex2: "#06b6d4" },
   { key: "noite", label: "Meia-noite", hex: "#4f46e5", hex2: "#a855f7" },
   { key: "tropical", label: "Tropical", hex: "#14b8a6", hex2: "#84cc16" },
+  { key: "coral", label: "Coral", hex: "#fb7185" },
+  { key: "violeta", label: "Violeta", hex: "#7c3aed" },
+  { key: "petroleo", label: "Petróleo", hex: "#0e7490" },
+  { key: "ameixa", label: "Ameixa", hex: "#86198f" },
+  { key: "menta", label: "Menta", hex: "#34d399" },
+  { key: "ceu", label: "Céu", hex: "#38bdf8" },
+  { key: "oliva", label: "Oliva", hex: "#4d7c0f" },
+  { key: "terra", label: "Terra", hex: "#b45309" },
+  { key: "algodao", label: "Algodão-doce", hex: "#f472b6", hex2: "#818cf8" },
+  { key: "gelo", label: "Gelo", hex: "#67e8f9", hex2: "#a5b4fc" },
+  { key: "vulcao", label: "Vulcão", hex: "#f97316", hex2: "#be185d" },
+  { key: "galaxia", label: "Galáxia", hex: "#1e3a8a", hex2: "#a21caf" },
+  { key: "framboesa", label: "Framboesa", hex: "#db2777", hex2: "#7c3aed" },
+  { key: "jade", label: "Jade", hex: "#059669", hex2: "#0891b2" },
+  { key: "cobre", label: "Cobre", hex: "#ea580c", hex2: "#9333ea" },
+  { key: "titanio", label: "Titânio", hex: "#475569", hex2: "#94a3b8" },
+  { key: "boreal", label: "Aurora boreal", hex: "#10b981", hex2: "#6366f1" },
+  { key: "pessego", label: "Pêssego", hex: "#fb923c", hex2: "#f472b6" },
+  { key: "mar", label: "Mar profundo", hex: "#0ea5e9", hex2: "#4f46e5" },
+  { key: "maresia", label: "Maresia", hex: "#2dd4bf", hex2: "#38bdf8" },
 ];
 
 /** Fundo da bolinha de uma cor: sólido ou degradê. */
@@ -34,6 +54,9 @@ export const swatchBg = (a: { hex: string; hex2?: string }) => (a.hex2 ? `linear
 
 /** Amarelo e vermelho são reservados aos cargos Gestor e Adm: ninguém os escolhe. */
 export const CHOOSABLE_ACCENTS = ACCENTS.filter((a) => a.key !== "amarelo" && a.key !== "vermelho");
+
+/** Atalhos do menu do perfil (o resto fica em Minha conta). */
+export const QUICK_ACCENTS = ["azul", "verde", "roxo", "rosa", "aurora", "sunset"];
 
 export type AccentKey = string;
 

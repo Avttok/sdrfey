@@ -12,6 +12,7 @@ import { TagChip } from "@/components/tag-chip";
 import { useBusyWhile, useToast } from "@/components/toast";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { chatproUrl, cleanRole, fmtCnpj, fmtDate, fmtDateTime, fmtMoney, fmtPhone } from "@/lib/format";
+import { finishSalesShuffleAction, saveSalesShuffleAction, startSalesShuffleAction } from "@/modules/sales/actions";
 import { addChannelAction, discardAction, heartbeatAction, markWrongAction, releaseAction, removeChannelAction, resetLeadAction, saveAction, skipAction, startAction, startedAction } from "@/modules/leads/actions";
 import { htmlToText, mailtoLink, renderHtml, renderTemplate } from "@/modules/email/render";
 import type { LeadView, TagCatalog } from "@/modules/leads/view";
@@ -30,7 +31,7 @@ const copy = async (text: string, toast: ReturnType<typeof useToast>) => {
   }
 };
 
-export function AttendFlow({ lead, catalog, templates, myName, showMap, previous, doneToday, scheduledToday, goals, sellers }: { sellers: { id: number; name: string }[]; lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; previous: PreviousAttendance | null; doneToday: number; scheduledToday: number; goals: Goals }) {
+export function AttendFlow({ lead, catalog, templates, myName, showMap, previous, doneToday, scheduledToday, goals, sellers, sales }: { /** Modo vendedor (lead inativo): mesmo fluxo, destinos diferentes no fim. */ sales?: { shuffleId: number }; sellers: { id: number; name: string }[]; lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; previous: PreviousAttendance | null; doneToday: number; scheduledToday: number; goals: Goals }) {
   const toast = useToast();
   const [pending, start] = useTransition();
   useBusyWhile(pending);
@@ -46,9 +47,15 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
   const [visitLink, setVisitLink] = useState("");
   const dir = useRef<"fwd" | "back">("fwd");
   /** Para onde o lead vai ao final: ninguém, vendedores (negociação imediata) ou representante (visita). */
-  const [dest, setDest] = useState<"none" | "sellers" | "reps">("none");
+  const [dest, setDest] = useState<"none" | "sellers" | "reps" | "visit" | "sdr">("none");
   const [sellerId, setSellerId] = useState<number | null>(null);
-  const showVisit = dest === "reps" || dest === "sellers";
+  const showVisit = dest === "reps" || dest === "sellers" || dest === "visit";
+  const home = sales ? "/shuffler-vendas" : "/atender";
+  const nextLead = () => (sales ? startSalesShuffleAction() : startAction());
+  const skipThis = () => (sales ? finishSalesShuffleAction(sales.shuffleId, "skipped", "") : skipAction(lead.id));
+  const releaseThis = () => (sales ? finishSalesShuffleAction(sales.shuffleId, "released", "").then(async (r) => { if (r.ok) { router.replace("/shuffler-vendas"); router.refresh(); } return r; }) : releaseAction(lead.id));
+  const discardThis = () => (sales ? finishSalesShuffleAction(sales.shuffleId, "no_interest", "Descartado no atendimento") : discardAction(lead.id, "Descartado no atendimento"));
+  const saveThis = (p: ReturnType<typeof payload>) => (sales ? saveSalesShuffleAction(sales.shuffleId, p as never, (dest === "visit" || dest === "sdr" ? dest : "none")) : saveAction(p as never));
   const [newValue, setNewValue] = useState("");
   const [tplId, setTplId] = useState(templates[0]?.id ?? 0);
   const [emailTo, setEmailTo] = useState("");
@@ -62,7 +69,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
   const [priorAck, setPriorAck] = useState<number | null>(null);
   const priorOpen = !!previous && priorAck !== lead.id;
   const inactive = !priorOpen && !!status && status !== "ATIVA" && statusAck !== lead.id;
-  const seek = () => run(async () => { const r = await skipAction(lead.id); if (r.ok) await startAction(); return r; });
+  const seek = () => run(async () => { const r = await skipThis(); if (r.ok) await nextLead(); return r; });
 
   const phones = lead.channels.filter((c) => c.kind === "phone");
   const emails = lead.channels.filter((c) => c.kind === "email");
@@ -89,7 +96,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
       if (held || gone || saving.current) return; // salvando: o lead sai de você de propósito, não é inatividade
       gone = true;
       toast("warn", "Este lead foi liberado por inatividade. Use o Shuffler para pegar outro.");
-      router.replace("/atender"); router.refresh();
+      router.replace(home); router.refresh();
     };
     void beat();
     const t = setInterval(() => void beat(), 30_000);
@@ -135,17 +142,17 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
   const blocked = () => { if (!visitMissing) return false; toast("warn", "Para encaminhar o lead, preencha o código e a data da visita."); return true; };
   const save = () => blocked() || run(async () => {
     saving.current = true;
-    const r = await saveAction(payload()).catch(() => ({ ok: false as const, message: "Não foi possível salvar." }));
+    const r = await saveThis(payload()).catch(() => ({ ok: false as const, message: "Não foi possível salvar." }));
     if (!r.ok) saving.current = false;
-    if (r.ok) await startAction();
+    if (r.ok) await nextLead();
     return r;
   });
   /** Salva, libera o lead e volta à tela do botão Shuffler (pausa: o lead não fica contando tempo). */
   const saveAndStop = () => blocked() || run(async () => {
     saving.current = true;
-    const r = await saveAction(payload()).catch(() => ({ ok: false as const, message: "Não foi possível salvar." }));
+    const r = await saveThis(payload()).catch(() => ({ ok: false as const, message: "Não foi possível salvar." }));
     if (!r.ok) saving.current = false;
-    if (r.ok) { router.replace("/atender"); router.refresh(); }
+    if (r.ok) { router.replace(home); router.refresh(); }
     return r;
   });
   const copyFormatted = async () => {
@@ -163,7 +170,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
     if (r.ok) { setUsed(new Set()); setTemperature(null); setQualification(null); setSituations(new Set()); setNote(""); setVisit(""); setVisitDate(""); setVisitLink(""); setDest("none"); setSellerId(null); setConfirmReset(false); setStep(0); router.refresh(); }
     return r;
   });
-  const discardNow = () => run(async () => { const r = await discardAction(lead.id, "Descartado no atendimento"); if (r.ok) await startAction(); return r; });
+  const discardNow = () => run(async () => { const r = await discardThis(); if (r.ok) await nextLead(); return r; });
 
   const resetDiscard = (
     <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
@@ -192,7 +199,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
         )}
       </ConfirmDialog>
       <ConfirmDialog open={inactive} tone="warn" icon={TriangleAlert} busy={pending} title={`Situação cadastral: ${status}`} confirmLabel="Buscar outro lead" cancelLabel="Atender mesmo assim"
-        onCancel={() => setStatusAck(lead.id)} onConfirm={() => run(async () => { const r = await skipAction(lead.id); if (r.ok) await startAction(); return r; })}>
+        onCancel={() => setStatusAck(lead.id)} onConfirm={seek}>
         <b className="text-ink">{lead.company}</b> não está com a situação ATIVA na Receita, então provavelmente não consegue negociar. Quer atender mesmo assim ou procurar um novo lead? Se buscar outro, este some só para você por 24 h e não conta na meta.
       </ConfirmDialog>
       {/* topo: empresa, metas do dia e passos */}
@@ -205,8 +212,8 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
             <p className="mt-1 text-sm text-muted">{fmtCnpj(lead.cnpj)}{lead.city ? ` · ${lead.city}/${lead.uf}` : ""}{lead.isTest ? " · MODO TESTE" : ""}</p>
           </div>
           <div className="grid w-full max-w-sm gap-3 sm:w-72">
-            {goals.attended.on && <GoalBar label="Atendidos hoje" value={doneToday} qty={goals.attended.qty} />}
-            {goals.scheduled.on && <GoalBar label="Agendados hoje" value={scheduledToday} qty={goals.scheduled.qty} alt />}
+            {!sales && goals.attended.on && <GoalBar label="Atendidos hoje" value={doneToday} qty={goals.attended.qty} />}
+            {!sales && goals.scheduled.on && <GoalBar label="Agendados hoje" value={scheduledToday} qty={goals.scheduled.qty} alt />}
           </div>
         </div>
         <ol className="relative mt-5 flex items-center" aria-label="Passos do atendimento">
@@ -332,6 +339,25 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
             <Group title={groups.temperatura?.name ?? "Temperatura"}>{groups.temperatura?.tags.map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={temperature === t.key} onClick={() => setTemperature(temperature === t.key ? null : t.key)} />)}</Group>
             <Group title={groups.qualificacao?.name ?? "Qualificação"}>{groups.qualificacao?.tags.map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={qualification === t.key} onClick={() => setQualification(qualification === t.key ? null : (t.key as "qualificado"))} />)}</Group>
             <Group title={groups.situacao?.name ?? "Situação"}>{groups.situacao?.tags.filter((t) => !t.autoOnly).map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={situations.has(t.key)} onClick={() => toggle(situations, t.key, setSituations)} />)}</Group>
+            {sales ? (
+              <div className="space-y-3">
+                <p className="text-sm font-medium">O que fazer com este lead?</p>
+                <div role="radiogroup" aria-label="Destino do lead" className="grid gap-2 sm:grid-cols-3">
+                  {([["none", "Só salvar", "Registra o que você fez e segue sem encaminhar"], ["visit", "Agendar visita e enviar ao meu painel", "A negociação abre no seu painel Novo; exige visita marcada"], ["sdr", "Devolver à fila dos SDR", "Volta a ser prospecção e entra no Shuffler dos SDR"]] as const).map(([k, t, d]) => (
+                    <button key={k} type="button" role="radio" aria-checked={dest === k} onClick={() => setDest(k)} className={`rounded-xl border-2 px-3 py-2.5 text-left transition ${dest === k ? "border-accent bg-accent/10" : "border-line hover:bg-sunk"}`}>
+                      <span className="block text-sm font-semibold">{t}</span><span className="block text-xs text-muted">{d}</span>
+                    </button>
+                  ))}
+                </div>
+                {dest === "visit" && (
+                  <div className="flex flex-wrap items-end gap-3">
+                    <label className="block w-48 text-sm"><span className="mb-1 block text-muted">Código da visita <span className="text-danger">*</span></span><input className={inputCls} placeholder="V-12345" value={visit} onChange={(e) => setVisit(e.target.value)} /></label>
+                    <div className="block w-48 text-sm"><span className="mb-1 block text-muted">Data da visita <span className="text-danger">*</span></span><DateInput label="Data da visita" value={visitDate} onChange={setVisitDate} /></div>
+                    <label className="block min-w-60 flex-1 text-sm"><span className="mb-1 block text-muted">Link da visita (Salesforce, opcional)</span><input className={inputCls} placeholder="https://…" value={visitLink} onChange={(e) => setVisitLink(e.target.value)} /></label>
+                  </div>
+                )}
+              </div>
+            ) : (
             <div className="space-y-3">
               <p className="text-sm font-medium">Encaminhar este lead</p>
               <div role="radiogroup" aria-label="Encaminhar lead" className="grid gap-2 sm:grid-cols-3">
@@ -359,6 +385,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
                 </div>
               )}
             </div>
+            )}
             <label className="block text-sm">Observação<textarea className={`${inputCls} min-h-24`} value={note} onChange={(e) => setNote(e.target.value)} /></label>
             <div className="flex flex-wrap items-center justify-center gap-2 border-t border-line pt-5">
               <button type="button" disabled={pending} className={btnPrimary} onClick={save}><Check size={17} aria-hidden /> SALVAR E PRÓXIMO</button>
@@ -373,8 +400,8 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
         {step > 0 && <button type="button" className={btnGhost} onClick={() => go(prevStep(step))}><ChevronLeft size={16} aria-hidden /> Voltar</button>}
         {step < STEPS.length - 1 && <button type="button" className={btnPrimary} onClick={() => go(nextStep(step))}>Avançar <ChevronRight size={16} aria-hidden /></button>}
         <span className="flex-1" />
-        <button type="button" className={btnGhost} disabled={pending} title="Esconde este lead só de você por 24 h e não conta na meta" onClick={() => ask({ title: "Pular este lead?", body: "Ele fica escondido só de você por 24 h e não conta na meta. Você recebe o próximo.", label: "Sim, pular", tone: "warn", icon: SkipForward, onConfirm: () => run(async () => { const r = await skipAction(lead.id); if (r.ok) await startAction(); return r; }) })}><SkipForward size={16} aria-hidden /> Pular</button>
-        <button type="button" className={`${btnPrimary} !bg-grad-danger !text-white`} disabled={pending} onClick={() => run(() => releaseAction(lead.id))}><Square size={15} aria-hidden /> Parar atendimento</button>
+        <button type="button" className={btnGhost} disabled={pending} title="Esconde este lead só de você por 24 h e não conta na meta" onClick={() => ask({ title: "Pular este lead?", body: "Ele fica escondido só de você por 24 h e não conta na meta. Você recebe o próximo.", label: "Sim, pular", tone: "warn", icon: SkipForward, onConfirm: seek })}><SkipForward size={16} aria-hidden /> Pular</button>
+        <button type="button" className={`${btnPrimary} !bg-grad-danger !text-white`} disabled={pending} onClick={() => run(() => releaseThis())}><Square size={15} aria-hidden /> Parar atendimento</button>
       </div>
       {dialog}
     </div>

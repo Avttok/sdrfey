@@ -1,14 +1,17 @@
 import { Play, Shuffle } from "lucide-react";
+import { BannerRain } from "@/components/banner-rain";
+import type { Role } from "@/config/roles";
 import { SubmitButton } from "@/components/submit-button";
 
 /** Tela inicial do Shuffler: fundo vivo, cartas flutuando, título, conteúdo centralizado e botão grande. */
-export function ShuffleHero({ action, children }: { action: () => void | Promise<void>; children: React.ReactNode }) {
+export function ShuffleHero({ action, children, avatar, roles }: { action: () => void | Promise<void>; children: React.ReactNode; avatar?: string | null; roles: readonly Role[] }) {
   return (
     <>
       <div aria-hidden className="spawn-fade pointer-events-none fixed inset-0 -z-10" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 26%, var(--bg)) 0%, color-mix(in srgb, var(--accent) 7%, var(--bg)) 48%, color-mix(in srgb, var(--accent) 20%, var(--bg)) 100%)" }}>
         <div className="absolute -left-24 -top-24 size-[30rem] rounded-full bg-accent/25 blur-3xl" />
         <div className="absolute -bottom-32 -right-20 size-[34rem] rounded-full bg-accent/20 blur-3xl" />
       </div>
+      <BannerRain field count={34} avatar={avatar} roles={roles} />
       <div className="relative -my-3 flex min-h-[26rem] flex-1 flex-col items-center justify-center gap-8 overflow-y-auto overflow-x-hidden p-4 text-center sm:gap-10 sm:p-8">
         <div className="sh-rise flex flex-col items-center gap-5">
           <div className="relative grid size-24 place-items-center">

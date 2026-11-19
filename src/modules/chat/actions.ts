@@ -39,7 +39,6 @@ export async function sendChatMessageAction(input: { channel: string; body: stri
     if (!label) return bad("Você não pode compartilhar esse item.");
   }
   const [row] = await db.insert(chatMessages).values({ channel: p.data.channel, userId: me.id, body, shareKind: p.data.share?.kind ?? null, shareId: p.data.share?.id ?? null, shareLabel: label }).returning({ id: chatMessages.id });
-  await saveMentions(me.id, p.data.channel, row.id, body);
   const [msg] = await listMessages(me, p.data.channel, { after: row.id - 1, limit: 1 });
   return { ok: true, message: msg };
 }

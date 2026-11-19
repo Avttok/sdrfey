@@ -3,7 +3,7 @@
 import { BannerRain } from "@/components/banner-rain";
 import { bannerStyle } from "@/config/banners";
 import { AvatarGlyph } from "@/components/avatar-glyph";
-import { Check, LogOut, Palette, Settings2, Trophy } from "lucide-react";
+import { Check, LogOut, Palette, Plus, Settings2, Trophy } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -13,7 +13,7 @@ import { RoleBadge } from "@/components/role-badge";
 import { ThemeTile } from "@/components/theme-toggle";
 import { ROLES, type Role } from "@/config/roles";
 import { describePath } from "@/config/activity";
-import { CHOOSABLE_ACCENTS, swatchBg } from "@/config/theme";
+import { CHOOSABLE_ACCENTS, QUICK_ACCENTS, swatchBg } from "@/config/theme";
 import { logoutAction } from "@/modules/auth/actions";
 import { setAccentAction } from "@/modules/users/actions";
 import { myActivityAction } from "@/modules/users/presence";
@@ -113,9 +113,10 @@ export function UserMenu({ banner, avatar, name, username, hex, onHex, accentKey
           <form action={setAccentAction} className="px-4 pb-3">
             <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold"><Palette size={14} aria-hidden /> Cor do tema<span className="ml-auto text-xs font-normal text-muted">{CHOOSABLE_ACCENTS.find((a) => a.key === accentKey)?.label ?? "Padrão"}</span></p>
             <div className="grid grid-cols-7 gap-2">
-              {CHOOSABLE_ACCENTS.map((a) => { const on = a.key === accentKey; return (
+              {(() => { const keys = QUICK_ACCENTS.slice(0, 6); if (accentKey && !keys.includes(accentKey) && CHOOSABLE_ACCENTS.some((a) => a.key === accentKey)) keys[5] = accentKey; return keys.map((k) => CHOOSABLE_ACCENTS.find((a) => a.key === k)!); })().map((a) => { const on = a.key === accentKey; return (
                 <button key={a.key} type="submit" name="accent" value={a.key} title={a.label} aria-label={a.label} aria-pressed={on} className="swatch grid aspect-square place-items-center rounded-full text-white shadow-sm ring-offset-2 ring-offset-panel transition duration-200 hover:z-10 hover:scale-125 aria-pressed:ring-2 aria-pressed:ring-ink" style={{ background: swatchBg(a) }}>{on && <Check size={13} aria-hidden />}</button>
               ); })}
+              <Link href="/conta" onClick={() => setOpen(false)} title="Mais cores" aria-label="Mais cores" className="grid aspect-square place-items-center rounded-full border border-dashed border-line bg-sunk text-muted transition duration-200 hover:scale-110 hover:text-ink"><Plus size={14} aria-hidden /></Link>
             </div>
           </form>
           <form action={logoutAction} className="border-t border-line p-2"><SubmitButton className="logout-btn group !w-full !bg-none !bg-transparent !text-danger hover:!bg-danger/10"><LogOut size={16} aria-hidden className="transition-transform duration-300 group-hover:translate-x-1" /> Sair da conta</SubmitButton></form>

@@ -200,6 +200,7 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
   const [offline, setOffline] = useState(false);
   const [profile, setProfile] = useState<{ id: number; hex: string } | null>(null);
   const [pickFor, setPickFor] = useState<number | null>(null);
+  const [actFor, setActFor] = useState<number | null>(null);
   const [menu, setMenu] = useState(false);
   const [shop, setShop] = useState(false);
   const [dms, setDms] = useState<DmItem[]>([]);
@@ -210,10 +211,6 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
   useEffect(() => { const c = lsGet<ChatPerson[]>(`people:${meId}`); if (c) setPeople(c); }, [meId]);
   useEffect(() => { if (open) void chatPeopleAction().then((r) => { if (r.ok) { setPeople(r.people); lsSet(`people:${meId}`, r.people); } }).catch(() => {}); }, [open, meId]);
   const startDm = (p: ChatPerson) => { const key = dmKey(meId, p.id); setDms((cur) => (cur.some((d) => d.key === key) ? cur : [...cur, { key, withId: p.id, name: p.name, username: p.username, hex: p.hex }])); setChannel(key); setDmPick(false); setDmQ(""); setShop(false); };
-  /** @ no fim do texto: sugere pessoas para marcar */
-  const mention = /(?:^|\s)@([a-z0-9._-]*)$/i.exec(draft);
-  const suggestions = mention ? people.filter((p) => p.username.toLowerCase().startsWith(mention[1].toLowerCase()) || p.name.toLowerCase().includes(mention[1].toLowerCase())).slice(0, 5) : [];
-  const pickMention = (u: string) => setDraft((d) => d.replace(/@([a-z0-9._-]*)$/i, `@${u} `));
   const [confirmClear, setConfirmClear] = useState(false);
   // área realmente visível (teclado aberto, barras do navegador): o chat nunca passa dela
   const [vv, setVv] = useState<{ h: number; inset: number } | null>(null);
@@ -293,7 +290,6 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
       fails.current = 0; setOffline(false);
       if (!j.enabled) { setOff(true); return; }
       if (j.dms) setDms((cur) => [...j.dms!, ...cur.filter((c) => !j.dms!.some((d) => d.key === c.key))]);
-      for (const m of j.mentions ?? []) toastRef.current("info", `${m.by} te marcou${m.preview ? `: ${m.preview}` : ""}`);
       setUnread(open ? { ...j.unread, [ch]: 0 } : j.unread);
       if (!open || chRef.current !== ch) return;
       if (reset) { setMsgs(j.messages); setMore(j.messages.length >= 40); setLoaded(true); }
@@ -405,9 +401,10 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
       <div key={m.id} className={`group flex min-w-0 gap-2 ${mine ? "flex-row-reverse" : ""} ${first ? "mt-2" : ""}`}>
         {first ? <button type="button" disabled={!m.userId} onClick={() => m.userId && setProfile({ id: m.userId, hex: m.hex })} aria-label={`Perfil de ${m.name}`} className="grid size-7 shrink-0 place-items-center rounded-full text-[10px] font-bold text-white transition hover:scale-110" style={{ background: m.hex }} title={m.name}><AvatarGlyph avatar={m.avatar} initials={initials(m.name)} size={15} /></button> : <span className="size-7 shrink-0" />}
         <div className={`flex min-w-0 max-w-[82%] flex-col ${mine ? "items-end" : "items-start"}`}>
-          {first && <p className={`mb-0.5 flex flex-wrap items-center gap-1.5 px-1 text-[11px] text-muted ${mine ? "justify-end" : ""}`}><button type="button" disabled={!m.userId} onClick={() => m.userId && setProfile({ id: m.userId, hex: m.hex })} className={`font-medium hover:underline ${chatStyle(m.style).nameCls}`} style={chatStyle(m.style).name}>{mine ? "Você" : m.name.split(" ")[0]}</button>{[...m.roles].sort((x, y) => ROLE_RANK[y] - ROLE_RANK[x]).slice(0, 2).map((r) => <span key={r} className="rounded-full border border-line bg-sunk px-1.5 py-px text-[10px] font-semibold text-ink"><span className="mr-1 inline-block size-1.5 rounded-full" style={{ background: ROLE_DOT[r] }} />{ROLE_META[r].label}</span>)}</p>}
-          <div style={chatStyle(m.style).bubble ?? undefined} className={`min-w-0 max-w-full rounded-2xl px-3 py-2 text-sm ${mine ? "rounded-tr-md" : "rounded-tl-md"} ${chatStyle(m.style).bubble ? "" : mine ? "bg-accent text-on-accent" : "bg-sunk"}`}>
-            {m.body && <p className="whitespace-pre-wrap break-words">{m.body.split(/(@[a-z0-9][a-z0-9._-]+)/gi).map((t, i) => (i % 2 ? <b key={i} className={`rounded px-0.5 ${mine ? "bg-white/25" : "bg-accent/15 text-accent"}`}>{t}</b> : t))}</p>}
+          {first && <p className={`mb-0.5 flex flex-wrap items-center gap-1.5 px-1 text-[11px] text-muted ${mine ? "justify-end" : ""}`}><button type="button" disabled={!m.userId} onClick={() => m.userId && setProfile({ id: m.userId, hex: m.hex })} className={`font-medium hover:underline ${chatStyle(m.style).nameCls}`} style={chatStyle(m.style).name}>{mine ? "Você" : m.name.split(" ")[0]}</button><span className="text-[10px] font-normal opacity-70">{hm.format(new Date(m.at))}</span></p>}
+          <div className="group/b relative min-w-0 max-w-full" onClick={() => setActFor(actFor === m.id ? null : m.id)}>
+          <div title={hm.format(new Date(m.at))} style={chatStyle(m.style).bubble ?? undefined} className={`min-w-0 max-w-full rounded-2xl px-3 py-2 text-sm ${mine ? "rounded-tr-md" : "rounded-tl-md"} ${chatStyle(m.style).bubble ? "" : mine ? "bg-accent text-on-accent" : "bg-sunk"}`}>
+            {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
             {m.share && S && (
               <button type="button" onClick={() => setInfo(m.id)} className={`${m.body ? "mt-2" : ""} flex w-full min-w-0 items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition ${mine ? "border-white/30 bg-white/15 hover:bg-white/25" : "border-line bg-panel hover:border-accent/50"}`}>
                 <S.Icon size={18} aria-hidden className="shrink-0" />
@@ -415,9 +412,13 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
               </button>
             )}
           </div>
+          <div className={`absolute top-1/2 z-10 flex -translate-y-1/2 items-center gap-0.5 rounded-full border border-line bg-panel px-1 py-0.5 shadow-md transition ${mine ? "right-full mr-1.5" : "left-full ml-1.5"} ${actFor === m.id || pickFor === m.id ? "opacity-100" : "pointer-events-none opacity-0 group-hover/b:pointer-events-auto group-hover/b:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100"}`}>
+            <button type="button" aria-label="Reagir" title="Reagir" onClick={(e) => { e.stopPropagation(); setPickFor(pickFor === m.id ? null : m.id); }} className="rounded-full p-1 text-muted transition hover:bg-sunk hover:text-accent"><SmilePlus size={14} /></button>
+            {m.canDelete && (m.delUntil === null || Date.now() < m.delUntil) && <button type="button" aria-label="Apagar mensagem" title="Apagar" onClick={(e) => { e.stopPropagation(); ask({ title: "Apagar esta mensagem?", body: "Ela some para todos no chat.", label: "Sim, apagar", icon: Trash2, onConfirm: () => void del(m.id) }); }} className="rounded-full p-1 text-muted transition hover:bg-danger/10 hover:text-danger"><Trash2 size={14} /></button>}
+          </div>
+          {pickFor === m.id && <div className={`absolute z-20 flex gap-0.5 rounded-full border border-line bg-panel p-1 shadow-lg ${mine ? "right-0" : "left-0"} -top-10`}>{REACTION_EMOJIS.map((e) => <button key={e} type="button" onClick={(ev) => { ev.stopPropagation(); react(m.id, e); setPickFor(null); }} className="rounded-full px-1.5 py-0.5 text-base transition hover:scale-125 hover:bg-sunk" aria-label={`Reagir com ${e}`}>{e}</button>)}</div>}
+          </div>
           {m.reactions.length > 0 && <div className={`mt-1 flex flex-wrap gap-1 ${mine ? "justify-end" : ""}`}>{m.reactions.map((x) => <button key={x.emoji} type="button" onClick={() => react(m.id, x.emoji)} title={x.names.join(", ")} aria-label={`${x.emoji} ${x.count}`} aria-pressed={x.mine} className={`figure rounded-full border px-1.5 py-0.5 text-xs transition ${x.mine ? "border-accent bg-accent/15" : "border-line bg-panel hover:border-accent/50"}`}>{x.emoji} {x.count}</button>)}</div>}
-          {pickFor === m.id && <div className="mt-1 flex gap-0.5 rounded-full border border-line bg-panel p-1 shadow-lg">{REACTION_EMOJIS.map((e) => <button key={e} type="button" onClick={() => react(m.id, e)} className="rounded-full px-1.5 py-0.5 text-base transition hover:scale-125 hover:bg-sunk" aria-label={`Reagir com ${e}`}>{e}</button>)}</div>}
-          <p className="mt-0.5 flex items-center gap-1.5 px-1 text-[10px] text-muted">{hm.format(new Date(m.at))}<button type="button" aria-label="Reagir" title="Reagir" onClick={() => setPickFor(pickFor === m.id ? null : m.id)} className="rounded p-1 text-muted/80 transition hover:bg-sunk hover:text-accent"><SmilePlus size={15} /></button>{m.canDelete && (m.delUntil === null || Date.now() < m.delUntil) && <button type="button" aria-label="Apagar mensagem" title="Apagar" onClick={() => ask({ title: "Apagar esta mensagem?", body: "Ela some para todos no chat.", label: "Sim, apagar", icon: Trash2, onConfirm: () => void del(m.id) })} className="rounded p-1 text-muted/80 transition hover:bg-sunk hover:text-danger"><Trash2 size={14} /></button>}</p>
         </div>
       </div>,
     );
@@ -480,10 +481,9 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
           {!shop && <footer className="relative border-t border-line p-2.5">
             {picker && <SharePicker onClose={() => setPicker(false)} onPick={(p) => { setPicked(p); setPicker(false); }} />}
             {picked && (() => { const K = KIND_META[picked.kind]; return <div className="mb-2 flex items-center gap-2 rounded-xl bg-sunk px-3 py-1.5 text-xs"><K.Icon size={14} aria-hidden className="shrink-0 text-accent" /><span className="min-w-0 flex-1 truncate"><b>{K.label}:</b> {picked.label}</span><button type="button" aria-label="Remover anexo" onClick={() => setPicked(null)} className="rounded p-0.5 hover:bg-line"><X size={13} /></button></div>; })()}
-            {suggestions.length > 0 && <ul className="absolute inset-x-2.5 bottom-full mb-1 rounded-xl border border-line bg-panel p-1 shadow-xl">{suggestions.map((p) => <li key={p.id}><button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pickMention(p.username)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-sunk"><span aria-hidden className="size-2.5 rounded-full" style={{ background: p.hex }} /><span className="flex-1 truncate">{p.name}</span><span className="text-xs text-muted">@{p.username}</span></button></li>)}</ul>}
             <div className="flex items-end gap-1.5">
               <button type="button" aria-label="Compartilhar lead, negociação ou cotação" title="Compartilhar" onClick={() => setPicker(true)} className="grid size-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-sunk hover:text-accent"><Paperclip size={18} aria-hidden /></button>
-              <textarea value={draft} rows={1} maxLength={2000} placeholder={channel.startsWith("dm:") ? "Mensagem direta…" : "Escreva uma mensagem… (@ para marcar)"} aria-label="Mensagem" onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }} className="max-h-28 min-h-10 flex-1 resize-none rounded-xl border border-line bg-sunk px-3 py-2 text-sm outline-none focus:border-accent" />
+              <textarea value={draft} rows={1} maxLength={2000} placeholder={channel.startsWith("dm:") ? "Mensagem direta…" : "Escreva uma mensagem…"} aria-label="Mensagem" onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }} className="max-h-28 min-h-10 flex-1 resize-none rounded-xl border border-line bg-sunk px-3 py-2 text-sm outline-none focus:border-accent" />
               <button type="button" aria-label="Enviar" disabled={sending || (!draft.trim() && !picked)} onClick={send} className="grid size-10 shrink-0 place-items-center rounded-xl bg-grad text-on-accent transition disabled:opacity-50">{sending ? <Loader2 size={17} className="animate-spin" aria-hidden /> : <Send size={17} aria-hidden />}</button>
             </div>
           </footer>}

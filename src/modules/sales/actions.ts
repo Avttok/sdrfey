@@ -10,6 +10,9 @@ import { logAudit } from "@/modules/audit/log";
 import type { ActionResult } from "@/modules/leads/actions";
 import { leftPortfolio } from "@/modules/deals/portfolio";
 import { claimInactive } from "./shuffler";
+import { saveSalesWork, type SalesFinal } from "./save";
+import type { SaveInput } from "@/modules/leads/attend";
+import { UserError } from "@/modules/leads/sorter";
 
 const fail = (message: string): ActionResult => ({ ok: false, message });
 
@@ -28,6 +31,7 @@ export async function finishSalesShuffleAction(id: number, outcome: "no_answer" 
   const [s] = await db.update(sellerShuffles).set({ outcome: p.data.outcome, note: p.data.note || null, doneAt: new Date() })
     .where(and(eq(sellerShuffles.id, id), eq(sellerShuffles.userId, me.id), sql`${sellerShuffles.outcome} is null`)).returning({ leadId: sellerShuffles.leadId });
   if (!s) return fail("Este lead não está mais com você.");
+  await db.update(leads).set({ lockedBy: null, lockedAt: null }).where(and(eq(leads.id, s.leadId), eq(leads.lockedBy, me.id)));
   await logAudit(db, { userId: me.id, leadId: s.leadId, entity: "lead", action: "trabalhou lead inativo", field: "Shuffler de vendas", newValue: p.data.outcome, meta: { nota: p.data.note || null } });
   revalidatePath("/shuffler-vendas");
   return { ok: true };
@@ -49,9 +53,24 @@ export async function openDealFromShuffleAction(id: number, note: string): Promi
     const [d] = await tx.insert(deals).values({ leadId: lead.id, sdrId: null, sellerId: me.id, stage: "contato", claimedAt: new Date(), lastContactAt: new Date(), handoffNote: text, isTest: lead.isTest }).returning({ id: deals.id });
     await tx.insert(dealEvents).values({ dealId: d.id, userId: me.id, kind: "criado", note: text ?? "Aberta pelo Shuffler de vendas" });
     await tx.update(sellerShuffles).set({ outcome: "deal", dealId: d.id, doneAt: new Date(), note: text }).where(eq(sellerShuffles.id, id));
+    await tx.update(leads).set({ lockedBy: null, lockedAt: null }).where(and(eq(leads.id, lead.id), eq(leads.lockedBy, me.id)));
     await logAudit(tx, { userId: me.id, leadId: lead.id, entity: "deal", action: "abriu negociação", field: "Negociação", newValue: "lead inativo", meta: { negociacao: d.id } });
     return d.id;
   });
   revalidatePath("/negociacoes"); revalidatePath("/shuffler-vendas"); revalidatePath("/painel");
   return { ok: true, dealId };
+}
+
+/** Fim da passagem no fluxo completo (igual ao do SDR): só salvar, agendar visita + abrir no meu painel Novo, ou devolver à fila dos SDR. */
+export async function saveSalesShuffleAction(id: number, input: SaveInput, final: SalesFinal): Promise<ActionResult> {
+  const me = await requirePerm("tab.shuffler_vendas");
+  try {
+    await saveSalesWork(me.id, id, input, final);
+  } catch (e) {
+    if (e instanceof UserError) return fail(e.message);
+    console.error(e);
+    return fail("Algo deu errado. Tente de novo; se repetir, avise o Adm.");
+  }
+  revalidatePath("/shuffler-vendas"); revalidatePath("/negociacoes"); revalidatePath("/painel"); revalidatePath("/visitas");
+  return { ok: true, message: final === "visit" ? "Visita agendada e negociação aberta no seu painel Novo." : final === "sdr" ? "Devolvido à fila dos SDR." : "Salvo." };
 }
