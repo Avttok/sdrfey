@@ -23,7 +23,7 @@ export async function enrichBatch(max: number, budgetMs = 25_000, userId: number
   const t0 = Date.now();
   let tried = 0, ok = 0, failed = 0;
   while (tried < max && Date.now() - t0 < budgetMs) {
-    const [next] = await db.execute<{ id: number }>(sql`select l.id from leads l where ${PENDING} order by l.enrich_tried_at nulls first, l.id limit 1`);
+    const [next] = await db.execute<{ id: number }>(sql`select l.id from leads l where ${PENDING} order by l.enrich_tried_at nulls first, md5(l.id::text) limit 1`);
     if (!next) break;
     tried++;
     // marca antes: se a consulta travar ou cair, este lead não bloqueia a fila

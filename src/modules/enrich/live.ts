@@ -33,7 +33,7 @@ export async function liveData(): Promise<Live> {
         count(*)::int as h24, count(*) filter (where ok)::int as ok24, avg(ms)::int as avg, count(*) filter (where at > now() - interval '20 seconds')::int as last15,
         count(*) filter (where ok and at > now() - interval '10 minutes')::int as ok10
       from enrich_log where at > now() - interval '24 hours'`),
-    db.execute<{ id: number; company: string; cnpj: string; t: Date | null }>(sql`select l.id, l.company, l.cnpj, l.enrich_tried_at as t from leads l where ${PENDING} order by l.enrich_tried_at nulls first, l.id limit 10`),
+    db.execute<{ id: number; company: string; cnpj: string; t: Date | null }>(sql`select l.id, l.company, l.cnpj, l.enrich_tried_at as t from leads l where ${PENDING} order by l.enrich_tried_at nulls first, md5(l.id::text) limit 10`),
     db.execute(sql`${LOG_SELECT} order by g.id desc limit 25`),
     db.execute<{ id: number; company: string; cnpj: string; t: Date; why: string | null; tries: number }>(sql`
       select l.id, l.company, l.cnpj, l.enrich_tried_at as t, (select why from enrich_log x where x.lead_id = l.id order by x.id desc limit 1) as why, (select count(*)::int from enrich_log x where x.lead_id = l.id and not x.ok) as tries
