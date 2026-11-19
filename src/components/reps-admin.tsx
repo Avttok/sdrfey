@@ -1,7 +1,7 @@
 "use client";
 
 import { useConfirm } from "@/components/confirm-dialog";
-import { Eye, ExternalLink, MapPin, Pencil, Plus, Trash2, UserRound, Users, X } from "lucide-react";
+import { CalendarCheck, Eye, ExternalLink, MapPin, Pencil, Plus, Trash2, UserRound, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CopyVal } from "@/components/copy-val";
 import { useRun } from "@/components/use-run";
@@ -70,22 +70,39 @@ export function RepsAdmin({ rows, canEdit, isAdmin = false }: { rows: RepRow[]; 
   return (
     <>
       <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {rows.map((r) => (
-          <li key={r.id} className={`${panelCls} flex flex-col gap-3 p-4 transition hover:border-accent/50 hover:shadow-md ${r.active ? "" : "opacity-70"}`}>
-            <div className="flex items-start gap-3">
-              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-accent/15 text-sm font-bold text-accent">{(r.repName || "?").split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}</span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">{r.repName}</p>
-                <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted"><span className="figure rounded-md bg-sunk px-1.5 py-0.5">SAP {r.sapCode}</span>{!r.active && <span className="rounded-full bg-danger/15 px-2 py-0.5 font-medium text-danger">inativo</span>}</p>
-              </div>
-              <button type="button" aria-label={canEdit ? `Editar ${r.repName}` : `Ver detalhes de ${r.repName}`} title={canEdit ? "Editar" : "Ver detalhes"} className="rounded-lg p-2 text-muted hover:bg-sunk hover:text-accent" onClick={() => setEdit(r)}>{canEdit ? <Pencil size={16} /> : <Eye size={16} />}</button>
+        {rows.map((r, i) => {
+          const hue = [...(r.repName || "x")].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+          const addr = [r.address, r.cep, r.city && `${r.city}/${r.uf}`].filter(Boolean).join(", ");
+          return (
+          <li key={r.id} style={{ "--i": i % 12 } as React.CSSProperties} className={`${panelCls} card-in lift group flex flex-col overflow-hidden ${r.active ? "" : "opacity-70"}`}>
+            <div aria-hidden className="relative h-14" style={{ background: `linear-gradient(120deg, hsl(${hue} 70% 55% / .85), hsl(${(hue + 50) % 360} 70% 50% / .75))` }}>
+              <span className="absolute -right-4 -top-6 size-24 rounded-full bg-white/20 blur-xl" />
+              <span className="absolute bottom-1.5 right-3 flex items-center gap-1 rounded-full bg-black/25 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm"><CalendarCheck size={11} aria-hidden /><span className="figure">{r.visits ?? 0}</span> {(r.visits ?? 0) === 1 ? "visita" : "visitas"}</span>
             </div>
-            <dl className="space-y-1 text-sm">
-              <div className="flex items-center gap-2"><MapPin size={14} className="shrink-0 text-muted" aria-hidden /><dd className="truncate">{r.city ? `${r.city}/${r.uf}` : "—"}</dd></div>
-              <div className="flex items-center gap-2"><Users size={14} className="shrink-0 text-muted" aria-hidden /><dd className="truncate text-muted">{[r.managerName && `Gestor ${r.managerName}`, r.team].filter(Boolean).join(" · ") || "Sem gestor/equipe"}</dd></div>
-            </dl>
+            <div className="flex flex-1 flex-col gap-3 p-4 pt-0">
+              <div className="-mt-7 flex items-end justify-between gap-3">
+                <span className="relative z-10 grid size-14 shrink-0 place-items-center rounded-2xl border-4 border-panel text-base font-bold text-white shadow-md" style={{ background: `linear-gradient(135deg, hsl(${hue} 65% 48%), hsl(${(hue + 40) % 360} 65% 42%))` }}>{(r.repName || "?").split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}</span>
+                <button type="button" aria-label={canEdit ? `Editar ${r.repName}` : `Ver detalhes de ${r.repName}`} title={canEdit ? "Editar" : "Ver detalhes"} className="rounded-xl border border-line p-2 text-muted transition hover:border-accent/50 hover:bg-accent/10 hover:text-accent" onClick={() => setEdit(r)}>{canEdit ? <Pencil size={16} /> : <Eye size={16} />}</button>
+              </div>
+              <div className="min-w-0">
+                <p className="truncate font-semibold leading-tight">{r.repName}</p>
+                <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted"><span className="figure rounded-md bg-sunk px-1.5 py-0.5">SAP {r.sapCode}</span>{!r.active && <span className="rounded-full bg-danger/15 px-2 py-0.5 font-medium text-danger">inativo</span>}</p>
+              </div>
+              <dl className="space-y-1.5 text-sm">
+                <div className="flex items-center gap-2"><MapPin size={14} className="shrink-0 text-accent" aria-hidden /><dd className="truncate">{r.city ? `${r.city}/${r.uf}` : "—"}</dd></div>
+                <div className="flex items-center gap-2"><Users size={14} className="shrink-0 text-accent" aria-hidden /><dd className="truncate text-muted">{[r.managerName && `Gestor ${r.managerName}`, r.team].filter(Boolean).join(" · ") || "Sem gestor/equipe"}</dd></div>
+              </dl>
+              <div className="mt-auto flex items-center justify-between gap-2 border-t border-line pt-3 text-xs">
+                <span className="text-muted">{r.lastVisit ? `Última visita ${new Date(r.lastVisit).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}` : "Sem visitas ainda"}</span>
+                <span className="flex items-center gap-1">
+                  {addr && <a className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold text-accent transition hover:bg-accent/10" target="_blank" rel="noopener noreferrer" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`}><ExternalLink size={12} aria-hidden /> Mapa</a>}
+                  <button type="button" className="rounded-full px-2.5 py-1 font-semibold text-accent transition hover:bg-accent/10" onClick={() => setEdit(r)}>{canEdit ? "Editar" : "Detalhes"}</button>
+                </span>
+              </div>
+            </div>
           </li>
-        ))}
+          );
+        })}
         {rows.length === 0 && <li className={`${panelCls} p-10 text-center text-muted md:col-span-2 xl:col-span-3`}>Nenhum representante com esses filtros.</li>}
       </ul>
       {edit && <Editor key={edit.id ?? "novo"} r={edit} canEdit={canEdit} isAdmin={isAdmin} onClose={() => setEdit(null)} />}

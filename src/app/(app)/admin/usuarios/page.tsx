@@ -1,5 +1,6 @@
 import { asc, gt, sql } from "drizzle-orm";
 import { Users } from "lucide-react";
+import { ProfileTriggerAll } from "@/components/admin/profile-trigger";
 import { NewUser } from "@/components/admin/new-user";
 import { UserCard, type UserRow } from "@/components/admin/user-card";
 import { PageHead } from "@/components/page-head";
@@ -27,6 +28,7 @@ export default async function Page() {
     <div className="space-y-5">
       <PageHead icon={Users} size="md" title="Usuários" subtitle={`${plural(list.length, "pessoa", "pessoas")} · ${list.filter((u) => u.online).length} online agora`} />
       <NewUser />
+      <ProfileTriggerAll />
       <ul className="grid gap-3 md:grid-cols-2">{list.map((u) => <UserCard key={u.id} u={u} isMe={u.id === me.id} />)}</ul>
     </div>
   );

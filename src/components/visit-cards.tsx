@@ -21,6 +21,31 @@ export type VisitCard = {
   cnpj: string | null; phones: string[]; email: string | null; contactName: string | null; roleTitle: string | null; canManage: boolean;
 };
 
+const STRIP = { pendente: "bg-warn", confirmada: "bg-accent", realizada: "bg-ok", cancelada: "bg-danger" } as const;
+
+/** Agrupa por urgência: hoje, amanhã, próximas, atrasadas (ainda abertas), realizadas e canceladas. */
+function bucket(list: VisitCard[]) {
+  const defs = [
+    { key: "today", title: "Hoje", dot: "bg-accent", items: [] as VisitCard[] },
+    { key: "tomorrow", title: "Amanhã", dot: "bg-accent", items: [] as VisitCard[] },
+    { key: "next", title: "Próximas", dot: "bg-ok", items: [] as VisitCard[] },
+    { key: "late", title: "Atrasadas (ainda abertas)", dot: "bg-warn", items: [] as VisitCard[] },
+    { key: "nodate", title: "Sem data informada", dot: "bg-muted", items: [] as VisitCard[] },
+    { key: "done", title: "Realizadas", dot: "bg-ok", items: [] as VisitCard[] },
+    { key: "canceled", title: "Canceladas", dot: "bg-danger", items: [] as VisitCard[] },
+  ];
+  const by = Object.fromEntries(defs.map((g) => [g.key, g]));
+  for (const c of list) {
+    if (c.canceled) { by.canceled.items.push(c); continue; }
+    if (c.status === "realizada") { by.done.items.push(c); continue; }
+    if (!c.visitDate) { by.nodate.items.push(c); continue; }
+    const d = dayDiff(c.visitDate);
+    (d === 0 ? by.today : d === 1 ? by.tomorrow : d > 1 ? by.next : by.late).items.push(c);
+  }
+  by.next.items.sort((a, b) => (a.visitDate ?? "").localeCompare(b.visitDate ?? ""));
+  return defs.filter((g) => g.items.length);
+}
+
 /** Lista de visitas em cartões; clicar abre o popup com tudo da visita (sem sair da tela). */
 export function VisitCards({ list, openId }: { list: VisitCard[]; openId?: number | null }) {
   const [open, setOpen] = useState<number | null>(openId ?? null);
@@ -29,32 +54,53 @@ export function VisitCards({ list, openId }: { list: VisitCard[]; openId?: numbe
     setOpen(id);
     try { const u = new URL(location.href); id ? u.searchParams.set("v", String(id)) : u.searchParams.delete("v"); history.replaceState(null, "", u); } catch { /* sem URL */ }
   };
+  const groups = bucket(list);
   return (
     <>
-      <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {list.map((c) => (
-          <li key={c.id}>
-            <button type="button" onClick={() => set(c.id)} className={`${panelCls} group relative block h-full w-full overflow-hidden p-4 text-left transition hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-lg ${c.canceled ? "opacity-60" : ""}`}>
-              <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-grad" />
-              <div className="flex items-center justify-between gap-3">
-                <VisitCodeChip code={c.code} />
-                <VisitStatusChip status={c.canceled ? "cancelada" : c.status} />
-              </div>
-              <p className="mt-3 font-semibold leading-snug">{c.company}</p>
-              {(c.city || c.uf) && <p className="text-sm text-muted">{[c.city, c.uf].filter(Boolean).join(" / ")}</p>}
-              <p className="mt-2 flex items-center gap-1.5 text-sm font-medium"><CalendarCheck size={15} className="text-accent" aria-hidden /> {c.visitDate ? `Visita em ${fmtDate(c.visitDate)}` : "Data da visita não informada"}</p>
-              {c.kind === "seller" && <p className="mt-1.5 flex items-start gap-1.5 text-xs text-muted"><UserRoundCheck size={13} className="mt-0.5 shrink-0" aria-hidden /><span>Vendedores SDR: <b className="font-medium text-ink">{c.sellerName ?? "Grupo dos vendedores"}</b> entra pelo Salesforce</span></p>}
-              {c.repName && <p className="mt-1.5 flex items-start gap-1.5 text-xs text-muted"><MapPin size={13} className="mt-0.5 shrink-0" aria-hidden /><span>Representante: <b className="font-medium text-ink">{c.repName}</b>{c.repKm != null ? ` · ${c.repKm} km` : ""}{c.repCity ? ` · ${c.repCity}` : ""}</span></p>}
-              {c.link && <span className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium" style={{ color: "#0070d2" }}><SalesforceIcon size={12} /> Tem link do Salesforce</span>}
-              {c.note && <p className="mt-2 line-clamp-2 text-sm text-muted">{c.note}</p>}
-              <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3 text-xs text-muted">
-                {c.by ? <span className="flex min-w-0 items-center gap-2"><span className="text-muted/80">Agendada por</span><PersonBubble name={c.by.name} hex={c.by.hex} /></span> : <span />}
-                <span className="shrink-0 whitespace-nowrap">em {fmtDateTime(c.at)}</span>
-              </div>
-            </button>
-          </li>
+      <div className="space-y-7">
+        {groups.map((g) => (
+          <section key={g.key} aria-label={g.title}>
+            <h2 className="mb-3 flex items-center gap-2.5 text-sm font-bold">
+              <span className={`size-2.5 rounded-full ${g.dot}`} aria-hidden />{g.title}
+              <span className="figure rounded-full bg-sunk px-2 py-0.5 text-xs font-semibold text-muted">{g.items.length}</span>
+              <span aria-hidden className="h-px flex-1 bg-line" />
+            </h2>
+            <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {g.items.map((c, i) => {
+                const d = c.visitDate ? new Date(`${c.visitDate}T12:00:00`) : null;
+                const st = c.canceled ? "cancelada" : c.status;
+                return (
+                  <li key={c.id} style={{ "--i": i % 12 } as React.CSSProperties} className="card-in">
+                    <button type="button" onClick={() => set(c.id)} className={`${panelCls} lift group relative flex h-full w-full gap-4 overflow-hidden p-4 text-left ${c.canceled ? "opacity-60" : ""}`}>
+                      <span aria-hidden className={`absolute inset-y-0 left-0 w-1.5 ${STRIP[st]}`} />
+                      <span aria-hidden className="ml-1 flex size-16 shrink-0 flex-col items-center justify-center rounded-2xl bg-grad text-on-accent shadow-md">
+                        {d ? <><span className="text-[10px] font-bold uppercase leading-none tracking-wider opacity-85">{d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "")}</span><span className="figure text-2xl font-bold leading-none">{d.getDate()}</span><span className="text-[10px] font-medium uppercase leading-none opacity-85">{d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")}</span></> : <CalendarCheck size={24} />}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <VisitCodeChip code={c.code} />
+                          <VisitStatusChip status={st} />
+                        </div>
+                        <p className="mt-2 font-semibold leading-snug">{c.company}</p>
+                        {(c.city || c.uf) && <p className="text-sm text-muted">{[c.city, c.uf].filter(Boolean).join(" / ")}</p>}
+                        {!c.visitDate && <p className="mt-1 flex items-center gap-1.5 text-sm font-medium"><CalendarCheck size={15} className="text-accent" aria-hidden /> Data da visita não informada</p>}
+                        {c.kind === "seller" && <p className="mt-1.5 flex items-start gap-1.5 text-xs text-muted"><UserRoundCheck size={13} className="mt-0.5 shrink-0" aria-hidden /><span>Vendedores SDR: <b className="font-medium text-ink">{c.sellerName ?? "Grupo dos vendedores"}</b> entra pelo Salesforce</span></p>}
+                        {c.repName && <p className="mt-1.5 flex items-start gap-1.5 text-xs text-muted"><MapPin size={13} className="mt-0.5 shrink-0" aria-hidden /><span>Representante: <b className="font-medium text-ink">{c.repName}</b>{c.repKm != null ? ` · ${c.repKm} km` : ""}{c.repCity ? ` · ${c.repCity}` : ""}</span></p>}
+                        {c.link && <span className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium" style={{ color: "#0070d2" }}><SalesforceIcon size={12} /> Tem link do Salesforce</span>}
+                        {c.note && <p className="mt-2 line-clamp-2 text-sm text-muted">{c.note}</p>}
+                        <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3 text-xs text-muted">
+                          {c.by ? <span className="flex min-w-0 items-center gap-2"><span className="text-muted/80">Agendada por</span><PersonBubble name={c.by.name} hex={c.by.hex} /></span> : <span />}
+                          <span className="shrink-0 whitespace-nowrap">em {fmtDateTime(c.at)}</span>
+                        </div>
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         ))}
-      </ul>
+      </div>
       {v && <VisitDialog v={v} onClose={() => set(null)} />}
     </>
   );

@@ -47,8 +47,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
     <div className="space-y-5">
       <PageHead icon={MapPin} title="Representantes">{me.permissions["rep.edit"] && <NewRepButton />}</PageHead>
       <div className="grid grid-cols-3 gap-3">
-        {([["Cadastrados", tot.n, Users], ["Ativos", tot.ativos, UserCheck], ["Estados", tot.ufs, Map]] as const).map(([l, v, I]) => (
-          <div key={l} className={`${panelCls} flex items-center gap-3 p-4`}><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-grad-soft text-accent"><I size={18} aria-hidden /></span><div><p className="text-xs text-muted">{l}</p><p className="figure text-2xl font-bold leading-tight">{nf.format(v)}</p></div></div>
+        {([["Cadastrados", tot.n, Users], ["Ativos", tot.ativos, UserCheck], ["Estados", tot.ufs, Map]] as const).map(([l, v, I], i) => (
+          <div key={l} style={{ "--i": i } as React.CSSProperties} className={`${panelCls} stat-glow card-in flex items-center gap-3 p-4`}><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-grad-soft text-accent"><I size={18} aria-hidden /></span><div><p className="text-xs text-muted">{l}</p><p className="figure text-2xl font-bold leading-tight">{nf.format(v)}</p></div></div>
         ))}
       </div>
       <Suspense fallback={null}><RepFilters ufs={ufs} teams={teams} managers={managers} /></Suspense>

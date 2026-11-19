@@ -90,3 +90,20 @@ export async function deleteUserAction(id: number): Promise<ActionResult> {
   revalidatePath("/admin/usuarios");
   return { ok: true, message: `${u.name} foi excluído por completo.` };
 }
+
+/** Faz a tela de personalização do perfil (primeiro acesso, sem trocar a senha) aparecer de novo: para uma pessoa ou para todas. */
+export async function triggerProfileScreenAction(target: number | "all"): Promise<ActionResult> {
+  const me = await requireAdmin();
+  if (target === "all") {
+    const r = await db.update(users).set({ profileDone: false }).where(eq(users.active, true)).returning({ id: users.id });
+    await logAudit(db, { userId: me.id, entity: "user", action: "pediu a personalização do perfil", field: "Primeiro acesso", meta: { alvo: "todos", pessoas: r.length } });
+    revalidatePath("/", "layout");
+    return { ok: true, message: `Todos (${r.length}) verão a tela de personalização no próximo acesso.` };
+  }
+  const [u] = await db.select().from(users).where(eq(users.id, target));
+  if (!u) return fail("Usuário não encontrado.");
+  await db.update(users).set({ profileDone: false }).where(eq(users.id, target));
+  await logAudit(db, { userId: me.id, entity: "user", action: "pediu a personalização do perfil", field: "Primeiro acesso", meta: { usuario: u.username } });
+  revalidatePath("/", "layout");
+  return { ok: true, message: `${u.name} verá a tela de personalização no próximo acesso.` };
+}

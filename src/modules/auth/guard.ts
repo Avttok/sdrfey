@@ -77,7 +77,8 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     id: u.id,
     username: u.username,
     name: u.name,
-    roles: u.roles,
+    // O Adm age como todos os cargos: nenhuma regra de cargo (shufflers, negociações, painéis) o limita.
+    roles: u.roles.includes("admin") ? (["user", "seller", "manager", "admin"] as Role[]) : u.roles,
     accent: u.accent,
     avatar: u.avatar ?? null,
     banner: u.banner ?? null,

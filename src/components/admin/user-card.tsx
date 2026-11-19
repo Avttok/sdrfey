@@ -1,13 +1,13 @@
 "use client";
 
-import { Check, Clock, KeyRound, Pencil, RotateCcw, ShieldCheck, Trash2, X } from "lucide-react";
+import { Check, Clock, KeyRound, Pencil, RotateCcw, ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { ACCENTS, resolveAccent, swatchBg } from "@/config/theme";
 import { ROLE_META, ROLES, type Role } from "@/config/roles";
-import { deleteUserAction, resetPasswordAction, updateUserAction } from "@/modules/admin/users";
+import { deleteUserAction, resetPasswordAction, triggerProfileScreenAction, updateUserAction } from "@/modules/admin/users";
 import { resetUserSettingsAction } from "@/modules/admin/user-prefs";
 import { RESET_KEYS, type ResetKey } from "@/modules/admin/user-prefs-spec";
 import { NavPrefsForm } from "@/components/nav-prefs-form";
@@ -97,6 +97,7 @@ export function UserCard({ u, isMe }: { u: UserRow; isMe: boolean }) {
             <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
               <button type="button" className={btnPrimary} disabled={pending} onClick={() => run(() => updateUserAction(u.id, { name: f.name, roles: f.roles, active: f.active, dailyGoal: u.dailyGoal, canManageGoals: u.canManageGoals, inMetrics: f.inMetrics, permissions: u.permissions, accent: f.accent }), undefined, () => setOpen(false))}>Salvar</button>
               <button type="button" className={btnGhost} disabled={pending} onClick={() => ask({ title: "Redefinir a senha?", body: `A senha de ${u.name} volta para a inicial e a pessoa terá que criar uma nova no próximo acesso.`, label: "Sim, redefinir", icon: KeyRound, tone: "warn", onConfirm: () => run(() => resetPasswordAction(u.id)) })}><KeyRound size={15} aria-hidden /> Redefinir senha</button>
+              <button type="button" className={btnGhost} disabled={pending} onClick={() => ask({ title: "Mostrar a tela de primeiro acesso?", body: `${u.name} passa de novo pela personalização do perfil no próximo acesso (a senha não muda).`, label: "Sim, mostrar", icon: Sparkles, tone: "warn", onConfirm: () => run(() => triggerProfileScreenAction(u.id)) })}><Sparkles size={15} aria-hidden /> Pedir personalização</button>
               <span className="flex-1" />
               {!isMe && <button type="button" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => ask({ title: "Excluir esta pessoa?", body: `${u.name} será excluída TOTALMENTE e não dá para desfazer. O histórico dela continua nos registros.`, label: "Sim, excluir", icon: Trash2, onConfirm: () => run(() => deleteUserAction(u.id)) })}><Trash2 size={15} aria-hidden /> Excluir</button>}
             </div>

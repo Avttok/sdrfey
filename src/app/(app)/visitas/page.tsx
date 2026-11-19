@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { EoxIcon, SalesforceIcon } from "@/components/brand-icons";
-import { CalendarCheck, CalendarX2, ExternalLink, MapPin } from "lucide-react";
+import { CalendarCheck, CalendarClock, CalendarX2, CheckCircle2, Hourglass } from "lucide-react";
 import { Suspense } from "react";
 import { DashboardFilters } from "@/components/dashboard-filters";
 import { VisitCards } from "@/components/visit-cards";
@@ -58,10 +58,20 @@ export default async function VisitsPage({ searchParams }: { searchParams: Promi
   }
   const active = list.filter((v) => !v.canceled_at);
   const canceled = list.length - active.length;
+  const today = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })).setHours(12, 0, 0, 0);
+  const soon = active.filter((v) => { if (!v.visit_date || v.status === "realizada") return false; const d = Math.round((new Date(`${v.visit_date}T12:00:00`).getTime() - today) / 86_400_000); return d === 0 || d === 1; }).length;
 
   return (
     <div className="space-y-5">
       <PageHead icon={CalendarCheck} title="Visitas" subtitle={`${team ? "Equipe" : "Suas visitas"} · ${plural(active.length, "visita agendada", "visitas agendadas")}${canceled ? ` · ${plural(canceled, "cancelada", "canceladas")}` : ""} · ${period.from === period.to ? fmtDate(period.from) : `${fmtDate(period.from)} a ${fmtDate(period.to)}`}`} />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {([["Agendadas", active.length, CalendarCheck, "text-accent"], ["Hoje e amanhã", soon, CalendarClock, "text-accent"], ["Aguardando confirmação", active.filter((v) => v.status === "pendente").length, Hourglass, "text-warn"], ["Realizadas", active.filter((v) => v.status === "realizada").length, CheckCircle2, "text-ok"]] as const).map(([l, n, I, c], i) => (
+          <div key={l} style={{ "--i": i } as React.CSSProperties} className={`${panelCls} stat-glow card-in flex items-center gap-3 p-4`}>
+            <span className={`grid size-11 shrink-0 place-items-center rounded-xl bg-grad-soft ${c}`}><I size={19} aria-hidden /></span>
+            <div className="min-w-0"><p className="truncate text-xs text-muted">{l}</p><p className="figure text-2xl font-bold leading-tight">{n}</p></div>
+          </div>
+        ))}
+      </div>
       <div className={`${panelCls} p-4`}><Suspense fallback={null}>
         <DashboardFilters preset={period.preset} from={period.preset === "custom" ? period.from : ""} to={period.preset === "custom" ? period.to : ""} people={team ? people : []} selected={scope ?? []} />
       </Suspense></div>

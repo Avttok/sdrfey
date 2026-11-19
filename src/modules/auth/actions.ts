@@ -3,6 +3,7 @@
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db, users } from "@/db";
 import { logAudit } from "@/modules/audit/log";
@@ -170,7 +171,9 @@ export async function firstAccessAction(input: { current: string; next: string; 
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   const remember = token ? ((await readToken(token))?.rem ?? false) : false;
   await setSessionCookie(me.id, version, remember);
-  redirect("/painel");
+  // Limpa o cache de navegação: sem isso o /painel guardado (que mandava de volta para cá) reaparecia por ~30 s.
+  revalidatePath("/", "layout");
+  return { ok: "ok" };
 }
 
 /** Quem já tem senha própria passa uma vez pela personalização do perfil (sem trocar a senha). */
@@ -184,5 +187,6 @@ export async function completeProfileAction(input: { name: string; avatar: strin
   const banner = input.banner && BANNER_BY_KEY.has(input.banner) ? input.banner : null;
   await db.update(users).set({ name, avatar, accent, banner, profileDone: true }).where(eq(users.id, me.id));
   await logAudit(db, { userId: me.id, entity: "user", action: "personalizou o perfil", meta: { nome: name !== me.name, icone: !!avatar, banner: !!banner } });
-  redirect("/painel");
+  revalidatePath("/", "layout");
+  return { ok: "ok" };
 }

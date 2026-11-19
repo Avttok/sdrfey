@@ -45,13 +45,24 @@ export function FirstAccessForm({ name: name0, username, roles, accent: accent0,
   const mismatch = conf.length > 0 && next !== conf;
   const submit = (e: React.FormEvent) => {
     e.preventDefault(); setErr("");
-    start(async () => { const r = needPassword ? await firstAccessAction({ current: cur, next, confirm: conf, name, avatar, accent, banner }) : await completeProfileAction({ name, avatar, accent, banner }); if (r?.error) setErr(r.error); });
+    start(async () => {
+      // Insiste até 10 vezes se a conexão falhar; só para antes quando o servidor responde (erro de validação ou sucesso).
+      for (let i = 0; i < 10; i++) {
+        try {
+          const r = needPassword ? await firstAccessAction({ current: cur, next, confirm: conf, name, avatar, accent, banner }) : await completeProfileAction({ name, avatar, accent, banner });
+          if (r?.ok || (i > 0 && r?.error === "Este acesso já foi concluído.")) { window.location.assign("/painel"); return; }
+          if (r?.error) { setErr(r.error); return; }
+        } catch { /* conexão caiu: tenta de novo */ }
+        await new Promise((res) => setTimeout(res, 500 + i * 300));
+      }
+      setErr("Não consegui salvar agora. Confira a conexão e tente de novo.");
+    });
   };
   const pw = show ? "text" : "password";
   return (
     <form onSubmit={submit} style={vars} className="space-y-4">
       {/* prévia */}
-      <div className="sh-rise relative overflow-hidden rounded-3xl bg-grad p-5 text-on-accent shadow-xl" style={bannerStyle(banner)}>
+      <div className="sticky top-2 z-30"><div className="sh-rise relative overflow-hidden rounded-3xl bg-grad p-5 text-on-accent shadow-xl" style={bannerStyle(banner)}>
         <span aria-hidden className="sh-card absolute -right-8 -top-10 size-36 rounded-full bg-white/25 blur-2xl" style={{ "--d": "0s" } as React.CSSProperties} />
         <span aria-hidden className="sh-card absolute -bottom-12 left-10 size-32 rounded-full bg-black/20 blur-2xl" style={{ "--d": "-2s" } as React.CSSProperties} />
         <BannerRain avatar={avatar} roles={roles} />
@@ -68,6 +79,7 @@ export function FirstAccessForm({ name: name0, username, roles, accent: accent0,
           </div>
         </div>
         <div className="relative mt-3 flex flex-wrap gap-1.5">{roles.map((r) => <RoleBadge key={r} role={r} />)}</div>
+      </div>
       </div>
 
       <Step n={1} icon={UserRound} title="Seu nome" hint="Como a equipe vai ver você. O login (@usuário) não muda.">
