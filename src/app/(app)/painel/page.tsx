@@ -91,13 +91,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     );
   }
 
-  const all = await db.select().from(users).where(and(eq(users.active, true), eq(users.inMetrics, true), sql`not (${users.roles} = array['seller']::text[])`)).orderBy(asc(users.name));
+  const all = await db.select().from(users).where(and(eq(users.active, true), eq(users.inMetrics, true))).orderBy(asc(users.name));
   const people = all.map((u) => ({ id: u.id, name: u.name, hex: bubbleHex(u.accent, u.id, u.roles) }));
+  const sdrIds = new Set(all.filter((u) => !(u.roles.length === 1 && u.roles[0] === "seller")).map((u) => u.id));
+  const sellerIds = new Set(all.filter((u) => u.roles.includes("seller")).map((u) => u.id));
   const picked = (Array.isArray(sp.u) ? sp.u : sp.u ? [sp.u] : []).map(Number).filter((id) => people.some((p) => p.id === id));
+  /** `scope` = quem aparece como selecionado; `sdrScope` = só quem tem parte SDR (números de atendimento). */
   const scope = team ? (picked.length ? picked : people.map((p) => p.id)) : [me.id];
+  const sdrScope = team ? (picked.length ? picked.filter((id) => sdrIds.has(id)) : [...sdrIds]) : [me.id];
+  const sdrQuery = sdrScope.length ? sdrScope : [-1];
   const tagColor = Object.fromEntries((await db.select({ key: tags.key, color: tags.color }).from(tags)).map((t) => [t.key, t.color]));
   const settings = await getSettings();
-  const [d, x] = await Promise.all([getDashboard(period, scope, settings), getDashboardExtra(period, scope)]);
+  const [d, x] = await Promise.all([getDashboard(period, sdrQuery, settings), getDashboardExtra(period, sdrQuery)]);
   const can = (k: string) => !!me.permissions[k];
   // Só do primeiro ao último horário com registro; horas vazias no meio (almoço) continuam aparecendo.
   const activeHours = d.hours.map((x) => x.h);
@@ -106,7 +111,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const perHour = hoursRange.map((h) => ({ h, parts: d.hours.filter((x) => x.h === h).map((x) => ({ ...x, ...(colorOf.get(x.uid) ?? { hex: "#888780", name: "?" }) })) }));
   const maxHour = Math.max(1, ...perHour.map((x) => x.parts.reduce((a, p) => a + p.n, 0)));
   const sellersAll = can("panel.vendas") ? await db.select({ id: users.id }).from(users).where(and(eq(users.active, true), sql`'seller' = any(${users.roles})`, metricUsers(me))) : [];
-  const teamSales = can("panel.vendas") ? await getSalesStats(period, sellersAll.map((x) => x.id)) : null;
+  const salesIds = team && picked.length ? sellersAll.map((x) => x.id).filter((id) => picked.includes(id)) : sellersAll.map((x) => x.id);
+  const teamSales = can("panel.vendas") ? await getSalesStats(period, salesIds) : null;
   /** Cargos se somam: quem é SDR e Vendedor vê também as próprias vendas (a da equipe já inclui a dele). */
   const mySales = hasSellerPart(me.roles) && !teamSales ? await getSalesStats(period, [me.id]) : null;
   const totalStock = d.stock.novos + d.stock.trabalhados + d.stock.fora + d.stock.clientes || 1;
