@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Archive, Download, Eraser, FlaskConical, Handshake, KeyRound, Mail, Settings2, Tags, Upload, Users, type LucideIcon } from "lucide-react";
+import { Activity, Clock, Archive, Download, Eraser, FlaskConical, Handshake, KeyRound, Mail, Settings2, Tags, Upload, Users, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -22,6 +22,7 @@ const SECTIONS: { title: string; items: { href: string; label: string; hint: str
   ] },
   { title: "Sistema", items: [
     { href: "/admin/parametros", label: "Parâmetros", hint: "Regras do sorteio", icon: Settings2 },
+    { href: "/admin/banco", label: "Saúde do sistema", hint: "Banco, conexões e números", icon: Activity },
     { href: "/admin/ao-vivo", label: "Ao vivo", hint: "Quem está online", icon: Clock },
     { href: "/admin/modo-teste", label: "Modo teste", hint: "Treinar sem sujar dados", icon: FlaskConical },
   ] },

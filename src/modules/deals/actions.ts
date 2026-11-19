@@ -93,27 +93,41 @@ export async function setStageAction(id: number, stage: DealStage): Promise<Acti
   return { ok: true };
 }
 
-export async function closeDealAction(id: number, input: { won: boolean; value?: string; reason?: string; closedOn?: string | null; data?: DealDataInput }): Promise<ActionResult> {
+/**
+ * Encerra a negociação. Faturar com uma cotação existente (`quoteId`) marca essa cotação como "faturado" e leva os dados dela
+ * (número, data, valores, condição, frete) para a venda; perder marca as cotações em aberto como "perdido".
+ */
+export async function closeDealAction(id: number, input: { won: boolean; quoteId?: number | null; value?: string; reason?: string; closedOn?: string | null; data?: DealDataInput }): Promise<ActionResult> {
   const r = await load(id);
   if ("error" in r) return fail(r.error);
   const { me, deal } = r;
   if (closed(deal.stage)) return fail("Esta negociação já foi encerrada.");
-  let cents = deal.closedValueCents ?? deal.valueCents;
+  let quote: typeof dealQuotes.$inferSelect | undefined;
+  if (input.won && input.quoteId) {
+    [quote] = await db.select().from(dealQuotes).where(and(eq(dealQuotes.id, input.quoteId), eq(dealQuotes.dealId, id)));
+    if (!quote) return fail("Cotação não encontrada nesta negociação.");
+  }
+  let cents = deal.closedValueCents ?? quote?.totalCents ?? deal.valueCents;
   if (input.won) {
-    if (input.value?.trim()) { cents = parseMoneyToCents(input.value); if (cents === null) return fail("Valor da venda inválido."); }
-    if (!cents) return fail("Informe o valor da venda.");
+    if (input.value?.trim()) { cents = parseMoneyToCents(input.value); if (cents === null) return fail("Valor faturado inválido."); }
+    if (!cents) return fail("Informe o valor faturado.");
   } else if (!input.reason?.trim()) return fail("Conte o motivo da perda.");
   const reason = input.reason?.trim().slice(0, 500) || null;
   const extra = input.won ? dataPatch({ ...input.data, quoteValue: undefined, closedValue: undefined, closedOn: undefined }) : { patch: {} };
   if (extra.error) return fail(extra.error);
+  const now = new Date();
   await db.transaction(async (tx) => {
     await applyData(tx, me, deal, extra.patch);
-    await tx.update(deals).set({ stage: input.won ? "ganho" : "perdido", closedValueCents: input.won ? cents : deal.closedValueCents, closedOn: input.won ? (input.closedOn && isoDate.safeParse(input.closedOn).success ? input.closedOn : null) : null, lostReason: input.won ? null : reason, closedAt: new Date(), nextActionAt: null, nextActionNote: null, sellerId: deal.sellerId ?? me.id, updatedAt: new Date() }).where(eq(deals.id, id));
-    await tx.insert(dealEvents).values({ dealId: id, userId: me.id, kind: input.won ? "ganho" : "perdido", note: reason, valueCents: input.won ? cents : null });
-    await logAudit(tx, { userId: me.id, leadId: deal.leadId, entity: "deal", action: input.won ? "fechou venda" : "perdeu negócio", field: "Negociação", newValue: input.won ? cents : reason, meta: { negociacao: id } });
+    const fromQuote: Partial<typeof deals.$inferInsert> = quote ? { quoteNumber: quote.number, quoteDate: quote.quoteDate, valueCents: quote.totalCents, netValueCents: quote.netCents ?? quote.totalCents, weightKg: quote.weightKg, ...(quote.paymentTerms ? { paymentTerms: quote.paymentTerms } : {}), ...(quote.freight ? { freight: quote.freight } : {}) } : {};
+    for (const k of Object.keys(extra.patch)) delete (fromQuote as Record<string, unknown>)[k]; // o que a pessoa digitou vale mais que o da cotação
+    await tx.update(deals).set({ ...fromQuote, stage: input.won ? "ganho" : "perdido", closedValueCents: input.won ? cents : deal.closedValueCents, closedOn: input.won ? (input.closedOn && isoDate.safeParse(input.closedOn).success ? input.closedOn : null) : null, lostReason: input.won ? null : reason, closedAt: now, nextActionAt: null, nextActionNote: null, sellerId: deal.sellerId ?? me.id, updatedAt: now }).where(eq(deals.id, id));
+    if (input.won && quote) await tx.update(dealQuotes).set({ outcome: "faturado", outcomeAt: now }).where(eq(dealQuotes.id, quote.id));
+    if (!input.won) await tx.update(dealQuotes).set({ outcome: "perdido", outcomeAt: now }).where(and(eq(dealQuotes.dealId, id), sql`${dealQuotes.outcome} is null`));
+    await tx.insert(dealEvents).values({ dealId: id, userId: me.id, kind: input.won ? "ganho" : "perdido", note: input.won ? (quote ? `Cotação ${quote.number ?? `#${quote.id}`}` : null) : reason, valueCents: input.won ? cents : null });
+    await logAudit(tx, { userId: me.id, leadId: deal.leadId, entity: "deal", action: input.won ? "faturou" : "perdeu negócio", field: "Negociação", newValue: input.won ? cents : reason, meta: { negociacao: id, cotacao: quote?.number ?? null } });
   });
   refresh(id);
-  return { ok: true, message: input.won ? "Venda fechada! 🎉" : "Negociação encerrada como perdida." };
+  return { ok: true, message: input.won ? "Faturado! 🎉" : "Negociação encerrada como perdida." };
 }
 
 export async function reopenDealAction(id: number): Promise<ActionResult> {
@@ -125,6 +139,7 @@ export async function reopenDealAction(id: number): Promise<ActionResult> {
   if (open.length) return fail("Este lead já tem outra negociação aberta.");
   await db.transaction(async (tx) => {
     await tx.update(deals).set({ stage: "contato", closedAt: null, closedOn: null, lostReason: null, updatedAt: new Date() }).where(eq(deals.id, id));
+    await tx.update(dealQuotes).set({ outcome: null, outcomeAt: null }).where(eq(dealQuotes.dealId, id));
     await tx.insert(dealEvents).values({ dealId: id, userId: me.id, kind: "reaberto" });
     await logAudit(tx, { userId: me.id, leadId: deal.leadId, entity: "deal", action: "reabriu negociação", field: "Negociação", meta: { negociacao: id } });
   });

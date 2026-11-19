@@ -52,9 +52,10 @@ export async function applyImportAction(formData: FormData): Promise<ImportResul
   if (f.error !== undefined) return { ok: false, message: f.error };
   if (f.kind === "leads") {
     const { drafts } = parseLeadRows(f.headers, f.rows);
-    const r = await applyLeadDrafts(drafts, { importedBy: me.id, sourceName: f.name });
+    const kind = formData.get("leadKind") === "inativo" ? "inativo" : "prospect";
+    const r = await applyLeadDrafts(drafts, { importedBy: me.id, sourceName: f.name, kind });
     revalidatePath("/leads");
-    return { ok: true, message: `${plural(r.inserted, "lead novo importado", "leads novos importados")}; ${r.skippedExisting} já ${r.skippedExisting === 1 ? "existia e foi mantido" : "existiam e foram mantidos"}.`, details: [...r.unknownOwners.map((o) => `Responsável desconhecido ignorado: ${o}`), ...r.unknownTags.map((t) => `Tag desconhecida ignorada: ${t}`)] };
+    return { ok: true, message: `${plural(r.inserted, kind === "inativo" ? "lead inativo importado" : "lead novo importado", kind === "inativo" ? "leads inativos importados" : "leads novos importados")}; ${r.skippedExisting} já ${r.skippedExisting === 1 ? "existia e foi mantido" : "existiam e foram mantidos"}${r.converted ? ` (${r.converted} passaram para inativo)` : ""}.`, details: [...r.unknownOwners.map((o) => `Responsável desconhecido ignorado: ${o}`), ...r.unknownTags.map((t) => `Tag desconhecida ignorada: ${t}`)] };
   }
   const { drafts } = parseRepRows(f.headers, f.rows);
   const r = await applyRepDrafts(drafts, { importedBy: me.id, sourceName: f.name });

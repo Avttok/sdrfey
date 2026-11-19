@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BellRing, CircleDollarSign, FileSpreadsheet, FileText, Handshake, UserPlus } from "lucide-react";
+import { BellRing, FileSpreadsheet, FileText, Handshake, UserPlus } from "lucide-react";
 import { NewDeal } from "@/components/deals/new-deal";
 import { DealBoard } from "@/components/deals/deal-board";
 import { PageHead } from "@/components/page-head";
@@ -27,14 +27,14 @@ export default async function DealsPage() {
   const quotes = open.filter((d) => d.stage === "cotacao");
   const quotesValue = quotes.reduce((a, d) => a + (d.mainCents ?? 0), 0);
   const stats = [
-    { I: Handshake, t: "Em andamento", v: String(team ? open.length : mine.length), s: team ? "negociações abertas" : "suas negociações abertas" },
-    { I: UserPlus, t: "Sem vendedor", v: String(pool.length), s: pool.length ? "esperando alguém assumir" : "grupo em dia", hot: pool.length > 0 },
-    { I: BellRing, t: "Precisam de atenção", v: String(attention.length), s: "ligar, cobrar ou retomar", hot: attention.length > 0 },
+    { I: Handshake, t: "Em andamento", v: String(team ? open.length : mine.length), s: team ? "abertas" : "suas abertas" },
+    { I: UserPlus, t: "Sem vendedor", v: String(pool.length), s: pool.length ? "esperando vendedor" : "nenhuma", hot: pool.length > 0 },
+    { I: BellRing, t: "Precisam de atenção", v: String(attention.length), s: "com aviso", hot: attention.length > 0 },
     { I: FileText, t: "Cotações abertas", v: String(quotes.length), s: quotesValue ? fmtBRL(quotesValue) : "nenhuma cotação" },
   ];
   return (
     <div className="space-y-5">
-      <PageHead icon={Handshake} title="Negociações" subtitle="Clientes repassados pelos SDRs: ligue, envie cotações e feche. Os avisos mostram o que não pode esperar.">
+      <PageHead icon={Handshake} title="Negociações">
         {canClaim && <Link href="/negociacoes/importar" className={btnGhost}><FileSpreadsheet size={16} aria-hidden /> Importar planilha</Link>}
         {canClaim && <NewDeal terms={(await db.select({ n: paymentTerms.name }).from(paymentTerms).where(eq(paymentTerms.active, true)).orderBy(asc(paymentTerms.name))).map((t) => t.n)} />}
       </PageHead>
@@ -48,7 +48,6 @@ export default async function DealsPage() {
         ))}
       </div>
       <DealBoard deals={deals} meId={me.id} canClaim={canClaim} team={team} />
-      <p className="flex items-center gap-2 text-xs text-muted"><CircleDollarSign size={14} aria-hidden /> Visitas de representante levam dias para confirmar e ficam na aba Visitas; aqui o contato é imediato.</p>
     </div>
   );
 }

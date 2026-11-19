@@ -18,7 +18,6 @@ function Terms({ rows }: { rows: TermRow[] }) {
   const [del, setDel] = useState<TermRow | null>(null);
   return (
     <SectionCard icon={CreditCard} title={`Condições de pagamento (${rows.length})`}>
-      <p className="text-sm text-muted">Entram sozinhas quando um PDF é lido. Os vendedores só podem escolher da lista (ativas).</p>
       <ul className="divide-y divide-line rounded-xl border border-line">
         {rows.map((t) => (
           <li key={t.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
@@ -66,7 +65,6 @@ function Products({ rows }: { rows: ProductRow[] }) {
   const field = (label: string, k: keyof PEdit, cls = "") => <label className={`flex flex-col gap-1 text-xs font-medium text-muted ${cls}`}>{label}<input className={inputCls} value={edit![k] ?? ""} onChange={(e) => setEdit({ ...edit!, [k]: e.target.value })} /></label>;
   return (
     <SectionCard icon={Package} title={`Catálogo de produtos (${rows.length})`}>
-      <p className="text-sm text-muted">Cresce sozinho a cada item visto nas cotações. Aqui você corrige descrições, tipos e preços.</p>
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-52 flex-1"><Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" aria-hidden /><input className={`${inputCls} !pl-9`} placeholder="Buscar por código, descrição ou tipo" aria-label="Buscar produto" value={q} onChange={(e) => { setQ(e.target.value); setLimit(50); }} /></div>
         <button type="button" className={btnGhost} onClick={() => setEdit({ id: null, code: "", description: "", kind: "", unit: "CEN", price: "", weight: "" })}><Plus size={15} aria-hidden /> Novo produto</button>

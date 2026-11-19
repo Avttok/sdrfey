@@ -21,7 +21,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
   const leadId = Number(sp.lead);
   return (
     <div className="space-y-5">
-      <PageHead icon={Eraser} size="md" title="Apagar" subtitle="Central de exclusão: por categoria, por pessoa ou registro a registro. Cada exclusão fica no Registro." />
+      <PageHead icon={Eraser} size="md" title="Apagar" />
       <nav aria-label="Tipo de exclusão" className="flex flex-wrap gap-2">
         {TABS.map(({ key, label, icon: Icon }) => (
           <Link key={key} href={`/admin/apagar?tab=${key}`} aria-current={tab === key ? "page" : undefined}

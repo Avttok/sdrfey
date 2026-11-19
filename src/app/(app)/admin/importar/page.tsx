@@ -10,7 +10,7 @@ export default async function Page() {
   await requireAdmin();
   return (
     <div className="space-y-5">
-      <PageHead icon={Upload} size="md" title="Importar CSV" subtitle="Adicione leads ou representantes em 3 passos. Nada que já existe é sobrescrito." />
+      <PageHead icon={Upload} size="md" title="Importar CSV" />
       <ImportForm />
     </div>
   );

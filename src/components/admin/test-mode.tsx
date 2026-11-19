@@ -26,7 +26,6 @@ export function TestMode({ count }: { count: number }) {
         </section>
         <section className={`${panelCls} flex flex-col gap-3 p-5`}>
           <h2 className="font-semibold">Treinar e limpar</h2>
-          <p className="flex-1 text-sm text-muted">Atenda um lead de teste para treinar o fluxo, e apague tudo quando terminar.</p>
           <form action={startTestAction}><button type="submit" className={`${btnGhost} w-full`}><Play size={15} aria-hidden /> Atender em modo teste</button></form>
           <button type="button" className={`${btnGhost} w-full text-danger`} disabled={pending} onClick={() => ask({ title: "Apagar todos os leads de teste?", body: "Todos os leads, atendimentos e visitas do modo teste serão apagados. Os leads reais não mudam.", label: "Sim, apagar", icon: Trash2, onConfirm: () => run(() => clearTestDataAction()) })}><Trash2 size={15} aria-hidden /> Apagar leads de teste</button>
         </section>

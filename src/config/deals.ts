@@ -6,11 +6,19 @@ export const STAGE_META: Record<DealStage, { label: string; color: string; hint:
   contato: { label: "Em contato", color: "#8b5cf6", hint: "Vendedor já falou com o cliente" },
   cotacao: { label: "Cotação enviada", color: "#f59e0b", hint: "Aguardando resposta da cotação" },
   negociacao: { label: "Negociando", color: "#06b6d4", hint: "Ajustando condições para fechar" },
-  ganho: { label: "Venda fechada", color: "#22c55e", hint: "Negócio ganho" },
+  ganho: { label: "Faturado", color: "#22c55e", hint: "Venda faturada" },
   perdido: { label: "Perdida", color: "#ef4444", hint: "Negócio perdido" },
 };
 
-export const OPEN_STAGES: DealStage[] = ["novo", "contato", "cotacao", "negociacao"];
+/** Etapas que o vendedor escolhe à mão. "Negociando" ficou só para negociações antigas: aparece junto de "Cotação enviada". */
+export const OPEN_STAGES: DealStage[] = ["novo", "contato", "cotacao"];
+/** Colunas do quadro: as três abertas e, no fim, o que já foi faturado no mês. */
+export const BOARD_COLUMNS: { key: "novo" | "contato" | "cotacao" | "ganho"; stages: DealStage[] }[] = [
+  { key: "novo", stages: ["novo"] },
+  { key: "contato", stages: ["contato"] },
+  { key: "cotacao", stages: ["cotacao", "negociacao"] },
+  { key: "ganho", stages: ["ganho"] },
+];
 
 /** Regras dos avisos (em horas/dias). Ajuste aqui. */
 export const ALERT_RULES = {
@@ -37,7 +45,7 @@ export const DEAL_EVENT_LABEL: Record<string, string> = {
   nota: "Anotação",
   etapa: "Mudou de etapa",
   retorno: "Retorno agendado",
-  ganho: "Venda fechada",
+  ganho: "Faturado",
   perdido: "Negócio perdido",
   reaberto: "Reaberta",
 };

@@ -70,7 +70,6 @@ export default async function VisitsPage({ searchParams }: { searchParams: Promi
         <div className={`${panelCls} grid place-items-center gap-2 p-12 text-center`}>
           <span className="grid size-14 place-items-center rounded-2xl bg-grad-soft text-accent"><CalendarX2 size={26} aria-hidden /></span>
           <p className="font-semibold">Nenhuma visita neste período</p>
-          <p className="text-sm text-muted">As visitas aparecem aqui quando alguém marca &ldquo;Agendado&rdquo; no Shuffler.</p>
         </div>
       ) : (
         <VisitCards openId={wanted} list={list.map((v) => ({ id: v.id, code: v.code, status: v.status, canceled: !!v.canceled_at, kind: v.kind, visitDate: v.visit_date, link: v.link, at: new Date(v.at).toISOString(), note: v.note, confirmedAt: v.confirmed_at ? new Date(v.confirmed_at).toISOString() : null, repName: v.rep_name, repSap: v.rep_sap, repCity: v.rep_city, repKm: v.rep_km, sellerName: v.seller_name, leadId: v.lead_id, company: v.company, city: v.city, uf: v.uf, sfUrl: v.sf_url, eoxUrl: v.eox_url, cnpj: v.cnpj, phones: v.phones ?? [], email: v.email, contactName: v.contact_name, roleTitle: v.role_title, canManage: v.owner_id === me.id || !!me.permissions["lead.edit"] || (v.kind === "seller" && hasSellerPart(me.roles)), by: v.name ? { name: v.name, hex: bubbleHex(v.accent, v.uid ?? 0, v.roles ?? undefined) } : null }))} />

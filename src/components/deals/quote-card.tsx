@@ -16,7 +16,7 @@ import { readQuotePdfAction } from "@/modules/quotes/read";
 
 export type QuoteView = {
   id: number; number: string | null; quoteDate: string | null; totalCents: number | null; productsCents: number | null; ipiCents: number | null; icmsCents: number | null; netCents: number | null; freightCents: number | null; weightKg: number | null;
-  freight: "CIF" | "FOB" | "RED" | null; paymentTerms: string | null; validityDays: number | null; note: string | null; link: string | null; createdAt: string;
+  freight: "CIF" | "FOB" | "RED" | null; paymentTerms: string | null; validityDays: number | null; note: string | null; link: string | null; outcome?: "faturado" | "perdido" | null; createdAt: string;
   items: (QuoteItem & { id: number })[];
 };
 
@@ -170,7 +170,7 @@ export function QuoteCard({ dealId, q, terms, extraPct, onTerm, leadCnpj, editab
       <header className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-warn/15 text-warn"><FileText size={17} aria-hidden /></span>
         <div className="min-w-0 flex-1">
-          <h3 className="font-semibold leading-tight">Cotação {q.number ?? `#${q.id}`}{isLast && <span className="ml-2 rounded-full bg-accent/12 px-2 py-0.5 align-middle text-[11px] font-semibold text-accent">Mais recente</span>}</h3>
+          <h3 className="font-semibold leading-tight">Cotação {q.number ?? `#${q.id}`}{isLast && <span className="ml-2 rounded-full bg-accent/12 px-2 py-0.5 align-middle text-[11px] font-semibold text-accent">Mais recente</span>}{q.outcome === "faturado" && <span className="ml-2 rounded-full bg-ok/15 px-2 py-0.5 align-middle text-[11px] font-semibold text-ok">Faturada</span>}{q.outcome === "perdido" && <span className="ml-2 rounded-full bg-danger/12 px-2 py-0.5 align-middle text-[11px] font-semibold text-danger">Perdida</span>}</h3>
           <p className="text-xs text-muted">{q.quoteDate ? fmtDate(q.quoteDate) : fmtDate(q.createdAt)}{q.freight ? ` · Frete ${q.freight}` : ""}{q.paymentTerms ? ` · ${q.paymentTerms}` : ""}{q.validityDays ? ` · validade ${q.validityDays} dias` : ""}</p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">{q.link && <BrandLink kind="sf" small href={q.link} label="Abrir no Salesforce" />}{editable && <><button type="button" className={`${btnGhost} !min-h-9 !px-3 !text-sm`} onClick={() => setEdit(true)}><Pencil size={14} aria-hidden /> Editar</button><button type="button" aria-label="Apagar cotação" className={`${btnGhost} !min-h-9 !px-2.5 text-danger`} disabled={pending} onClick={() => setDel(true)}><Trash2 size={15} aria-hidden /></button></>}</div>

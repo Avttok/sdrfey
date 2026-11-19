@@ -23,6 +23,7 @@ export type DbHealth = {
   tables: { name: string; rows: number; bytes: number; dead: number; lastVacuum: string | null }[];
   indexes: { total: number; bytes: number; unused: { name: string; table: string; bytes: number }[] };
   leads: { total: number; test: number; unenriched: number; noContact: number; noEmail: number; noCity: number; locked: number; owned: number; lastCreated: string | null; lastEnriched: string | null };
+  system: { usersActive: number; usersOnline: number; dealsOpen: number; dealsBilled: number; dealsLost: number; quotes: number; inactiveLeads: number; shufflesToday: number; attendedToday: number; auditDay: number; lastAudit: string | null } | null;
   checks: HealthCheck[];
   errors: string[];
 };
@@ -33,17 +34,17 @@ async function q<T>(errors: string[], label: string, run: () => Promise<T>): Pro
 const rows = <T,>(r: unknown): T[] => (Array.isArray(r) ? r : ((r as { rows?: T[] })?.rows ?? [])) as T[];
 const num = (v: unknown) => (v == null ? 0 : Number(v));
 
-/** Monitor de saúde do banco: só Gestor/Adm. Cada consulta é isolada, uma falha não derruba o resto. */
+/** Monitor de saúde do banco e do sistema: só o Adm. Cada consulta é isolada, uma falha não derruba o resto. */
 export async function dbHealthAction(): Promise<{ ok: true; data: DbHealth } | { ok: false; message: string }> {
   const me = await requireUser();
-  if (!hasRole(me.roles, "manager")) return { ok: false, message: "Sem permissão." };
+  if (!hasRole(me.roles, "admin")) return { ok: false, message: "Só o Adm vê a saúde do sistema." };
   const errors: string[] = [];
 
   const t0 = performance.now();
   await q(errors, "latência", () => db.execute(sql`select 1`));
   const latencyMs = Math.round(performance.now() - t0);
 
-  const [meta, conn, stat, tbls, idxs, unused, leadsAgg] = await Promise.all([
+  const [meta, conn, stat, tbls, idxs, unused, leadsAgg, sys] = await Promise.all([
     q(errors, "versão/tamanho", async () => rows<{ v: string; size: string; up: string | null }>(await db.execute(sql`select version() as v, pg_database_size(current_database())::text as size, extract(epoch from now() - pg_postmaster_start_time())::text as up`))[0]),
     q(errors, "conexões", async () => rows<{ active: string; idle: string; idle_tx: string; max: string | null }>(await db.execute(sql`select count(*) filter (where state = 'active') as active, count(*) filter (where state = 'idle') as idle, count(*) filter (where state like 'idle in transaction%') as idle_tx, current_setting('max_connections', true) as max from pg_stat_activity where datname = current_database()`))[0]),
     q(errors, "estatísticas", async () => rows<{ hit: string | null; commit: string; rollback: string; deadlocks: string }>(await db.execute(sql`select round(100.0 * blks_hit / nullif(blks_hit + blks_read, 0), 2)::text as hit, xact_commit::text as commit, xact_rollback::text as rollback, deadlocks::text as deadlocks from pg_stat_database where datname = current_database()`))[0]),
@@ -51,6 +52,18 @@ export async function dbHealthAction(): Promise<{ ok: true; data: DbHealth } | {
     q(errors, "índices", async () => rows<{ total: string; bytes: string }>(await db.execute(sql`select count(*)::text as total, coalesce(sum(pg_relation_size(indexrelid)), 0)::text as bytes from pg_stat_user_indexes`))[0]),
     q(errors, "índices sem uso", async () => rows<{ name: string; tbl: string; bytes: string }>(await db.execute(sql`select s.indexrelname as name, s.relname as tbl, pg_relation_size(s.indexrelid)::text as bytes from pg_stat_user_indexes s join pg_index i on i.indexrelid = s.indexrelid where s.idx_scan = 0 and not i.indisunique and not i.indisprimary order by pg_relation_size(s.indexrelid) desc limit 6`))),
     q(errors, "leads", async () => rows<Record<string, string | null>>(await db.execute(sql`select count(*)::text as total, count(*) filter (where is_test)::text as test, count(*) filter (where not is_test and enriched_at is null)::text as unenriched, count(*) filter (where not is_test and cardinality(phones) = 0 and email is null)::text as no_contact, count(*) filter (where not is_test and email is null)::text as no_email, count(*) filter (where not is_test and city is null)::text as no_city, count(*) filter (where locked_by is not null)::text as locked, count(*) filter (where owner_id is not null)::text as owned, max(created_at)::text as last_created, max(enriched_at)::text as last_enriched from leads`))[0]),
+    q(errors, "sistema", async () => rows<Record<string, string | null>>(await db.execute(sql`select
+      (select count(*) from users where active)::text as users_active,
+      (select count(*) from presence where last_seen_at > now() - interval '90 seconds')::text as users_online,
+      (select count(*) from deals where not is_test and stage not in ('ganho','perdido'))::text as deals_open,
+      (select count(*) from deals where not is_test and stage = 'ganho')::text as deals_billed,
+      (select count(*) from deals where not is_test and stage = 'perdido')::text as deals_lost,
+      (select count(*) from deal_quotes)::text as quotes,
+      (select count(*) from leads where kind = 'inativo' and not is_test)::text as inactive,
+      (select count(*) from seller_shuffles where done_at >= date_trunc('day', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo')::text as shuffles_today,
+      (select count(*) from attendance_sessions where outcome = 'saved' and not is_test and saved_at >= date_trunc('day', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo')::text as attended_today,
+      (select count(*) from audit_log where at > now() - interval '24 hours')::text as audit_day,
+      (select max(at) from audit_log)::text as last_audit`))[0]),
   ]);
 
   const connections = conn ? { active: num(conn.active), idle: num(conn.idle), idleTx: num(conn.idle_tx), max: conn.max ? num(conn.max) : null } : null;
@@ -86,6 +99,7 @@ export async function dbHealthAction(): Promise<{ ok: true; data: DbHealth } | {
       connections, cacheHitPct, xactCommit: stat ? num(stat.commit) : null, xactRollback: stat ? num(stat.rollback) : null, deadlocks: stat ? num(stat.deadlocks) : null,
       tables, indexes: { total: idxs ? num(idxs.total) : 0, bytes: idxs ? num(idxs.bytes) : 0, unused: (unused ?? []).map((u) => ({ name: u.name, table: u.tbl, bytes: num(u.bytes) })) },
       leads: leadsOut, checks, errors,
+      system: sys ? { usersActive: num(sys.users_active), usersOnline: num(sys.users_online), dealsOpen: num(sys.deals_open), dealsBilled: num(sys.deals_billed), dealsLost: num(sys.deals_lost), quotes: num(sys.quotes), inactiveLeads: num(sys.inactive), shufflesToday: num(sys.shuffles_today), attendedToday: num(sys.attended_today), auditDay: num(sys.audit_day), lastAudit: sys.last_audit } : null,
     },
   };
 }

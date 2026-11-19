@@ -5,12 +5,31 @@ import { useRef, useState, useTransition } from "react";
 import { Spinner } from "@/components/spinner";
 import { useBusyWhile, useToast } from "@/components/toast";
 import { btnGhost, btnPrimary, panelCls } from "@/components/ui";
+import { ImportExample } from "@/components/import-example";
 import { applyImportAction, previewImportAction, type ImportPreview } from "@/modules/import/actions";
 
 const KINDS = [
-  { key: "leads", title: "Leads", sub: "Planilha DB_LD", Icon: Users, help: "Só o CNPJ é obrigatório; o resto é completado pela consulta. CNPJs que já existem são mantidos e nada é sobrescrito." },
-  { key: "reps", title: "Representantes", sub: "Planilha DB_RP", Icon: MapPin, help: "Atualiza pelo código SAP e encontra as coordenadas pela cidade (usadas no “representante mais próximo”)." },
+  { key: "leads", title: "Leads", sub: "Planilha DB_LD", Icon: Users },
+  { key: "reps", title: "Representantes", sub: "Planilha DB_RP", Icon: MapPin },
 ] as const;
+
+const EXAMPLES = {
+  leads: {
+    headers: ["CNPJ", "EMPRESA", "COD SAP", "CONTATO", "TELEFONE", "CARGO", "EMAIL", "OBSERVACAO"],
+    rows: [
+      ["00.000.000/0001-91", "EMPRESA EXEMPLO LTDA", "123456", "Maria", "(47) 99999-0000", "Compradora", "maria@exemplo.com", "Pediu retorno em novembro"],
+      ["11.111.111/0001-91", "COMÉRCIO ÁGUA BRANCA", "", "João", "(47) 3333-0000", "", "", "Cotação enviada, aguardando aprovação"],
+    ],
+    required: ["CNPJ"],
+    file: "modelo-leads.csv",
+  },
+  reps: {
+    headers: ["ESC", "GESTOR", "EQUIPE", "COD SAP", "CNPJ", "ENDERECO", "CEP", "CIDADE", "UF", "NOME REP", "ATIVO"],
+    rows: [["ESC 01", "Carlos", "Sul", "900100", "22.222.222/0001-91", "Rua das Flores, 100", "89130-000", "Indaial", "SC", "REPRESENTAÇÕES SILVA", "SIM"]],
+    required: ["COD SAP", "NOME REP"],
+    file: "modelo-representantes.csv",
+  },
+} as const;
 
 const nf = new Intl.NumberFormat("pt-BR");
 
@@ -31,6 +50,7 @@ function StepTitle({ n, children, done }: { n: number; children: React.ReactNode
 export function ImportForm() {
   const toast = useToast();
   const [kind, setKind] = useState<"leads" | "reps">("leads");
+  const [leadKind, setLeadKind] = useState<"prospect" | "inativo">("prospect");
   const [file, setFile] = useState<File | null>(null);
   const [prev, setPrev] = useState<ImportPreview | null>(null);
   const [details, setDetails] = useState<string[]>([]);
@@ -38,7 +58,7 @@ export function ImportForm() {
   const [pending, start] = useTransition();
   useBusyWhile(pending);
   const input = useRef<HTMLInputElement>(null);
-  const fd = () => { const d = new FormData(); d.set("kind", kind); if (file) d.set("file", file); return d; };
+  const fd = () => { const d = new FormData(); d.set("kind", kind); d.set("leadKind", leadKind); if (file) d.set("file", file); return d; };
   const pick = (f: File | null | undefined) => { setFile(f ?? null); setPrev(null); setDetails([]); };
   const reset = () => { setPrev(null); setFile(null); if (input.current) input.current.value = ""; };
   const current = KINDS.find((k) => k.key === kind)!;
@@ -64,7 +84,14 @@ export function ImportForm() {
             </button>
           ))}
         </div>
-        <p className="mt-3 text-sm text-muted">{current.help}</p>
+        {kind === "leads" && (
+          <div role="radiogroup" aria-label="Tipo dos leads" className="mt-3 inline-flex rounded-xl border border-line bg-sunk/50 p-1">
+            {([["prospect", "Novos (Shuffler do SDR)"], ["inativo", "Inativos (Shuffler de vendas)"]] as const).map(([k, l]) => (
+              <button key={k} type="button" role="radio" aria-checked={leadKind === k} onClick={() => setLeadKind(k)} className={`min-h-9 rounded-lg px-4 text-sm font-medium transition ${leadKind === k ? "bg-grad text-on-accent shadow-sm" : "text-muted hover:text-ink"}`}>{l}</button>
+            ))}
+          </div>
+        )}
+        <div className="mt-4"><ImportExample {...EXAMPLES[kind]} fileName={EXAMPLES[kind].file} /></div>
       </section>
 
       <section className={`${panelCls} p-5`}>

@@ -42,7 +42,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
 
   return (
     <div className="space-y-5">
-      <PageHead icon={ScrollText} title="Registro de atividades" subtitle="Tudo o que acontece no sistema, com quem fez, quando e o que mudou.">
+      <PageHead icon={ScrollText} title="Registro de atividades">
         <div className="flex items-center gap-2">
           <p className="rounded-full bg-accent/15 px-3.5 py-1.5 text-sm font-semibold text-accent"><span className="figure">{new Intl.NumberFormat("pt-BR").format(total)}</span> {total === 1 ? "registro" : "registros"}</p>
           {me.roles.includes("admin") && <a className={btnGhost} href="/admin/exportar/registro" download><Download size={15} aria-hidden /> Exportar</a>}

@@ -1,12 +1,12 @@
 import { eq, inArray, sql } from "drizzle-orm";
-import { db, dealEvents, dealQuotes, deals, leadChannels, leads } from "@/db";
+import { db, dealEvents, dealQuotes, deals, leadChannels, leads, users } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { leftPortfolio } from "@/modules/deals/portfolio";
 import { normTerm, syncDealFromQuotes, upsertPaymentTerm } from "@/modules/quotes/db";
 import type { DealDraft } from "./deals-parse";
 
 export type SkipReason = "aberta_propria" | "aberta_outro" | "fora_carteira" | "pedido_repetido" | "cotacao_repetida" | "perdida_repetida" | "venda_repetida";
-export type Plan = { create: DealDraft[]; skipped: { line: number; cnpj: string; reason: SkipReason; detail?: string }[]; newLeads: number; existingLeads: number };
+export type Plan = { create: DealDraft[]; skipped: { line: number; cnpj: string; reason: SkipReason; detail?: string }[]; newLeads: number; existingLeads: number; /** Clientes que entram e já estão (ou já estiveram) na carteira de algum vendedor. */ inPortfolio: { leadId: number; cnpj: string; company: string; sellers: string[]; line: number }[] };
 
 export const SKIP_LABEL: Record<SkipReason, string> = {
   aberta_propria: "Você já tem uma negociação aberta com esse cliente",
@@ -21,7 +21,7 @@ export const SKIP_LABEL: Record<SkipReason, string> = {
 /** Decide, linha a linha, o que entra e o que já existe. Nada é gravado aqui. */
 export async function planDealImport(drafts: DealDraft[], sellerId: number): Promise<Plan> {
   const cnpjs = [...new Set(drafts.map((d) => d.cnpj))];
-  const leadRows = cnpjs.length ? await db.select({ id: leads.id, cnpj: leads.cnpj }).from(leads).where(inArray(leads.cnpj, cnpjs)) : [];
+  const leadRows = cnpjs.length ? await db.select({ id: leads.id, cnpj: leads.cnpj, company: leads.company }).from(leads).where(inArray(leads.cnpj, cnpjs)) : [];
   const leadId = new Map(leadRows.map((l) => [l.cnpj, l.id]));
   const ids = leadRows.map((l) => l.id);
   const [existing, quotes, gone] = ids.length ? await Promise.all([
@@ -32,7 +32,11 @@ export async function planDealImport(drafts: DealDraft[], sellerId: number): Pro
   const goneSet = new Set((gone as { id: number; x: boolean }[]).filter((g) => g.x).map((g) => g.id));
   const dealLead = new Map(existing.map((d) => [d.id, d.leadId]));
   const quoteKeys = new Set(quotes.map((q) => `${dealLead.get(q.dealId)}|${q.number}`));
-  const plan: Plan = { create: [], skipped: [], newLeads: 0, existingLeads: 0 };
+  const plan: Plan = { create: [], skipped: [], newLeads: 0, existingLeads: 0, inPortfolio: [] };
+  const sellerIds = [...new Set(existing.map((d) => d.sellerId).filter((x): x is number => !!x))];
+  const sellerName = new Map((sellerIds.length ? await db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, sellerIds)) : []).map((u) => [u.id, u.name]));
+  const company = new Map(leadRows.map((l) => [l.id, l.company]));
+  const warned = new Set<number>();
   const newSet = new Set<string>();
   for (const d of drafts) {
     const lid = leadId.get(d.cnpj);
@@ -52,6 +56,8 @@ export async function planDealImport(drafts: DealDraft[], sellerId: number): Pro
       } 
       if (!closed && d.quoteNumber && quoteKeys.has(`${lid}|${d.quoteNumber}`)) { skip("cotacao_repetida", d.quoteNumber); continue; }
       plan.existingLeads++;
+      const sellers = [...new Set(mine.map((x) => x.sellerId).filter((x): x is number => !!x).map((x) => sellerName.get(x) ?? "vendedor"))];
+      if (sellers.length && !warned.has(lid)) { warned.add(lid); plan.inPortfolio.push({ leadId: lid, cnpj: d.cnpj, company: company.get(lid) ?? d.cnpj, sellers, line: d.line }); }
     } else if (!newSet.has(d.cnpj)) { newSet.add(d.cnpj); plan.newLeads++; }
     plan.create.push(d);
   }

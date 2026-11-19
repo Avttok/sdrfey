@@ -17,7 +17,8 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "tab.metas", label: "Aba Metas", group: "Abas", defaults: ["manager", "seller"] },
   { key: "tab.representantes", label: "Aba Representantes", group: "Abas", defaults: ["manager"] },
 
-  { key: "tab.negociacoes", label: "Aba Negociações (vendas)", group: "Abas", defaults: ["seller", "manager"] },
+  { key: "tab.negociacoes", label: "Aba Vendas: Negociações", group: "Abas", defaults: ["seller", "manager"] },
+  { key: "tab.shuffler_vendas", label: "Aba Vendas: Shuffler (leads inativos)", group: "Abas", defaults: ["seller", "manager"] },
 
   { key: "panel.equipe", label: "Ver números da equipe toda (sem isso, só os próprios)", group: "Painel", defaults: ["manager"] },
   { key: "panel.kpi.contatos", label: "Indicador: Contatos", group: "Painel", defaults: ["user", "manager"] },

@@ -10,6 +10,7 @@ import { useToast } from "@/components/toast";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { fmtBRL } from "@/config/deals";
 import { fmtDateTime, fmtPhone } from "@/lib/format";
+import { ExistingClientDialog } from "./existing-client-dialog";
 import { consultCnpjAction, createDealManualAction, lookupCnpjAction, type CnpjConsult, type CnpjLookup } from "@/modules/deals/actions";
 import type { QuoteItem } from "@/modules/quotes/parse";
 import { readQuotePdfAction } from "@/modules/quotes/read";
@@ -29,6 +30,7 @@ export function NewDeal({ terms }: { terms: string[] }) {
   const [items, setItems] = useState<QuoteItem[]>([]);
   const [weight, setWeight] = useState<number | null>(null);
   const [look, setLook] = useState<CnpjLookup | null>(null);
+  const [askExisting, setAskExisting] = useState(false);
   const [consult, setConsult] = useState<CnpjConsult | null>(null);
   const [phase, setPhase] = useState<"idle" | "db" | "receita">("idle");
   const [busy, start] = useTransition();
@@ -51,6 +53,7 @@ export function NewDeal({ terms }: { terms: string[] }) {
     const r = await lookupCnpjAction(cnpj).catch(() => ({ ok: false as const, message: "Não consegui pesquisar agora. Tente de novo." }));
     setLook(r);
     if (!r.ok) { setPhase("idle"); return toast("bad", r.message); }
+    if (r.found && r.openDeal) setAskExisting(true); // já está com um vendedor: mostra o histórico e o atalho para a negociação
     if (r.found) { const l = r.lead; setF((p) => ({ ...p, contactName: p.contactName || l.contactName || "", phone: p.phone || l.phones[0] || "", email: p.email || l.email || "", street: p.street || l.address || "", neighborhood: p.neighborhood || l.neighborhood || "", zip: p.zip || l.zip || "", stateReg: p.stateReg || l.stateReg || "", city: p.city || l.city || "", uf: p.uf || l.uf || "", sapCode: p.sapCode || l.sapCode || "" })); }
     if (r.found && r.lead.enriched) return setPhase("idle");
     setPhase("receita");
@@ -78,7 +81,10 @@ export function NewDeal({ terms }: { terms: string[] }) {
     toast("ok", `PDF lido: cotação ${q.quoteNumber ?? "?"}, ${q.items.length} itens. O arquivo não é guardado.`);
     if (q.cnpj?.length === 14) search(cnpj);
   };
-  const create = () => start(async () => {
+  /** Cliente que já tem negociações no sistema: mostra o histórico e só cria se a pessoa confirmar. */
+  const tryCreate = () => { if (look?.ok && look.found && look.deals > 0) setAskExisting(true); else create(); };
+  const create = () => { setAskExisting(false); createNow(); };
+  const createNow = () => start(async () => {
     const r = await createDealManualAction({ cnpj: f.cnpj, company: f.company, contactName: f.contactName, phone: f.phone, email: f.email, address: { street: f.street || null, neighborhood: f.neighborhood || null, zip: f.zip || null, stateReg: f.stateReg || null, city: f.city || null, uf: f.uf || null }, note: f.note, color, items, weightKg: weight,
       data: { freight: f.freight, sapCode: f.sapCode, orderNumber: f.orderNumber, quoteNumber: f.quoteNumber, quoteDate: f.quoteDate, quoteValue: f.quoteValue, paymentTerms: f.paymentTerms, isReactivation: f.isReactivation } });
     if (!r.ok) return toast("bad", r.message);
@@ -154,11 +160,12 @@ export function NewDeal({ terms }: { terms: string[] }) {
           {items.length > 0 && <p className="text-xs text-muted">{items.length} itens lidos do PDF ({fmtBRL(items.reduce((a, i) => a + (i.totalCents ?? 0), 0))} em produtos) serão salvos junto.</p>}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <ColorPicker value={color} onChange={setColor} disabled={busy} />
-            <button type="button" className={btnPrimary} disabled={busy || f.cnpj.replace(/\D/g, "").length < 14} onClick={create}><Check size={16} aria-hidden /> Criar negociação</button>
+            <button type="button" className={btnPrimary} disabled={busy || blocked || f.cnpj.replace(/\D/g, "").length < 14} onClick={tryCreate}><Check size={16} aria-hidden /> Criar negociação</button>
           </div>
         </>
       )}
     </section>
+    {askExisting && found && <ExistingClientDialog leadId={found.lead.id} name={found.lead.company} busy={busy} onCancel={() => setAskExisting(false)} onProceed={create} />}
     </div>
   );
   return (

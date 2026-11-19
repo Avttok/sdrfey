@@ -157,10 +157,13 @@ export const leads = pgTable(
     enrichedAt: timestamp("enriched_at", { withTimezone: true }),
 
     source: text("source"),
+    /** 'prospect' = lead novo (Shuffler do SDR). 'inativo' = já cadastrado na Fey (EOX/Salesforce), trabalhado pelos vendedores no Shuffler de vendas. */
+    kind: text("kind").$type<"prospect" | "inativo">().notNull().default("prospect"),
     createdAt: now(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
+    index("leads_kind_idx").on(t.kind),
     index("leads_eligible_idx").on(t.nextEligibleAt),
     index("leads_locked_idx").on(t.lockedBy),
     index("leads_owner_idx").on(t.ownerId),
@@ -496,6 +499,9 @@ export const dealQuotes = pgTable(
     note: text("note"),
     /** Link da cotação no Salesforce. */
     link: text("link"),
+    /** Como a cotação terminou: 'faturado' (virou a venda) ou 'perdido'. Nulo = ainda em aberto. */
+    outcome: text("outcome").$type<"faturado" | "perdido">(),
+    outcomeAt: timestamp("outcome_at", { withTimezone: true }),
     createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: now(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -596,4 +602,35 @@ export const chatReactions = pgTable(
     emoji: text("emoji").notNull(),
   },
   (t) => [primaryKey({ columns: [t.messageId, t.userId, t.emoji] }), index("chat_reactions_user_idx").on(t.userId)],
+);
+
+/** Passagens do vendedor pelo Shuffler de vendas (leads inativos). Separado do atendimento do SDR para não misturar métricas. */
+export const sellerShuffles = pgTable(
+  "seller_shuffles",
+  {
+    id: serial("id").primaryKey(),
+    leadId: integer("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    shownAt: timestamp("shown_at", { withTimezone: true }).notNull().defaultNow(),
+    /** 'deal' | 'no_answer' | 'no_interest' | 'skipped' | 'released' ; nulo = em aberto. */
+    outcome: text("outcome"),
+    note: text("note"),
+    dealId: integer("deal_id"),
+    doneAt: timestamp("done_at", { withTimezone: true }),
+    isTest: boolean("is_test").notNull().default(false),
+  },
+  (t) => [index("seller_shuffles_user_idx").on(t.userId, t.doneAt), index("seller_shuffles_lead_idx").on(t.leadId)],
+);
+
+/** Conquistas dadas ou bloqueadas à mão pelo Adm. Sem linha = vale a estatística. */
+export const achievementOverrides = pgTable(
+  "achievement_overrides",
+  {
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    granted: boolean("granted").notNull(),
+    by: integer("by").references(() => users.id, { onDelete: "set null" }),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.key] })],
 );

@@ -7,7 +7,7 @@ export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: st
  * `perm` liga o item a uma permissão (config/permissions.ts); sem `perm`, todos veem.
  */
 /** Ícone de cada menu (grupo) da barra. */
-export const GROUP_ICONS: Record<string, LucideIcon> = { Pessoas: Contact, Info: Info, SDR: Headset, "Gestão": ShieldHalf };
+export const GROUP_ICONS: Record<string, LucideIcon> = { Pessoas: Contact, Info: Info, SDR: Headset, Vendas: Handshake, "Gestão": ShieldHalf };
 
 export const NAV: NavItem[] = [
   { href: "/painel", label: "Dashboard", icon: Gauge, perm: "tab.painel" },
@@ -17,7 +17,8 @@ export const NAV: NavItem[] = [
   { href: "/historico", label: "Histórico", icon: History, perm: "tab.historico", group: "Info" },
   { href: "/atender", label: "Shuffler", icon: Play, perm: "tab.comecar", group: "SDR" },
   { href: "/visitas", label: "Visitas", icon: CalendarCheck, perm: "tab.visitas", group: "SDR" },
-  { href: "/negociacoes", label: "Vendas", icon: Handshake, perm: "tab.negociacoes" },
+  { href: "/negociacoes", label: "Negociações", icon: Handshake, perm: "tab.negociacoes", group: "Vendas" },
+  { href: "/shuffler-vendas", label: "Shuffler", icon: Play, perm: "tab.shuffler_vendas", group: "Vendas" },
   { href: "/registro", label: "Registro", icon: ScrollText, perm: "tab.registro", group: "Gestão" },
   { href: "/admin", label: "Adm", icon: ShieldCheck, adminOnly: true, group: "Gestão" },
   { href: "/conta", label: "Minha conta", icon: UserRound },

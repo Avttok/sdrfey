@@ -28,7 +28,7 @@ export async function SellerHistory({ userId, sp }: { userId: number; sp: Record
   );
   return (
     <div className="space-y-5">
-      <PageHead icon={History} title="Meu histórico" subtitle="Todas as negociações que você trabalhou, com contatos, cotações e resultado." />
+      <PageHead icon={History} title="Meu histórico" />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stat(History, "Negociações", String(rows.length))}
         {stat(Trophy, "Vendas fechadas", String(won.length), fmtBRL(total))}

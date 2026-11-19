@@ -85,7 +85,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
       people: list.map((u) => ({ id: u.id, name: u.name, hex: bubbleHex(u.accent, u.id, u.roles), off: goalsOff(u), today: { attended: n(done, u.id), scheduled: n(sched, u.id), calls: n(calls, u.id), converted: n(conv, u.id) }, own: ownGoals(u) })),
     };
   };
-  const subtitle = manage ? "Metas diárias do SDR e mensais de vendas, da equipe e de cada pessoa." : "Suas metas, com o progresso de hoje e do mês.";
   const canEditSdr = canGlobal || editableIds.length > 0;
   const tabs: MetasTab[] = [];
 
@@ -103,7 +102,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
       paces[p.id] = !isToday ? {} : Object.fromEntries(SDR_KINDS.map((d) => [d.k, sdrPace(mine, d.k, p.own[d.k].qty ?? sdr.global[d.k].qty)]));
     }
     tabs.push({
-      key: "sdr", label: "Atendimento", icon: <Headset size={16} aria-hidden />, sub: "Metas diárias: atendidos, agendados, ligações e convertidos.",
+      key: "sdr", label: "Atendimento", icon: <Headset size={16} aria-hidden />, sub: "Atendidos, agendados, ligações e convertidos.",
       view: <SdrOverview global={sdr.global} people={sdr.people} paces={paces} isToday={isToday} dayLabel={isToday ? "hoje" : `em ${dayStr.slice(8)}/${dayStr.slice(5, 7)}`} showTeam={manage && sdr.people.length > 1} />,
       filter: <PeriodFilter kind="day" value={dayStr} max={todayStr} />,
       edit: canEditSdr || manage ? <GoalsForm wd={monthWd} monthLabel={monthName} canGlobal={canGlobal} editableIds={editableIds} showGlobal={manage} global={sdr.global} people={sdr.people} /> : undefined,
@@ -132,7 +131,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
 
   return (
     <div className="space-y-5">
-      <PageHead icon={Target} title="Metas" subtitle={subtitle} />
+      <PageHead icon={Target} title="Metas" />
       <MetasShell tabs={tabs} />
     </div>
   );

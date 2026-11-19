@@ -1,12 +1,16 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Upload, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileSpreadsheet, Upload, X } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { Spinner } from "@/components/spinner";
 import { useBusyWhile, useToast } from "@/components/toast";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { STAGE_META } from "@/config/deals";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { ExistingClientDialog } from "@/components/deals/existing-client-dialog";
+import { ImportExample } from "@/components/import-example";
+import { DEAL_TEMPLATE_HEADERS, DEAL_TEMPLATE_ROWS } from "@/modules/import/deals-parse";
 import { applyDealImportAction, previewDealImportAction, type DealImportPreview } from "@/modules/import/deals-actions";
 
 const nf = new Intl.NumberFormat("pt-BR");
@@ -25,6 +29,8 @@ export function DealImportForm({ sellers }: { sellers: { id: number; name: strin
   const [prev, setPrev] = useState<DealImportPreview | null>(null);
   const [details, setDetails] = useState<string[]>([]);
   const [drag, setDrag] = useState(false);
+  const [ask, setAsk] = useState(false);
+  const [view, setView] = useState<{ id: number; name: string } | null>(null);
   const [pending, start] = useTransition();
   useBusyWhile(pending);
   const input = useRef<HTMLInputElement>(null);
@@ -37,15 +43,8 @@ export function DealImportForm({ sellers }: { sellers: { id: number; name: strin
   return (
     <div className="mx-auto max-w-4xl space-y-5">
       <section className={`${panelCls} space-y-3 p-5`}>
-        <Step n={1} done={!!file}>Prepare sua planilha</Step>
-        <p className="text-sm text-muted">Salve a sua planilha como <b>CSV</b> (Arquivo → Salvar como → CSV). Só o <b>CNPJ</b> é obrigatório; as outras colunas são opcionais e reconhecidas pelo nome. Baixe o modelo para ver os nomes aceitos.</p>
-        <ul className="grid gap-1.5 text-sm text-muted sm:grid-cols-2">
-          <li>• <b className="text-ink">ETAPA</b>: novo, contato, cotação, negociação, ganho (fechado/vendido) ou perdido</li>
-          <li>• <b className="text-ink">Datas</b>: 16/10/2026 · <b className="text-ink">Valores</b>: 10.127,44</li>
-          <li>• Cliente que já existe no sistema é reaproveitado: só completamos o que estiver vazio</li>
-          <li>• Nada é duplicado: mesmo CNPJ, pedido ou cotação já cadastrados são ignorados</li>
-        </ul>
-        <a href="/negociacoes/importar/modelo" className={btnGhost} download><Download size={16} aria-hidden /> Baixar modelo (CSV)</a>
+        <Step n={1} done={!!file}>Modelo da planilha</Step>
+        <ImportExample headers={DEAL_TEMPLATE_HEADERS} rows={DEAL_TEMPLATE_ROWS} required={["CNPJ"]} fileName="modelo-negociacoes.csv" />
         {sellers && (
           <label className="block max-w-xs text-sm"><span className="mb-1 block text-muted">Importar para o vendedor</span>
             <select className={inputCls} value={seller} onChange={(e) => { setSeller(Number(e.target.value)); setPrev(null); }}>{sellers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
@@ -102,8 +101,26 @@ export function DealImportForm({ sellers }: { sellers: { id: number; name: strin
           )}
           {prev.report.warnings.map((w) => <p key={w} className="rounded-lg bg-sunk p-3 text-sm text-muted">{w}</p>)}
           {prev.report.rejected.length > 0 && <div className="rounded-lg border border-danger/40 p-3 text-sm"><p className="mb-1 font-medium text-danger">Linhas rejeitadas (primeiras {Math.min(8, prev.report.rejected.length)})</p>{prev.report.rejected.slice(0, 8).map((r) => <p key={r.line}>Linha {r.line}: {r.reason}{r.company ? ` (${r.company})` : ""}</p>)}</div>}
-          <button type="button" className={`${btnPrimary} !px-6 !py-3 text-base`} disabled={pending || prev.willCreate === 0} onClick={apply}>{pending ? <Spinner size={18} /> : <Upload size={18} aria-hidden />} {pending ? "Importando…" : `Importar ${prev.willCreate} ${prev.willCreate === 1 ? "negociação" : "negociações"}`}</button>
+          <button type="button" className={`${btnPrimary} !px-6 !py-3 text-base`} disabled={pending || prev.willCreate === 0} onClick={() => (prev.inPortfolio.length ? setAsk(true) : apply())}>{pending ? <Spinner size={18} /> : <Upload size={18} aria-hidden />} {pending ? "Importando…" : `Importar ${prev.willCreate} ${prev.willCreate === 1 ? "negociação" : "negociações"}`}</button>
         </section>
+      )}
+      {prev?.ok && (
+        <>
+          <ConfirmDialog open={ask && !view} tone="warn" icon={AlertTriangle} title={`${prev.inPortfolio.length} ${prev.inPortfolio.length === 1 ? "cliente já está" : "clientes já estão"} na carteira de vendedores`} confirmLabel="Prosseguir mesmo assim" busy={pending} onCancel={() => setAsk(false)} onConfirm={() => { setAsk(false); apply(); }}>
+            <span className="block space-y-2">
+              <span className="block">Eles já têm negociações no sistema. Veja o histórico antes de decidir.</span>
+              <span className="block max-h-64 divide-y divide-line/70 overflow-y-auto rounded-xl border border-line">
+                {prev.inPortfolio.map((c) => (
+                  <span key={c.leadId} className="flex items-center gap-3 px-3 py-2 text-left">
+                    <span className="min-w-0 flex-1"><b className="block truncate text-ink">{c.company}</b><span className="text-xs">{c.sellers.join(", ")}</span></span>
+                    <button type="button" className="text-xs font-semibold text-accent hover:underline" onClick={() => setView({ id: c.leadId, name: c.company })}>Ver histórico</button>
+                  </span>
+                ))}
+              </span>
+            </span>
+          </ConfirmDialog>
+          {view && <ExistingClientDialog leadId={view.id} name={view.name} onCancel={() => setView(null)} onProceed={() => setView(null)} />}
+        </>
       )}
       {details.length > 0 && <section className={`${panelCls} space-y-1 p-5 text-sm`}>{details.map((d) => <p key={d} className="text-muted">{d}</p>)}</section>}
       <p className="text-center text-xs text-muted"><Link href="/negociacoes" className="hover:text-accent">← Voltar para Negociações</Link></p>

@@ -5,12 +5,12 @@ import { revalidatePath } from "next/cache";
 import { db, users } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
 import { decodeCsv, parseCsv } from "./csv";
-import { applyDealImport, planDealImport, SKIP_LABEL, type SkipReason } from "./deals-apply";
+import { applyDealImport, planDealImport, SKIP_LABEL, type Plan, type SkipReason } from "./deals-apply";
 import { parseDealRows, type DealImportReport } from "./deals-parse";
 
 export type DealImportPreview =
   | { ok: false; message: string }
-  | { ok: true; fileName: string; report: DealImportReport; willCreate: number; newLeads: number; existingLeads: number; byStage: Record<string, number>; skipped: { reason: string; count: number; samples: string[] }[]; skippedTotal: number };
+  | { ok: true; fileName: string; report: DealImportReport; willCreate: number; newLeads: number; existingLeads: number; byStage: Record<string, number>; skipped: { reason: string; count: number; samples: string[] }[]; skippedTotal: number; inPortfolio: Plan["inPortfolio"] };
 export type DealImportResult = { ok: boolean; message: string; details?: string[] };
 
 const MAX_BYTES = 8 * 1024 * 1024;
@@ -56,7 +56,7 @@ export async function previewDealImportAction(formData: FormData): Promise<DealI
   for (const d of plan.create) byStage[d.stage] = (byStage[d.stage] ?? 0) + 1;
   const groups = new Map<SkipReason, { count: number; samples: string[] }>();
   for (const k of plan.skipped) { const g = groups.get(k.reason) ?? { count: 0, samples: [] }; g.count++; if (g.samples.length < 3) g.samples.push(`linha ${k.line}`); groups.set(k.reason, g); }
-  return { ok: true, fileName: f.name, report: f.report, willCreate: plan.create.length, newLeads: plan.newLeads, existingLeads: plan.existingLeads, byStage, skippedTotal: plan.skipped.length, skipped: [...groups].map(([r, g]) => ({ reason: SKIP_LABEL[r], ...g })) };
+  return { ok: true, fileName: f.name, report: f.report, willCreate: plan.create.length, newLeads: plan.newLeads, existingLeads: plan.existingLeads, byStage, skippedTotal: plan.skipped.length, inPortfolio: plan.inPortfolio, skipped: [...groups].map(([r, g]) => ({ reason: SKIP_LABEL[r], ...g })) };
 }
 
 /** 2º passo: grava só o que é novo. Nada existente é sobrescrito ou duplicado. */

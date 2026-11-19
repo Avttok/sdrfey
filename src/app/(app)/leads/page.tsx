@@ -15,7 +15,6 @@ import { db, leads, users } from "@/db";
 import { bubbleHex } from "@/config/theme";
 import { fmtCnpj } from "@/lib/format";
 import { hasRole, isSellerOnly } from "@/config/roles";
-import { DbHealthButton } from "@/components/db-health-button";
 import { StageChip } from "@/components/deals/deal-ui";
 import type { DealStage } from "@/db/schema";
 import { requirePerm } from "@/modules/auth/guard";
@@ -46,9 +45,9 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="space-y-5">
-      <PageHead icon={Users} title="Leads" subtitle={sellerView ? "Clientes repassados pelos SDRs para você e para o grupo de vendedores." : "Busque, filtre e abra qualquer lead. ATENDER traz o lead para o seu Shuffler."}>
-        {hasRole(me.roles, "manager") ? (
-          <DbHealthButton total={total} />
+      <PageHead icon={Users} title="Leads">
+        {hasRole(me.roles, "admin") ? (
+          <Link href="/admin/banco" title="Saúde do sistema" className="rounded-full bg-accent/15 px-3.5 py-1.5 text-sm font-semibold text-accent transition hover:bg-accent/25"><span className="figure">{new Intl.NumberFormat("pt-BR").format(total)}</span> {total === 1 ? "lead" : "leads"}</Link>
         ) : (
           <p className="rounded-full bg-accent/15 px-3.5 py-1.5 text-sm font-semibold text-accent"><span className="figure">{new Intl.NumberFormat("pt-BR").format(total)}</span> {total === 1 ? "lead" : "leads"}</p>
         )}

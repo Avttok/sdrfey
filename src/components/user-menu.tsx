@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, LogOut, Palette, Settings2 } from "lucide-react";
+import { Check, LogOut, Palette, Settings2, Trophy } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -14,6 +14,8 @@ import { CHOOSABLE_ACCENTS, swatchBg } from "@/config/theme";
 import { logoutAction } from "@/modules/auth/actions";
 import { setAccentAction } from "@/modules/users/actions";
 import { myActivityAction } from "@/modules/users/presence";
+import { badgesSummaryAction } from "@/modules/achievements/actions";
+import { ACHIEVEMENT_BY_KEY } from "@/config/achievements";
 import { SubmitButton } from "./submit-button";
 
 /** Foto (iniciais) da pessoa e as tags de cargo. Ao clicar abre o menu da conta. */
@@ -21,6 +23,8 @@ export function UserMenu({ name, username, hex, onHex, accentKey, roles, side = 
   const [open, setOpen] = useState(false);
   const path = usePathname();
   const [live, setLive] = useState<string | null>(null);
+  const [badges, setBadges] = useState<{ earned: number; total: number; top: { key: string; name: string }[] } | null>(null);
+  useEffect(() => { if (open && !badges) void badgesSummaryAction().then(setBadges).catch(() => {}); }, [open, badges]);
   useEffect(() => {
     if (!open) return;
     let off = false;
@@ -98,6 +102,11 @@ export function UserMenu({ name, username, hex, onHex, accentKey, roles, side = 
             </Link>
             <ThemeTile />
           </div>
+          <Link role="menuitem" href="/conquistas" onClick={() => setOpen(false)} className="menu-tile group mx-3 mb-3 flex items-center gap-3 rounded-2xl bg-sunk p-3 transition hover:-translate-y-0.5 hover:shadow-md">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-grad text-on-accent shadow-sm"><Trophy size={17} aria-hidden className="transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-110" /></span>
+            <span className="min-w-0 flex-1 text-sm font-semibold">Conquistas<span className="block text-xs font-normal text-muted">{badges ? `${badges.earned} de ${badges.total}` : "Suas medalhas"}</span></span>
+            <span className="flex -space-x-1.5">{(badges?.top ?? []).slice(0, 4).map((b) => { const a = ACHIEVEMENT_BY_KEY.get(b.key); if (!a) return null; const I = a.icon; return <span key={b.key} title={b.name} className="grid size-7 place-items-center rounded-full border-2 border-sunk text-white" style={{ background: a.color }}><I size={13} aria-hidden /></span>; })}</span>
+          </Link>
           <form action={setAccentAction} className="px-4 pb-3">
             <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold"><Palette size={14} aria-hidden /> Cor do tema<span className="ml-auto text-xs font-normal text-muted">{CHOOSABLE_ACCENTS.find((a) => a.key === accentKey)?.label ?? "Padrão"}</span></p>
             <div className="grid grid-cols-7 gap-2">

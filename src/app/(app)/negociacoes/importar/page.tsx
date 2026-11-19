@@ -18,7 +18,7 @@ export default async function Page() {
   const sellers = team ? await db.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.active, true), sql`'seller' = any(${users.roles})`, visibleUsers(me))).orderBy(asc(users.name)) : null;
   return (
     <div className="space-y-5">
-      <PageHead icon={FileSpreadsheet} title="Importar minhas negociações" subtitle="Traga clientes e negociações da sua planilha para o sistema, sem duplicar nada." />
+      <PageHead icon={FileSpreadsheet} title="Importar minhas negociações" />
       <DealImportForm sellers={sellers} />
     </div>
   );

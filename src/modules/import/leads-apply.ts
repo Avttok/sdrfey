@@ -1,4 +1,4 @@
-import { inArray } from "drizzle-orm";
+import { inArray, sql } from "drizzle-orm";
 import { db, leadChannels, leadPeople, leads, leadTags, tagGroups, tags, users, type Db } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import type { LeadDraft, TagRef } from "./leads-parse";
@@ -10,6 +10,8 @@ export type ApplyResult = {
   newTags: string[];
   unknownOwners: string[];
   unknownTags: string[];
+  /** Importando como inativo: clientes que já existiam como lead novo e passaram para inativo. */
+  converted: number;
 };
 
 const chunk = <T>(arr: T[], size: number): T[][] => {
@@ -24,11 +26,12 @@ const chunk = <T>(arr: T[], size: number): T[][] => {
  */
 export async function applyLeadDrafts(
   drafts: LeadDraft[],
-  opts: { importedBy: number | null; sourceName: string },
+  opts: { importedBy: number | null; sourceName: string; kind?: "prospect" | "inativo" },
   database: Db = db,
 ): Promise<ApplyResult> {
   return database.transaction(async (tx) => {
-    const result: ApplyResult = { inserted: 0, skippedExisting: 0, newTags: [], unknownOwners: [], unknownTags: [] };
+    const result: ApplyResult = { inserted: 0, skippedExisting: 0, newTags: [], unknownOwners: [], unknownTags: [], converted: 0 };
+    const kind = opts.kind ?? "prospect";
 
     /* 1. descobrir o que já existe */
     const existing = new Set<string>();
@@ -38,6 +41,16 @@ export async function applyLeadDrafts(
     }
     const fresh = drafts.filter((d) => !existing.has(d.cnpj));
     result.skippedExisting = drafts.length - fresh.length;
+    if (kind === "inativo" && existing.size) {
+      /* cliente que já estava na base como lead novo, sem negociação aberta nem atendimento em andamento, passa a inativo */
+      const have = drafts.filter((d) => existing.has(d.cnpj)).map((d) => d.cnpj);
+      for (const part of chunk(have, 2000)) {
+        const done = await tx.execute<{ id: number }>(sql`update leads set kind = 'inativo', updated_at = now()
+          where cnpj in (${sql.join(part.map((c) => sql`${c}`), sql`, `)}) and kind = 'prospect' and locked_by is null
+            and not exists (select 1 from deals d where d.lead_id = leads.id and d.stage not in ('ganho','perdido')) returning id`);
+        result.converted += done.length;
+      }
+    }
     if (fresh.length === 0) return result;
 
     /* 2. garantir que todas as tags citadas existem (porte e capital nascem aqui) */
@@ -94,6 +107,7 @@ export async function applyLeadDrafts(
               timesServed: d.timesServed,
               timesWorked: d.timesWorked,
               source: opts.sourceName,
+              kind,
               ...(d.updatedAt ? { updatedAt: d.updatedAt } : {}),
             };
           }),

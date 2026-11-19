@@ -19,11 +19,11 @@ import { useRouter } from "next/navigation";
 import { ColorPicker } from "./color-picker";
 import type { DealRow } from "@/modules/deals/queries";
 import { AlertChip, StageChip } from "./deal-ui";
-import { AndamentosPanel, VisitsPanel } from "./commercial-panels";
+import { AndamentosTimeline, VisitsPanel } from "./commercial-panels";
 import type { CommVisit } from "@/modules/deals/lead-commercial";
 
 type Ev = { id: number; kind: string; note: string | null; valueCents: number | null; at: string; by: string | null };
-type Tab = "contato" | "nota" | "encerrar";
+const STEPS = ["novo", "contato", "cotacao", "ganho"] as const;
 type Kind = "ligacao" | "whatsapp" | "email";
 
 const EV_ICON: Record<string, typeof Phone> = { ligacao: PhoneCall, whatsapp: MessageCircle, email: Mail, cotacao: FileText, nota: NotebookPen, ganho: Trophy, perdido: XCircle, retorno: CalendarClock, criado: UserPlus, assumido: UserPlus };
@@ -37,8 +37,9 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDele
   const { run, pending } = useRun();
   const closed = deal.stage === "ganho" || deal.stage === "perdido";
   const mine = deal.sellerId === meId || team;
-  const [tab, setTab] = useState<Tab>("contato");
   const [kinds, setKinds] = useState<Kind[]>(["ligacao"]);
+  const [pick, setPick] = useState<number | null>(quotes.find((q) => !q.outcome)?.id ?? null);
+  const [lostOpen, setLostOpen] = useState(false);
   const [newQuote, setNewQuote] = useState(false);
   const [termList, setTermList] = useState(terms);
   const [confirm, setConfirm] = useState<"reset" | "delete" | "return" | null>(null);
@@ -47,7 +48,6 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDele
   const [note, setNote] = useState("");
   const [nextAt, setNextAt] = useState("");
   const [nextNote, setNextNote] = useState("");
-  const [outcome, setOutcome] = useState<"ganho" | "perdido">("ganho");
   const [reason, setReason] = useState("");
   const [confirmLost, setConfirmLost] = useState(false);
   const [sf, setSf] = useState(deal.salesforceUrl ?? "");
@@ -60,6 +60,9 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDele
   const set = (k: keyof typeof f, v: string | boolean) => setF((p) => ({ ...p, [k]: v }));
   const addTerm = (t: string) => setTermList((p) => (p.includes(t) ? p : [...p, t]));
   const lastQuote = quotes[0];
+  const pickQuote = quotes.find((q) => q.id === pick) ?? null;
+  /** Só manda o que foi preenchido, para não apagar frete/condição que vêm da cotação. */
+  const closeData = Object.fromEntries(Object.entries({ isReactivation: f.isReactivation, orderNumber: f.orderNumber, realValue: f.realValue, freight: f.freight, sapCode: f.sapCode, paymentTerms: f.paymentTerms, netValue: f.netValue }).filter(([, v]) => v !== "" ));
   const list = phones.length ? phones.map((p) => p.value) : deal.phone ? [deal.phone] : [];
   const reset = () => { setNote(""); setNextAt(""); setNextNote(""); setReason(""); };
 
@@ -122,117 +125,109 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDele
           </div>
         )}
 
+
         {closed && (
           <div className={`${panelCls} flex flex-wrap items-center justify-between gap-3 p-4 ${deal.stage === "ganho" ? "border-ok/50" : "border-danger/40"}`}>
-            <p className="text-sm">{deal.stage === "ganho" ? <>Venda fechada por <b>{fmtBRL(deal.mainCents)}</b>.</> : <>Negócio perdido{deal.lostReason ? <>: <b>{deal.lostReason}</b></> : ""}.</>}</p>
+            <p className="flex items-center gap-2 text-sm">{deal.stage === "ganho" ? <><Trophy size={18} className="text-ok" aria-hidden /> Faturado por <b>{fmtBRL(deal.mainCents)}</b>.</> : <><XCircle size={18} className="text-danger" aria-hidden /> Negócio perdido{deal.lostReason ? <>: <b>{deal.lostReason}</b></> : ""}.</>}</p>
             {mine && <button type="button" className={btnGhost} disabled={pending} onClick={() => run(() => reopenDealAction(deal.id))}><RotateCcw size={15} aria-hidden /> Reabrir</button>}
           </div>
         )}
 
-        {mine && deal.sellerId && !closed && (
-          <>
-            <div role="radiogroup" aria-label="Etapa" className="flex flex-wrap gap-2">
-              {OPEN_STAGES.map((s) => (
-                <button key={s} type="button" role="radio" aria-checked={deal.stage === s} disabled={pending} onClick={() => run(() => setStageAction(deal.id, s as DealStage))} title={STAGE_META[s].hint}
-                  className={`rounded-full border-2 px-3.5 py-1.5 text-sm font-semibold transition ${deal.stage === s ? "text-on-accent" : "border-line hover:bg-sunk"}`} style={deal.stage === s ? { background: STAGE_META[s].color, borderColor: STAGE_META[s].color } : undefined}>{STAGE_META[s].label}</button>
-              ))}
-            </div>
-          </>
+        {deal.stage !== "perdido" && (
+          <ol aria-label="Etapas da negociação" className="flex items-center">
+            {STEPS.map((s, i) => {
+              const idx = STEPS.indexOf(deal.stage === "negociacao" ? "cotacao" : (deal.stage as (typeof STEPS)[number])), done = i < idx || deal.stage === "ganho", cur = i === idx;
+              const clickable = mine && !!deal.sellerId && !closed && s !== "ganho";
+              const color = STAGE_META[s].color;
+              return (
+                <li key={s} className="flex flex-1 items-center last:flex-none">
+                  <button type="button" disabled={!clickable || pending} aria-current={cur ? "step" : undefined} onClick={() => run(() => setStageAction(deal.id, s as DealStage))} title={STAGE_META[s].hint}
+                    className={`group flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm font-semibold transition ${clickable ? "hover:bg-sunk" : "cursor-default"} ${cur || done ? "text-ink" : "text-muted"}`}>
+                    <span className="grid size-7 shrink-0 place-items-center rounded-full border-2 text-xs transition" style={cur || done ? { background: color, borderColor: color, color: "var(--on-accent)" } : undefined}>{done && !cur ? <Check size={14} aria-hidden /> : i + 1}</span>
+                    <span>{STAGE_META[s].label}</span>
+                  </button>
+                  {i < STEPS.length - 1 && <span aria-hidden className="mx-1 h-0.5 min-w-4 flex-1 rounded-full bg-line"><span className="block h-full rounded-full bg-accent transition-all" style={{ width: i < idx || deal.stage === "ganho" ? "100%" : "0%" }} /></span>}
+                </li>
+              );
+            })}
+          </ol>
         )}
 
-        <div className="grid items-stretch gap-4 xl:grid-cols-2">
-        {mine && deal.sellerId && !closed && (
-          <>
-            <SectionCard icon={NotebookPen} title="Registrar andamento" className="flex h-full flex-col">
-              <div role="tablist" className="flex flex-wrap gap-2">
-                {([["contato", "Contato feito", PhoneCall], ["nota", "Anotação", NotebookPen], ["encerrar", "Encerrar", Trophy]] as const).map(([k, l, I]) => (
-                  <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition ${tab === k ? "border-transparent bg-grad text-on-accent" : "border-line hover:bg-sunk"}`}><I size={15} aria-hidden />{l}</button>
-                ))}
-              </div>
-              {tab === "contato" && (
-                <form className="flex flex-1 flex-col gap-3" onSubmit={(e) => { e.preventDefault(); run(() => logContactAction(deal.id, { kinds, note, nextAt: nextAt || null, nextNote: nextNote || null }), undefined, reset); }}>
-                  <p className="text-xs text-muted">Marque todos os meios usados neste contato.</p>
-                  <div className="flex flex-wrap gap-2">
-                    {([["ligacao", "Ligação", PhoneCall], ["whatsapp", "WhatsApp", MessageCircle], ["email", "E-mail", Mail]] as const).map(([k, l, I]) => (
-                      <button key={k} type="button" aria-pressed={kinds.includes(k)} onClick={() => setKinds((p) => (p.includes(k) ? (p.length > 1 ? p.filter((x) => x !== k) : p) : [...p, k]))} className={`inline-flex items-center gap-2 rounded-full border-2 px-3.5 py-1.5 text-sm font-medium transition ${kinds.includes(k) ? "border-accent bg-accent/10" : "border-line hover:bg-sunk"}`}><I size={15} aria-hidden />{l}</button>
-                    ))}
-                  </div>
-                  <textarea className={`${inputCls} min-h-24 flex-1`} placeholder="O que foi conversado?" value={note} onChange={(e) => setNote(e.target.value)} />
-                  <div className="flex flex-wrap items-end gap-3">
-                    <div className="w-48 text-sm"><span className="mb-1 block text-muted">Voltar a falar em</span><DateInput label="Próximo contato" value={nextAt} onChange={setNextAt} /></div>
-                    <label className="block min-w-48 flex-1 text-sm"><span className="mb-1 block text-muted">Combinado</span><input className={inputCls} placeholder="Ex.: ligar para fechar" value={nextNote} onChange={(e) => setNextNote(e.target.value)} /></label>
-                    <button className={`${btnPrimary} whitespace-nowrap`} disabled={pending}><Check size={16} aria-hidden /> Registrar contato</button>
-                  </div>
-                </form>
-              )}
-              {tab === "nota" && (
-                <form className="flex flex-1 flex-col gap-3" onSubmit={(e) => { e.preventDefault(); run(() => logContactAction(deal.id, { kinds: ["nota"], note, nextAt: null, nextNote: null }), undefined, reset); }}>
-                  <textarea className={`${inputCls} min-h-24 flex-1`} placeholder="Anotação (não conta como contato)" value={note} onChange={(e) => setNote(e.target.value)} />
-                  <button className={btnPrimary} disabled={pending}><Check size={16} aria-hidden /> Salvar anotação</button>
-                </form>
-              )}
-              {tab === "encerrar" && (
-                <div className="flex flex-1 flex-col gap-4">
-                  <div role="radiogroup" aria-label="Resultado" className="grid grid-cols-2 gap-2 rounded-xl bg-sunk/60 p-1">
-                    {([["ganho", "Venda fechada", Trophy, "text-ok"], ["perdido", "Negócio perdido", XCircle, "text-danger"]] as const).map(([k, l, I, c]) => (
-                      <button key={k} type="button" role="radio" aria-checked={outcome === k} onClick={() => setOutcome(k)} className={`inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition ${outcome === k ? `bg-panel shadow-md ${c}` : "text-muted hover:text-ink"}`}><I size={16} aria-hidden />{l}</button>
-                    ))}
-                  </div>
-                  {outcome === "ganho" ? (
-                    <div className="flex flex-1 flex-col gap-3">
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <Field label="Valor fechado (R$)"><input className={inputCls} inputMode="decimal" placeholder={lastQuote?.totalCents ? brl(lastQuote.totalCents) : "0,00"} value={f.closedValue} onChange={(e) => set("closedValue", e.target.value)} /></Field>
-                        <Field label="Valor real após impostos (R$)"><input className={inputCls} inputMode="decimal" placeholder="Opcional" value={f.realValue} onChange={(e) => set("realValue", e.target.value)} /></Field>
-                        <Field label="Data fechada"><DateInput label="Data fechada" value={f.closedOn} onChange={(v) => set("closedOn", v)} /></Field>
-                        <Field label="Cliente"><button type="button" role="switch" aria-checked={f.isReactivation} onClick={() => set("isReactivation", !f.isReactivation)} className={`flex w-full items-center gap-3 rounded-lg border px-3.5 py-2.5 text-left text-sm transition ${f.isReactivation ? "border-accent bg-accent/10" : "border-line hover:bg-sunk"}`}><span className={`relative h-5 w-9 shrink-0 rounded-full transition ${f.isReactivation ? "bg-accent" : "bg-line"}`}><span className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-all ${f.isReactivation ? "left-[18px]" : "left-0.5"}`} /></span>Reativado (voltou a comprar)</button></Field>
-                      </div>
-                      <p className="text-xs text-muted">Em branco, o valor fechado é o total da última cotação.</p>
-                      <div className="mt-auto">
-                        <button type="button" className={`${btnPrimary} w-full`} disabled={pending} onClick={() => run(() => closeDealAction(deal.id, { won: true, value: f.closedValue || (lastQuote?.totalCents ? brl(lastQuote.totalCents) : ""), closedOn: f.closedOn || null, data: { isReactivation: f.isReactivation, orderNumber: f.orderNumber, realValue: f.realValue } }))}><Trophy size={16} aria-hidden /> Fechar venda</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-1 flex-col gap-3">
-                      <Field label="Motivo da perda">
-                        <textarea className={`${inputCls} min-h-24`} placeholder="O que aconteceu? (preço, concorrente, sem interesse…)" value={reason} onChange={(e) => setReason(e.target.value)} />
-                      </Field>
-                      <div className="flex flex-wrap gap-1.5">
-                        {["Preço", "Fechou com concorrente", "Sem interesse", "Sem resposta", "Prazo de entrega"].map((r) => (
-                          <button key={r} type="button" onClick={() => setReason(r)} className="rounded-full border border-line px-3 py-1 text-xs font-medium text-muted transition hover:border-accent hover:text-accent">{r}</button>
-                        ))}
-                      </div>
-                      <div className="mt-auto">
-                        <button type="button" className={`${btnGhost} w-full !border-danger text-danger`} disabled={pending || !reason.trim()} onClick={() => setConfirmLost(true)}><XCircle size={16} aria-hidden /> Marcar como perdida</button>
-                      </div>
-                    </div>
-                  )}
+        <div className="grid items-start gap-4 xl:grid-cols-2">
+        {mine && deal.sellerId && (
+          <SectionCard icon={NotebookPen} title="Andamento" className="flex flex-col">
+            {!closed && (
+              <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); run(() => logContactAction(deal.id, { kinds: kinds.length ? kinds : ["nota"], note, nextAt: nextAt || null, nextNote: nextNote || null }), undefined, reset); }}>
+                <div className="flex flex-wrap items-center gap-2">
+                  {([["ligacao", "Ligação", PhoneCall], ["whatsapp", "WhatsApp", MessageCircle], ["email", "E-mail", Mail]] as const).map(([k, l, I]) => (
+                    <button key={k} type="button" aria-pressed={kinds.includes(k)} onClick={() => setKinds((p) => (p.includes(k) ? p.filter((x) => x !== k) : [...p, k]))} className={`inline-flex items-center gap-2 rounded-full border-2 px-3.5 py-1.5 text-sm font-medium transition ${kinds.includes(k) ? "border-accent bg-accent/10" : "border-line hover:bg-sunk"}`}><I size={15} aria-hidden />{l}</button>
+                  ))}
                 </div>
-              )}
-            </SectionCard>
-          </>
+                <textarea className={`${inputCls} min-h-24`} placeholder={kinds.length ? "O que foi conversado?" : "Escreva uma anotação"} aria-label="Anotação" value={note} onChange={(e) => setNote(e.target.value)} />
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="w-48 text-sm"><span className="mb-1 block text-muted">Voltar a falar em</span><DateInput label="Próximo contato" value={nextAt} onChange={setNextAt} /></div>
+                  <label className="block min-w-48 flex-1 text-sm"><span className="mb-1 block text-muted">Combinado</span><input className={inputCls} placeholder="Ex.: ligar para fechar" value={nextNote} onChange={(e) => setNextNote(e.target.value)} /></label>
+                  <button className={`${btnPrimary} whitespace-nowrap`} disabled={pending || (!kinds.length && !note.trim())}><Check size={16} aria-hidden /> {kinds.length ? "Registrar contato" : "Salvar anotação"}</button>
+                </div>
+              </form>
+            )}
+            <div className={closed ? "" : "mt-4 border-t border-line/70 pt-4"}><AndamentosTimeline events={events.map((e) => ({ ...e, dealId: deal.id }))} maxH="max-h-[26rem]" /></div>
+          </SectionCard>
         )}
-
-
 
         {(mine && deal.sellerId) && (
-          <SectionCard icon={Package} title="Dados da negociação" className="flex h-full flex-col">
-            <form className="grid flex-1 content-start gap-x-4 gap-y-3 text-sm sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); run(() => saveDealDataAction(deal.id, f)); }}>
-              <Field label="Frete"><select className={inputCls} value={f.freight} onChange={(e) => set("freight", e.target.value)}><option value="">—</option><option>CIF</option><option>FOB</option><option>RED</option></select></Field>
-              <Field label="Código SAP"><input className={inputCls} value={f.sapCode} onChange={(e) => set("sapCode", e.target.value)} /></Field>
-              <Field label="Condição de pagamento"><select className={inputCls} value={f.paymentTerms} onChange={(e) => set("paymentTerms", e.target.value)}><option value="">—</option>{[...new Set([...(f.paymentTerms ? [f.paymentTerms] : []), ...termList])].map((t) => <option key={t}>{t}</option>)}</select></Field>
-              <Field label="Nº da cotação"><input className={`${inputCls} opacity-70`} readOnly value={f.quoteNumber} /></Field>
-              <Field label="Data da cotação"><input className={`${inputCls} opacity-70`} readOnly value={f.quoteDate ? f.quoteDate.split("-").reverse().join("/") : ""} /></Field>
-              <Field label="Valor sem impostos (R$)" hint="Pode corrigir com o do Salesforce."><input className={inputCls} inputMode="decimal" value={f.netValue} onChange={(e) => set("netValue", e.target.value)} /></Field>
-              <Field label="Total com impostos (R$)"><input className={`${inputCls} opacity-70`} readOnly value={f.quoteValue} /></Field>
-              <Field label="Nº do pedido"><input className={inputCls} value={f.orderNumber} onChange={(e) => set("orderNumber", e.target.value)} /></Field>
-              <Field label="Data fechada"><DateInput label="Data fechada" value={f.closedOn} onChange={(v) => set("closedOn", v)} /></Field>
-              <Field label="Valor fechado (R$)"><input className={inputCls} inputMode="decimal" value={f.closedValue} onChange={(e) => set("closedValue", e.target.value)} /></Field>
-              <Field label="Valor real (R$)" hint="Opcional; senão conta o sem impostos."><input className={inputCls} inputMode="decimal" value={f.realValue} onChange={(e) => set("realValue", e.target.value)} /></Field>
-              <div className="flex items-center justify-between gap-3 border-t border-line pt-3 sm:col-span-2">
-                <label className="flex items-center gap-2"><input type="checkbox" checked={f.isReactivation} onChange={(e) => set("isReactivation", e.target.checked)} /> Cliente reativado</label>
-                <button className={`${btnPrimary} whitespace-nowrap`} disabled={pending}><Check size={16} aria-hidden /> Salvar dados</button>
+          <SectionCard icon={Package} title="Fechamento" className="flex flex-col">
+            <div className="space-y-4">
+              <div>
+                <p className="mb-2 text-xs font-medium text-muted">{closed ? "Cotação" : "Cotação a faturar"}</p>
+                {quotes.length === 0 ? <p className="rounded-xl border border-dashed border-line px-4 py-3 text-sm text-muted">Sem cotações. Registre uma abaixo ou informe o valor direto.</p> : (
+                  <div role="radiogroup" aria-label="Cotação a faturar" className="grid gap-2">
+                    {quotes.map((q) => {
+                      const on = pick === q.id;
+                      return (
+                        <button key={q.id} type="button" role="radio" aria-checked={on} disabled={closed} onClick={() => { setPick(on ? null : q.id); }} className={`flex items-center gap-3 rounded-xl border-2 px-3.5 py-2.5 text-left text-sm transition ${on ? "border-accent bg-accent/10" : "border-line hover:bg-sunk"} disabled:cursor-default`}>
+                          <span className={`grid size-5 shrink-0 place-items-center rounded-full border-2 ${on ? "border-accent bg-accent text-on-accent" : "border-line"}`}>{on && <Check size={12} aria-hidden />}</span>
+                          <span className="min-w-0 flex-1"><b>{q.number ?? `Cotação #${q.id}`}</b><span className="block text-xs text-muted">{q.quoteDate ? q.quoteDate.split("-").reverse().join("/") : "sem data"}{q.paymentTerms ? ` · ${q.paymentTerms}` : ""}</span></span>
+                          <span className="figure text-right font-semibold">{fmtBRL(q.totalCents)}</span>
+                          {q.outcome && <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${q.outcome === "faturado" ? "bg-ok/15 text-ok" : "bg-danger/12 text-danger"}`}>{q.outcome === "faturado" ? "Faturada" : "Perdida"}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            </form>
+
+              <form id="deal-data" className="grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); run(() => saveDealDataAction(deal.id, f)); }}>
+                <Field label="Valor faturado (R$)"><input className={inputCls} inputMode="decimal" placeholder={pickQuote?.totalCents ? brl(pickQuote.totalCents) : "0,00"} value={f.closedValue} onChange={(e) => set("closedValue", e.target.value)} /></Field>
+                <Field label="Valor real (R$)"><input className={inputCls} inputMode="decimal" placeholder="Opcional" value={f.realValue} onChange={(e) => set("realValue", e.target.value)} /></Field>
+                <Field label="Nº do pedido"><input className={inputCls} value={f.orderNumber} onChange={(e) => set("orderNumber", e.target.value)} /></Field>
+                <Field label="Data do faturamento"><DateInput label="Data do faturamento" value={f.closedOn} onChange={(v) => set("closedOn", v)} /></Field>
+                <Field label="Frete"><select className={inputCls} value={f.freight} onChange={(e) => set("freight", e.target.value)}><option value="">—</option><option>CIF</option><option>FOB</option><option>RED</option></select></Field>
+                <Field label="Condição de pagamento"><select className={inputCls} value={f.paymentTerms} onChange={(e) => set("paymentTerms", e.target.value)}><option value="">—</option>{[...new Set([...(f.paymentTerms ? [f.paymentTerms] : []), ...termList])].map((t) => <option key={t}>{t}</option>)}</select></Field>
+                <Field label="Código SAP"><input className={inputCls} value={f.sapCode} onChange={(e) => set("sapCode", e.target.value)} /></Field>
+                <Field label="Valor sem impostos (R$)"><input className={inputCls} inputMode="decimal" value={f.netValue} onChange={(e) => set("netValue", e.target.value)} /></Field>
+                <label className="flex items-center gap-2 sm:col-span-2"><input type="checkbox" checked={f.isReactivation} onChange={(e) => set("isReactivation", e.target.checked)} /> Cliente reativado</label>
+              </form>
+
+              {lostOpen && !closed && (
+                <div className="space-y-2 rounded-xl border border-danger/40 bg-danger/5 p-3">
+                  <textarea className={`${inputCls} min-h-20`} aria-label="Motivo da perda" placeholder="O que aconteceu?" value={reason} onChange={(e) => setReason(e.target.value)} />
+                  <div className="flex flex-wrap gap-1.5">{["Preço", "Fechou com concorrente", "Sem interesse", "Sem resposta", "Prazo de entrega"].map((r) => <button key={r} type="button" onClick={() => setReason(r)} className="rounded-full border border-line px-3 py-1 text-xs font-medium text-muted transition hover:border-accent hover:text-accent">{r}</button>)}</div>
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center gap-2 border-t border-line/70 pt-3">
+                <button type="submit" form="deal-data" className={btnGhost} disabled={pending}><Check size={16} aria-hidden /> Salvar dados</button>
+                {!closed && (
+                  <>
+                    <button type="button" className={`${btnPrimary} ml-auto`} disabled={pending} onClick={() => run(() => closeDealAction(deal.id, { won: true, quoteId: pick, value: f.closedValue || (pickQuote?.totalCents ? brl(pickQuote.totalCents) : ""), closedOn: f.closedOn || null, data: closeData }))}><Trophy size={16} aria-hidden /> Faturar{pickQuote ? ` ${pickQuote.number ?? "cotação"}` : ""}</button>
+                    {lostOpen
+                      ? <button type="button" className={`${btnGhost} !border-danger text-danger`} disabled={pending || !reason.trim()} onClick={() => setConfirmLost(true)}><XCircle size={16} aria-hidden /> Confirmar perda</button>
+                      : <button type="button" className={`${btnGhost} !border-danger text-danger`} disabled={pending} onClick={() => setLostOpen(true)}><XCircle size={16} aria-hidden /> Perdida</button>}
+                  </>
+                )}
+              </div>
+            </div>
           </SectionCard>
         )}
         </div>
@@ -251,7 +246,6 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDele
 
         {mine && !closed && deal.sdrId && (team || ((deal.stage === "novo" || deal.stage === "contato") && quotes.length === 0)) && (
           <SectionCard icon={Undo2} title="Repassado por engano?">
-            <p className="text-sm text-muted">Devolve o lead para {deal.sdrName ?? "o SDR"}: a negociação some daqui, a visita ainda não realizada é cancelada e o lead volta ao Shuffler dele para ser atendido de novo.</p>
             <button type="button" className={`${btnGhost} w-full`} disabled={pending} onClick={() => { setReturnWhy(""); setConfirm("return"); }}><Undo2 size={15} aria-hidden /> Devolver ao SDR</button>
           </SectionCard>
         )}
@@ -265,7 +259,6 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDele
         )}
         {canDelete && (
           <SectionCard icon={Trash2} title="Gestão da negociação">
-            <p className="text-sm text-muted">Resetar volta ao início (apaga cotações e histórico). Apagar remove tudo. Nos dois casos fica um registro completo na auditoria do admin.</p>
             <div className="grid gap-2 sm:grid-cols-2">
               <button type="button" className={`${btnGhost} w-full`} disabled={pending} onClick={() => setConfirm("reset")}><RotateCcw size={15} aria-hidden /> Resetar negociação</button>
               <button type="button" className={`${btnGhost} w-full !border-danger text-danger`} disabled={pending} onClick={() => setConfirm("delete")}><Trash2 size={15} aria-hidden /> Apagar negociação</button>
@@ -274,8 +267,7 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDele
         )}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <AndamentosPanel events={events.map((e) => ({ ...e, dealId: deal.id }))} title="Andamentos registrados" />
+      <div className="grid gap-4">
         <VisitsPanel visits={visits} />
       </div>
 
@@ -285,7 +277,7 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, canDele
             <input className={inputCls} placeholder="Motivo (opcional)" maxLength={300} value={returnWhy} onChange={(e) => setReturnWhy(e.target.value)} aria-label="Motivo da devolução" /></span>
         ) : "As cotações e o histórico serão apagados e a negociação volta ao início. Um registro completo fica na auditoria do admin."}
       </ConfirmDialog>
-      <ConfirmDialog open={confirmLost} tone="danger" icon={XCircle} title="Marcar como perdida?" confirmLabel="Sim, perdida" busy={pending} onCancel={() => setConfirmLost(false)} onConfirm={() => { setConfirmLost(false); run(() => closeDealAction(deal.id, { won: false, reason })); }}>
+      <ConfirmDialog open={confirmLost} tone="danger" icon={XCircle} title="Marcar como perdida?" confirmLabel="Sim, perdida" busy={pending} onCancel={() => setConfirmLost(false)} onConfirm={() => { setConfirmLost(false); run(() => closeDealAction(deal.id, { won: false, reason }), undefined, () => setLostOpen(false)); }}>
         A negociação com {deal.company} será encerrada. Você pode reabri-la depois.
       </ConfirmDialog>
     </div>

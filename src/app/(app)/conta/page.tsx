@@ -39,7 +39,6 @@ export default async function AccountPage() {
           <h2 className="display mb-5 text-xl">Aparência</h2>
 
           <p className="mb-2 text-sm font-medium">Cor do sistema</p>
-          <p className="mb-3 text-xs text-muted">Vale para botões, destaques e para a sua bolha, que todos veem no sistema (Leads, Dashboard, Ao vivo).</p>
           <form action={setAccentAction} className="flex flex-wrap gap-2.5">
             {CHOOSABLE_ACCENTS.map((a) => {
               const selected = a.key === current.key;
@@ -72,7 +71,6 @@ export default async function AccountPage() {
 
         <section className={`${panelCls} p-6 lg:col-span-2`}>
           <h2 className="display mb-1 text-xl">Mapa do lead</h2>
-          <p className="mb-4 text-sm text-muted">Como mostrar a localização do lead no Shuffler e na página do lead.</p>
           <MapModePicker current={user.mapMode} />
         </section>
 

@@ -51,6 +51,7 @@ export async function claimNext(userId: number, opts: { test?: boolean } = {}): 
       select l.id from leads l
       where l.locked_by is null
         and l.is_test = ${test}
+        and l.kind = 'prospect'
         and (l.next_eligible_at is null or l.next_eligible_at <= now())
         and (l.return_at is null or l.return_at <= now())
         and (l.owner_id is null or l.owner_id = ${userId})
@@ -72,6 +73,8 @@ export async function attendLead(userId: number, leadId: number): Promise<void> 
   await releaseExpiredLocks();
   const [inDeal] = await db.execute<{ x: number }>(sql`select 1 as x from deals where lead_id = ${leadId} limit 1`);
   if (inDeal) throw new UserError("Este cliente já está com os vendedores e não volta para o Shuffler.");
+  const [inactive] = await db.execute<{ x: number }>(sql`select 1 as x from leads where id = ${leadId} and kind = 'inativo'`);
+  if (inactive) throw new UserError("Lead inativo: quem trabalha é o vendedor, no Shuffler de vendas.");
   const rows = await db.execute<{ id: number; is_test: boolean }>(sql`
     update leads set locked_by = ${userId}, locked_at = now(), last_served_at = now(),
                      times_served = times_served + case when locked_by = ${userId} then 0 else 1 end

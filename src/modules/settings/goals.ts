@@ -2,10 +2,10 @@ import type { SettingKey } from "./get";
 
 /** Metas diárias do SDR. `attended`/`scheduled` têm coluna própria; `calls`/`converted` ficam em users.goals_extra. */
 export const SDR_KINDS = [
-  { k: "attended", label: "Atendidos", title: "Meta de atendidos", sub: "Leads atendidos e salvos por dia, por pessoa", today: "Atendidos hoje", qty: "daily_goal", on: "goal_attended_on" },
-  { k: "scheduled", label: "Agendados", title: "Meta de agendados", sub: "Visitas agendadas e negociações abertas por dia, por pessoa", today: "Agendados hoje", qty: "daily_goal_scheduled", on: "goal_scheduled_on" },
-  { k: "calls", label: "Ligações", title: "Meta de ligações", sub: "Ligações registradas por dia, por pessoa", today: "Ligações hoje", qty: "daily_goal_calls", on: "goal_calls_on" },
-  { k: "converted", label: "Convertidos", title: "Meta de convertidos", sub: "Leads convertidos (viraram negociação) por dia, por pessoa", today: "Convertidos hoje", qty: "daily_goal_converted", on: "goal_converted_on" },
+  { k: "attended", label: "Atendidos", title: "Meta de atendidos", sub: "Leads atendidos e salvos, por pessoa", today: "Atendidos hoje", qty: "daily_goal", on: "goal_attended_on" },
+  { k: "scheduled", label: "Agendados", title: "Meta de agendados", sub: "Visitas agendadas e negociações abertas, por pessoa", today: "Agendados hoje", qty: "daily_goal_scheduled", on: "goal_scheduled_on" },
+  { k: "calls", label: "Ligações", title: "Meta de ligações", sub: "Ligações registradas, por pessoa", today: "Ligações hoje", qty: "daily_goal_calls", on: "goal_calls_on" },
+  { k: "converted", label: "Convertidos", title: "Meta de convertidos", sub: "Leads que viraram negociação, por pessoa", today: "Convertidos hoje", qty: "daily_goal_converted", on: "goal_converted_on" },
 ] as const satisfies readonly { k: string; label: string; title: string; sub: string; today: string; qty: SettingKey; on: SettingKey }[];
 export type GoalKind = (typeof SDR_KINDS)[number]["k"];
 

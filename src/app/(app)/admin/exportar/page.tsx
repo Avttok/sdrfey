@@ -12,7 +12,7 @@ export default async function Page() {
   const entries = Object.entries(EXPORT_KINDS) as [ExportKind, (typeof EXPORT_KINDS)[ExportKind]][];
   return (
     <div className="space-y-5">
-      <PageHead icon={Download} size="md" title="Exportar / backup" subtitle="Baixe o banco para backup ou análise. Cada download fica registrado no Registro." />
+      <PageHead icon={Download} size="md" title="Exportar / backup" />
       <section className={`${panelCls} flex flex-wrap items-center gap-4 border-accent/40 bg-accent/5 p-5`}>
         <span className="grid size-12 place-items-center rounded-xl bg-grad text-on-accent"><Database size={22} aria-hidden /></span>
         <div className="min-w-0 flex-1"><h2 className="font-semibold">{EXPORT_KINDS.backup.label}</h2><p className="text-sm text-muted">{EXPORT_KINDS.backup.hint}</p></div>

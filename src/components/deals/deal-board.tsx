@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRun } from "@/components/use-run";
 import { btnPrimary, inputCls, panelCls } from "@/components/ui";
-import { fmtBRL, OPEN_STAGES, STAGE_META } from "@/config/deals";
+import { BOARD_COLUMNS, fmtBRL, STAGE_META } from "@/config/deals";
 import { fmtPhone } from "@/lib/format";
 import { claimDealAction } from "@/modules/deals/actions";
 import type { DealRow } from "@/modules/deals/queries";
@@ -53,9 +53,16 @@ export function DealBoard({ deals, meId, canClaim, team }: { deals: DealRow[]; m
   const norm = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const needle = norm(q.trim());
   const digits = q.replace(/\D/g, "");
-  const open = useMemo(() => deals.filter((d) => OPEN_STAGES.includes(d.stage)), [deals]);
-  const closed = useMemo(() => deals.filter((d) => !OPEN_STAGES.includes(d.stage)), [deals]);
+  const isOpen = (d: DealRow) => d.stage !== "ganho" && d.stage !== "perdido";
+  const open = useMemo(() => deals.filter(isOpen), [deals]);
+  const closed = useMemo(() => deals.filter((d) => !isOpen(d)), [deals]);
+  /** Última coluna do quadro: o que foi faturado neste mês. */
+  const month = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" }).format(new Date());
+  const billed = useMemo(() => deals.filter((d) => d.stage === "ganho" && (d.closedOn ?? d.closedAt ?? "").slice(0, 7) === month), [deals, month]);
   const counts = { todas: open.length, minhas: open.filter((d) => d.sellerId === meId).length, grupo: open.filter((d) => !d.sellerId).length, avisos: open.filter((d) => d.alerts.length).length, fechadas: closed.length };
+  const bySearch = (d: DealRow) => !needle || norm(`${d.company} ${d.contactName ?? ""} ${d.city ?? ""} ${d.sellerName ?? ""} ${d.quoteNumber ?? ""}`).includes(needle) || (digits.length >= 3 && d.cnpj.includes(digits));
+  const byFilter = (d: DealRow) => filter === "minhas" ? d.sellerId === meId : filter === "grupo" ? !d.sellerId : filter === "avisos" ? d.alerts.length > 0 : true;
+  const billedShown = billed.filter(bySearch).filter((d) => filter === "minhas" ? d.sellerId === meId : filter === "todas");
   const shown = (filter === "fechadas" ? closed : open).filter((d) => !needle || norm(`${d.company} ${d.contactName ?? ""} ${d.city ?? ""} ${d.sellerName ?? ""} ${d.quoteNumber ?? ""}`).includes(needle) || (digits.length >= 3 && d.cnpj.includes(digits))).filter((d) => filter === "minhas" ? d.sellerId === meId : filter === "grupo" ? !d.sellerId : filter === "avisos" ? d.alerts.length > 0 : true);
   const chips: [Filter, string][] = [["todas", team ? "Todas abertas" : "Abertas"], ["minhas", "Minhas"], ["grupo", "Sem vendedor"], ["avisos", "Com aviso"], ["fechadas", "Encerradas"]];
   return (
@@ -73,17 +80,17 @@ export function DealBoard({ deals, meId, canClaim, team }: { deals: DealRow[]; m
       </div>
       {filter === "fechadas" || filter === "avisos" || filter === "grupo" ? (
         shown.length ? <ul className="grid items-stretch gap-3 [grid-template-columns:repeat(auto-fill,minmax(17rem,1fr))]">{shown.map((d) => <Card key={d.id} d={d} meId={meId} canClaim={canClaim} />)}</ul> : <Empty text={needle ? "Nenhuma negociação com essa busca." : filter === "grupo" ? "Nenhuma negociação esperando vendedor." : filter === "avisos" ? "Tudo em dia: nenhum aviso." : "Nenhuma negociação encerrada ainda."} />
-      ) : shown.length === 0 ? <Empty text={needle ? "Nenhuma negociação com essa busca." : "Nenhuma negociação por aqui. Quando um SDR repassar um lead, ele aparece nesta tela na hora."} /> : (
+      ) : shown.length === 0 && billedShown.length === 0 ? <Empty text={needle ? "Nenhuma negociação com essa busca." : "Nenhuma negociação aberta."} /> : (
         <div className="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(14.5rem,1fr))]">
-          {OPEN_STAGES.map((st) => {
-            const col = shown.filter((d) => d.stage === st);
+          {BOARD_COLUMNS.map(({ key, stages }) => {
+            const col = key === "ganho" ? billedShown : shown.filter((d) => stages.includes(d.stage));
             return (
-              <section key={st} className="min-w-0 space-y-3 rounded-2xl border border-line bg-sunk/50 p-2.5">
+              <section key={key} className="min-w-0 space-y-3 rounded-2xl border border-line bg-sunk/50 p-2.5">
                 <header className="flex items-center justify-between gap-2 px-1.5 pt-1">
-                  <span className="whitespace-nowrap"><StageChip stage={st} /></span>
+                  <span className="whitespace-nowrap"><StageChip stage={key} /></span>
                   <span className="figure whitespace-nowrap text-sm text-muted">{col.length}</span>
                 </header>
-                {col.some((x) => x.mainCents) && <p className="figure -mt-1 px-1.5 text-xs text-muted">{fmtBRL(col.reduce((a, x) => a + (x.mainCents ?? 0), 0))} sem impostos</p>}
+                {col.some((x) => x.mainCents) && <p className="figure -mt-1 px-1.5 text-xs text-muted">{fmtBRL(col.reduce((a, x) => a + (x.mainCents ?? 0), 0))}</p>}
                 <ul className="space-y-2.5">{col.map((d) => <Card key={d.id} d={d} meId={meId} canClaim={canClaim} />)}{col.length === 0 && <li className="rounded-xl border border-dashed border-line p-5 text-center text-xs text-muted">Vazio</li>}</ul>
               </section>
             );

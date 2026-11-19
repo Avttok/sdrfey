@@ -75,6 +75,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
   useEffect(() => { if (!visible.includes(step)) setStep(prevStep(step)); /* uma etapa pode sumir (ex.: último telefone marcado como errado) */ }, [visible.join(), step]); // eslint-disable-line react-hooks/exhaustive-deps
   const groups = useMemo(() => Object.fromEntries(catalog.map((g) => [g.key, g])), [catalog]);
 
+  const saving = useRef(false);
   /* batimento a cada 30 s: mantém o lead com você e mostra que está online */
   useEffect(() => {
     let last = Date.now(); // última vez que a pessoa mexeu na tela: só isso renova o prazo do lead
@@ -85,7 +86,7 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
     const beat = async () => {
       if (gone) return;
       const held = await heartbeatAction(lead.id, `Atendendo ${lead.company}`, Date.now() - last < 45_000).catch(() => true);
-      if (held || gone) return;
+      if (held || gone || saving.current) return; // salvando: o lead sai de você de propósito, não é inatividade
       gone = true;
       toast("warn", "Este lead foi liberado por inatividade. Use o Shuffler para pegar outro.");
       router.replace("/atender"); router.refresh();
@@ -133,13 +134,17 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
   /** Salva e sorteia o próximo lead. */
   const blocked = () => { if (!visitMissing) return false; toast("warn", "Para encaminhar o lead, preencha o código e a data da visita."); return true; };
   const save = () => blocked() || run(async () => {
-    const r = await saveAction(payload());
+    saving.current = true;
+    const r = await saveAction(payload()).catch(() => ({ ok: false as const, message: "Não foi possível salvar." }));
+    if (!r.ok) saving.current = false;
     if (r.ok) await startAction();
     return r;
   });
   /** Salva, libera o lead e volta à tela do botão Shuffler (pausa: o lead não fica contando tempo). */
   const saveAndStop = () => blocked() || run(async () => {
-    const r = await saveAction(payload());
+    saving.current = true;
+    const r = await saveAction(payload()).catch(() => ({ ok: false as const, message: "Não foi possível salvar." }));
+    if (!r.ok) saving.current = false;
     if (r.ok) { router.replace("/atender"); router.refresh(); }
     return r;
   });
@@ -343,7 +348,6 @@ export function AttendFlow({ lead, catalog, templates, myName, showMap, previous
                       <option value="">Grupo dos vendedores (o primeiro a assumir)</option>
                       {sellers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                     </select></label>
-                  <p className="min-w-60 flex-1 text-xs text-muted">Qualifica o lead, cria a negociação na hora e avisa os vendedores. A observação abaixo vai junto para eles.</p>
                 </div>
               )}
               {(dest === "reps" || dest === "sellers") && (

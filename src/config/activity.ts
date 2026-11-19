@@ -8,6 +8,7 @@ export type ActKind = "attend" | "deal" | "lead" | "visit" | "goal" | "history" 
 
 const ROUTES: { re: RegExp; label: string; kind: ActKind; detail?: (m: RegExpMatchArray) => Detail; withName?: string }[] = [
   { re: /^\/atender/, label: "No Shuffler", kind: "attend" },
+  { re: /^\/shuffler-vendas/, label: "No Shuffler de vendas", kind: "attend" },
   { re: /^\/negociacoes\/importar/, label: "Importando cotações", kind: "import" },
   { re: /^\/negociacoes\/(\d+)/, label: "Negociando", kind: "deal", detail: (m) => ({ kind: "deal", id: Number(m[1]) }), withName: "Negociando" },
   { re: /^\/negociacoes/, label: "Na carteira de vendas", kind: "deal" },
@@ -20,7 +21,9 @@ const ROUTES: { re: RegExp; label: string; kind: ActKind; detail?: (m: RegExpMat
   { re: /^\/painel/, label: "No Dashboard", kind: "dash" },
   { re: /^\/registro/, label: "Lendo o Registro de atividades", kind: "log" },
   { re: /^\/importar/, label: "Importando leads", kind: "import" },
+  { re: /^\/conquistas/, label: "Vendo as conquistas", kind: "account" },
   { re: /^\/conta/, label: "Ajustando a própria conta", kind: "account" },
+  { re: /^\/admin\/banco/, label: "Vendo a saúde do sistema", kind: "admin" },
   { re: /^\/admin\/ao-vivo/, label: "Monitorando o Ao vivo", kind: "admin" },
   { re: /^\/admin\/usuarios/, label: "Gerenciando usuários", kind: "users" },
   { re: /^\/admin\/permissoes/, label: "Ajustando permissões", kind: "users" },

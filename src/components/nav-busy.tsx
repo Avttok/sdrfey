@@ -2,14 +2,12 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useBusyWhile } from "@/components/toast";
 
-/** Mostra “Carregando…” ao clicar em qualquer link interno (paginação, abrir lead, voltar…) até a nova tela chegar. */
+/** Barra fina no topo ao clicar em qualquer link interno, até a nova tela chegar. Só aparece se demorar (evita piscar em telas rápidas). */
 export function NavBusy() {
   const path = usePathname();
   const sp = useSearchParams().toString();
   const [navigating, setNavigating] = useState(false);
-  useBusyWhile(navigating);
 
   useEffect(() => setNavigating(false), [path, sp]);
   useEffect(() => {
@@ -31,5 +29,5 @@ export function NavBusy() {
     const t = setTimeout(() => setNavigating(false), 15_000); // segurança: nunca trava a tela
     return () => clearTimeout(t);
   }, [navigating]);
-  return null;
+  return navigating ? <div aria-hidden className="nav-bar" /> : null;
 }

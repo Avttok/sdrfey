@@ -22,33 +22,39 @@ const GROUPS: [string, string, string[]][] = [
   ["fim", "Encerramentos", ["ganho", "perdido", "reaberto"]],
 ];
 
-/** Linha do tempo de tudo o que foi registrado em "Registrar andamento", com filtro por tipo. */
-export function AndamentosPanel({ events, title = "Andamentos registrados", showDeal = false }: { events: CommEvent[]; title?: string; showDeal?: boolean }) {
+/** Linha do tempo (sem moldura), com filtro por tipo. Usada no painel da negociação e na página do lead. */
+export function AndamentosTimeline({ events, showDeal = false, maxH = "max-h-[28rem]" }: { events: CommEvent[]; showDeal?: boolean; maxH?: string }) {
   const [g, setG] = useState("all");
   const counts = useMemo(() => Object.fromEntries(GROUPS.map(([k, , kinds]) => [k, k === "all" ? events.length : events.filter((e) => kinds.includes(e.kind)).length])), [events]);
   const shown = useMemo(() => { const kinds = GROUPS.find(([k]) => k === g)?.[2] ?? []; return g === "all" ? events : events.filter((e) => kinds.includes(e.kind)); }, [events, g]);
+  if (events.length === 0) return <p className="rounded-xl border border-dashed border-line px-4 py-6 text-center text-sm text-muted">Nenhum andamento ainda.</p>;
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Filtrar andamentos">
+        {GROUPS.filter(([k]) => k === "all" || counts[k] > 0).map(([k, l]) => (
+          <button key={k} type="button" role="tab" aria-selected={g === k} onClick={() => setG(k)} className={`rounded-full border px-3 py-1 text-xs font-medium transition ${g === k ? "border-accent bg-accent/12 text-accent" : "border-line text-muted hover:bg-sunk"}`}>{l} <span className="figure">{counts[k]}</span></button>
+        ))}
+      </div>
+      <div className={`${maxH} overflow-y-auto py-1 pl-4 pr-1`}><ol className="relative space-y-4 border-l border-line pl-5">
+        {shown.map((e) => { const I = ICON[e.kind] ?? NotebookPen; return (
+          <li key={e.id} className="relative text-sm">
+            <span className="absolute -left-[31px] grid size-6 place-items-center rounded-full border border-line bg-panel text-accent"><I size={12} aria-hidden /></span>
+            <p className="font-medium">{DEAL_EVENT_LABEL[e.kind] ?? e.kind}{e.valueCents ? <span className="figure ml-1.5 whitespace-nowrap text-muted">{fmtBRL(e.valueCents)}</span> : null}{showDeal && <Link href={`/negociacoes/${e.dealId}`} className="ml-2 text-xs font-normal text-accent hover:underline">negociação #{e.dealId}</Link>}</p>
+            {e.note && <p className="whitespace-pre-wrap break-words text-muted">{e.note}</p>}
+            <p className="text-xs text-muted">{fmtDateTime(e.at)}{e.by ? ` · ${e.by}` : ""}</p>
+          </li>
+        ); })}
+        {shown.length === 0 && <li className="text-sm text-muted">Nada neste filtro.</li>}
+      </ol></div>
+    </div>
+  );
+}
+
+/** Linha do tempo de tudo o que foi registrado na negociação, em um cartão. */
+export function AndamentosPanel({ events, title = "Andamentos registrados", showDeal = false }: { events: CommEvent[]; title?: string; showDeal?: boolean }) {
   return (
     <SectionCard icon={History} title={`${title}${events.length ? ` (${events.length})` : ""}`}>
-      {events.length === 0 ? <p className="text-sm text-muted">Nenhum andamento registrado ainda.</p> : (
-        <>
-          <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Filtrar andamentos">
-            {GROUPS.filter(([k]) => k === "all" || counts[k] > 0).map(([k, l]) => (
-              <button key={k} type="button" role="tab" aria-selected={g === k} onClick={() => setG(k)} className={`rounded-full border px-3 py-1 text-xs font-medium transition ${g === k ? "border-accent bg-accent/12 text-accent" : "border-line text-muted hover:bg-sunk"}`}>{l} <span className="figure">{counts[k]}</span></button>
-            ))}
-          </div>
-          <div className="max-h-[28rem] overflow-y-auto py-1 pl-4 pr-1"><ol className="relative space-y-4 border-l border-line pl-5">
-            {shown.map((e) => { const I = ICON[e.kind] ?? NotebookPen; return (
-              <li key={e.id} className="relative text-sm">
-                <span className="absolute -left-[31px] grid size-6 place-items-center rounded-full border border-line bg-panel text-accent"><I size={12} aria-hidden /></span>
-                <p className="font-medium">{DEAL_EVENT_LABEL[e.kind] ?? e.kind}{e.valueCents ? <span className="figure ml-1.5 whitespace-nowrap text-muted">{fmtBRL(e.valueCents)}</span> : null}{showDeal && <Link href={`/negociacoes/${e.dealId}`} className="ml-2 text-xs font-normal text-accent hover:underline">negociação #{e.dealId}</Link>}</p>
-                {e.note && <p className="whitespace-pre-wrap break-words text-muted">{e.note}</p>}
-                <p className="text-xs text-muted">{fmtDateTime(e.at)}{e.by ? ` · ${e.by}` : ""}</p>
-              </li>
-            ); })}
-            {shown.length === 0 && <li className="text-sm text-muted">Nada neste filtro.</li>}
-          </ol></div>
-        </>
-      )}
+      <AndamentosTimeline events={events} showDeal={showDeal} />
     </SectionCard>
   );
 }

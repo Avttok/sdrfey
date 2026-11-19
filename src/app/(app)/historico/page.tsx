@@ -68,7 +68,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
   return (
     <div className="space-y-6">
       {tabs}
-      <PageHead icon={History} title="Meu histórico" subtitle="Tudo o que você atendeu e salvou. Use ATENDER para voltar a um lead.">
+      <PageHead icon={History} title="Meu histórico">
         <Link prefetch={false} className={btnGhost} href={preset(1)}>Hoje</Link>
         <Link prefetch={false} className={btnGhost} href={preset(7)}>7 dias</Link>
         <Link prefetch={false} className={btnGhost} href={preset(30)}>30 dias</Link>

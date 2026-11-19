@@ -9,5 +9,5 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   await requirePerm("tab.negociacoes");
   const csv = Papa.unparse({ fields: DEAL_TEMPLATE_HEADERS, data: DEAL_TEMPLATE_ROWS }, { delimiter: ";" });
-  return new NextResponse(`﻿${csv}`, { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": 'attachment; filename="modelo-negociacoes.csv"', "Cache-Control": "no-store" } });
+  return new NextResponse(Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(csv, "utf8")]), { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": 'attachment; filename="modelo-negociacoes.csv"', "Cache-Control": "no-store" } });
 }

@@ -1,12 +1,10 @@
 import { visibleUsers } from "@/modules/auth/visibility";
 import { releaseExpiredLocks } from "@/modules/leads/sorter";
 import type { Metadata } from "next";
-import { Play, Shuffle } from "lucide-react";
 import { and, eq, sql } from "drizzle-orm";
 import { AttendFlow } from "@/components/attend-flow";
 import { GoalTiles } from "@/components/goal-tiles";
-import { SubmitButton } from "@/components/submit-button";
-import { panelCls } from "@/components/ui";
+import { ShuffleHero } from "@/components/shuffle-hero";
 import { attendanceSessions, db, leads, users, visits } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
 import { startAction } from "@/modules/leads/actions";
@@ -50,33 +48,14 @@ export default async function AttendPage() {
 
   if (!lead) {
     return (
-      <>
-      <div aria-hidden className="spawn-fade pointer-events-none fixed inset-0 -z-10" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 26%, var(--bg)) 0%, color-mix(in srgb, var(--accent) 7%, var(--bg)) 48%, color-mix(in srgb, var(--accent) 20%, var(--bg)) 100%)" }}>
-        <div className="absolute -left-24 -top-24 size-[30rem] rounded-full bg-accent/25 blur-3xl" />
-        <div className="absolute -bottom-32 -right-20 size-[34rem] rounded-full bg-accent/20 blur-3xl" />
-        <div className="absolute left-1/2 top-1/2 size-[24rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/10 blur-3xl" />
-      </div>
-      <div className="spawn-in relative -my-3 grid flex-1 min-h-[22rem] place-items-center overflow-y-auto overflow-x-hidden p-3 sm:p-6">
-        <div className="relative grid w-full max-w-6xl items-center gap-6 text-center md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_auto] md:gap-8 md:text-left">
-          <div className="space-y-3">
-            <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-grad text-on-accent shadow-xl shadow-accent/40 md:mx-0 md:size-16"><Shuffle size={28} aria-hidden /></span>
-            <h1 className="display text-3xl lg:text-4xl">Pronto para o próximo lead?</h1>
-            <p className="mx-auto max-w-md text-sm text-muted md:mx-0">O sistema escolhe um lead livre para você. Se quiser um específico, use ATENDER na aba Leads ou no seu histórico.</p>
-          </div>
-          <div className="mx-auto w-full">
-            <GoalTiles items={[
-              ...(goals.attended.on ? [{ k: "attended" as const, label: "Atendidos", value: done?.n ?? 0, qty: goals.attended.qty }] : []),
-              ...(goals.scheduled.on ? [{ k: "scheduled" as const, label: "Agendados", value: sched?.n ?? 0, qty: goals.scheduled.qty }] : []),
-              ...(goals.calls.on ? [{ k: "calls" as const, label: "Ligações", value: extra.calls, qty: goals.calls.qty }] : []),
-              ...(goals.converted.on ? [{ k: "converted" as const, label: "Convertidos", value: extra.converted, qty: goals.converted.qty }] : []),
-            ]} />
-          </div>
-          <form action={startAction} className="flex justify-center">
-            <SubmitButton><Play size={18} aria-hidden /> Shuffler</SubmitButton>
-          </form>
-        </div>
-      </div>
-      </>
+      <ShuffleHero action={startAction}>
+        <GoalTiles items={[
+          ...(goals.attended.on ? [{ k: "attended" as const, label: "Atendidos", value: done?.n ?? 0, qty: goals.attended.qty }] : []),
+          ...(goals.scheduled.on ? [{ k: "scheduled" as const, label: "Agendados", value: sched?.n ?? 0, qty: goals.scheduled.qty }] : []),
+          ...(goals.calls.on ? [{ k: "calls" as const, label: "Ligações", value: extra.calls, qty: goals.calls.qty }] : []),
+          ...(goals.converted.on ? [{ k: "converted" as const, label: "Convertidos", value: extra.converted, qty: goals.converted.qty }] : []),
+        ]} />
+      </ShuffleHero>
     );
   }
 
