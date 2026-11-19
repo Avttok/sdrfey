@@ -48,7 +48,7 @@ export default async function AttendPage() {
 
   if (!lead) {
     return (
-      <ShuffleHero avatar={me.avatar} roles={me.roles} action={startAction}>
+      <ShuffleHero avatar={me.avatar} roles={me.shownRoles} action={startAction}>
         <GoalTiles items={[
           ...(goals.attended.on ? [{ k: "attended" as const, label: "Atendidos", value: done?.n ?? 0, qty: goals.attended.qty }] : []),
           ...(goals.scheduled.on ? [{ k: "scheduled" as const, label: "Agendados", value: sched?.n ?? 0, qty: goals.scheduled.qty }] : []),

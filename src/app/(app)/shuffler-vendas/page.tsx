@@ -31,7 +31,7 @@ export default async function SalesShufflePage() {
     inactiveStock(),
   ]);
   return (
-    <ShuffleHero avatar={me.avatar} roles={me.roles} action={startSalesShuffleAction}>
+    <ShuffleHero avatar={me.avatar} roles={me.shownRoles} action={startSalesShuffleAction}>
       <GoalPills items={[
         { icon: "shuffle", label: "Trabalhados hoje", value: r?.worked ?? 0 },
         { icon: "handshake", label: "Negociações abertas hoje", value: r?.deals ?? 0 },

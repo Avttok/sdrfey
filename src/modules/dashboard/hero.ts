@@ -12,10 +12,10 @@ export async function getHero(me: CurrentUser) {
   const month = sql`(date_trunc('month', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo')`;
   const isSdr = me.roles.some((r) => r !== "seller");
   const isSeller = me.roles.some((r) => r === "seller" || r === "manager" || r === "admin");
-  await syncCoins(me.id, me.roles);
+  await syncCoins(me.id, me.shownRoles);
   const [coins, ach, settings, [att], [sold]] = await Promise.all([
     coinBalance(me.id),
-    achievementsOf(me.id, me.roles),
+    achievementsOf(me.id, me.shownRoles),
     getSettings(),
     db.select({ n: sql<number>`count(*)::int` }).from(attendanceSessions).where(and(eq(attendanceSessions.userId, me.id), eq(attendanceSessions.outcome, "saved"), eq(attendanceSessions.isTest, false), sql`${attendanceSessions.savedAt} >= ${today}`)),
     db.execute<{ open: number; billed: number; billed_cents: number; inactive: number }>(sql`select

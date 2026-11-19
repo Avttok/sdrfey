@@ -12,7 +12,7 @@ import { achievementsOf } from "./stats";
 /** Resumo para o menu da foto: quantas a pessoa tem e as mais valiosas (as de meta mais alta). */
 export async function badgesSummaryAction(): Promise<{ earned: number; total: number; top: { key: string; name: string }[] }> {
   const me = await requireUser();
-  const { list } = await achievementsOf(me.id, me.roles);
+  const { list } = await achievementsOf(me.id, me.shownRoles);
   const got = list.filter((a) => a.earned).sort((a, b) => b.goal - a.goal || a.key.localeCompare(b.key));
   return { earned: got.length, total: list.length, top: got.slice(0, 5).map((a) => ({ key: a.key, name: a.name })) };
 }

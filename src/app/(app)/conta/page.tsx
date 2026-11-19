@@ -20,13 +20,13 @@ export const metadata: Metadata = { title: "Minha conta" };
 
 export default async function AccountPage() {
   const user = await requireUser();
-  const current = resolveAccent(user.accent, user.roles);
+  const current = resolveAccent(user.accent, user.shownRoles);
   const navHrefs = orderNav(visibleNav(user.permissions, user.roles.includes("admin")).filter((i) => i.href !== "/conta"), user.navOrder).map((i) => i.href);
 
   return (
     <div className="space-y-6">
       <PageHead icon={UserRound} title="Minha conta" subtitle={`${user.name} · ${user.username}`}>
-        <span className="flex gap-1.5">{user.roles.map((r) => <RoleBadge key={r} role={r} />)}</span>
+        <span className="flex gap-1.5">{user.shownRoles.map((r) => <RoleBadge key={r} role={r} />)}</span>
       </PageHead>
 
       <div className="grid gap-6 lg:grid-cols-2">

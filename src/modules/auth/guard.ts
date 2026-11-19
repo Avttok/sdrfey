@@ -16,6 +16,8 @@ export type CurrentUser = {
   username: string;
   name: string;
   roles: Role[];
+  /** Cargos que a pessoa de fato tem (sem o Adm, que não precisa de etiqueta): para exibir etiquetas e cores. */
+  shownRoles: Role[];
   accent: string | null;
   avatar: string | null;
   banner: string | null;
@@ -79,6 +81,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     name: u.name,
     // O Adm age como todos os cargos: nenhuma regra de cargo (shufflers, negociações, painéis) o limita.
     roles: u.roles.includes("admin") ? (["user", "seller", "manager", "admin"] as Role[]) : u.roles,
+    shownRoles: u.roles.filter((r) => r !== "admin").length ? u.roles.filter((r) => r !== "admin") : u.roles,
     accent: u.accent,
     avatar: u.avatar ?? null,
     banner: u.banner ?? null,

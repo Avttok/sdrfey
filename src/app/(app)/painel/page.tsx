@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { and, asc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { PageHead } from "@/components/page-head";
-import { AlertTriangle, LayoutDashboard, CalendarCheck, Clock, Database, Flame, MessagesSquare, Percent, Timer, Target, Trophy, Filter as FunnelIcon, PhoneCall, CircleCheck, Phone, Handshake } from "lucide-react";
+import { AlertTriangle, LayoutDashboard, CalendarCheck, Clock, Database, Flame, MessagesSquare, Percent, Timer, Target, Trophy, Filter as FunnelIcon, PhoneCall, CircleCheck, Phone, Handshake, Ban, CalendarClock, Flag, Hourglass, SkipForward, Square, TrendingDown, TrendingUp, Wallet, Zap } from "lucide-react";
 import { Suspense } from "react";
 import { DashHero } from "@/components/dash-hero";
 import { getHero } from "@/modules/dashboard/hero";
@@ -20,13 +20,16 @@ import { db, tags, users } from "@/db";
 import { getSalesStats } from "@/modules/deals/stats";
 import { sql } from "drizzle-orm";
 import { fmtDate, fmtDateTime, fmtDuration } from "@/lib/format";
+import { fmtBRL } from "@/config/deals";
 import { requirePerm } from "@/modules/auth/guard";
-import { getDashboard, periodDays, resolvePeriod } from "@/modules/dashboard/stats";
+import { getDashboard, getDashboardExtra, periodDays, resolvePeriod } from "@/modules/dashboard/stats";
 import { getSettings } from "@/modules/settings/get";
 
 export const metadata: Metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
 const nf = new Intl.NumberFormat("pt-BR");
+/** Diferença para o período anterior de mesmo tamanho. */
+const vs = (cur: number, prev: number) => (prev === 0 ? (cur > 0 ? " · novo" : "") : ` · ${cur >= prev ? "▲" : "▼"} ${Math.abs(Math.round(((cur - prev) / prev) * 100))}% vs. anterior`);
 const pct = (a: number, b: number) => (b ? `${Math.min(100, Math.round((a / b) * 100))}%` : "0%");
 
 function Bar({ label, value, max, color, right }: { label: string; value: number; max: number; color: string; right?: string }) {
@@ -94,7 +97,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const scope = team ? (picked.length ? picked : people.map((p) => p.id)) : [me.id];
   const tagColor = Object.fromEntries((await db.select({ key: tags.key, color: tags.color }).from(tags)).map((t) => [t.key, t.color]));
   const settings = await getSettings();
-  const d = await getDashboard(period, scope, settings);
+  const [d, x] = await Promise.all([getDashboard(period, scope, settings), getDashboardExtra(period, scope)]);
   const can = (k: string) => !!me.permissions[k];
   // Só do primeiro ao último horário com registro; horas vazias no meio (almoço) continuam aparecendo.
   const activeHours = d.hours.map((x) => x.h);
@@ -108,17 +111,27 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const mySales = hasSellerPart(me.roles) && !teamSales ? await getSalesStats(period, [me.id]) : null;
   const totalStock = d.stock.novos + d.stock.trabalhados + d.stock.fora + d.stock.clientes || 1;
 
+  const hourTotals = hoursRange.map((h) => ({ h, n: d.hours.filter((q) => q.h === h).reduce((a, q) => a + q.n, 0) }));
+  const bestHour = hourTotals.length ? hourTotals.reduce((a, b) => (b.n > a.n ? b : a)).h : null;
   const kpis: { k: string; I: typeof Clock; t: string; v: string; s: string; bar?: number }[] = [
-    { k: "contatos", I: PhoneCall, t: "Contatos", v: nf.format(d.contacts), s: plural(d.days, "dia", "dias") },
+    { k: "contatos", I: PhoneCall, t: "Contatos", v: nf.format(d.contacts), s: `${plural(d.days, "dia", "dias")}${vs(d.contacts, x.prev.contacts)}` },
     { k: "meta", I: Target, t: "Meta atendidos", v: d.goal ? pct(d.contacts, d.goal) : "—", s: d.goal ? `de ${nf.format(d.goal)}` : "meta desligada", bar: d.goal ? (d.contacts / d.goal) * 100 : undefined },
     { k: "meta_agend", I: CalendarCheck, t: "Meta agendados", v: d.goalScheduled ? pct(d.scheduled, d.goalScheduled) : "—", s: d.goalScheduled ? `de ${nf.format(d.goalScheduled)}` : "meta desligada", bar: d.goalScheduled ? (d.scheduled / d.goalScheduled) * 100 : undefined },
     ...(d.goalCalls ? [{ k: "meta_ligacoes", I: Phone, t: "Meta ligações", v: pct(d.calls, d.goalCalls), s: `${nf.format(d.calls)} de ${nf.format(d.goalCalls)}`, bar: (d.calls / d.goalCalls) * 100 }] : []),
     ...(d.goalConverted ? [{ k: "meta_convertidos", I: Handshake, t: "Meta convertidos", v: pct(d.converted, d.goalConverted), s: `${nf.format(d.converted)} de ${nf.format(d.goalConverted)}`, bar: (d.converted / d.goalConverted) * 100 }] : []),
-    { k: "qualificados", I: CircleCheck, t: "Qualificados", v: nf.format(d.qualified), s: "no período" },
-    { k: "agendados", I: CalendarCheck, t: "Agendados", v: nf.format(d.scheduled), s: "visitas marcadas" },
+    { k: "qualificados", I: CircleCheck, t: "Qualificados", v: nf.format(d.qualified), s: `no período${vs(d.qualified, x.prev.qualified)}` },
+    { k: "agendados", I: CalendarCheck, t: "Agendados", v: nf.format(d.scheduled), s: `visitas marcadas${vs(d.scheduled, x.prev.scheduled)}` },
     { k: "taxa_qualif", I: Percent, t: "Taxa de qualificação", v: pct(d.qualified, d.contacts), s: "dos contatos" },
     { k: "taxa_agend", I: Percent, t: "Taxa de agendamento", v: pct(d.scheduled, d.contacts), s: "dos contatos" },
     { k: "tempo", I: Timer, t: "Tempo por lead", v: fmtDuration(d.avgSeconds), s: `mediana ${fmtDuration(d.medianSeconds)}` },
+    { k: "media_dia", I: Zap, t: "Média por dia", v: (d.contacts / Math.max(1, d.days)).toLocaleString("pt-BR", { maximumFractionDigits: 1 }), s: bestHour ? `pico às ${bestHour}h` : "contatos por dia" },
+    { k: "ligacoes", I: Phone, t: "Ligações", v: nf.format(d.calls), s: `${pct(d.calls, d.contacts)} dos contatos` },
+    { k: "convertidos", I: Handshake, t: "Convertidos", v: nf.format(d.converted), s: "repassados aos vendedores" },
+    { k: "descartados", I: Ban, t: "Descartados", v: nf.format(x.discarded), s: "leads tirados da lista" },
+    { k: "visitas_ok", I: CalendarClock, t: "Visitas confirmadas", v: nf.format(x.visitsConfirmed + x.visitsDone), s: `${nf.format(x.visitsDone)} realizadas · ${nf.format(x.visitsPending)} aguardando` },
+    { k: "tempo_total", I: Hourglass, t: "Tempo atendendo", v: fmtDuration(x.totalSeconds), s: "somando todos os leads" },
+    { k: "vendas_origem", I: Wallet, t: "Vendas originadas", v: nf.format(x.originated), s: x.originatedValue ? fmtBRL(x.originatedValue) : "negociações faturadas" },
+    { k: "sequencia", I: Flag, t: "Sequência", v: nf.format(x.streak), s: x.streak === 1 ? "dia seguido atendendo" : "dias seguidos atendendo" },
     { k: "novos", I: Database, t: "Leads novos", v: nf.format(d.stock.novos), s: "no estoque" },
   ];
 
@@ -157,6 +170,24 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <Bar label="Conversando" value={d.conversing} max={d.contacts} color={tagColor.conversando ?? "#378ADD"} right={`${d.conversing} · ${pct(d.conversing, d.contacts)}`} />
             <Bar label="Qualificados" value={d.qualified} max={d.contacts} color={tagColor.qualificado ?? "#1D9E75"} right={`${d.qualified} · ${pct(d.qualified, d.contacts)}`} />
             <Bar label="Agendados" value={d.scheduled} max={d.contacts} color={tagColor.agendado ?? "#7F77DD"} right={`${d.scheduled} · ${pct(d.scheduled, d.contacts)}`} />
+          </Block>
+        )}
+      </div>
+
+      <div className="panel-grid">
+        {can("panel.funil") && (
+          <Block icon={Flag} title="Resultado dos atendimentos">
+            {(() => { const rows = [["Salvos", x.saved, "#1D9E75"], ["Pulados", x.skipped, "#888780"], ["Parados", x.released, "#378ADD"], ["Descartados", x.discarded, "#E24B4A"], ["Abandonados", x.abandoned, "#BA7517"]] as const; const max = Math.max(1, ...rows.map((r) => r[1])); return rows.map(([l, v, c]) => <Bar key={l} label={l} value={v} max={max} color={c} right={`${v}`} />); })()}
+          </Block>
+        )}
+        {can("panel.horas") && (
+          <Block icon={x.prev.contacts <= d.contacts ? TrendingUp : TrendingDown} title="Evolução por dia">
+            {x.daily.length < 2 ? <p className="text-sm text-muted">Escolha 7 ou 30 dias para ver a evolução.</p> : <>
+              <div className="flex h-28 items-end gap-1">
+                {x.daily.map((p) => <div key={p.d} title={`${fmtDate(p.d)}: ${p.n}`} className="flex-1 rounded-t bg-accent/80 transition hover:bg-accent" style={{ height: `${Math.max(3, (p.n / Math.max(1, ...x.daily.map((q) => q.n))) * 100)}%`, opacity: p.n ? 1 : 0.25 }} />)}
+              </div>
+              <p className="mt-2 text-xs text-muted">{fmtDate(x.daily[0].d)} a {fmtDate(x.daily[x.daily.length - 1].d)} · melhor dia: <b className="figure text-ink">{Math.max(...x.daily.map((q) => q.n))}</b> atendimentos{vs(d.contacts, x.prev.contacts)}</p>
+            </>}
           </Block>
         )}
       </div>

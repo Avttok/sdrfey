@@ -3,6 +3,7 @@ import type { Role } from "@/config/roles";
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { TZ, dayEnd, dayStart } from "@/lib/format";
+import { soldCents } from "@/modules/deals/goals";
 
 export type Period = { from: string; to: string; preset: "hoje" | "7" | "30" | "custom" };
 
@@ -97,3 +98,44 @@ export async function getDashboard(period: Period, userIds: number[], gs: Record
   };
 }
 export type Dashboard = Awaited<ReturnType<typeof getDashboard>>;
+
+/** Indicadores extras do SDR: resultado dos atendimentos, visitas por andamento, tempo total, vendas originadas, série por dia e comparação com o período anterior. */
+export async function getDashboardExtra(period: Period, userIds: number[]) {
+  const U = ids(userIds.length ? userIds : [-1]);
+  const days = periodDays(period);
+  const from = sql`${dayStart(period.from).toISOString()}::timestamptz`;
+  const to = sql`${dayEnd(period.to).toISOString()}::timestamptz`;
+  const prevFrom = sql`${new Date(dayStart(period.from).getTime() - days * 86400_000).toISOString()}::timestamptz`;
+  const prevTo = sql`${new Date(dayStart(period.from).getTime() - 1).toISOString()}::timestamptz`;
+  const [outcomes, series, vis, secs, origin, prev] = await Promise.all([
+    db.execute<{ outcome: string; n: number }>(sql`select coalesce(s.outcome, 'aberto') as outcome, count(*)::int as n from attendance_sessions s
+      where not s.is_test and s.user_id in (${U}) and coalesce(s.saved_at, s.shown_at) between ${from} and ${to} group by 1`),
+    db.execute<{ d: string; n: number }>(sql`select to_char(s.saved_at at time zone ${TZ}, 'YYYY-MM-DD') as d, count(*)::int as n from attendance_sessions s
+      where s.outcome = 'saved' and not s.is_test and s.user_id in (${U}) and s.saved_at between ${from} and ${to} group by 1 order by 1`),
+    db.execute<{ status: string; n: number }>(sql`select v.status, count(*)::int as n from visits v join leads l on l.id = v.lead_id
+      where not l.is_test and v.canceled_at is null and v.user_id in (${U}) and v.created_at between ${from} and ${to} group by 1`),
+    db.execute<{ secs: number | null }>(sql`select sum(extract(epoch from (s.saved_at - coalesce(s.started_at, s.shown_at))))::float as secs from attendance_sessions s
+      where s.outcome = 'saved' and not s.is_test and s.user_id in (${U}) and s.saved_at between ${from} and ${to}`),
+    db.execute<{ n: number; v: number }>(sql`select count(*)::int as n, coalesce(sum(${soldCents}), 0)::bigint as v from deals d
+      where d.stage = 'ganho' and not d.is_test and d.sdr_id in (${U}) and d.closed_at between ${from} and ${to}`),
+    db.execute<{ contacts: number; qualified: number; scheduled: number }>(sql`select
+      (select count(*) from attendance_sessions s where s.outcome = 'saved' and not s.is_test and s.user_id in (${U}) and s.saved_at between ${prevFrom} and ${prevTo})::int as contacts,
+      (select count(distinct s.lead_id) from attendance_sessions s join lead_tags lt on lt.lead_id = s.lead_id join tags t on t.id = lt.tag_id and t.key = 'qualificado'
+         where s.outcome = 'saved' and not s.is_test and s.user_id in (${U}) and s.saved_at between ${prevFrom} and ${prevTo})::int as qualified,
+      (select count(*) from visits v join leads l on l.id = v.lead_id where not l.is_test and v.canceled_at is null and v.user_id in (${U}) and v.created_at between ${prevFrom} and ${prevTo})::int as scheduled`),
+  ]);
+  const o = (k: string) => outcomes.find((x) => x.outcome === k)?.n ?? 0;
+  const v = (k: string) => vis.find((x) => x.status === k)?.n ?? 0;
+  const byDay = new Map(series.map((r) => [r.d, r.n]));
+  const daily: { d: string; n: number }[] = [];
+  for (let i = 0; i < Math.min(days, 62); i++) { const d = iso(new Date(dayStart(period.from).getTime() + i * 86400_000 + 6 * 3600_000)); daily.push({ d, n: byDay.get(d) ?? 0 }); }
+  // sequência atual: dias seguidos (terminando hoje ou ontem) com ao menos 1 atendimento no período mostrado
+  let streak = 0; for (let i = daily.length - 1; i >= 0; i--) { if (daily[i].n > 0) streak++; else if (i === daily.length - 1) continue; else break; }
+  return {
+    saved: o("saved"), skipped: o("skipped"), released: o("released"), discarded: o("discarded"), abandoned: o("abandoned"),
+    visitsPending: v("pendente"), visitsConfirmed: v("confirmada"), visitsDone: v("realizada"),
+    totalSeconds: Number(secs[0]?.secs ?? 0), originated: origin[0]?.n ?? 0, originatedValue: Number(origin[0]?.v ?? 0),
+    daily, streak, prev: prev[0] ?? { contacts: 0, qualified: 0, scheduled: 0 },
+  };
+}
+export type DashboardExtra = Awaited<ReturnType<typeof getDashboardExtra>>;

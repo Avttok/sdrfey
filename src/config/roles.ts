@@ -14,7 +14,10 @@ export const ROLE_META: Record<Role, { label: string; defaultAccent: string; ran
 
 /** Cargos que os outros podem ver: o "Adm" só aparece para o próprio Adm (a equipe não vê quem é admin). */
 export function publicRoles(roles: readonly Role[], viewerIsAdmin: boolean): Role[] {
-  return viewerIsAdmin ? [...roles] : roles.filter((r) => r !== "admin");
+  // O Adm não precisa de etiqueta: some quando a pessoa tem outro cargo (só aparece se for o único).
+  void viewerIsAdmin;
+  const rest = roles.filter((r) => r !== "admin");
+  return rest.length ? rest : [...roles];
 }
 
 /** O cargo mais alto da pessoa (define a cor padrão). */
