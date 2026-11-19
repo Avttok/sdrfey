@@ -49,7 +49,7 @@ export async function deleteChatMessageAction(id: number): Promise<R<object>> {
   const [m] = await db.select().from(chatMessages).where(eq(chatMessages.id, id));
   if (!m || !canAccessChannel(me, m.channel)) return bad("Mensagem não encontrada.");
   if (m.userId !== me.id && !isMod(me)) return bad("Só quem escreveu, gestores e o Adm apagam mensagens.");
-  if (!me.roles.includes("admin") && Date.now() - m.createdAt.getTime() > DELETE_WINDOW_MS) return bad("Só dá para apagar uma mensagem até 15 minutos depois de enviada.");
+  if (!me.isAdmin && Date.now() - m.createdAt.getTime() > DELETE_WINDOW_MS) return bad("Só dá para apagar uma mensagem até 15 minutos depois de enviada.");
   await db.update(chatMessages).set({ deletedAt: new Date() }).where(eq(chatMessages.id, id));
   if (m.userId !== me.id) await logAudit(db, { userId: me.id, entity: "chat", action: "apagou mensagem de outra pessoa", field: m.channel.startsWith("dm:") ? "conversa direta" : m.channel, oldValue: m.channel.startsWith("dm:") ? null : m.body.slice(0, 120), meta: { autor: m.userId } });
   return { ok: true };
@@ -90,7 +90,7 @@ export async function chatProfileAction(userId: number): Promise<R<{ profile: Ch
   if (!me) return bad("O chat está desligado.");
   const [u] = await db.select().from(users).where(eq(users.id, userId));
   if (!u) return bad("Conta não encontrada.");
-  const admin = me.roles.includes("admin");
+  const admin = me.isAdmin;
   if (!u.inMetrics && !admin && u.id !== me.id) return bad("Conta não encontrada.");
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(chatMessages).where(and(eq(chatMessages.userId, userId), sql`${chatMessages.deletedAt} is null`));
   const { list } = await achievementsOf(u.id, u.roles);
@@ -103,7 +103,7 @@ export async function chatProfileAction(userId: number): Promise<R<{ profile: Ch
 /** Só o Adm: apaga todas as mensagens de um grupo, ou todas as de uma pessoa (em um grupo ou em todos). */
 export async function adminChatPurgeAction(input: { channel?: string; userId?: number }): Promise<R<{ removed: number }>> {
   const me = await requireUser();
-  if (!me.roles.includes("admin")) return bad("Só o Adm pode fazer isso.");
+  if (!me.isAdmin) return bad("Só o Adm pode fazer isso.");
   const p = z.object({ channel: z.string().optional(), userId: z.number().int().positive().optional() }).safeParse(input);
   if (!p.success || (!p.data.channel && !p.data.userId)) return bad("Escolha o grupo ou a pessoa.");
   const gone = await db.delete(chatMessages).where(and(p.data.channel ? eq(chatMessages.channel, p.data.channel) : undefined, p.data.userId ? eq(chatMessages.userId, p.data.userId) : undefined)).returning({ id: chatMessages.id });

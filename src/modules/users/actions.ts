@@ -60,18 +60,6 @@ export async function setDisplayNameAction(name: string): Promise<{ ok: boolean;
   return { ok: true, message: "Nome atualizado." };
 }
 
-/** Preferências da barra de navegação: posição (topo ou lateral) e ordem dos itens. */
-export async function setNavPrefsAction(input: { layout: "top" | "side"; order: string[] }): Promise<{ ok: boolean; message?: string }> {
-  const me = await requireUser();
-  const layout = input.layout === "side" ? "side" : "top";
-  const known = new Set(NAV.map((i) => i.href));
-  const order = [...new Set(input.order.filter((h) => known.has(h)))];
-  await db.update(users).set({ navLayout: layout, navOrder: order }).where(eq(users.id, me.id));
-  await logAudit(db, { userId: me.id, entity: "user", action: "alterou", field: "barra de navegação", oldValue: `${me.navLayout} · ${me.navOrder.join(",")}`, newValue: `${layout} · ${order.join(",")}` });
-  revalidatePath("/", "layout");
-  return { ok: true, message: "Barra de navegação salva." };
-}
-
 /** Recolhe ou expande a barra lateral (só ícones quando recolhida). */
 export async function setNavCollapsedAction(collapsed: boolean): Promise<void> {
   const me = await requireUser();

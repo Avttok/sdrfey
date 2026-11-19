@@ -26,7 +26,7 @@ export async function chatEnabled(me: CurrentUser): Promise<boolean> {
 
 /** Prazo para apagar a própria mensagem (o Adm apaga sempre). */
 export const DELETE_WINDOW_MS = 15 * 60_000;
-export const isMod = (me: CurrentUser) => me.roles.includes("admin") || me.roles.includes("manager");
+export const isMod = (me: CurrentUser) => me.isAdmin || me.roles.includes("manager");
 
 export async function listMessages(me: CurrentUser, channel: string, o: { after?: number; before?: number; limit?: number } = {}): Promise<ChatMsg[]> {
   const limit = Math.min(o.limit ?? 40, 100);
@@ -39,11 +39,11 @@ export async function listMessages(me: CurrentUser, channel: string, o: { after?
   const rx = await reactionsFor(me, list.map(({ m }) => m.id));
   return list.map(({ m, name, accent, avatar, roles, eq: styleEq }) => ({
     style: styleEq ?? {}, avatar: avatar ?? null,
-    id: m.id, channel: m.channel, userId: m.userId, name: name ?? "Conta removida", roles: publicRoles((roles ?? []) as Role[], me.roles.includes("admin")), reactions: rx[m.id] ?? [], hex: m.userId ? bubbleHex(accent, m.userId, roles ?? undefined) : "#888780",
+    id: m.id, channel: m.channel, userId: m.userId, name: name ?? "Conta removida", roles: publicRoles((roles ?? []) as Role[], me.isAdmin), reactions: rx[m.id] ?? [], hex: m.userId ? bubbleHex(accent, m.userId, roles ?? undefined) : "#888780",
     body: m.body, at: m.createdAt.toISOString(),
     share: m.shareKind && m.shareId ? { kind: m.shareKind, id: m.shareId, label: m.shareLabel ?? "" } : null,
     canDelete: mod || m.userId === me.id,
-    delUntil: me.roles.includes("admin") ? null : m.createdAt.getTime() + DELETE_WINDOW_MS,
+    delUntil: me.isAdmin ? null : m.createdAt.getTime() + DELETE_WINDOW_MS,
   }));
 }
 

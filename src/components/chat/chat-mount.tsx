@@ -7,5 +7,5 @@ import { ChatWidget } from "./chat-widget";
 export async function ChatMount({ user }: { user: CurrentUser }) {
   if (!(await chatEnabled(user))) return null;
   const unread = await unreadByChannel(user).catch(() => ({}));
-  return <ChatWidget myName={user.name} channels={channelsFor(user.roles)} meId={user.id} isAdmin={user.roles.includes("admin")} initialUnread={unread} />;
+  return <ChatWidget myName={user.name} channels={channelsFor(user.roles)} meId={user.id} isAdmin={user.isAdmin} initialUnread={unread} />;
 }

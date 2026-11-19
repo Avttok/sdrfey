@@ -3,8 +3,6 @@ import { AvatarPicker } from "@/components/avatar-picker";
 import type { Metadata } from "next";
 import { MapModePicker } from "@/components/map-mode-picker";
 import { FontPicker } from "@/components/font-picker";
-import { NavPrefsForm } from "@/components/nav-prefs-form";
-import { orderNav, visibleNav } from "@/config/nav";
 import { PageHead } from "@/components/page-head";
 import { Check, UserRound } from "lucide-react";
 import { DisplayNameForm } from "@/components/display-name-form";
@@ -21,7 +19,6 @@ export const metadata: Metadata = { title: "Minha conta" };
 export default async function AccountPage() {
   const user = await requireUser();
   const current = resolveAccent(user.accent, user.shownRoles);
-  const navHrefs = orderNav(visibleNav(user.permissions, user.roles.includes("admin")).filter((i) => i.href !== "/conta"), user.navOrder).map((i) => i.href);
 
   return (
     <div className="space-y-6">
@@ -88,7 +85,6 @@ export default async function AccountPage() {
         <section className={`${panelCls} p-6 lg:col-span-2`}>
           <h2 className="display mb-5 text-xl">Barra de navegação</h2>
           {user.navTree && <p className="mb-4 rounded-xl bg-sunk px-4 py-3 text-sm text-muted">As pastas e a ordem do menu foram definidas pelo Adm. A posição da barra (topo ou lateral) você ainda escolhe aqui.</p>}
-          <NavPrefsForm layout={user.navLayout} hrefs={navHrefs} />
         </section>
       </div>
     </div>

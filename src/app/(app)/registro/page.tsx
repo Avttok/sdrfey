@@ -45,7 +45,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
       <PageHead icon={ScrollText} title="Registro de atividades">
         <div className="flex items-center gap-2">
           <p className="rounded-full bg-accent/15 px-3.5 py-1.5 text-sm font-semibold text-accent"><span className="figure">{new Intl.NumberFormat("pt-BR").format(total)}</span> {total === 1 ? "registro" : "registros"}</p>
-          {me.roles.includes("admin") && <a className={btnGhost} href="/admin/exportar/registro" download><Download size={15} aria-hidden /> Exportar</a>}
+          {me.isAdmin && <a className={btnGhost} href="/admin/exportar/registro" download><Download size={15} aria-hidden /> Exportar</a>}
         </div>
       </PageHead>
 

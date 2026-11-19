@@ -53,7 +53,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
       </div>
       <Suspense fallback={null}><RepFilters ufs={ufs} teams={teams} managers={managers} /></Suspense>
       <p className="text-sm font-medium text-muted">{nf.format(n)} {n === 1 ? "representante" : "representantes"}{c.length ? " com esses filtros" : ""}</p>
-      <RepsAdmin isAdmin={me.roles.includes("admin")} canEdit={!!me.permissions["rep.edit"]} rows={rows.map((r) => ({ id: r.id, sapCode: r.sapCode, repName: r.repName ?? "", managerName: r.managerName ?? "", team: r.team ?? "", cnpj: r.cnpj ?? "", address: r.address ?? "", cep: r.cep ?? "", city: r.city ?? "", uf: r.uf ?? "", active: r.active, visits: vis.find((v) => v.sap === r.sapCode)?.n ?? 0, lastVisit: vis.find((v) => v.sap === r.sapCode)?.last ?? null }))} />
+      <RepsAdmin isAdmin={me.isAdmin} canEdit={!!me.permissions["rep.edit"]} rows={rows.map((r) => ({ id: r.id, sapCode: r.sapCode, repName: r.repName ?? "", managerName: r.managerName ?? "", team: r.team ?? "", cnpj: r.cnpj ?? "", address: r.address ?? "", cep: r.cep ?? "", city: r.city ?? "", uf: r.uf ?? "", active: r.active, visits: vis.find((v) => v.sap === r.sapCode)?.n ?? 0, lastVisit: vis.find((v) => v.sap === r.sapCode)?.last ?? null }))} />
       <Pagination page={page} pages={pages} href={href} />
     </div>
   );

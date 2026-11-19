@@ -174,7 +174,7 @@ export async function returnDealToSdrAction(id: number, reason?: string): Promis
   const r = await load(id);
   if ("error" in r) return fail(r.error);
   const { me, deal } = r;
-  const team = !!me.permissions["deals.team"] || me.roles.includes("admin");
+  const team = !!me.permissions["deals.team"] || me.isAdmin;
   if (closed(deal.stage)) return fail("Negociação encerrada não volta para o SDR.");
   if (!deal.sdrId) return fail("Esta negociação não veio de um SDR (foi aberta por vendedor), então não há para quem devolver.");
   const [sdrUser] = await db.select({ id: users.id, name: users.name, active: users.active }).from(users).where(eq(users.id, deal.sdrId));

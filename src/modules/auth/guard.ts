@@ -11,11 +11,18 @@ import { settingValue } from "@/modules/settings/get";
 import { cleanCustom, mergeCustom, type NavCustom } from "@/config/nav-icons";
 import { SESSION_COOKIE, readToken, sessionMaxAge, signToken } from "./token";
 
+export const ADMIN_VIEW_COOKIE = "admin_view";
+
 export type CurrentUser = {
   id: number;
   username: string;
   name: string;
+  /** Cargos que valem agora para a tela (no modo "ver como usuário", só os cargos reais, sem o Adm). */
   roles: Role[];
+  /** É Adm de verdade: os privilégios de Adm valem sempre, mesmo vendo a tela como usuário comum. */
+  isAdmin: boolean;
+  /** Só para o Adm: "all" = vê tudo como Adm; "me" = vê só o que um usuário comum com os mesmos cargos veria. */
+  adminView: "all" | "me";
   /** Cargos que a pessoa de fato tem (sem o Adm, que não precisa de etiqueta): para exibir etiquetas e cores. */
   shownRoles: Role[];
   accent: string | null;
@@ -65,7 +72,11 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const [u] = await db.select().from(users).where(eq(users.id, session.uid)).limit(1);
   if (!u || !u.active || u.sessionVersion !== session.v) return null;
 
-  const permissions = resolvePermissions(u.roles, u.permissions, ((await settingValue("role_permissions")) ?? {}) as RoleOverrides);
+  const isAdmin = u.roles.includes("admin");
+  const adminView: "all" | "me" = isAdmin && (await cookies()).get(ADMIN_VIEW_COOKIE)?.value === "me" ? "me" : "all";
+  const real = u.roles.filter((r) => r !== "admin");
+  const asUser: Role[] = real.length ? real : ["user"];
+  const permissions = resolvePermissions(adminView === "me" ? asUser : u.roles, u.permissions, ((await settingValue("role_permissions")) ?? {}) as RoleOverrides);
   if (u.canManageGoals) permissions["goals.edit"] = true;
 
   return {
@@ -80,7 +91,9 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     username: u.username,
     name: u.name,
     // O Adm age como todos os cargos: nenhuma regra de cargo (shufflers, negociações, painéis) o limita.
-    roles: u.roles.includes("admin") ? (["user", "seller", "manager", "admin"] as Role[]) : u.roles,
+    roles: adminView === "me" ? asUser : isAdmin ? (["user", "seller", "manager", "admin"] as Role[]) : u.roles,
+    isAdmin,
+    adminView,
     shownRoles: u.roles.filter((r) => r !== "admin").length ? u.roles.filter((r) => r !== "admin") : u.roles,
     accent: u.accent,
     avatar: u.avatar ?? null,
@@ -108,14 +121,14 @@ export async function requireUser(opts: { allowMustChange?: boolean } = {}): Pro
 /** Igual a requireUser, mas exige um cargo mínimo. */
 export async function requireRole(role: Role): Promise<CurrentUser> {
   const user = await requireUser();
-  if (!hasRole(user.roles, role)) redirect("/painel");
+  if (!user.isAdmin && !hasRole(user.roles, role)) redirect("/painel");
   return user;
 }
 
 /** Exige uma permissão (o Adm sempre passa). Quem não tem volta para a primeira página que pode ver. */
 export async function requirePerm(key: string): Promise<CurrentUser> {
   const user = await requireUser();
-  if (!user.permissions[key]) redirect("/conta");
+  if (!user.isAdmin && !user.permissions[key]) redirect("/conta");
   return user;
 }
 

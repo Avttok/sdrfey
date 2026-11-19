@@ -6,9 +6,8 @@ import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary } from "@/components/ui";
 import { NAV } from "@/config/nav";
 import { setGlobalNavAction, setUserNavAction } from "@/modules/admin/user-prefs";
-import { setNavPrefsAction } from "@/modules/users/actions";
 
-/** Posição da barra de navegação (topo ou lateral) e ordem dos itens. */
+/** Posição da barra de navegação (topo ou lateral) e ordem dos itens. Só o Adm usa: as pessoas seguem o que o Adm define. */
 export function NavPrefsForm({ layout: initialLayout, hrefs, userId, global = false }: { layout: "top" | "side"; hrefs: string[]; /** Só o Adm: edita a barra de outra pessoa. */ userId?: number; /** Só o Adm: a ordem vale para todos. */ global?: boolean }) {
   const [layout, setLayout] = useState(initialLayout);
   const [order, setOrder] = useState(hrefs);
@@ -45,7 +44,7 @@ export function NavPrefsForm({ layout: initialLayout, hrefs, userId, global = fa
         </ol>
       </div>
       <div className="flex flex-wrap gap-2">
-        <button type="button" className={btnPrimary} disabled={!dirty || pending} onClick={() => run(() => (global ? setGlobalNavAction({ order }) : userId ? setUserNavAction(userId, { layout, order }) : setNavPrefsAction({ layout, order })))}>{global ? "Aplicar para todos" : "Salvar barra"}</button>
+        <button type="button" className={btnPrimary} disabled={!dirty || pending} onClick={() => run(() => (global ? setGlobalNavAction({ order }) : setUserNavAction(userId ?? 0, { layout, order })))}>{global ? "Aplicar para todos" : "Salvar barra"}</button>
         <button type="button" className={btnGhost} disabled={pending} onClick={() => { setLayout("top"); setOrder(NAV.filter((n) => hrefs.includes(n.href)).map((n) => n.href)); }}>Restaurar padrão</button>
       </div>
     </div>

@@ -8,7 +8,7 @@ export type ShareKind = "lead" | "deal" | "quote";
 export type ShareItem = { id: number; label: string; sub: string };
 export type ShareInfo = { kind: ShareKind; title: string; subtitle?: string; rows: { label: string; value: string }[]; items?: { text: string; value: string }[]; href?: string; editable: boolean; gone?: boolean };
 
-const seesAll = (me: CurrentUser) => me.roles.includes("admin") || me.roles.includes("manager") || !!me.permissions["deals.team"];
+const seesAll = (me: CurrentUser) => me.isAdmin || me.roles.includes("manager") || !!me.permissions["deals.team"];
 
 /** Quais negociações a conta pode compartilhar: as dela (SDR que repassou ou vendedor), as sem dono (se for vendedor) ou todas (gestão). */
 function dealAccess(me: CurrentUser): SQL | undefined {
@@ -69,8 +69,8 @@ const phoneFmt = (p: string) => (p.length >= 10 ? `(${p.slice(0, 2)}) ${p.slice(
 
 /** Dados atuais do item compartilhado, só leitura. Quem é gestão/Adm recebe o link da página completa (o Adm edita lá). */
 export async function shareInfo(me: CurrentUser, kind: ShareKind, id: number): Promise<ShareInfo> {
-  const mod = me.roles.includes("admin") || me.roles.includes("manager");
-  const editable = me.roles.includes("admin");
+  const mod = me.isAdmin || me.roles.includes("manager");
+  const editable = me.isAdmin;
   const gone = (): ShareInfo => ({ kind, title: "Item indisponível", rows: [], editable: false, gone: true });
   if (kind === "lead") {
     const [r] = await db.select({ l: leads, owner: users.name }).from(leads).leftJoin(users, eq(users.id, leads.ownerId)).where(eq(leads.id, id));

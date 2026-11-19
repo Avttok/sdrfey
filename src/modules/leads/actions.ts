@@ -158,7 +158,7 @@ export async function heartbeatAction(leadId: number | null, activity: string, a
 /** Modo teste: o Adm atende leads falsos, sem tocar nas métricas reais. */
 export async function startTestAction() {
   const me = await requireUser();
-  if (!me.roles.includes("admin")) redirect("/painel");
+  if (!me.isAdmin) redirect("/painel");
   await claimNext(me.id, { test: true });
   redirect("/atender");
 }

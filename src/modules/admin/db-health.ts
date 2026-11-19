@@ -37,7 +37,7 @@ const num = (v: unknown) => (v == null ? 0 : Number(v));
 /** Monitor de saúde do banco e do sistema: só o Adm. Cada consulta é isolada, uma falha não derruba o resto. */
 export async function dbHealthAction(): Promise<{ ok: true; data: DbHealth } | { ok: false; message: string }> {
   const me = await requireUser();
-  if (!hasRole(me.roles, "admin")) return { ok: false, message: "Só o Adm vê a saúde do sistema." };
+  if (!me.isAdmin) return { ok: false, message: "Só o Adm vê a saúde do sistema." };
   const errors: string[] = [];
 
   const t0 = performance.now();
@@ -95,7 +95,7 @@ export async function dbHealthAction(): Promise<{ ok: true; data: DbHealth } | {
   return {
     ok: true,
     data: {
-      isAdmin: hasRole(me.roles, "admin"), at: new Date().toISOString(), latencyMs, version: meta?.v?.split(" on ")[0] ?? null, sizeBytes: meta ? num(meta.size) : null, uptimeSec: meta?.up ? Math.round(Number(meta.up)) : null,
+      isAdmin: me.isAdmin, at: new Date().toISOString(), latencyMs, version: meta?.v?.split(" on ")[0] ?? null, sizeBytes: meta ? num(meta.size) : null, uptimeSec: meta?.up ? Math.round(Number(meta.up)) : null,
       connections, cacheHitPct, xactCommit: stat ? num(stat.commit) : null, xactRollback: stat ? num(stat.rollback) : null, deadlocks: stat ? num(stat.deadlocks) : null,
       tables, indexes: { total: idxs ? num(idxs.total) : 0, bytes: idxs ? num(idxs.bytes) : 0, unused: (unused ?? []).map((u) => ({ name: u.name, table: u.tbl, bytes: num(u.bytes) })) },
       leads: leadsOut, checks, errors,
@@ -107,7 +107,7 @@ export async function dbHealthAction(): Promise<{ ok: true; data: DbHealth } | {
 /** Manutenção do banco: só o Adm. Os nomes são conferidos contra o catálogo do banco antes de qualquer comando. */
 export async function dbMaintenanceAction(input: { kind: "vacuum"; table?: string } | { kind: "drop_index"; name: string }): Promise<{ ok: boolean; message: string }> {
   const me = await requireUser();
-  if (!hasRole(me.roles, "admin")) return { ok: false, message: "Só o Adm pode fazer isso." };
+  if (!me.isAdmin) return { ok: false, message: "Só o Adm pode fazer isso." };
   try {
     if (input.kind === "vacuum") {
       const names = rows<{ name: string }>(await db.execute(sql`select relname as name from pg_stat_user_tables`)).map((r) => r.name);
