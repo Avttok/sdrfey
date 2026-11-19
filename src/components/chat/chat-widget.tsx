@@ -1,5 +1,6 @@
 "use client";
 
+import { BannerRain } from "@/components/banner-rain";
 import { bannerStyle } from "@/config/banners";
 import { lsGet, lsSet } from "@/lib/use-cached";
 import { AvatarGlyph } from "@/components/avatar-glyph";
@@ -138,6 +139,7 @@ function ProfileDialog({ userId, hex, isAdmin, onClose, onPurged }: { userId: nu
           <span aria-hidden className="sh-card absolute -left-6 -top-8 size-32 rounded-full bg-white/25 blur-2xl" style={{ "--d": "0s" } as React.CSSProperties} />
           <span aria-hidden className="sh-card absolute -bottom-10 right-2 size-40 rounded-full bg-black/20 blur-2xl" style={{ "--d": "-1.8s" } as React.CSSProperties} />
           <span aria-hidden className="pf-shine absolute inset-0" />
+          {p && <BannerRain avatar={p.avatar} roles={p.roles} />}
           <span aria-hidden className="sh-card absolute right-16 top-5 size-3 rounded-full bg-white/70" style={{ "--d": "-.6s" } as React.CSSProperties} />
           <span aria-hidden className="sh-card absolute left-24 top-12 size-2 rounded-full bg-white/60" style={{ "--d": "-2.4s" } as React.CSSProperties} />
           <button type="button" aria-label="Fechar" className="absolute right-3 top-3 grid size-8 place-items-center rounded-full bg-black/25 text-white backdrop-blur transition hover:bg-black/40" onClick={onClose}><X size={16} /></button>

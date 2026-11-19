@@ -2,6 +2,7 @@
 
 import { Check, Eye, EyeOff, Image as ImageIcon, Loader2, Moon, Palette, Sun, UserRound, KeyRound, Smile } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
+import { BannerRain } from "@/components/banner-rain";
 import { BannerGrid } from "@/components/banner-grid";
 import { bannerStyle } from "@/config/banners";
 import { AvatarGlyph } from "@/components/avatar-glyph";
@@ -53,6 +54,7 @@ export function FirstAccessForm({ name: name0, username, roles, accent: accent0,
       <div className="sh-rise relative overflow-hidden rounded-3xl bg-grad p-5 text-on-accent shadow-xl" style={bannerStyle(banner)}>
         <span aria-hidden className="sh-card absolute -right-8 -top-10 size-36 rounded-full bg-white/25 blur-2xl" style={{ "--d": "0s" } as React.CSSProperties} />
         <span aria-hidden className="sh-card absolute -bottom-12 left-10 size-32 rounded-full bg-black/20 blur-2xl" style={{ "--d": "-2s" } as React.CSSProperties} />
+        <BannerRain avatar={avatar} roles={roles} />
         <div className="relative flex items-center gap-4">
           <span className="relative grid size-20 shrink-0 place-items-center">
             <span aria-hidden className="pf-ring absolute inset-0 rounded-full" />

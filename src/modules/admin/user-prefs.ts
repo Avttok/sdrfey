@@ -1,5 +1,6 @@
 "use server";
 
+import { cleanTree } from "@/config/nav-tree";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { NAV } from "@/config/nav";
@@ -89,4 +90,24 @@ export async function saveNavCustomAction(scope: "global" | number, input: NavCu
   invalidateSettings();
   revalidatePath("/", "layout");
   return { ok: true, message: scope === "global" ? "Nomes e ícones salvos para todos." : "Nomes e ícones salvos para essa pessoa." };
+}
+
+/** Salva a estrutura livre da barra (pastas e posição de cada aba) e os nomes/ícones: para todos ou só para uma pessoa. tree nulo = voltar ao padrão. */
+export async function saveNavTreeAction(scope: "global" | number, tree: unknown, input: NavCustom): Promise<ActionResult> {
+  const me = await requireAdmin();
+  const tKey = scope === "global" ? "nav_tree" : `nav_tree_u${Math.trunc(scope)}`;
+  const cKey = scope === "global" ? "nav_custom" : `nav_custom_u${Math.trunc(scope)}`;
+  const clean = tree === null ? null : cleanTree(tree);
+  const value = cleanCustom(input);
+  const empty = !Object.keys(value.items).length && !Object.keys(value.groups).length;
+  await db.transaction(async (tx) => {
+    if (clean) await tx.insert(settings).values({ key: tKey, value: clean, updatedBy: me.id }).onConflictDoUpdate({ target: settings.key, set: { value: clean, updatedAt: new Date(), updatedBy: me.id } });
+    else await tx.delete(settings).where(eq(settings.key, tKey));
+    if (empty) await tx.delete(settings).where(eq(settings.key, cKey));
+    else await tx.insert(settings).values({ key: cKey, value, updatedBy: me.id }).onConflictDoUpdate({ target: settings.key, set: { value, updatedAt: new Date(), updatedBy: me.id } });
+    await logAudit(tx, { userId: me.id, entity: "setting", action: "alterou", field: scope === "global" ? "barra de menus (todos)" : "barra de menus (individual)", newValue: clean ? `${clean.filter((n) => n.type === "folder").length} pastas` : "padrão", meta: scope === "global" ? undefined : { usuarioId: scope } });
+  });
+  invalidateSettings();
+  revalidatePath("/", "layout");
+  return { ok: true, message: scope === "global" ? "Barra salva para todos." : "Barra salva para essa pessoa." };
 }

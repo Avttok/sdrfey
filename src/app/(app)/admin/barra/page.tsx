@@ -5,7 +5,8 @@ import { NavCustomForm } from "@/components/admin/nav-custom-form";
 import { PageHead } from "@/components/page-head";
 import { panelCls } from "@/components/ui";
 import { NAV, orderNav } from "@/config/nav";
-import { cleanCustom } from "@/config/nav-icons";
+import { cleanTree, defaultTree } from "@/config/nav-tree";
+import { cleanCustom, mergeCustom } from "@/config/nav-icons";
 import { db, users } from "@/db";
 import { requireAdmin } from "@/modules/auth/guard";
 import { settingValue } from "@/modules/settings/get";
@@ -21,6 +22,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ u
   const hrefs = orderNav(NAV.filter((i) => i.href !== "/conta"), person?.navOrder?.length ? person.navOrder : order).map((i) => i.href);
   const global = cleanCustom(await settingValue("nav_custom"));
   const own = person ? cleanCustom(await settingValue(`nav_custom_u${person.id}`)) : null;
+  const ownTree = person ? cleanTree(await settingValue(`nav_tree_u${person.id}`)) : null;
+  const globalTree = cleanTree(await settingValue("nav_tree"));
+  const merged = mergeCustom(global, own);
+  const gl = Object.fromEntries(Object.entries(merged.groups).map(([k, v]) => [k, v.label])), gi = Object.fromEntries(Object.entries(merged.groups).map(([k, v]) => [k, v.icon]));
+  const tree = ownTree ?? globalTree ?? defaultTree(hrefs, gl, gi);
+  const hadTree = !!(ownTree ?? globalTree);
   const tab = (active: boolean) => `rounded-full px-4 py-1.5 text-sm font-semibold transition ${active ? "bg-grad text-on-accent shadow" : "text-muted hover:text-ink"}`;
   return (
     <div className="space-y-5">
@@ -38,7 +45,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ u
           </form>
         </div>
         <p className="text-sm text-muted">{person ? `Vale só para ${person.name}; sobrepõe o que for definido para todos.` : "Vale para todo mundo. Só o Adm troca nomes e ícones; cada pessoa ainda reordena o próprio menu. A ordem aqui substitui as ordens pessoais."}</p>
-        <NavCustomForm key={person?.id ?? "all"} scope={person ? person.id : "global"} initial={person ? own! : global} base={person ? global : { items: {}, groups: {} }} hrefs={hrefs} layout={person?.navLayout === "side" ? "side" : "top"} />
+        <NavCustomForm key={person?.id ?? "all"} scope={person ? person.id : "global"} initial={person ? own! : global} base={person ? global : { items: {}, groups: {} }} tree={tree} hadTree={hadTree} />
       </section>
     </div>
   );

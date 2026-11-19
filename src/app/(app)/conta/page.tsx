@@ -87,6 +87,7 @@ export default async function AccountPage() {
 
         <section className={`${panelCls} p-6 lg:col-span-2`}>
           <h2 className="display mb-5 text-xl">Barra de navegação</h2>
+          {user.navTree && <p className="mb-4 rounded-xl bg-sunk px-4 py-3 text-sm text-muted">As pastas e a ordem do menu foram definidas pelo Adm. A posição da barra (topo ou lateral) você ainda escolhe aqui.</p>}
           <NavPrefsForm layout={user.navLayout} hrefs={navHrefs} />
         </section>
       </div>

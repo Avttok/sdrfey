@@ -1,3 +1,4 @@
+import { cleanTree, type NavTree } from "@/config/nav-tree";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -22,6 +23,8 @@ export type CurrentUser = {
   navLayout: "top" | "side";
   navOrder: string[];
   navCustom: NavCustom;
+  /** Estrutura de pastas definida pelo Adm (para todos ou só para esta pessoa). Nulo = pastas padrão. */
+  navTree: NavTree | null;
   navCollapsed: boolean;
   font: string;
   mapMode: "map" | "link";
@@ -82,6 +85,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     navLayout: u.navLayout === "side" ? "side" : "top",
     navOrder: u.navOrder?.length ? u.navOrder : (((await settingValue("nav_order")) as string[] | undefined) ?? []),
     navCustom: mergeCustom(cleanCustom(await settingValue("nav_custom")), cleanCustom(await settingValue(`nav_custom_u${u.id}`))),
+    navTree: cleanTree(await settingValue(`nav_tree_u${u.id}`)) ?? cleanTree(await settingValue("nav_tree")),
     navCollapsed: !!u.navCollapsed,
     font: u.font ?? "archivo",
     mapMode: u.mapMode === "link" ? "link" : "map",

@@ -1,5 +1,6 @@
 "use client";
 
+import type { NavTree } from "@/config/nav-tree";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -11,7 +12,7 @@ import { NavLinks } from "./nav-links";
 import { UserMenu } from "./user-menu";
 
 /** Barra vertical à esquerda (só em telas largas). Pode ser recolhida para mostrar só os ícones e a foto. */
-export function SideBar({ hrefs, name, username, hex, onHex, accentKey, roles, avatar, banner, initialCollapsed, badges = {}, grouped = true, custom }: { banner?: string | null; avatar?: string | null; custom?: NavCustom; accentKey?: string;  grouped?: boolean; badges?: Record<string, number>; hrefs: string[]; name: string; username: string; hex: string; onHex: string; roles: Role[]; initialCollapsed: boolean }) {
+export function SideBar({ hrefs, name, username, hex, onHex, accentKey, roles, avatar, banner, initialCollapsed, badges = {}, grouped = true, custom, tree }: { tree?: NavTree | null; banner?: string | null; avatar?: string | null; custom?: NavCustom; accentKey?: string;  grouped?: boolean; badges?: Record<string, number>; hrefs: string[]; name: string; username: string; hex: string; onHex: string; roles: Role[]; initialCollapsed: boolean }) {
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const toggle = () => { const next = !collapsed; setCollapsed(next); void setNavCollapsedAction(next); };
   const Icon = collapsed ? PanelLeftOpen : PanelLeftClose;
@@ -21,7 +22,7 @@ export function SideBar({ hrefs, name, username, hex, onHex, accentKey, roles, a
         {collapsed ? <Link href="/painel" aria-label="SDR FEY, ir para o início" className="grid size-10 place-items-center rounded-xl"><FeyMark animated size={30} /></Link> : <Link href="/painel" aria-label="SDR FEY, ir para o início" className="flex items-center"><Logo /></Link>}
         <button type="button" onClick={toggle} aria-label={collapsed ? "Expandir barra" : "Minimizar barra"} title={collapsed ? "Expandir barra" : "Minimizar barra"} className="grid size-8 place-items-center rounded-lg text-muted transition hover:bg-sunk hover:text-ink"><Icon size={18} aria-hidden /></button>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden"><NavLinks hrefs={hrefs} vertical collapsed={collapsed} badges={badges} grouped={grouped} custom={custom} /></div>
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden"><NavLinks hrefs={hrefs} vertical collapsed={collapsed} badges={badges} grouped={grouped} custom={custom} tree={tree} /></div>
       <div className="border-t border-line pt-4"><UserMenu side collapsed={collapsed} name={name} username={username} hex={hex} onHex={onHex} accentKey={accentKey} roles={roles} avatar={avatar} banner={banner} /></div>
     </aside>
   );

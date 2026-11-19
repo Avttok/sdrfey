@@ -1,5 +1,6 @@
 "use client";
 
+import { BannerRain } from "@/components/banner-rain";
 import { bannerStyle } from "@/config/banners";
 import { AvatarGlyph } from "@/components/avatar-glyph";
 import { Check, LogOut, Palette, Settings2, Trophy } from "lucide-react";
@@ -80,7 +81,7 @@ export function UserMenu({ banner, avatar, name, username, hex, onHex, accentKey
       {open && mounted && createPortal(
         <div ref={menu} role="menu" style={pos} className="pop-in menu-stagger fixed z-[80] w-80 overflow-hidden rounded-3xl border border-line bg-panel shadow-[0_30px_80px_-20px_rgb(0_0_0/0.5)]">
           <div className="aurora relative overflow-hidden bg-grad px-5 pb-5 pt-6 text-on-accent" style={bannerStyle(banner)}>
-            <span aria-hidden className="aurora-blob a" /><span aria-hidden className="aurora-blob b" /><span aria-hidden className="aurora-blob c" />
+            <BannerRain avatar={avatar} roles={roles} count={20} /><span aria-hidden className="aurora-blob a" /><span aria-hidden className="aurora-blob b" /><span aria-hidden className="aurora-blob c" />
             <div className="relative flex items-center gap-4">
               <span className="avatar-ring relative grid size-[4.75rem] shrink-0 place-items-center rounded-full p-[3px]">
                 <span className="grid size-full place-items-center rounded-full bg-black/30 text-2xl font-bold backdrop-blur-sm"><AvatarGlyph avatar={avatar} initials={initials} size={34} /></span>

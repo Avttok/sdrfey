@@ -1,12 +1,13 @@
 "use client";
 
-import { ArrowDown, ArrowUp, RotateCcw } from "lucide-react";
+import { ArrowDown, ArrowUp, FolderPlus, RotateCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls } from "@/components/ui";
 import { GROUP_ICONS, NAV } from "@/config/nav";
 import { NAV_ICONS, type NavCustom } from "@/config/nav-icons";
-import { saveNavCustomAction, setGlobalNavAction, setUserNavAction } from "@/modules/admin/user-prefs";
+import { saveNavTreeAction } from "@/modules/admin/user-prefs";
+import { defaultTree, type NavTree, type TreeFolder } from "@/config/nav-tree";
 
 type Entry = { label?: string; icon?: string };
 
@@ -31,53 +32,81 @@ function IconPick({ value, fallback, onChange }: { value?: string; fallback: Rea
 }
 
 /**
- * Editor ÚNICO da barra de menus: cada linha é uma aba (ícone, nome e posição) e as pastas ficam no topo.
- * Um botão salva tudo junto. `base` é o que valia antes desta edição (mostra de onde vem o padrão).
+ * Editor ÚNICO e livre da barra de menus: crie, renomeie, apague e reordene pastas; mova qualquer aba para qualquer pasta
+ * (ou deixe solta); troque nome e ícone de cada aba e pasta. Um botão salva tudo.
+ * `base` é o que valia antes desta edição (mostra de onde vem o padrão).
  */
-export function NavCustomForm({ scope, initial, base, hrefs, layout = "top" }: { scope: "global" | number; initial: NavCustom; base: NavCustom; hrefs: string[]; layout?: "top" | "side" }) {
+export function NavCustomForm({ scope, initial, base, tree: tree0, hadTree }: { scope: "global" | number; initial: NavCustom; base: NavCustom; tree: NavTree; hadTree: boolean }) {
   const [c, setC] = useState<NavCustom>(initial);
-  const [order, setOrder] = useState(hrefs);
+  const [tree, setTree] = useState<NavTree>(tree0);
+  const [isDefault, setIsDefault] = useState(!hadTree);
   const { run, pending } = useRun();
-  const groups = [...new Set(NAV.map((n) => n.group).filter(Boolean) as string[])];
-  const set = (kind: "items" | "groups", key: string, patch: Entry) => setC((p) => ({ ...p, [kind]: { ...p[kind], [key]: { ...p[kind][key], ...patch } } }));
-  const reset = (kind: "items" | "groups", key: string) => setC((p) => { const n = { ...p[kind] }; delete n[key]; return { ...p, [kind]: n }; });
-  const move = (i: number, d: -1 | 1) => { const n = [...order]; const j = i + d; if (j < 0 || j >= n.length) return; [n[i], n[j]] = [n[j], n[i]]; setOrder(n); };
-  const save = () => run(async () => {
-    const a = await saveNavCustomAction(scope, c);
-    if (!a.ok) return a;
-    return scope === "global" ? setGlobalNavAction({ order }) : setUserNavAction(scope, { layout, order });
+  const edit = (fn: (t: NavTree) => NavTree) => { setTree((t) => fn(structuredClone(t))); setIsDefault(false); };
+  const folders = tree.filter((n): n is TreeFolder => n.type === "folder");
+  const setItem = (key: string, patch: Entry) => setC((p) => ({ ...p, items: { ...p.items, [key]: { ...p.items[key], ...patch } } }));
+  const resetItem = (key: string) => setC((p) => { const n = { ...p.items }; delete n[key]; return { ...p, items: n }; });
+  const swap = <T,>(arr: T[], i: number, d: -1 | 1) => { const j = i + d; if (j < 0 || j >= arr.length) return; [arr[i], arr[j]] = [arr[j], arr[i]]; };
+  const moveTop = (i: number, d: -1 | 1) => edit((t) => { swap(t, i, d); return t; });
+  const moveIn = (fid: string, i: number, d: -1 | 1) => edit((t) => { const f = t.find((n): n is TreeFolder => n.type === "folder" && n.id === fid); if (f) swap(f.items, i, d); return t; });
+  const moveTo = (href: string, target: string) => edit((t) => {
+    const without = t.filter((n) => !(n.type === "link" && n.href === href));
+    for (const n of without) if (n.type === "folder") n.items = n.items.filter((h) => h !== href);
+    if (target === "") without.push({ type: "link", href });
+    else { const f = without.find((n): n is TreeFolder => n.type === "folder" && n.id === target); if (f) f.items.push(href); else without.push({ type: "link", href }); }
+    return without;
   });
-  const row = (kind: "items" | "groups", key: string, defLabel: string, DefIcon: React.ComponentType<{ size?: number }>, pos?: number, tag?: string) => {
-    const own = c[kind][key] ?? {}, inherited = base[kind][key] ?? {};
-    const shownIcon = own.icon ?? inherited.icon;
+  const addFolder = () => edit((t) => { t.push({ type: "folder", id: `f${Date.now().toString(36)}`, label: "Nova pasta", items: [] }); return t; });
+  const delFolder = (id: string) => edit((t) => t.flatMap((n) => (n.type === "folder" && n.id === id ? n.items.map((h) => ({ type: "link" as const, href: h })) : [n])));
+  const patchFolder = (id: string, patch: Partial<TreeFolder>) => edit((t) => { const f = t.find((n) => n.type === "folder" && n.id === id); if (f) Object.assign(f, patch); return t; });
+  const save = () => run(() => saveNavTreeAction(scope, isDefault ? null : tree, c));
+  const dirty = JSON.stringify(c) !== JSON.stringify(initial) || JSON.stringify(tree) !== JSON.stringify(tree0) || isDefault !== !hadTree;
+
+  const itemRow = (href: string, pos: number, len: number, onMove: (d: -1 | 1) => void, current: string) => {
+    const n = NAV.find((x) => x.href === href); if (!n) return null;
+    const own = c.items[href] ?? {}, inh = base.items[href] ?? {};
     return (
-      <li key={`${kind}-${key}`} className="flex items-center gap-2 rounded-xl bg-sunk px-3 py-2 sm:gap-3">
-        {pos !== undefined ? <span className="figure w-5 shrink-0 text-center text-xs text-muted">{pos + 1}</span> : <span className="w-5 shrink-0" />}
-        <IconPick value={shownIcon} fallback={(inherited.icon && NAV_ICONS[inherited.icon]) || DefIcon} onChange={(k) => set(kind, key, { icon: k })} />
-        <input className={`${inputCls} !h-10 min-w-0 flex-1`} maxLength={24} placeholder={inherited.label ?? defLabel} value={own.label ?? ""} onChange={(e) => set(kind, key, { label: e.target.value })} aria-label={`Nome de ${defLabel}`} />
-        {tag && <span className="hidden shrink-0 rounded-full bg-panel px-2 py-0.5 text-[11px] text-muted sm:block">{tag}</span>}
-        <button type="button" className="rounded-md p-2 text-muted hover:bg-line hover:text-ink disabled:opacity-30" disabled={!c[kind][key]} aria-label={`Restaurar ${defLabel}`} title={`Restaurar nome e ícone (padrão: ${defLabel})`} onClick={() => reset(kind, key)}><RotateCcw size={15} /></button>
-        {pos !== undefined && <>
-          <button type="button" aria-label={`Subir ${defLabel}`} disabled={pos === 0} onClick={() => move(pos, -1)} className="rounded-md p-1.5 hover:bg-line disabled:opacity-30"><ArrowUp size={15} /></button>
-          <button type="button" aria-label={`Descer ${defLabel}`} disabled={pos === order.length - 1} onClick={() => move(pos, 1)} className="rounded-md p-1.5 hover:bg-line disabled:opacity-30"><ArrowDown size={15} /></button>
-        </>}
+      <li key={href} className="flex flex-wrap items-center gap-2 rounded-xl bg-sunk px-3 py-2">
+        <IconPick value={own.icon ?? inh.icon} fallback={(inh.icon && NAV_ICONS[inh.icon]) || n.icon} onChange={(k) => setItem(href, { icon: k })} />
+        <input className={`${inputCls} !h-10 min-w-[8rem] flex-1`} maxLength={24} placeholder={inh.label ?? n.label} value={own.label ?? ""} onChange={(e) => setItem(href, { label: e.target.value })} aria-label={`Nome de ${n.label}`} />
+        <select aria-label={`Pasta de ${n.label}`} value={current} onChange={(e) => moveTo(href, e.target.value)} className="h-10 rounded-lg border border-line bg-panel px-2 text-xs">
+          <option value="">Solta (sem pasta)</option>
+          {folders.map((f) => <option key={f.id} value={f.id}>Pasta: {f.label}</option>)}
+        </select>
+        <button type="button" className="rounded-md p-2 text-muted hover:bg-line hover:text-ink disabled:opacity-30" disabled={!c.items[href]} aria-label={`Restaurar ${n.label}`} title={`Restaurar nome e ícone (padrão: ${n.label})`} onClick={() => resetItem(href)}><RotateCcw size={15} /></button>
+        <button type="button" aria-label={`Subir ${n.label}`} disabled={pos === 0} onClick={() => onMove(-1)} className="rounded-md p-1.5 hover:bg-line disabled:opacity-30"><ArrowUp size={15} /></button>
+        <button type="button" aria-label={`Descer ${n.label}`} disabled={pos === len - 1} onClick={() => onMove(1)} className="rounded-md p-1.5 hover:bg-line disabled:opacity-30"><ArrowDown size={15} /></button>
       </li>
     );
   };
-  const dirty = order.join() !== hrefs.join() || JSON.stringify(c) !== JSON.stringify(initial);
+
   return (
-    <div className="space-y-5">
-      <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">Pastas (nome e ícone)</p>
-        <ul className="grid gap-2 sm:grid-cols-2">{groups.map((g) => row("groups", g, g, GROUP_ICONS[g] ?? NAV[0].icon))}</ul>
-      </div>
-      <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">Abas, na ordem do menu</p>
-        <ol className="space-y-2">{order.map((h, i) => { const n = NAV.find((x) => x.href === h); return n ? row("items", n.href, n.label, n.icon, i, n.group) : null; })}</ol>
-      </div>
+    <div className="space-y-4">
+      <ol className="space-y-3">
+        {tree.map((n, i) => n.type === "link"
+          ? itemRow(n.href, i, tree.length, (d) => moveTop(i, d), "")
+          : (
+            <li key={n.id} className="rounded-2xl border-2 border-line p-2.5">
+              <div className="flex flex-wrap items-center gap-2 pb-2">
+                <IconPick value={n.icon} fallback={NAV_ICONS.grid} onChange={(k) => patchFolder(n.id, { icon: k })} />
+                <input className={`${inputCls} !h-10 min-w-[8rem] flex-1 font-semibold`} maxLength={24} value={n.label} onChange={(e) => patchFolder(n.id, { label: e.target.value })} aria-label="Nome da pasta" />
+                <span className="rounded-full bg-sunk px-2 py-0.5 text-[11px] text-muted">pasta · {n.items.length} {n.items.length === 1 ? "aba" : "abas"}</span>
+                <button type="button" aria-label={`Subir pasta ${n.label}`} disabled={i === 0} onClick={() => moveTop(i, -1)} className="rounded-md p-1.5 hover:bg-line disabled:opacity-30"><ArrowUp size={15} /></button>
+                <button type="button" aria-label={`Descer pasta ${n.label}`} disabled={i === tree.length - 1} onClick={() => moveTop(i, 1)} className="rounded-md p-1.5 hover:bg-line disabled:opacity-30"><ArrowDown size={15} /></button>
+                <button type="button" aria-label={`Excluir pasta ${n.label}`} title="Excluir pasta (as abas ficam soltas)" onClick={() => delFolder(n.id)} className="rounded-md p-2 text-danger hover:bg-danger/10"><Trash2 size={15} /></button>
+              </div>
+              <ul className="ml-4 space-y-2 border-l-2 border-line pl-3">
+                {n.items.map((h, k) => itemRow(h, k, n.items.length, (d) => moveIn(n.id, k, d), n.id))}
+                {n.items.length === 0 && <li className="rounded-xl border border-dashed border-line px-3 py-2.5 text-sm text-muted">Pasta vazia: ela só aparece no menu quando tiver abas. Use o seletor “Pasta” de uma aba para trazê-la para cá.</li>}
+              </ul>
+            </li>
+          ))}
+      </ol>
       <div className="flex flex-wrap gap-2">
+        <button type="button" className={btnGhost} onClick={addFolder}><FolderPlus size={16} aria-hidden /> Nova pasta</button>
+      </div>
+      <div className="flex flex-wrap gap-2 border-t border-line pt-4">
         <button type="button" className={btnPrimary} disabled={pending || !dirty} onClick={save}>{scope === "global" ? "Salvar para todos" : "Salvar para esta pessoa"}</button>
-        <button type="button" className={btnGhost} disabled={pending} onClick={() => { setC({ items: {}, groups: {} }); setOrder(NAV.filter((n) => hrefs.includes(n.href)).map((n) => n.href)); }}>Restaurar padrão</button>
+        <button type="button" className={btnGhost} disabled={pending} onClick={() => { setC({ items: {}, groups: {} }); setTree(defaultTree(NAV.map((n) => n.href))); setIsDefault(true); }}>Restaurar padrão</button>
       </div>
     </div>
   );
