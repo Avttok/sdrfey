@@ -3,7 +3,7 @@ import { Pagination } from "@/components/pagination";
 import { describeMeta } from "@/lib/audit-meta";
 import type { Metadata } from "next";
 import { PageHead } from "@/components/page-head";
-import { ScrollText, ArrowRight, Download, ExternalLink, FileText, Gauge, Settings2, Tag, Target, Upload, User, UserRound, Users } from "lucide-react";
+import { ScrollText, Handshake, Trash2, Coins, MessageCircle, ArrowRight, Download, ExternalLink, FileText, Gauge, Settings2, Tag, Target, Upload, User, UserRound, Users } from "lucide-react";
 import Link from "next/link";
 import { and, asc, eq } from "drizzle-orm";
 import { Suspense } from "react";
@@ -14,14 +14,14 @@ import { btnGhost, panelCls } from "@/components/ui";
 import { bubbleHex } from "@/config/theme";
 import { db, users } from "@/db";
 import { fmtDateTimeSec, plural, TZ } from "@/lib/format";
-import { ENTITY_LABEL, groupAudit, listAudit, parseAuditFilters } from "@/modules/audit/query";
+import { ENTITY_LABEL, auditStats, groupAudit, listAudit, parseAuditFilters } from "@/modules/audit/query";
 import { requirePerm } from "@/modules/auth/guard";
 
 export const metadata: Metadata = { title: "Registro" };
 export const dynamic = "force-dynamic";
 
-const ICON: Record<string, typeof User> = { lead: Users, visit: Users, user: UserRound, tag: Tag, setting: Settings2, import: Upload, rep: Users, template: FileText, session: Gauge, goal: Target };
-const TONE: Record<string, string> = { lead: "bg-grad-soft text-accent", visit: "bg-grad-soft text-accent", user: "bg-warn/15 text-warn", tag: "bg-ok/15 text-ok", setting: "bg-sunk text-muted", import: "bg-ok/15 text-ok", rep: "bg-grad-soft text-accent", template: "bg-sunk text-ink", session: "bg-grad-soft text-accent", goal: "bg-warn/15 text-warn" };
+const ICON: Record<string, typeof User> = { lead: Users, visit: Users, user: UserRound, tag: Tag, setting: Settings2, import: Upload, rep: Users, template: FileText, session: Gauge, goal: Target, deal: Handshake, purge: Trash2, shop: Coins, chat: MessageCircle };
+const TONE: Record<string, string> = { lead: "bg-grad-soft text-accent", visit: "bg-grad-soft text-accent", user: "bg-warn/15 text-warn", tag: "bg-ok/15 text-ok", setting: "bg-sunk text-muted", import: "bg-ok/15 text-ok", rep: "bg-grad-soft text-accent", template: "bg-sunk text-ink", session: "bg-grad-soft text-accent", goal: "bg-warn/15 text-warn", deal: "bg-ok/15 text-ok", purge: "bg-danger/15 text-danger", shop: "bg-warn/15 text-warn", chat: "bg-grad-soft text-accent" };
 const dayFmt = new Intl.DateTimeFormat("en-CA", { timeZone: TZ });
 const hourFmt = new Intl.DateTimeFormat("pt-BR", { timeZone: TZ, hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
@@ -29,8 +29,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const me = await requirePerm("tab.registro");
   const sp = await searchParams;
   const f = parseAuditFilters(sp);
-  const [people, { total, rows, pages }] = await Promise.all([db.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.active, true), visibleUsers(me))).orderBy(asc(users.name)), listAudit({ ...f, viewer: me })]);
-  const types: [string, string][] = [["lead", "Lead"], ["user", "Usuário"], ["tag", "Tag"], ["setting", "Configuração"], ["import", "Importação"], ["rep", "Representante"], ["template", "Modelo de e-mail"], ["session", "Atendimento"], ["goal", "Meta"]];
+  const [people, { total, rows, pages }, stats] = await Promise.all([db.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.active, true), visibleUsers(me))).orderBy(asc(users.name)), listAudit({ ...f, viewer: me }), auditStats(me)]);
+  const types: [string, string][] = [["lead", "Lead"], ["user", "Usuário"], ["tag", "Tag"], ["setting", "Configuração"], ["import", "Importação"], ["rep", "Representante"], ["template", "Modelo de e-mail"], ["session", "Atendimento"], ["goal", "Meta"], ["deal", "Negociação"], ["purge", "Exclusão"], ["shop", "Loja"], ["chat", "Chat"]];
   const href = (n: number) => { const p = new URLSearchParams(); for (const [k, v] of Object.entries(sp)) if (typeof v === "string" && k !== "page") p.set(k, v); p.set("page", String(n)); return `/registro?${p}`; };
   const typeHref = (t: string) => { const p = new URLSearchParams(); for (const [k, v] of Object.entries(sp)) if (typeof v === "string" && k !== "page" && k !== "type") p.set(k, v); if (t) p.set("type", t); return `/registro?${p}`; };
 
@@ -49,6 +49,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
         </div>
       </PageHead>
 
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[["Hoje", stats.today], ["Últimos 7 dias", stats.week], ["Pessoas ativas hoje", stats.people], ["Automáticos hoje", stats.system]].map(([l, v]) => (
+          <div key={l as string} className={`${panelCls} px-4 py-3`}><p className="text-xs text-muted">{l}</p><p className="figure display text-2xl">{new Intl.NumberFormat("pt-BR").format(v as number)}</p></div>
+        ))}
+      </div>
+
       <div className="flex flex-wrap gap-1.5" aria-label="Filtro rápido por tipo">
         <Link href={typeHref("")} className={`rounded-full border px-3 py-1 text-xs font-medium ${!f.type ? "border-accent bg-grad text-on-accent" : "border-line hover:bg-sunk"}`}>Tudo</Link>
         {types.map(([k, l]) => <Link key={k} href={typeHref(k)} className={`rounded-full border px-3 py-1 text-xs font-medium ${f.type === k ? "border-accent bg-grad text-on-accent" : "border-line hover:bg-sunk"}`}>{l}</Link>)}
@@ -57,7 +63,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
 
       {[...byDay.entries()].map(([day, list]) => (
         <section key={day} className="space-y-2">
-          <h2 className="display text-lg">{label(day)}</h2>
+          <h2 className="display flex items-baseline gap-2 text-lg">{label(day)} <span className="figure text-xs font-normal text-muted">{plural(list.reduce((a, g) => a + g.rows.length, 0), "registro", "registros")}</span></h2>
           <ul className="space-y-2">
             {list.map((g) => {
               const first = g.rows[0];

@@ -75,6 +75,7 @@ export async function logoutAction() {
       jar.set(QUICK_COOKIE, await signQuick([{ uid: session.uid, v: session.v, name: u.name, rem: session.rem }, ...list]), quickOpts);
     }
   }
+  if (session) await logAudit(db, { userId: session.uid, entity: "user", action: "saiu do sistema" });
   await clearSessionCookie();
   redirect("/login");
 }

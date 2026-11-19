@@ -2,7 +2,7 @@ import { and, desc, eq, gte, lte, sql, type SQL } from "drizzle-orm";
 import { auditLog, db, leads, users } from "@/db";
 import { dayEnd, dayStart } from "@/lib/format";
 
-export const ENTITY_LABEL: Record<string, string> = { lead: "Lead", visit: "Lead", user: "Usuário", tag: "Tag", setting: "Configuração", import: "Importação", rep: "Representante", template: "Modelo de e-mail", session: "Atendimento", goal: "Meta", deal: "Negociação", purge: "Exclusão" };
+export const ENTITY_LABEL: Record<string, string> = { lead: "Lead", visit: "Lead", user: "Usuário", tag: "Tag", setting: "Configuração", import: "Importação", rep: "Representante", template: "Modelo de e-mail", session: "Atendimento", goal: "Meta", deal: "Negociação", purge: "Exclusão", shop: "Loja", chat: "Chat" };
 
 export type AuditFilters = { from?: string; to?: string; user?: string; type?: string; q?: string; page: number; viewer?: { id: number; roles: string[] } };
 export const AUDIT_PAGE = 50;
@@ -47,4 +47,17 @@ export function groupAudit(rows: Row[], gapMs = 10 * 60_000): AuditGroup[] {
     else out.push({ key: String(r.id), rows: [r] });
   }
   return out;
+}
+
+/** Números do topo do Registro (respeitam quem pode ver quem). */
+export async function auditStats(viewer: { id: number; roles: string[] }) {
+  const vis = viewer.roles.includes("admin") ? sql`true` : sql`(user_id is null or user_id = ${viewer.id} or user_id not in (select id from users where not in_metrics))`;
+  const day = sql`(date_trunc('day', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo')`;
+  const [r] = await db.execute<{ today: number; week: number; people: number; system: number }>(sql`select
+    (count(*) filter (where at >= ${day}))::int as today,
+    (count(*) filter (where at >= now() - interval '7 days'))::int as week,
+    (count(distinct user_id) filter (where at >= ${day}))::int as people,
+    (count(*) filter (where at >= ${day} and user_id is null))::int as system
+    from audit_log where ${vis} and at >= now() - interval '7 days'`);
+  return r ?? { today: 0, week: 0, people: 0, system: 0 };
 }

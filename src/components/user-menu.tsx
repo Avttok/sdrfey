@@ -1,5 +1,6 @@
 "use client";
 
+import { AvatarGlyph } from "@/components/avatar-glyph";
 import { Check, LogOut, Palette, Settings2, Trophy } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -19,7 +20,7 @@ import { ACHIEVEMENT_BY_KEY } from "@/config/achievements";
 import { SubmitButton } from "./submit-button";
 
 /** Foto (iniciais) da pessoa e as tags de cargo. Ao clicar abre o menu da conta. */
-export function UserMenu({ name, username, hex, onHex, accentKey, roles, side = false, collapsed = false }: { accentKey?: string; name: string; username: string; hex: string; onHex: string; roles: Role[]; side?: boolean; collapsed?: boolean }) {
+export function UserMenu({ avatar, name, username, hex, onHex, accentKey, roles, side = false, collapsed = false }: { avatar?: string | null; accentKey?: string; name: string; username: string; hex: string; onHex: string; roles: Role[]; side?: boolean; collapsed?: boolean }) {
   const [open, setOpen] = useState(false);
   const path = usePathname();
   const [live, setLive] = useState<string | null>(null);
@@ -65,14 +66,14 @@ export function UserMenu({ name, username, hex, onHex, accentKey, roles, side = 
   const sorted = ROLES.filter((r) => roles.includes(r));
   const h = new Date().getHours();
   const greeting = h < 5 ? "Boa madrugada" : h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
-  const avatar = (size: string) => (
-    <span className={`flex shrink-0 items-center justify-center rounded-full font-bold shadow-sm ring-2 ring-white/40 ${size}`} style={{ backgroundImage: `linear-gradient(135deg, color-mix(in oklab, ${hex} 78%, white), ${hex} 50%, color-mix(in oklab, ${hex} 78%, black))`, color: onHex }}>{initials}</span>
+  const avatarEl = (size: string) => (
+    <span className={`flex shrink-0 items-center justify-center rounded-full font-bold shadow-sm ring-2 ring-white/40 ${size}`} style={{ backgroundImage: `linear-gradient(135deg, color-mix(in oklab, ${hex} 78%, white), ${hex} 50%, color-mix(in oklab, ${hex} 78%, black))`, color: onHex }}><AvatarGlyph avatar={avatar} initials={initials} /></span>
   );
   return (
     <div ref={box} className="relative">
       <button type="button" onClick={() => setOpen(!open)} aria-haspopup="menu" aria-expanded={open} aria-label={`Menu de ${name}`} title={collapsed ? name : undefined}
         className={side ? `flex w-full items-center rounded-xl py-2 text-left transition hover:bg-sunk ${collapsed ? "justify-center px-0" : "gap-3 px-2"}` : "rounded-full transition hover:scale-105 aria-expanded:ring-2 aria-expanded:ring-accent aria-expanded:ring-offset-2 aria-expanded:ring-offset-panel"}>
-        {avatar(side ? "size-10 text-sm" : "size-10 text-sm")}
+        {avatarEl(side ? "size-10 text-sm" : "size-10 text-sm")}
         {side && !collapsed && <span className="flex min-w-0 flex-1 flex-wrap gap-1">{sorted.map((r) => <RoleBadge key={r} role={r} />)}</span>}
       </button>
       {open && mounted && createPortal(
@@ -81,7 +82,7 @@ export function UserMenu({ name, username, hex, onHex, accentKey, roles, side = 
             <span aria-hidden className="aurora-blob a" /><span aria-hidden className="aurora-blob b" /><span aria-hidden className="aurora-blob c" />
             <div className="relative flex items-center gap-4">
               <span className="avatar-ring relative grid size-[4.75rem] shrink-0 place-items-center rounded-full p-[3px]">
-                <span className="grid size-full place-items-center rounded-full bg-black/30 text-2xl font-bold backdrop-blur-sm">{initials}</span>
+                <span className="grid size-full place-items-center rounded-full bg-black/30 text-2xl font-bold backdrop-blur-sm"><AvatarGlyph avatar={avatar} initials={initials} size={34} /></span>
                 <span aria-hidden title="Online" className="absolute bottom-0.5 right-0.5 size-4 rounded-full border-2 border-white bg-ok shadow"><span className="absolute inset-0 animate-ping rounded-full bg-ok/70" /></span>
               </span>
               <div className="min-w-0">

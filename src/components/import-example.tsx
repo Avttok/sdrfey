@@ -1,7 +1,9 @@
 "use client";
 
 import { Download } from "lucide-react";
+import { ImportGuide } from "@/components/import-guide";
 import { btnGhost } from "@/components/ui";
+import type { GuideCol } from "@/config/import-guide";
 
 const cell = (v: string) => (/[;"\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
 
@@ -15,7 +17,7 @@ function download(name: string, headers: readonly string[], rows: readonly (read
 }
 
 /** Exemplo da planilha numa tabela, ali mesmo na tela, com o download do mesmo exemplo. */
-export function ImportExample({ headers, rows, required, fileName }: { headers: readonly string[]; rows: readonly (readonly string[])[]; required: readonly string[]; fileName: string }) {
+export function ImportExample({ headers, rows, required, fileName, guide, extra }: { guide?: GuideCol[]; extra?: Record<string, string[]>; headers: readonly string[]; rows: readonly (readonly string[])[]; required: readonly string[]; fileName: string }) {
   return (
     <div className="space-y-3">
       <div className="overflow-x-auto rounded-xl border border-line">
@@ -34,6 +36,7 @@ export function ImportExample({ headers, rows, required, fileName }: { headers: 
           </tbody>
         </table>
       </div>
+      {guide && <ImportGuide cols={guide} extra={extra} />}
       <button type="button" className={btnGhost} onClick={() => download(fileName, headers, rows)}><Download size={16} aria-hidden /> Baixar exemplo (CSV)</button>
     </div>
   );

@@ -6,6 +6,7 @@ import { AppHeader, SideBarFor } from "@/components/app-header";
 import { navBadges } from "@/modules/deals/queries";
 import { getSettings } from "@/modules/settings/get";
 import { BottomFade } from "@/components/bottom-fade";
+import { SwRegister } from "@/components/sw-register";
 import { ChatMount } from "@/components/chat/chat-mount";
 import { requireUser } from "@/modules/auth/guard";
 
@@ -26,6 +27,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </div>
       <BottomFade />
+      <SwRegister />
       <Suspense fallback={null}><ChatMount user={user} /></Suspense>
     </ToastProvider>
   );

@@ -1,5 +1,8 @@
 "use client";
 
+import { AvatarGlyph } from "@/components/avatar-glyph";
+import { CountUp } from "@/components/goal-tiles";
+
 import { ACHIEVEMENT_BY_KEY } from "@/config/achievements";
 import { chatStyle } from "@/components/chat/styled";
 import { ChatShop } from "@/components/chat/chat-shop";
@@ -132,26 +135,28 @@ function ProfileDialog({ userId, hex, isAdmin, onClose, onPurged }: { userId: nu
         <div className="relative h-32 overflow-hidden bg-grad">
           <span aria-hidden className="sh-card absolute -left-6 -top-8 size-32 rounded-full bg-white/25 blur-2xl" style={{ "--d": "0s" } as React.CSSProperties} />
           <span aria-hidden className="sh-card absolute -bottom-10 right-2 size-40 rounded-full bg-black/20 blur-2xl" style={{ "--d": "-1.8s" } as React.CSSProperties} />
+          <span aria-hidden className="pf-shine absolute inset-0" />
           <span aria-hidden className="sh-card absolute right-16 top-5 size-3 rounded-full bg-white/70" style={{ "--d": "-.6s" } as React.CSSProperties} />
           <span aria-hidden className="sh-card absolute left-24 top-12 size-2 rounded-full bg-white/60" style={{ "--d": "-2.4s" } as React.CSSProperties} />
           <button type="button" aria-label="Fechar" className="absolute right-3 top-3 grid size-8 place-items-center rounded-full bg-black/25 text-white backdrop-blur transition hover:bg-black/40" onClick={onClose}><X size={16} /></button>
         </div>
-        <div className="-mt-12 px-5 pb-5">
-          <span className="sh-rise relative grid size-24 place-items-center rounded-full border-4 border-panel bg-grad text-3xl font-bold text-on-accent shadow-xl" style={{ "--d": ".05s" } as React.CSSProperties}>
-            <span aria-hidden className="sh-go pointer-events-none absolute inset-0 rounded-full after:hidden" />
-            {p ? initials(p.name) : "…"}
-          </span>
-          <div className="sh-rise mt-3" style={{ "--d": ".12s" } as React.CSSProperties}>
+        <div className="-mt-14 px-5 pb-5">
+          <div className="sh-rise relative mx-auto grid size-28 place-items-center" style={{ "--d": ".05s" } as React.CSSProperties}>
+            <span aria-hidden className="pf-ring absolute inset-0 rounded-full" />
+            <span aria-hidden className="absolute inset-[4px] rounded-full bg-panel" />
+            <span className="pf-avatar relative flex size-[5.5rem] items-center justify-center rounded-full bg-grad text-[1.9rem] font-bold leading-none tracking-tight text-on-accent shadow-lg"><span className="block translate-y-px">{p ? <AvatarGlyph avatar={p.avatar} initials={initials(p.name)} size={40} /> : "…"}</span></span>
+          </div>
+          <div className="sh-rise mt-3 text-center" style={{ "--d": ".12s" } as React.CSSProperties}>
             <h2 className={`display break-words text-2xl ${sty.nameCls}`} style={p ? sty.name : undefined}>{p?.name ?? "Carregando…"}</h2>
             {p && <p className="text-sm text-muted">@{p.username}</p>}
           </div>
           {err && <p className="mt-3 text-sm text-danger">{err}</p>}
           {p && (
             <div className="mt-4 space-y-4">
-              <div className="sh-rise flex flex-wrap gap-1.5" style={{ "--d": ".18s" } as React.CSSProperties}>{p.roles.map((r) => <RoleBadge key={r} role={r} />)}</div>
+              <div className="sh-rise flex flex-wrap justify-center gap-1.5" style={{ "--d": ".18s" } as React.CSSProperties}>{p.roles.map((r) => <RoleBadge key={r} role={r} />)}</div>
               <dl className="grid grid-cols-2 gap-2 text-sm">
                 {[["Mensagens", String(p.sent)], ["Conquistas", `${p.badges.length}/${p.badgeTotal}`], ...(p.isAdminView ? [["Conta", p.active ? "Ativa" : "Bloqueada"], ["Último acesso", p.lastLoginAt ? dtFmt.format(new Date(p.lastLoginAt)) : "nunca"]] : [])].map(([t, v], i) => (
-                  <div key={t} className="sh-rise rounded-2xl bg-sunk px-3 py-2.5" style={{ "--d": `${0.22 + i * 0.06}s` } as React.CSSProperties}><dt className="text-[11px] text-muted">{t}</dt><dd className="figure text-base font-bold">{v}</dd></div>
+                  <div key={t} className="sh-rise rounded-2xl bg-sunk px-3 py-2.5" style={{ "--d": `${0.22 + i * 0.06}s` } as React.CSSProperties}><dt className="text-[11px] text-muted">{t}</dt><dd className="figure text-base font-bold">{/^\d+$/.test(v) ? <CountUp to={Number(v)} /> : v}</dd></div>
                 ))}
               </dl>
               <div className="sh-rise" style={{ "--d": ".4s" } as React.CSSProperties}>
@@ -393,7 +398,7 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
     const S = m.share ? KIND_META[m.share.kind] : null;
     rows.push(
       <div key={m.id} className={`group flex min-w-0 gap-2 ${mine ? "flex-row-reverse" : ""} ${first ? "mt-2" : ""}`}>
-        {first ? <button type="button" disabled={!m.userId} onClick={() => m.userId && setProfile({ id: m.userId, hex: m.hex })} aria-label={`Perfil de ${m.name}`} className="grid size-7 shrink-0 place-items-center rounded-full text-[10px] font-bold text-white transition hover:scale-110" style={{ background: m.hex }} title={m.name}>{initials(m.name)}</button> : <span className="size-7 shrink-0" />}
+        {first ? <button type="button" disabled={!m.userId} onClick={() => m.userId && setProfile({ id: m.userId, hex: m.hex })} aria-label={`Perfil de ${m.name}`} className="grid size-7 shrink-0 place-items-center rounded-full text-[10px] font-bold text-white transition hover:scale-110" style={{ background: m.hex }} title={m.name}><AvatarGlyph avatar={m.avatar} initials={initials(m.name)} size={15} /></button> : <span className="size-7 shrink-0" />}
         <div className={`flex min-w-0 max-w-[82%] flex-col ${mine ? "items-end" : "items-start"}`}>
           {first && <p className={`mb-0.5 flex flex-wrap items-center gap-1.5 px-1 text-[11px] text-muted ${mine ? "justify-end" : ""}`}><button type="button" disabled={!m.userId} onClick={() => m.userId && setProfile({ id: m.userId, hex: m.hex })} className={`font-medium hover:underline ${chatStyle(m.style).nameCls}`} style={chatStyle(m.style).name}>{mine ? "Você" : m.name.split(" ")[0]}</button>{[...m.roles].sort((x, y) => ROLE_RANK[y] - ROLE_RANK[x]).slice(0, 2).map((r) => <span key={r} className="rounded-full border border-line bg-sunk px-1.5 py-px text-[10px] font-semibold text-ink"><span className="mr-1 inline-block size-1.5 rounded-full" style={{ background: ROLE_DOT[r] }} />{ROLE_META[r].label}</span>)}</p>}
           <div style={chatStyle(m.style).bubble ?? undefined} className={`min-w-0 max-w-full rounded-2xl px-3 py-2 text-sm ${mine ? "rounded-tr-md" : "rounded-tl-md"} ${chatStyle(m.style).bubble ? "" : mine ? "bg-accent text-on-accent" : "bg-sunk"}`}>

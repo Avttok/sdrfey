@@ -5,6 +5,7 @@ import { useRef, useState, useTransition } from "react";
 import { Spinner } from "@/components/spinner";
 import { useBusyWhile, useToast } from "@/components/toast";
 import { btnGhost, btnPrimary, panelCls } from "@/components/ui";
+import { LEAD_GUIDE, REP_GUIDE } from "@/config/import-guide";
 import { ImportExample } from "@/components/import-example";
 import { applyImportAction, previewImportAction, type ImportPreview } from "@/modules/import/actions";
 
@@ -91,7 +92,7 @@ export function ImportForm() {
             ))}
           </div>
         )}
-        <div className="mt-4"><ImportExample {...EXAMPLES[kind]} fileName={EXAMPLES[kind].file} /></div>
+        <div className="mt-4"><ImportExample {...EXAMPLES[kind]} fileName={EXAMPLES[kind].file} guide={kind === "leads" ? LEAD_GUIDE : REP_GUIDE} /></div>
       </section>
 
       <section className={`${panelCls} p-5`}>

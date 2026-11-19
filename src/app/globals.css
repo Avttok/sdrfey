@@ -273,10 +273,33 @@ body.dragging, body.dragging * { user-select: none !important; cursor: grabbing 
 @keyframes fx-pulse { 50% { transform: scale(1.07); opacity: .85; } }
 @keyframes fx-wave { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
 @keyframes fx-rgb { to { filter: hue-rotate(360deg) drop-shadow(0 0 5px currentColor); } }
+@keyframes fx-breathe { 50% { opacity: .62; } }
+@keyframes fx-twinkle { 0%,100% { opacity: .25; transform: scale(.7) rotate(0); } 50% { opacity: 1; transform: scale(1.1) rotate(20deg); } }
+.fx-soft { filter: drop-shadow(0 1px 2px rgba(0,0,0,.28)); }
+.fx-emboss { text-shadow: 0 1px 0 rgba(255,255,255,.7), 0 -1px 0 rgba(0,0,0,.25); }
+.fx-outline { -webkit-text-stroke: .6px color-mix(in srgb, var(--ink) 70%, transparent); paint-order: stroke fill; }
+.fx-wavy { text-decoration: underline wavy color-mix(in srgb, var(--accent) 80%, transparent) 1.5px; text-underline-offset: 3px; }
+.fx-mark { background-image: linear-gradient(transparent 55%, color-mix(in srgb, #facc15 70%, transparent) 55%) !important; background-clip: border-box !important; padding: 0 .2em; border-radius: 2px; }
+.fx-hover { transition: filter .25s; }
+.fx-hover:hover { filter: drop-shadow(0 0 6px var(--fx, var(--accent))); }
 .fx-glow { filter: drop-shadow(0 0 5px color-mix(in srgb, var(--fx, currentColor) 80%, transparent)); }
 .fx-neon { filter: drop-shadow(0 0 2px var(--fx, currentColor)) drop-shadow(0 0 8px var(--fx, currentColor)) drop-shadow(0 0 16px var(--fx, currentColor)); }
+.fx-breathe { animation: fx-breathe 3.2s ease-in-out infinite; }
+.fx-star::before, .fx-heart::before, .fx-bolt::before, .fx-crown::before { margin-right: .3em; font-size: .85em; -webkit-text-fill-color: initial; }
+.fx-star::before { content: "★"; color: #f59e0b; }
+.fx-heart::before { content: "♥"; color: #ef4444; }
+.fx-bolt::before { content: "⚡︎"; color: #eab308; }
+.fx-crown::before { content: "♛"; color: #f59e0b; }
+.fx-sparkle::after { content: "✦"; margin-left: .25em; font-size: .8em; color: #facc15; -webkit-text-fill-color: initial; display: inline-block; animation: fx-twinkle 2.2s ease-in-out infinite; }
 .fx-shimmer { background-image: linear-gradient(110deg, transparent 35%, #fff 50%, transparent 65%), var(--nm, linear-gradient(currentColor, currentColor)) !important; background-size: 200% 100%, 100% 100% !important; -webkit-background-clip: text !important; background-clip: text !important; color: transparent !important; -webkit-text-fill-color: transparent !important; animation: fx-shimmer 2.4s linear infinite; }
 .fx-pulse { display: inline-block; animation: fx-pulse 1.6s ease-in-out infinite; }
 .fx-wave { display: inline-block; animation: fx-wave 1.4s ease-in-out infinite; }
 .fx-rgb { animation: fx-rgb 4s linear infinite; }
-@media (prefers-reduced-motion: reduce) { .fx-shimmer, .fx-pulse, .fx-wave, .fx-rgb { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .fx-shimmer, .fx-pulse, .fx-wave, .fx-rgb, .fx-breathe, .fx-sparkle::after { animation: none; } }
+
+/* Perfil do chat: anel girando, brilho que passeia no topo */
+@keyframes pf-spin { to { transform: rotate(360deg); } }
+@keyframes pf-sweep { from { transform: translateX(-120%) skewX(-18deg); } to { transform: translateX(260%) skewX(-18deg); } }
+.pf-ring { background: conic-gradient(from 0deg, var(--accent), var(--accent-2), color-mix(in srgb, var(--accent) 25%, white), var(--accent)); animation: pf-spin 7s linear infinite; }
+.pf-shine { background: linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent); width: 35%; animation: pf-sweep 5.5s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .pf-ring, .pf-shine { animation: none; } }

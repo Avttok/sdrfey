@@ -1,8 +1,9 @@
 "use client";
 
-import { Check, Coins, Loader2, Lock, Sparkles } from "lucide-react";
+import { Check, Coins, ShoppingBag, Loader2, Lock, Sparkles } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 import { chatStyle } from "@/components/chat/styled";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToast } from "@/components/toast";
 import { CATEGORIES, SHOP, SHOP_BY_KEY, TASK_COINS, type ShopCategory, type ShopItem } from "@/config/shop";
 import { buyItemAction, equipItemAction, shopStateAction } from "@/modules/coins/actions";
@@ -18,6 +19,7 @@ export function ChatShop({ myName }: { myName: string }) {
   const [trying, setTrying] = useState<ShopItem | null>(null);
   const [pending, start] = useTransition();
   const [how, setHow] = useState(false);
+  const [buying, setBuying] = useState<ShopItem | null>(null);
   useEffect(() => { let live = true; void shopStateAction().then((s) => live && setSt(s)); return () => { live = false; }; }, []);
   if (!st) return <p className="flex flex-1 items-center justify-center gap-2 text-sm text-muted"><Loader2 size={15} className="animate-spin" aria-hidden /> Abrindo a loja…</p>;
 
@@ -66,11 +68,21 @@ export function ChatShop({ myName }: { myName: string }) {
               <p className="text-xs font-semibold">{i.name}</p>
               {owned
                 ? <button type="button" disabled={pending || on} onClick={() => act(() => equipItemAction(i.cat, i.key))} className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold ${on ? "bg-ok/15 text-ok" : "bg-grad text-on-accent"}`}>{on ? <><Check size={13} aria-hidden /> Em uso</> : "Usar"}</button>
-                : <button type="button" disabled={pending || !afford} onClick={() => act(() => buyItemAction(i.key))} className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold transition ${afford ? "bg-grad text-on-accent hover:brightness-110" : "bg-sunk text-muted"}`}>{afford ? <Coins size={13} aria-hidden /> : <Lock size={13} aria-hidden />}<span className="figure">{nf.format(i.price)}</span></button>}
+                : <button type="button" disabled={pending || !afford} onClick={() => setBuying(i)} className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold transition ${afford ? "bg-grad text-on-accent hover:brightness-110" : "bg-sunk text-muted"}`}>{afford ? <Coins size={13} aria-hidden /> : <Lock size={13} aria-hidden />}<span className="figure">{nf.format(i.price)}</span></button>}
             </li>
           );
         })}
       </ul>
+      <ConfirmDialog open={!!buying} icon={ShoppingBag} title={buying ? `Comprar “${buying.name}”?` : ""} confirmLabel={buying ? `Comprar por ${nf.format(buying.price)} moedas` : "Comprar"} busy={pending}
+        onCancel={() => setBuying(null)} onConfirm={() => { const b = buying; setBuying(null); if (b) act(() => buyItemAction(b.key)); }}>
+        {buying && (() => { const s = chatStyle({ [buying.cat]: buying.key }); return (
+          <div className="space-y-3">
+            <div className="grid min-h-14 place-items-center rounded-xl bg-sunk/60 px-3 py-3 text-center">
+              {buying.cat === "bubble" ? <span style={s.bubble ?? undefined} className="rounded-2xl px-3 py-1.5 text-sm text-ink">Bom dia, time!</span> : <span className={`text-lg font-semibold ${s.nameCls}`} style={s.name}>{first}</span>}
+            </div>
+            <p>Saldo: <b className="figure text-ink">{nf.format(st.balance)}</b> → <b className="figure text-ink">{nf.format(st.balance - buying.price)}</b> moedas</p>
+          </div>); })()}
+      </ConfirmDialog>
     </div>
   );
 }

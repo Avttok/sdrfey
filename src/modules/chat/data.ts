@@ -15,6 +15,7 @@ export type ChatMsg = {
   delUntil: number | null;
   /** itens da loja vestidos por quem enviou */
   style: Record<string, string>;
+  avatar: string | null;
 };
 
 /** O chat está disponível para esta conta? (ligado pelo Adm e permissão de uso) */
@@ -30,14 +31,14 @@ export const isMod = (me: CurrentUser) => me.roles.includes("admin") || me.roles
 export async function listMessages(me: CurrentUser, channel: string, o: { after?: number; before?: number; limit?: number } = {}): Promise<ChatMsg[]> {
   const limit = Math.min(o.limit ?? 40, 100);
   const where = and(eq(chatMessages.channel, channel), sql`${chatMessages.deletedAt} is null`, o.after ? gt(chatMessages.id, o.after) : undefined, o.before ? lt(chatMessages.id, o.before) : undefined);
-  const rows = await db.select({ m: chatMessages, name: users.name, accent: users.accent, roles: users.roles, eq: chatStyles.equipped }).from(chatMessages)
+  const rows = await db.select({ m: chatMessages, name: users.name, accent: users.accent, avatar: users.avatar, roles: users.roles, eq: chatStyles.equipped }).from(chatMessages)
     .leftJoin(users, eq(users.id, chatMessages.userId)).leftJoin(chatStyles, eq(chatStyles.userId, chatMessages.userId)).where(where)
     .orderBy(o.after ? chatMessages.id : desc(chatMessages.id)).limit(limit);
   const list = o.after ? rows : rows.reverse();
   const mod = isMod(me);
   const rx = await reactionsFor(me, list.map(({ m }) => m.id));
-  return list.map(({ m, name, accent, roles, eq: styleEq }) => ({
-    style: styleEq ?? {},
+  return list.map(({ m, name, accent, avatar, roles, eq: styleEq }) => ({
+    style: styleEq ?? {}, avatar: avatar ?? null,
     id: m.id, channel: m.channel, userId: m.userId, name: name ?? "Conta removida", roles: publicRoles((roles ?? []) as Role[], me.roles.includes("admin")), reactions: rx[m.id] ?? [], hex: m.userId ? bubbleHex(accent, m.userId, roles ?? undefined) : "#888780",
     body: m.body, at: m.createdAt.toISOString(),
     share: m.shareKind && m.shareId ? { kind: m.shareKind, id: m.shareId, label: m.shareLabel ?? "" } : null,

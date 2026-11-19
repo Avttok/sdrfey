@@ -9,6 +9,7 @@ import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { STAGE_META } from "@/config/deals";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ExistingClientDialog } from "@/components/deals/existing-client-dialog";
+import { DEAL_GUIDE } from "@/config/import-guide";
 import { ImportExample } from "@/components/import-example";
 import { DEAL_TEMPLATE_HEADERS, DEAL_TEMPLATE_ROWS } from "@/modules/import/deals-parse";
 import { applyDealImportAction, previewDealImportAction, type DealImportPreview } from "@/modules/import/deals-actions";
@@ -22,7 +23,7 @@ function Step({ n, done, children }: { n: number; done?: boolean; children: Reac
   return <h2 className="mb-3 flex items-center gap-2.5 text-lg font-semibold"><span className={`flex size-7 items-center justify-center rounded-full text-sm ${done ? "bg-ok text-white" : "bg-grad text-on-accent"}`}>{done ? "✓" : n}</span>{children}</h2>;
 }
 
-export function DealImportForm({ sellers }: { sellers: { id: number; name: string }[] | null }) {
+export function DealImportForm({ sellers, terms = [] }: { sellers: { id: number; name: string }[] | null; terms?: string[] }) {
   const toast = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [seller, setSeller] = useState(sellers?.[0]?.id ?? 0);
@@ -44,7 +45,7 @@ export function DealImportForm({ sellers }: { sellers: { id: number; name: strin
     <div className="mx-auto max-w-4xl space-y-5">
       <section className={`${panelCls} space-y-3 p-5`}>
         <Step n={1} done={!!file}>Modelo da planilha</Step>
-        <ImportExample headers={DEAL_TEMPLATE_HEADERS} rows={DEAL_TEMPLATE_ROWS} required={["CNPJ"]} fileName="modelo-negociacoes.csv" />
+        <ImportExample headers={DEAL_TEMPLATE_HEADERS} rows={DEAL_TEMPLATE_ROWS} required={["CNPJ"]} fileName="modelo-negociacoes.csv" guide={DEAL_GUIDE} extra={{ "CONDICAO DE PAGAMENTO": terms }} />
         {sellers && (
           <label className="block max-w-xs text-sm"><span className="mb-1 block text-muted">Importar para o vendedor</span>
             <select className={inputCls} value={seller} onChange={(e) => { setSeller(Number(e.target.value)); setPrev(null); }}>{sellers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>

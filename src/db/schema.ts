@@ -28,6 +28,8 @@ export const users = pgTable("users", {
   roles: text("roles").array().$type<Role[]>().notNull().default(sql`ARRAY['user']::text[]`),
   /** Chave da cor escolhida (ver config/theme.ts). Nulo = cor padrão do cargo. */
   accent: text("accent"),
+  /** Ícone de perfil escolhido (chave de config/avatars.ts). Nulo = iniciais do nome. */
+  avatar: text("avatar"),
   /** Barra de navegação: "top" (horizontal) ou "side" (vertical à esquerda). */
   navLayout: text("nav_layout").notNull().default("top"),
   /** Ordem preferida dos itens do menu (hrefs). Vazio = ordem padrão. */

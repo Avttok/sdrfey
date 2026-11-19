@@ -16,6 +16,7 @@ export type CurrentUser = {
   name: string;
   roles: Role[];
   accent: string | null;
+  avatar: string | null;
   navLayout: "top" | "side";
   navOrder: string[];
   navCustom: NavCustom;
@@ -73,6 +74,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     name: u.name,
     roles: u.roles,
     accent: u.accent,
+    avatar: u.avatar ?? null,
     navLayout: u.navLayout === "side" ? "side" : "top",
     navOrder: u.navOrder?.length ? u.navOrder : (((await settingValue("nav_order")) as string[] | undefined) ?? []),
     navCustom: mergeCustom(cleanCustom(await settingValue("nav_custom")), cleanCustom(await settingValue(`nav_custom_u${u.id}`))),

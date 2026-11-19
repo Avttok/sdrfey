@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { FileSpreadsheet } from "lucide-react";
 import { DealImportForm } from "@/components/deals/deal-import-form";
 import { PageHead } from "@/components/page-head";
-import { db, users } from "@/db";
+import { db, paymentTerms, users } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
 import { visibleUsers } from "@/modules/auth/visibility";
 
@@ -16,10 +16,11 @@ export default async function Page() {
   const team = !!me.permissions["deals.team"];
   if (!me.roles.includes("seller") && !team) redirect("/negociacoes");
   const sellers = team ? await db.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.active, true), sql`'seller' = any(${users.roles})`, visibleUsers(me))).orderBy(asc(users.name)) : null;
+  const terms = (await db.select({ n: paymentTerms.name }).from(paymentTerms).where(eq(paymentTerms.active, true)).orderBy(asc(paymentTerms.name)).limit(40)).map((t) => t.n);
   return (
     <div className="space-y-5">
       <PageHead icon={FileSpreadsheet} title="Importar minhas negociações" />
-      <DealImportForm sellers={sellers} />
+      <DealImportForm sellers={sellers} terms={terms} />
     </div>
   );
 }

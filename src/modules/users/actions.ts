@@ -6,10 +6,20 @@ import { db, users } from "@/db";
 import { NAV } from "@/config/nav";
 import { isFontKey } from "@/config/fonts";
 import { isChoosableAccent } from "@/config/theme";
+import { AVATAR_BY_KEY } from "@/config/avatars";
 import { logAudit } from "@/modules/audit/log";
 import { requireUser } from "@/modules/auth/guard";
 
 /** Troca a cor da própria pessoa. Valor vazio volta para a cor padrão do cargo. */
+export async function setAvatarAction(key: string | null): Promise<{ ok: boolean; message?: string }> {
+  const me = await requireUser();
+  const next = key && AVATAR_BY_KEY.has(key) ? key : null;
+  await db.update(users).set({ avatar: next }).where(eq(users.id, me.id));
+  await logAudit(db, { userId: me.id, entity: "user", action: "alterou", field: "ícone de perfil", oldValue: me.avatar, newValue: next });
+  revalidatePath("/", "layout");
+  return { ok: true, message: next ? "Ícone de perfil salvo." : "Voltou para as iniciais." };
+}
+
 export async function setAccentAction(formData: FormData) {
   const me = await requireUser();
   const raw = String(formData.get("accent") ?? "");
