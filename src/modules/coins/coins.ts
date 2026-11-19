@@ -1,4 +1,6 @@
 import { eq, sql } from "drizzle-orm";
+import { users } from "@/db";
+import { getSettings } from "@/modules/settings/get";
 import { ACHIEVEMENTS, groupsFor } from "@/config/achievements";
 import { SHOP_BY_KEY, TASK_COINS, achievementCoins } from "@/config/shop";
 import { chatStyles, coinLedger, db, shopPurchases } from "@/db";
@@ -16,7 +18,10 @@ export async function syncCoins(uid: number, roles: readonly string[]): Promise<
   const last = map.get(uid) ?? 0;
   if (Date.now() - last < SYNC_EVERY_MS) return;
   map.set(uid, Date.now());
-  const T = TASK_COINS;
+  // Bloqueado (pelo Adm, para todos ou só esta pessoa): os feitos são registrados com 0 moedas, então ao liberar não pagam o passado.
+  const [[who], settings] = await Promise.all([db.select({ b: users.coinsEarnBlocked }).from(users).where(eq(users.id, uid)), getSettings()]);
+  const blocked = !!who?.b || settings.coins_earn_on !== 1;
+  const T = blocked ? { attended: 0, visit: 0, deal: 0, quote: 0, billed: 0, shuffled: 0 } : TASK_COINS;
   await db.execute(sql`
     insert into coin_ledger (user_id, amount, reason, ref)
     select ${uid}::int, ${T.attended}::int, 'Lead atendido', 'att:' || id from attendance_sessions where user_id = ${uid} and outcome = 'saved' and not is_test
@@ -29,7 +34,7 @@ export async function syncCoins(uid: number, roles: readonly string[]): Promise<
   const { list } = await achievementsOf(uid, roles);
   const got = list.filter((a) => a.earned);
   if (got.length) {
-    await db.insert(coinLedger).values(got.map((a) => ({ userId: uid, amount: achievementCoins(a.goal), reason: `Conquista: ${a.name}`, ref: `ach:${a.key}` }))).onConflictDoNothing();
+    await db.insert(coinLedger).values(got.map((a) => ({ userId: uid, amount: blocked ? 0 : achievementCoins(a.goal), reason: `Conquista: ${a.name}`, ref: `ach:${a.key}` }))).onConflictDoNothing();
   }
 }
 

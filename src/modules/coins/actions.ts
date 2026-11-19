@@ -4,7 +4,8 @@ import { logAudit } from "@/modules/audit/log";
 
 import { and, eq, sql } from "drizzle-orm";
 import { SHOP_BY_KEY } from "@/config/shop";
-import { chatStyles, coinLedger, db, shopPurchases } from "@/db";
+import { chatStyles, coinLedger, db, shopPurchases, users } from "@/db";
+import { getSettings } from "@/modules/settings/get";
 import { requireUser } from "@/modules/auth/guard";
 import type { ActionResult } from "@/modules/leads/actions";
 import { shopState, type ShopState } from "./coins";
@@ -21,6 +22,8 @@ export async function buyItemAction(key: string): Promise<R> {
   const me = await requireUser();
   const item = SHOP_BY_KEY.get(key);
   if (!item) return { ok: false, message: "Item não encontrado." };
+  const [[who], settings] = await Promise.all([db.select({ b: users.coinsSpendBlocked }).from(users).where(eq(users.id, me.id)), getSettings()]);
+  if (who?.b || settings.coins_spend_on !== 1) return { ok: false, message: "Os gastos de moedas estão bloqueados pelo Adm.", state: await shopState(me.id, me.shownRoles) };
   await shopState(me.id, me.shownRoles);
   const res = await db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(${me.id}::bigint + 7000000)`);

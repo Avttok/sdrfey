@@ -232,6 +232,13 @@
       "when": 1795064701636,
       "tag": "0032_consulta_cnpj_historico",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1795088534609,
+      "tag": "0033_moedas_bloqueios",
+      "breakpoints": true
     }
   ]
 }

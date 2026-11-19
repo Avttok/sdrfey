@@ -1,4 +1,4 @@
-import { Activity, Archive, Clock, DatabaseZap, Download, Eraser, FlaskConical, Handshake, KeyRound, Mail, MessagesSquare, PanelTop, Settings2, Tags, Upload, Users, type LucideIcon } from "lucide-react";
+import { Activity, Archive, Coins, Clock, DatabaseZap, Download, Eraser, FlaskConical, Handshake, KeyRound, Mail, MessagesSquare, PanelTop, Settings2, Tags, Upload, Users, type LucideIcon } from "lucide-react";
 
 export type AdminItem = { href: string; label: string; hint: string; icon: LucideIcon };
 export type AdminSection = { id: string; title: string; hue: string; items: AdminItem[] };
@@ -8,6 +8,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   { id: "pessoas", title: "Pessoas e acesso", hue: "#6366f1", items: [
     { href: "/admin/usuarios", label: "Usuários", hint: "Contas, cargos e bloqueios", icon: Users },
     { href: "/admin/permissoes", label: "Permissões", hint: "Quem vê e faz o quê", icon: KeyRound },
+    { href: "/admin/moedas", label: "Moedas e pontos", hint: "Saldos, bloqueios e ajustes", icon: Coins },
   ] },
   { id: "vendas", title: "Vendas", hue: "#10b981", items: [
     { href: "/admin/vendas", label: "Condições e produtos", hint: "Pagamento e catálogo", icon: Handshake },

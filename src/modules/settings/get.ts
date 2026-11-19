@@ -28,6 +28,9 @@ export const SETTING_DEFAULTS = {
   chat_on: 1,
   /** 1 = consulta automática de CNPJ em segundo plano ligada (os shufflers não consultam sozinhos). */
   auto_enrich: 0,
+  /** 1 = a equipe ganha moedas / pode gastar na loja. O Adm desliga para todos de uma vez. */
+  coins_earn_on: 1,
+  coins_spend_on: 1,
 } as const;
 export type SettingKey = keyof typeof SETTING_DEFAULTS;
 

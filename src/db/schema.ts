@@ -34,6 +34,9 @@ export const users = pgTable("users", {
   banner: text("banner"),
   /** Já passou uma vez pela tela de personalização do perfil. */
   profileDone: boolean("profile_done").notNull().default(false),
+  /** Adm: bloqueia esta pessoa de ganhar moedas / de gastar moedas na loja. */
+  coinsEarnBlocked: boolean("coins_earn_blocked").notNull().default(false),
+  coinsSpendBlocked: boolean("coins_spend_blocked").notNull().default(false),
   /** Barra de navegação: "top" (horizontal) ou "side" (vertical à esquerda). */
   navLayout: text("nav_layout").notNull().default("top"),
   /** Ordem preferida dos itens do menu (hrefs). Vazio = ordem padrão. */
