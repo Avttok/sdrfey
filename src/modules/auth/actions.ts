@@ -7,6 +7,8 @@ import { z } from "zod";
 import { db, users } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { clearSessionCookie, requireUser, setSessionCookie } from "./guard";
+import { AVATAR_BY_KEY } from "@/config/avatars";
+import { isChoosableAccent } from "@/config/theme";
 import { QUICK_COOKIE, QUICK_SECONDS, SESSION_COOKIE, readQuick, readToken, signQuick } from "./token";
 import { checkPasswordRules, hashPassword, verifyPassword } from "./password";
 
@@ -141,4 +143,30 @@ export async function changePasswordAction(_prev: FormState, formData: FormData)
 
   if (row.mustChangePassword) redirect("/painel");
   return { ok: "Senha alterada com sucesso." };
+}
+
+/**
+ * Primeiro acesso: em um passo só a pessoa define senha, nome, ícone de perfil e cor.
+ * (O tema claro/noturno fica no navegador, não no servidor.)
+ */
+export async function firstAccessAction(input: { current: string; next: string; confirm: string; name: string; avatar: string | null; accent: string | null }): Promise<FormState> {
+  const me = await requireUser({ allowMustChange: true });
+  if (!me.mustChangePassword) return { error: "Este acesso já foi concluído." };
+  const name = String(input.name ?? "").trim().replace(/\s+/g, " ");
+  if (name.length < 2 || name.length > 60) return { error: "O nome precisa ter de 2 a 60 caracteres." };
+  if (input.next !== input.confirm) return { error: "A confirmação não é igual à nova senha." };
+  const [row] = await db.select().from(users).where(eq(users.id, me.id)).limit(1);
+  if (!row || !(await verifyPassword(String(input.current ?? ""), row.passwordHash))) return { error: "A senha provisória está incorreta." };
+  if (input.current === input.next) return { error: "A nova senha precisa ser diferente da provisória." };
+  const rule = checkPasswordRules(input.next);
+  if (rule) return { error: rule };
+  const avatar = input.avatar && AVATAR_BY_KEY.has(input.avatar) ? input.avatar : null;
+  const accent = isChoosableAccent(input.accent) ? input.accent : null;
+  const version = row.sessionVersion + 1;
+  await db.update(users).set({ passwordHash: await hashPassword(input.next), mustChangePassword: false, sessionVersion: version, name, avatar, accent }).where(eq(users.id, me.id));
+  await logAudit(db, { userId: me.id, entity: "user", action: "concluiu o primeiro acesso", meta: { nome: name !== me.name, icone: !!avatar, cor: !!accent } });
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  const remember = token ? ((await readToken(token))?.rem ?? false) : false;
+  await setSessionCookie(me.id, version, remember);
+  redirect("/painel");
 }
