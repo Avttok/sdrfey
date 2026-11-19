@@ -50,6 +50,7 @@ export async function saveRolePermissionsAction(role: Exclude<Role, "admin">, ma
   invalidateSettings();
   await logAudit(db, { userId: me.id, entity: "setting", action: "alterou permissões do cargo", field: role, oldValue: JSON.stringify((row?.value as Record<string, unknown> | undefined)?.[role] ?? {}), newValue: JSON.stringify(clean) });
   revalidatePath("/admin/permissoes");
+  revalidatePath("/admin/usuarios");
   return { ok: true, message: "Permissões do cargo salvas." };
 }
 

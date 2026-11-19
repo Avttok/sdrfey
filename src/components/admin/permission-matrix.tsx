@@ -11,7 +11,7 @@ import { savePermissionMatrixAction } from "@/modules/admin/config";
 export type MatrixUser = { id: number; name: string; roles: Role[]; perms: PermissionMap; hex: string };
 type RoleKey = "user" | "seller" | "manager";
 type Roles = Record<RoleKey, PermissionMap>;
-type Target = { kind: "role"; role: RoleKey } | { kind: "user"; id: number };
+export type Target = { kind: "role"; role: RoleKey } | { kind: "user"; id: number };
 
 const SECTIONS = [
   { group: "Abas", title: "Abas do menu", hint: "Quais telas aparecem no topo", icon: PanelsTopLeft },
@@ -24,23 +24,25 @@ const ROLE_LABEL: Record<RoleKey, string> = { user: "SDR", seller: "Vendas", man
  * Escolha quem editar (cargo ou pessoa) e ajuste tudo numa lista só — sem rolagem lateral.
  * Cargo: liga/desliga. Pessoa: Padrão do cargo, Liberar ou Bloquear.
  */
-export function PermissionMatrix({ users, roles: initialRoles }: { users: MatrixUser[]; roles: Roles }) {
+export function PermissionMatrix({ users, roles: initialRoles, target: ext, onTarget }: { users: MatrixUser[]; roles: Roles; target?: Target; onTarget?: (t: Target) => void }) {
   const [roles, setRoles] = useState<Roles>(initialRoles);
   const [per, setPer] = useState<Record<number, PermissionMap>>(Object.fromEntries(users.map((u) => [u.id, u.perms])));
-  const [target, setTarget] = useState<Target>({ kind: "role", role: "user" });
+  const [own, setOwnTarget] = useState<Target>({ kind: "role", role: "user" });
+  const target = ext ?? own;
+  const setTarget = (t: Target) => { setOwnTarget(t); onTarget?.(t); };
   const { run, pending } = useRun();
   const dirty = JSON.stringify(roles) !== JSON.stringify(initialRoles) || users.some((u) => JSON.stringify(per[u.id]) !== JSON.stringify(u.perms));
 
   const roleOn = (r: RoleKey, key: string) => { const def = PERMISSIONS.find((p) => p.key === key)!; return key in roles[r] ? !!roles[r][key] : def.defaults.includes(r); };
   const inherited = (u: MatrixUser, key: string) => u.roles.some((r) => r !== "admin" && roleOn(r as RoleKey, key));
   const setOwn = (id: number, key: string, v: boolean | null) => { const n = { ...(per[id] ?? {}) }; if (v === null) delete n[key]; else n[key] = v; setPer({ ...per, [id]: n }); };
-  const person = target.kind === "user" ? users.find((u) => u.id === target.id)! : null;
+  const person = target.kind === "user" ? users.find((u) => u.id === target.id) ?? null : null;
   const overrides = (id: number) => Object.keys(per[id] ?? {}).length;
 
   const chip = (active: boolean) => `flex items-center gap-2 rounded-xl border-2 px-3.5 py-2 text-sm font-semibold transition ${active ? "border-accent bg-accent/10" : "border-line bg-panel hover:bg-sunk"}`;
   return (
-    <div className="space-y-5 pb-20">
-      <section className={`${panelCls} space-y-3 p-4`} aria-label="Quem você quer ajustar">
+    <div className="space-y-4 pb-20">
+      {!ext && <section className={`${panelCls} space-y-3 p-4`} aria-label="Quem você quer ajustar">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted">Padrão dos cargos</p>
         <div className="flex flex-wrap gap-2">
           {(["user", "seller", "manager"] as const).map((r) => <button key={r} type="button" aria-pressed={target.kind === "role" && target.role === r} className={chip(target.kind === "role" && target.role === r)} onClick={() => setTarget({ kind: "role", role: r })}>{ROLE_LABEL[r]}</button>)}
@@ -59,15 +61,15 @@ export function PermissionMatrix({ users, roles: initialRoles }: { users: Matrix
             );
           })}
         </div>
-      </section>
+      </section>}
 
       <p className="text-sm text-muted">
         {person ? <>Editando <b className="text-ink">{person.name}</b>. “Padrão” segue o cargo; “Liberar” e “Bloquear” valem só para esta pessoa. O Adm sempre vê tudo.</> : <>Editando o padrão do cargo <b className="text-ink">{ROLE_LABEL[(target as { role: RoleKey }).role]}</b>. Vale para todos com esse cargo, exceto quem tem ajuste próprio.</>}
       </p>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-4 2xl:grid-cols-2">
         {SECTIONS.map((sec) => (
-          <section key={sec.group} className={`${panelCls} overflow-hidden ${sec.group === "Painel" ? "xl:row-span-2" : ""}`}>
+          <section key={sec.group} className={`${panelCls} overflow-hidden `}>
             <header className="flex items-center gap-3 border-b border-line bg-sunk/60 px-4 py-3">
               <sec.icon size={18} className="text-accent" aria-hidden />
               <div><h2 className="text-sm font-semibold">{sec.title}</h2><p className="text-xs text-muted">{sec.hint}</p></div>
