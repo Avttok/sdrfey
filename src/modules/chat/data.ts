@@ -1,10 +1,10 @@
 import { and, desc, eq, gt, inArray, isNotNull, lt, sql } from "drizzle-orm";
-import { chatMessages, chatReactions, chatReads, db, users } from "@/db";
+import { chatMentions, chatMessages, chatReactions, chatReads, chatStyles, db, users } from "@/db";
 import { publicRoles, type Role } from "@/config/roles";
 import { bubbleHex } from "@/config/theme";
 import type { CurrentUser } from "@/modules/auth/guard";
 import { getSettings } from "@/modules/settings/get";
-import { channelsFor } from "./channels";
+import { channelsFor, dmOther } from "./channels";
 
 export type Reaction = { emoji: string; count: number; mine: boolean; names: string[] };
 export type ChatMsg = {
@@ -13,6 +13,8 @@ export type ChatMsg = {
   canDelete: boolean;
   /** até quando dá para apagar (ms); null = sem limite (Adm) */
   delUntil: number | null;
+  /** itens da loja vestidos por quem enviou */
+  style: Record<string, string>;
 };
 
 /** O chat está disponível para esta conta? (ligado pelo Adm e permissão de uso) */
@@ -28,13 +30,14 @@ export const isMod = (me: CurrentUser) => me.roles.includes("admin") || me.roles
 export async function listMessages(me: CurrentUser, channel: string, o: { after?: number; before?: number; limit?: number } = {}): Promise<ChatMsg[]> {
   const limit = Math.min(o.limit ?? 40, 100);
   const where = and(eq(chatMessages.channel, channel), sql`${chatMessages.deletedAt} is null`, o.after ? gt(chatMessages.id, o.after) : undefined, o.before ? lt(chatMessages.id, o.before) : undefined);
-  const rows = await db.select({ m: chatMessages, name: users.name, accent: users.accent, roles: users.roles }).from(chatMessages)
-    .leftJoin(users, eq(users.id, chatMessages.userId)).where(where)
+  const rows = await db.select({ m: chatMessages, name: users.name, accent: users.accent, roles: users.roles, eq: chatStyles.equipped }).from(chatMessages)
+    .leftJoin(users, eq(users.id, chatMessages.userId)).leftJoin(chatStyles, eq(chatStyles.userId, chatMessages.userId)).where(where)
     .orderBy(o.after ? chatMessages.id : desc(chatMessages.id)).limit(limit);
   const list = o.after ? rows : rows.reverse();
   const mod = isMod(me);
   const rx = await reactionsFor(me, list.map(({ m }) => m.id));
-  return list.map(({ m, name, accent, roles }) => ({
+  return list.map(({ m, name, accent, roles, eq: styleEq }) => ({
+    style: styleEq ?? {},
     id: m.id, channel: m.channel, userId: m.userId, name: name ?? "Conta removida", roles: publicRoles((roles ?? []) as Role[], me.roles.includes("admin")), reactions: rx[m.id] ?? [], hex: m.userId ? bubbleHex(accent, m.userId, roles ?? undefined) : "#888780",
     body: m.body, at: m.createdAt.toISOString(),
     share: m.shareKind && m.shareId ? { kind: m.shareKind, id: m.shareId, label: m.shareLabel ?? "" } : null,
@@ -79,11 +82,37 @@ export async function markRead(me: CurrentUser, channel: string, upto: number) {
 
 /** Não lidas por canal (mensagens de outras pessoas depois da última leitura). */
 export async function unreadByChannel(me: CurrentUser): Promise<Record<string, number>> {
-  const keys = channelsFor(me.roles).map((c) => c.key);
+  const keys = [...channelsFor(me.roles).map((c) => c.key), ...(await dmKeys(me.id))];
   const rows = await db.execute<{ channel: string; n: number }>(sql`
     select m.channel, count(*)::int as n from chat_messages m
     left join chat_reads r on r.user_id = ${me.id} and r.channel = m.channel
     where m.channel in (${sql.join(keys.map((k) => sql`${k}`), sql`, `)}) and m.deleted_at is null and m.user_id is distinct from ${me.id} and m.id > coalesce(r.last_id, 0)
     group by m.channel`);
   return Object.fromEntries(rows.map((r) => [r.channel, r.n]));
+}
+
+/** Canais de conversa privada em que a pessoa já trocou mensagens. */
+async function dmKeys(meId: number): Promise<string[]> {
+  const rows = await db.execute<{ channel: string }>(sql`select distinct channel from chat_messages where channel like 'dm:%' and (channel like ${`dm:${meId}-%`} or channel like ${`dm:%-${meId}`})`);
+  return rows.map((r) => r.channel).filter((k) => dmOther(k, meId) !== null);
+}
+
+export type DmItem = { key: string; withId: number; name: string; username: string; hex: string };
+/** Conversas privadas da pessoa, com o nome de quem está do outro lado. */
+export async function dmList(me: CurrentUser): Promise<DmItem[]> {
+  const keys = await dmKeys(me.id);
+  const ids = keys.map((k) => dmOther(k, me.id)!);
+  if (!ids.length) return [];
+  const rows = await db.select({ id: users.id, name: users.name, username: users.username, accent: users.accent, roles: users.roles }).from(users).where(inArray(users.id, ids));
+  return keys.flatMap((key) => { const u = rows.find((r) => r.id === dmOther(key, me.id)); return u ? [{ key, withId: u.id, name: u.name, username: u.username, hex: bubbleHex(u.accent, u.id, u.roles as Role[]) }] : []; });
+}
+
+export type MentionToast = { id: number; by: string; channel: string; preview: string };
+/** Marcações ainda não avisadas: entrega uma vez só (marca como avisada na mesma consulta). */
+export async function takeMentions(me: CurrentUser): Promise<MentionToast[]> {
+  const rows = await db.execute<{ id: number; by: string | null; channel: string; body: string; share_label: string | null }>(sql`
+    with t as (update chat_mentions set notified_at = now() where user_id = ${me.id} and notified_at is null returning message_id)
+    select m.id, u.name as by, m.channel, m.body, m.share_label from t join chat_messages m on m.id = t.message_id left join users u on u.id = m.user_id
+    where m.deleted_at is null order by m.id limit 10`);
+  return rows.map((r) => ({ id: r.id, by: r.by ?? "Alguém", channel: r.channel, preview: (r.body || r.share_label || "").slice(0, 90) }));
 }

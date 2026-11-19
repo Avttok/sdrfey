@@ -17,7 +17,7 @@ export function ShuffleHero({ action, children }: { action: () => void | Promise
             ))}
             <span className="sh-card relative grid size-[4.5rem] place-items-center rounded-3xl bg-grad text-on-accent shadow-2xl shadow-accent/50" style={{ "--d": "-.7s" } as React.CSSProperties}><Shuffle size={34} aria-hidden /></span>
           </div>
-          <h1 className="display text-4xl sm:text-5xl">Bora shufflar?</h1>
+          <h1 className="display text-4xl sm:text-5xl">Bora?</h1>
         </div>
         <div className="w-full">{children}</div>
         <form action={action} className="sh-rise" style={{ "--d": ".5s" } as React.CSSProperties}>

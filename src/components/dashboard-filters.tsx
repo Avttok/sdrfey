@@ -1,9 +1,10 @@
 "use client";
 
-import { CalendarDays, Check, FilterX } from "lucide-react";
+import { CalendarDays, Check } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import { DateInput } from "@/components/date-input";
+import { FilterBar } from "@/components/filter-bar";
 import { useBusyWhile } from "@/components/toast";
 
 export type Bubble = { id: number; name: string; hex: string };
@@ -20,8 +21,9 @@ export function DashboardFilters({ preset, from, to, people }: { preset: string;
   const push = (mut: (p: URLSearchParams) => void) => { const p = new URLSearchParams(sp.toString()); mut(p); start(() => router.replace(`${path}?${p}`, { scroll: false })); };
   const usersParam = sp.getAll("u").map(Number);
   const toggleUser = (id: number) => push((p) => { const cur = p.getAll("u").map(Number); p.delete("u"); (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]).forEach((x) => p.append("u", String(x))); });
-  const dirty = !!(sp.get("p") || sp.get("from") || sp.get("to") || usersParam.length);
+  const count = (sp.get("p") || sp.get("from") || sp.get("to") ? 1 : 0) + (usersParam.length ? 1 : 0);
   return (
+    <FilterBar id="painel" active={count} onClear={() => start(() => router.replace(path, { scroll: false }))} defaultOpen>
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
         <div>
@@ -35,7 +37,6 @@ export function DashboardFilters({ preset, from, to, people }: { preset: string;
         </div>
         <label className="block text-sm"><span className="mb-1 block text-muted">De</span><div className="w-44"><DateInput label="De" value={from} onChange={(v) => push((p) => { p.delete("p"); v ? p.set("from", v) : p.delete("from"); if (!p.get("to") && v) p.set("to", v); })} /></div></label>
         <label className="block text-sm"><span className="mb-1 block text-muted">Até</span><div className="w-44"><DateInput label="Até" value={to} onChange={(v) => push((p) => { p.delete("p"); v ? p.set("to", v) : p.delete("to"); if (!p.get("from") && v) p.set("from", v); })} /></div></label>
-        {dirty && <button type="button" className="inline-flex h-11 items-center gap-2 rounded-lg border border-danger/50 px-4 text-[15px] font-medium text-danger hover:bg-sunk" onClick={() => start(() => router.replace(path, { scroll: false }))}><FilterX size={16} aria-hidden /> Limpar</button>}
       </div>
       {people.length > 1 && (
         <div>
@@ -55,5 +56,6 @@ export function DashboardFilters({ preset, from, to, people }: { preset: string;
         </div>
       )}
     </div>
+    </FilterBar>
   );
 }

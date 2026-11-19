@@ -5,11 +5,11 @@ import { useState } from "react";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary } from "@/components/ui";
 import { NAV } from "@/config/nav";
-import { setUserNavAction } from "@/modules/admin/user-prefs";
+import { setGlobalNavAction, setUserNavAction } from "@/modules/admin/user-prefs";
 import { setNavPrefsAction } from "@/modules/users/actions";
 
 /** Posição da barra de navegação (topo ou lateral) e ordem dos itens. */
-export function NavPrefsForm({ layout: initialLayout, hrefs, userId }: { layout: "top" | "side"; hrefs: string[]; /** Só o Adm: edita a barra de outra pessoa. */ userId?: number }) {
+export function NavPrefsForm({ layout: initialLayout, hrefs, userId, global = false }: { layout: "top" | "side"; hrefs: string[]; /** Só o Adm: edita a barra de outra pessoa. */ userId?: number; /** Só o Adm: a ordem vale para todos. */ global?: boolean }) {
   const [layout, setLayout] = useState(initialLayout);
   const [order, setOrder] = useState(hrefs);
   const { run, pending } = useRun();
@@ -23,10 +23,10 @@ export function NavPrefsForm({ layout: initialLayout, hrefs, userId }: { layout:
   );
   return (
     <div className="space-y-5">
-      <div>
+      {!global && <div>
         <p className="mb-2 text-sm font-medium">Posição da barra</p>
         <div className="grid gap-2 sm:grid-cols-2">{opt("top", PanelTop, "Horizontal no topo", "O estilo atual")}{opt("side", PanelLeft, "Vertical à esquerda", "Em telas pequenas volta para o topo")}</div>
-      </div>
+      </div>}
       <div>
         <p className="mb-2 text-sm font-medium">Ordem dos menus</p>
         <ol className="space-y-1.5">
@@ -45,7 +45,7 @@ export function NavPrefsForm({ layout: initialLayout, hrefs, userId }: { layout:
         </ol>
       </div>
       <div className="flex flex-wrap gap-2">
-        <button type="button" className={btnPrimary} disabled={!dirty || pending} onClick={() => run(() => (userId ? setUserNavAction(userId, { layout, order }) : setNavPrefsAction({ layout, order })))}>Salvar barra</button>
+        <button type="button" className={btnPrimary} disabled={!dirty || pending} onClick={() => run(() => (global ? setGlobalNavAction({ order }) : userId ? setUserNavAction(userId, { layout, order }) : setNavPrefsAction({ layout, order })))}>{global ? "Aplicar para todos" : "Salvar barra"}</button>
         <button type="button" className={btnGhost} disabled={pending} onClick={() => { setLayout("top"); setOrder(NAV.filter((n) => hrefs.includes(n.href)).map((n) => n.href)); }}>Restaurar padrão</button>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { FilterBar } from "@/components/filter-bar";
 import { plural } from "@/lib/format";
 import { Pagination } from "@/components/pagination";
 import { CircleDollarSign, FileText, History, PhoneCall, Search, Trophy } from "lucide-react";
@@ -35,7 +36,8 @@ export async function SellerHistory({ userId, sp }: { userId: number; sp: Record
         {stat(PhoneCall, "Contatos feitos", String(rows.reduce((a, r) => a + r.contacts, 0)))}
         {stat(FileText, "Cotações enviadas", String(rows.reduce((a, r) => a + r.quotes, 0)))}
       </div>
-      <form className={`${panelCls} flex flex-wrap items-end gap-3 p-4`} action="/historico">
+      <FilterBar id="historico-vendas" active={[f.q, f.stage, f.from, f.to].filter(Boolean).length}>
+      <form className="flex flex-wrap items-end gap-3" action="/historico">
         {sp.aba === "vendas" && <input type="hidden" name="aba" value="vendas" />}
         <label className="block min-w-48 flex-1 text-sm"><span className="mb-1 block text-muted">Buscar cliente</span><input name="q" defaultValue={f.q} className={inputCls} placeholder="Nome da empresa" /></label>
         <label className="block w-44 text-sm"><span className="mb-1 block text-muted">Etapa</span>
@@ -45,6 +47,7 @@ export async function SellerHistory({ userId, sp }: { userId: number; sp: Record
         <button className={btnPrimary}><Search size={16} aria-hidden /> Filtrar</button>
         <Link prefetch={false} href={sp.aba === "vendas" ? "/historico?aba=vendas" : "/historico"} className={`${btnGhost} !py-3`}>Limpar</Link>
       </form>
+      </FilterBar>
       <ul className="space-y-2.5">
         {rows.slice((pg - 1) * PAGE, pg * PAGE).map((r) => (
           <li key={r.id}>

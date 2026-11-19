@@ -634,3 +634,48 @@ export const achievementOverrides = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.key] })],
 );
+
+/* ───────────── Moedas e loja ───────────── */
+
+/** Extrato de moedas. `ref` identifica a origem (ex.: "att:123"), o que impede pagar duas vezes pelo mesmo feito. */
+export const coinLedger = pgTable(
+  "coin_ledger",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    amount: integer("amount").notNull(),
+    reason: text("reason").notNull(),
+    ref: text("ref"),
+    createdAt: now(),
+  },
+  (t) => [uniqueIndex("coin_ledger_ref_idx").on(t.userId, t.ref), index("coin_ledger_user_idx").on(t.userId, t.id)],
+);
+
+/** Itens da loja que a pessoa já comprou. */
+export const shopPurchases = pgTable(
+  "shop_purchases",
+  {
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    itemKey: text("item_key").notNull(),
+    price: integer("price").notNull(),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.itemKey] })],
+);
+
+/** O que a pessoa está usando no chat: { font, color, effect, bubble } com chaves de itens comprados. */
+export const chatStyles = pgTable("chat_styles", {
+  userId: integer("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  equipped: jsonb("equipped").$type<Record<string, string>>().notNull().default(sql`'{}'::jsonb`),
+});
+
+/** Marcações com @usuario no chat. `notifiedAt` nulo = a pessoa ainda não recebeu o aviso na tela. */
+export const chatMentions = pgTable(
+  "chat_mentions",
+  {
+    messageId: integer("message_id").notNull().references(() => chatMessages.id, { onDelete: "cascade" }),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
+  },
+  (t) => [primaryKey({ columns: [t.messageId, t.userId] }), index("chat_mentions_pending_idx").on(t.userId, t.notifiedAt)],
+);

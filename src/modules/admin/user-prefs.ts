@@ -3,10 +3,12 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { NAV } from "@/config/nav";
-import { db, users } from "@/db";
+import { cleanCustom, type NavCustom } from "@/config/nav-icons";
+import { db, settings, users } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { requireAdmin } from "@/modules/auth/guard";
 import type { ActionResult } from "@/modules/leads/actions";
+import { invalidateSettings } from "@/modules/settings/get";
 import { RESET_KEYS, type ResetKey } from "./user-prefs-spec";
 
 const fail = (message: string): ActionResult => ({ ok: false, message });
@@ -56,4 +58,35 @@ export async function resetUserSettingsAction(userId: number, keys: ResetKey[]):
   for (const p of ["/", "/metas", "/painel", "/atender"]) revalidatePath(p, p === "/" ? "layout" : undefined);
   revalidatePath("/admin/usuarios");
   return { ok: true, message: `${u.name}: ${list.length === 1 ? "configuração restaurada" : `${list.length} configurações restauradas`} ao padrão.` };
+}
+
+/** O Adm define a ordem do menu para TODOS. Zera a ordem pessoal de cada um, para valer de verdade para a equipe. */
+export async function setGlobalNavAction(input: { order: string[] }): Promise<ActionResult> {
+  const me = await requireAdmin();
+  const known = new Set(NAV.map((i) => i.href));
+  const order = [...new Set(input.order.filter((h) => known.has(h)))];
+  await db.transaction(async (tx) => {
+    await tx.insert(settings).values({ key: "nav_order", value: order, updatedBy: me.id }).onConflictDoUpdate({ target: settings.key, set: { value: order, updatedAt: new Date(), updatedBy: me.id } });
+    await tx.update(users).set({ navOrder: [] });
+    await logAudit(tx, { userId: me.id, entity: "setting", action: "alterou", field: "ordem do menu (todos)", newValue: order.join(",") });
+  });
+  invalidateSettings();
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Ordem do menu aplicada para todos." };
+}
+
+/** O Adm troca nome e ícone de abas e pastas do menu: para todos (scope "global") ou só para uma pessoa. */
+export async function saveNavCustomAction(scope: "global" | number, input: NavCustom): Promise<ActionResult> {
+  const me = await requireAdmin();
+  const key = scope === "global" ? "nav_custom" : `nav_custom_u${Math.trunc(scope)}`;
+  const value = cleanCustom(input);
+  const empty = !Object.keys(value.items).length && !Object.keys(value.groups).length;
+  await db.transaction(async (tx) => {
+    if (empty) await tx.delete(settings).where(eq(settings.key, key));
+    else await tx.insert(settings).values({ key, value, updatedBy: me.id }).onConflictDoUpdate({ target: settings.key, set: { value, updatedAt: new Date(), updatedBy: me.id } });
+    await logAudit(tx, { userId: me.id, entity: "setting", action: "alterou", field: scope === "global" ? "nomes e ícones do menu (todos)" : "nomes e ícones do menu (individual)", newValue: JSON.stringify(value), meta: scope === "global" ? undefined : { usuarioId: scope } });
+  });
+  invalidateSettings();
+  revalidatePath("/", "layout");
+  return { ok: true, message: scope === "global" ? "Nomes e ícones salvos para todos." : "Nomes e ícones salvos para essa pessoa." };
 }

@@ -15,3 +15,20 @@ export function channelsFor(roles: readonly Role[]): { key: ChannelKey; label: s
   return CHANNELS.filter((c) => c.key === "geral" || admin || roles.includes(c.key as Role));
 }
 export const canUseChannel = (roles: readonly Role[], key: string) => channelsFor(roles).some((c) => c.key === key);
+
+/* ───── Conversas privadas (DM): canal "dm:<menor id>-<maior id>" ───── */
+export const dmKey = (a: number, b: number) => `dm:${Math.min(a, b)}-${Math.max(a, b)}`;
+export function parseDm(key: string): [number, number] | null {
+  const m = /^dm:(\d+)-(\d+)$/.exec(key);
+  return m ? [Number(m[1]), Number(m[2])] : null;
+}
+/** Com quem `meId` conversa nesse canal privado (null se não for dele). */
+export function dmOther(key: string, meId: number): number | null {
+  const p = parseDm(key);
+  return p && (p[0] === meId || p[1] === meId) ? (p[0] === meId ? p[1] : p[0]) : null;
+}
+/** Acesso a um canal: grupos pelo cargo; conversa privada só para os dois participantes (o Adm lê pelo painel de admin). */
+export function canAccessChannel(me: { id: number; roles: readonly Role[] }, key: string): boolean {
+  if (key.startsWith("dm:")) return dmOther(key, me.id) !== null;
+  return canUseChannel(me.roles, key);
+}

@@ -13,11 +13,15 @@ const rn = (kind: "count" | "money", v: number) => val(kind, kind === "money" ? 
 
 /** Ritmo do mês: média por dia útil, projeção para o fim do mês, o que precisa por dia e quando bate a meta. */
 function PaceLine({ kind, p }: { kind: "count" | "money"; p: SellerPace }) {
-  if (p.hit) return <p className="mt-2 text-xs font-semibold text-ok">Meta batida no mês.</p>;
+  if (p.hit) return <p className="mt-3 text-xs font-semibold text-ok">Meta batida no mês.</p>;
+  const cell = (t: string, v: string, tone = "") => <div className="min-w-0 rounded-lg bg-panel/70 px-2.5 py-2"><p className="text-[11px] text-muted">{t}</p><p className={`figure break-words text-sm font-bold ${tone}`}>{v}</p></div>;
   return (
-    <div className="mt-2.5 space-y-1 text-xs text-muted">
-      <p>Ritmo <b className="figure text-ink">{rn(kind, p.perDay)}</b>/dia útil · projeção do mês <b className={`figure ${p.onTrack ? "text-ok" : "text-warn"}`}>{rn(kind, p.projected)}</b></p>
-      <p>{p.left > 0 ? <>Precisa de <b className="figure text-ink">{rn(kind, p.needPerDay)}</b>/dia nos {p.left} dias úteis restantes</> : "Último dia útil do mês"}</p>
+    <div className="mt-3 space-y-2 text-xs text-muted">
+      <div className="grid grid-cols-3 gap-2">
+        {cell("Ritmo", `${rn(kind, p.perDay)}/dia útil`)}
+        {cell("Projeção do mês", rn(kind, p.projected), p.onTrack ? "text-ok" : "text-warn")}
+        {cell(p.left > 0 ? `Precisa (${p.left} dias úteis)` : "Último dia útil", p.left > 0 ? `${rn(kind, p.needPerDay)}/dia` : "—")}
+      </div>
       <p>{p.etaDate ? <>No ritmo atual bate a meta em <b className="figure text-ink">{fmtDay(p.etaDate)}</b></> : <b className="text-warn">No ritmo atual não bate a meta no mês</b>}</p>
     </div>
   );

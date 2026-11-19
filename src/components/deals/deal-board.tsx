@@ -1,5 +1,6 @@
 "use client";
 
+import { FilterBar } from "@/components/filter-bar";
 import { FileText, MapPin, Phone, Search, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -67,10 +68,9 @@ export function DealBoard({ deals, meId, canClaim, team }: { deals: DealRow[]; m
   const chips: [Filter, string][] = [["todas", team ? "Todas abertas" : "Abertas"], ["minhas", "Minhas"], ["grupo", "Sem vendedor"], ["avisos", "Com aviso"], ["fechadas", "Encerradas"]];
   return (
     <div className="space-y-4">
-      <div className="relative">
-        <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" aria-hidden />
-        <input type="search" aria-label="Buscar negociação" placeholder="Buscar por empresa, contato, cidade, vendedor, CNPJ ou nº da cotação" className={`${inputCls} !pl-10`} value={q} onChange={(e) => setQ(e.target.value)} />
-      </div>
+      <FilterBar id="negociacoes" defaultOpen active={(needle ? 1 : 0) + (filter !== "todas" ? 1 : 0)} onClear={() => { setQ(""); setFilter("todas"); }}
+        search={<><Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" aria-hidden />
+        <input type="search" aria-label="Buscar negociação" placeholder="Buscar por empresa, contato, cidade, vendedor, CNPJ ou nº da cotação" className={`${inputCls} !pl-10`} value={q} onChange={(e) => setQ(e.target.value)} /></>}>
       <div role="tablist" aria-label="Filtrar negociações" className="flex flex-wrap gap-2">
         {chips.map(([k, label]) => (
           <button key={k} type="button" role="tab" aria-selected={filter === k} onClick={() => setFilter(k)} className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${filter === k ? "border-transparent bg-grad text-on-accent" : "border-line hover:bg-sunk"}`}>
@@ -78,6 +78,7 @@ export function DealBoard({ deals, meId, canClaim, team }: { deals: DealRow[]; m
           </button>
         ))}
       </div>
+      </FilterBar>
       {filter === "fechadas" || filter === "avisos" || filter === "grupo" ? (
         shown.length ? <ul className="grid items-stretch gap-3 [grid-template-columns:repeat(auto-fill,minmax(17rem,1fr))]">{shown.map((d) => <Card key={d.id} d={d} meId={meId} canClaim={canClaim} />)}</ul> : <Empty text={needle ? "Nenhuma negociação com essa busca." : filter === "grupo" ? "Nenhuma negociação esperando vendedor." : filter === "avisos" ? "Tudo em dia: nenhum aviso." : "Nenhuma negociação encerrada ainda."} />
       ) : shown.length === 0 && billedShown.length === 0 ? <Empty text={needle ? "Nenhuma negociação com essa busca." : "Nenhuma negociação aberta."} /> : (

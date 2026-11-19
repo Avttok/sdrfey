@@ -1,11 +1,12 @@
 "use client";
 
-import { Building2, ChevronDown, FilterX, ListFilter, Search, SlidersHorizontal, Tag, X } from "lucide-react";
+import { Building2, ListFilter, Search, Tag, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { DateInput } from "@/components/date-input";
 import { TagChip } from "@/components/tag-chip";
 import { useBusyWhile } from "@/components/toast";
+import { FilterBar } from "@/components/filter-bar";
 import { inputCls } from "@/components/ui";
 import type { TagCatalog } from "@/modules/leads/view";
 
@@ -21,11 +22,7 @@ export function LeadFilters({ catalog, people, ufs, sellerView }: { sellerView?:
   const router = { replace: (url: string, o?: { scroll?: boolean }) => startNav(() => router0.replace(url, o)) };
   const path = usePathname();
   const sp = useSearchParams();
-  const [open, setOpen] = useState(false);
   const [q, setQ] = useState(sp.get("q") ?? "");
-
-  useEffect(() => { try { setOpen(localStorage.getItem("leadFiltersOpen") === "1"); } catch {} }, []);
-  const toggleOpen = () => { setOpen(!open); try { localStorage.setItem("leadFiltersOpen", open ? "0" : "1"); } catch {} };
 
   const apply = (mut: (p: URLSearchParams) => void) => {
     const p = new URLSearchParams(sp.toString());
@@ -56,31 +53,18 @@ export function LeadFilters({ catalog, people, ufs, sellerView }: { sellerView?:
     <section className="space-y-3"><h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted"><I size={14} aria-hidden /> {title}</h3>{children}</section>
   );
 
+  const chips = activeCount > 0 ? (
+    <>
+      <span className="mr-1 flex items-center gap-1 text-xs font-medium text-muted"><ListFilter size={13} aria-hidden /> Ativos:</span>
+      {sp.get("q") && <span className="inline-flex items-center gap-1 rounded-full bg-panel px-2.5 py-1 text-xs ring-1 ring-line">“{sp.get("q")}”<button type="button" aria-label="Remover busca" onClick={() => { setQ(""); set("q", ""); }}><X size={13} /></button></span>}
+      {selected.map((ref) => { const t = labelOf(ref); return t ? <span key={ref} className="inline-flex items-center gap-1"><TagChip label={t.label} color={t.color} on /><button type="button" aria-label={`Remover filtro ${t.label}`} onClick={() => toggleTag(ref)}><X size={13} /></button></span> : null; })}
+      {simple.map((k) => <span key={k} className="inline-flex items-center gap-1 rounded-full bg-panel px-2.5 py-1 text-xs ring-1 ring-line"><b className="font-medium">{LABEL[k]}:</b> {valueOf(k)}<button type="button" aria-label={`Remover filtro ${LABEL[k]}`} onClick={() => set(k, "")}><X size={13} /></button></span>)}
+    </>
+  ) : null;
   return (
-    <div className="overflow-hidden rounded-2xl border border-line bg-panel">
-      <div className="flex flex-wrap items-center gap-2 p-3">
-        <div className="relative min-w-60 flex-1">
-          <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" aria-hidden />
-          <input className={`${inputCls} !rounded-xl !py-3 pl-11`} placeholder="Buscar por empresa, CNPJ, telefone, e-mail ou pessoa" value={q} onChange={(e) => setQ(e.target.value)} />
-        </div>
-        <button type="button" onClick={toggleOpen} aria-expanded={open} className={`inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition ${open ? "border-accent bg-accent/10 text-accent" : "border-line hover:bg-sunk"}`}>
-          <SlidersHorizontal size={16} aria-hidden /> Filtros{activeCount ? <span className="figure rounded-full bg-accent px-1.5 text-xs text-on-accent">{activeCount}</span> : null}
-          <ChevronDown size={15} className={`transition ${open ? "rotate-180" : ""}`} aria-hidden />
-        </button>
-        {activeCount > 0 && <button type="button" onClick={clearAll} className="inline-flex items-center gap-2 rounded-xl border border-danger/50 px-4 py-3 text-sm font-medium text-danger hover:bg-sunk"><FilterX size={16} aria-hidden /> Limpar</button>}
-      </div>
-
-      {activeCount > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 border-t border-line bg-sunk/40 px-3 py-2.5">
-          <span className="mr-1 flex items-center gap-1 text-xs font-medium text-muted"><ListFilter size={13} aria-hidden /> Ativos:</span>
-          {sp.get("q") && <span className="inline-flex items-center gap-1 rounded-full bg-panel px-2.5 py-1 text-xs ring-1 ring-line">“{sp.get("q")}”<button type="button" aria-label="Remover busca" onClick={() => { setQ(""); set("q", ""); }}><X size={13} /></button></span>}
-          {selected.map((ref) => { const t = labelOf(ref); return t ? <span key={ref} className="inline-flex items-center gap-1"><TagChip label={t.label} color={t.color} on /><button type="button" aria-label={`Remover filtro ${t.label}`} onClick={() => toggleTag(ref)}><X size={13} /></button></span> : null; })}
-          {simple.map((k) => <span key={k} className="inline-flex items-center gap-1 rounded-full bg-panel px-2.5 py-1 text-xs ring-1 ring-line"><b className="font-medium">{LABEL[k]}:</b> {valueOf(k)}<button type="button" aria-label={`Remover filtro ${LABEL[k]}`} onClick={() => set(k, "")}><X size={13} /></button></span>)}
-        </div>
-      )}
-
-      {open && (
-        <div className="space-y-6 border-t border-line p-4 sm:p-5">
+    <FilterBar id="leads" active={activeCount} onClear={clearAll} chips={chips}
+      search={<><Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" aria-hidden /><input className={`${inputCls} !rounded-xl !py-3 pl-11`} placeholder="Buscar por empresa, CNPJ, telefone, e-mail ou pessoa" value={q} onChange={(e) => setQ(e.target.value)} /></>}>
+      <div className="space-y-6">
           <Section icon={Tag} title="Tags">
             <div className="grid gap-x-8 gap-y-4 md:grid-cols-2">
               {filterGroups.map((g) => (
@@ -104,8 +88,7 @@ export function LeadFilters({ catalog, people, ufs, sellerView }: { sellerView?:
               {field("Código da visita", <input className={inputCls} placeholder="V-12345" defaultValue={sp.get("visit") ?? ""} onBlur={(e) => set("visit", e.target.value.trim())} />)}
             </div>
           </Section>
-        </div>
-      )}
-    </div>
+      </div>
+    </FilterBar>
   );
 }

@@ -7,6 +7,7 @@ import { hasRole, type Role } from "@/config/roles";
 import type { PermissionMap, RoleOverrides } from "@/config/permissions";
 import { resolvePermissions } from "@/modules/permissions/resolve";
 import { settingValue } from "@/modules/settings/get";
+import { cleanCustom, mergeCustom, type NavCustom } from "@/config/nav-icons";
 import { SESSION_COOKIE, readToken, sessionMaxAge, signToken } from "./token";
 
 export type CurrentUser = {
@@ -17,6 +18,7 @@ export type CurrentUser = {
   accent: string | null;
   navLayout: "top" | "side";
   navOrder: string[];
+  navCustom: NavCustom;
   navCollapsed: boolean;
   font: string;
   mapMode: "map" | "link";
@@ -72,7 +74,8 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     roles: u.roles,
     accent: u.accent,
     navLayout: u.navLayout === "side" ? "side" : "top",
-    navOrder: u.navOrder ?? [],
+    navOrder: u.navOrder?.length ? u.navOrder : (((await settingValue("nav_order")) as string[] | undefined) ?? []),
+    navCustom: mergeCustom(cleanCustom(await settingValue("nav_custom")), cleanCustom(await settingValue(`nav_custom_u${u.id}`))),
     navCollapsed: !!u.navCollapsed,
     font: u.font ?? "archivo",
     mapMode: u.mapMode === "link" ? "link" : "map",

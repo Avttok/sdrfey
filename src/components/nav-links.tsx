@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Spinner } from "@/components/spinner";
 import { GROUP_ICONS, NAV } from "@/config/nav";
+import { EMPTY_CUSTOM, NAV_ICONS, type NavCustom } from "@/config/nav-icons";
 
 function Pending({ Icon }: { Icon: React.ComponentType<{ size?: number; "aria-hidden"?: boolean }> }) {
   const { pending } = useLinkStatus();
@@ -30,7 +31,7 @@ function build(all: Item[], grouped: boolean): Entry[] {
 }
 
 /** Itens do menu, na ordem recebida. `vertical` = barra lateral. */
-export function NavLinks({ hrefs, vertical = false, collapsed = false, badges = {}, grouped = true }: { hrefs: string[]; vertical?: boolean; collapsed?: boolean; badges?: Record<string, number>; grouped?: boolean }) {
+export function NavLinks({ hrefs, vertical = false, collapsed = false, badges = {}, grouped = true, custom = EMPTY_CUSTOM }: { custom?: NavCustom; hrefs: string[]; vertical?: boolean; collapsed?: boolean; badges?: Record<string, number>; grouped?: boolean }) {
   const pathname = usePathname();
   const all = hrefs.map((h) => NAV.find((n) => n.href === h)).filter((n): n is Item => !!n);
   const entries = build(all, grouped);
@@ -45,8 +46,11 @@ export function NavLinks({ hrefs, vertical = false, collapsed = false, badges = 
     document.addEventListener("mousedown", close); document.addEventListener("keydown", key); window.addEventListener("resize", close);
     return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", key); window.removeEventListener("resize", close); };
   }, [open]);
+  const gLabel = (g: string) => custom.groups[g]?.label ?? g;
   const link = (n: Item, inMenu = false) => {
-    const { href, label, icon: Icon } = n;
+    const { href } = n;
+    const label = custom.items[href]?.label ?? n.label;
+    const Icon = NAV_ICONS[custom.items[href]?.icon ?? ""] ?? n.icon;
     const active = isActive(href);
     return (
       <Link key={href} href={href} aria-current={active ? "page" : undefined} aria-label={collapsed ? label : undefined} title={collapsed ? label : undefined}
@@ -69,7 +73,7 @@ export function NavLinks({ hrefs, vertical = false, collapsed = false, badges = 
         <button type="button" aria-haspopup="menu" aria-expanded={isOpen}
           onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setPos({ left: Math.max(8, Math.min(r.left, window.innerWidth - 232)), top: r.bottom + 6 }); setOpen(isOpen ? null : label); }}
           className={`nav-item relative flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition-all ${active ? "bg-grad-soft text-accent shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_30%,transparent)]" : "text-muted hover:bg-sunk hover:text-ink"}`}>
-          {(() => { const I = GROUP_ICONS[label]; return I ? <span className="nav-ico grid place-items-center" data-ico={`g-${label.toLowerCase()}`}><I size={17} aria-hidden /></span> : null; })()}{label}<ChevronDown size={14} aria-hidden className={`transition ${isOpen ? "rotate-180" : ""}`} />
+          {(() => { const I = NAV_ICONS[custom.groups[label]?.icon ?? ""] ?? GROUP_ICONS[label]; return I ? <span className="nav-ico grid place-items-center" data-ico={`g-${label.toLowerCase()}`}><I size={17} aria-hidden /></span> : null; })()}{gLabel(label)}<ChevronDown size={14} aria-hidden className={`transition ${isOpen ? "rotate-180" : ""}`} />
           {hasBadge && <span aria-hidden className="absolute right-1 top-1 size-2 rounded-full border-2 border-panel bg-danger" />}
         </button>
         {isOpen && (
@@ -84,8 +88,8 @@ export function NavLinks({ hrefs, vertical = false, collapsed = false, badges = 
     <nav aria-label="Principal" className={vertical ? "flex flex-col gap-1" : "-mx-1 flex items-center gap-1 overflow-x-auto"}>
       {entries.map((e) => e.kind === "link" ? link(e.item) : vertical
         ? (
-          <div key={e.label} role="group" aria-label={e.label} className="mt-2 flex flex-col gap-1 border-t border-line pt-2">
-            {!collapsed && <p className="px-3 pb-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted">{e.label}</p>}
+          <div key={e.label} role="group" aria-label={gLabel(e.label)} className="mt-2 flex flex-col gap-1 border-t border-line pt-2">
+            {!collapsed && <p className="px-3 pb-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted">{gLabel(e.label)}</p>}
             {e.items.map((n) => link(n))}
           </div>
         )

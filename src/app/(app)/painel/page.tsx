@@ -7,6 +7,9 @@ import Link from "next/link";
 import { PageHead } from "@/components/page-head";
 import { AlertTriangle, LayoutDashboard, CalendarCheck, Clock, Database, Flame, MessagesSquare, Percent, Timer, Target, Trophy, Filter as FunnelIcon, PhoneCall, CircleCheck, Phone, Handshake } from "lucide-react";
 import { Suspense } from "react";
+import { DashHero } from "@/components/dash-hero";
+import { getHero } from "@/modules/dashboard/hero";
+import { DashTabs } from "@/components/dash-tabs";
 import { DashboardFilters } from "@/components/dashboard-filters";
 import { panelCls } from "@/components/ui";
 import { VisitCodeChip } from "@/components/visit-row";
@@ -69,13 +72,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const dflt = (await getSettings()).dash_default_days;
   const period = resolvePeriod({ p: one("p") ?? (one("from") || one("to") ? undefined : dflt === 30 ? "30" : dflt === 7 ? "7" : undefined), from: iso("from"), to: iso("to") });
   const team = !!me.permissions["panel.equipe"];
+  const hero = await getHero(me);
 
   if (isSellerOnly(me.roles)) {
     const stats = await getSalesStats(period, [me.id]);
     return (
       <div className="space-y-5">
         <PageHead icon={LayoutDashboard} title="Dashboard" subtitle={`Suas vendas · ${period.preset === "hoje" ? "Hoje" : period.preset === "custom" ? `${fmtDate(period.from)} a ${fmtDate(period.to)}` : `Últimos ${period.preset} dias`}`} />
-        <div className={`${panelCls} p-4`}><Suspense fallback={null}>
+        <DashHero name={me.name} h={hero} />
+        <div><Suspense fallback={null}>
           <DashboardFilters preset={period.preset} from={period.preset === "custom" ? period.from : ""} to={period.preset === "custom" ? period.to : ""} people={[]} selected={[me.id]} />
         </Suspense></div>
         <SalesDashboard s={stats} showRanking={false} />
@@ -120,10 +125,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   return (
     <div className="space-y-5">
       <PageHead icon={LayoutDashboard} title="Dashboard" subtitle={`${period.preset === "hoje" ? "Hoje" : period.preset === "custom" ? `${fmtDate(period.from)} a ${fmtDate(period.to)}` : `Últimos ${period.preset} dias`} · ${plural(scope.length, "pessoa", "pessoas")}`} />
-      <div className={`${panelCls} p-4`}><Suspense fallback={null}>
+      <DashHero name={me.name} h={hero} />
+      <div><Suspense fallback={null}>
         <DashboardFilters preset={period.preset} from={period.preset === "custom" ? period.from : ""} to={period.preset === "custom" ? period.to : ""} people={team ? people : []} selected={scope} />
       </Suspense></div>
 
+      <DashTabs
+        sdr={<>
       {kpis.some((x) => can(`panel.kpi.${x.k}`)) && (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           {kpis.filter((x) => can(`panel.kpi.${x.k}`)).map(({ I, t, v, s: sub, bar }) => (
@@ -201,6 +209,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </Block>
         )}
       </div>
+        </>}
+        sales={mySales || teamSales ? <>
       {mySales && (
         <section className="space-y-3">
           <h2 className="display text-2xl">Minhas vendas</h2>
@@ -213,6 +223,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <SalesDashboard s={teamSales} showRanking />
         </section>
       )}
+        </> : null}
+      />
     </div>
   );
 }

@@ -1,12 +1,14 @@
 "use server";
 
+import { bubbleHex, resolveAccent } from "@/config/theme";
+import { achievementsOf } from "@/modules/achievements/stats";
 import { and, eq, gt, sql } from "drizzle-orm";
 import { z } from "zod";
-import { chatMessages, chatReactions, db, users } from "@/db";
+import { chatMentions, chatMessages, chatStyles, chatReactions, db, users } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { publicRoles, type Role } from "@/config/roles";
 import { requireUser } from "@/modules/auth/guard";
-import { canUseChannel, REACTION_EMOJIS } from "./channels";
+import { canAccessChannel, channelsFor, dmOther, REACTION_EMOJIS } from "./channels";
 import { chatEnabled, DELETE_WINDOW_MS, isMod, listMessages, type ChatMsg } from "./data";
 import { searchShareable, shareInfo, shareLabel, type ShareInfo, type ShareItem, type ShareKind } from "./share";
 
@@ -25,7 +27,9 @@ export async function sendChatMessageAction(input: { channel: string; body: stri
   const p = z.object({ channel: z.string(), body: z.string().max(2000), share: z.object({ kind: kindSchema, id: z.number().int().positive() }).nullish() }).safeParse(input);
   if (!p.success) return bad("Mensagem inválida (máximo 2000 caracteres).");
   const body = p.data.body.trim();
-  if (!canUseChannel(me.roles, p.data.channel)) return bad("Você não tem acesso a este grupo.");
+  if (!canAccessChannel(me, p.data.channel)) return bad("Você não tem acesso a este grupo.");
+  const other = dmOther(p.data.channel, me.id);
+  if (other !== null) { const [o] = await db.select({ active: users.active }).from(users).where(eq(users.id, other)); if (!o?.active || other === me.id) return bad("Essa pessoa não está disponível para conversa."); }
   if (!body && !p.data.share) return bad("Escreva algo ou compartilhe um item.");
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(chatMessages).where(and(eq(chatMessages.userId, me.id), gt(chatMessages.createdAt, sql`now() - interval '1 minute'`)));
   if (n >= 30) return bad("Muitas mensagens seguidas. Espere um instante.");
@@ -35,6 +39,7 @@ export async function sendChatMessageAction(input: { channel: string; body: stri
     if (!label) return bad("Você não pode compartilhar esse item.");
   }
   const [row] = await db.insert(chatMessages).values({ channel: p.data.channel, userId: me.id, body, shareKind: p.data.share?.kind ?? null, shareId: p.data.share?.id ?? null, shareLabel: label }).returning({ id: chatMessages.id });
+  await saveMentions(me.id, p.data.channel, row.id, body);
   const [msg] = await listMessages(me, p.data.channel, { after: row.id - 1, limit: 1 });
   return { ok: true, message: msg };
 }
@@ -43,7 +48,7 @@ export async function deleteChatMessageAction(id: number): Promise<R<object>> {
   const me = await allowed();
   if (!me) return bad("O chat está desligado.");
   const [m] = await db.select().from(chatMessages).where(eq(chatMessages.id, id));
-  if (!m || !canUseChannel(me.roles, m.channel)) return bad("Mensagem não encontrada.");
+  if (!m || !canAccessChannel(me, m.channel)) return bad("Mensagem não encontrada.");
   if (m.userId !== me.id && !isMod(me)) return bad("Só quem escreveu, gestores e o Adm apagam mensagens.");
   if (!me.roles.includes("admin") && Date.now() - m.createdAt.getTime() > DELETE_WINDOW_MS) return bad("Só dá para apagar uma mensagem até 15 minutos depois de enviada.");
   await db.update(chatMessages).set({ deletedAt: new Date() }).where(eq(chatMessages.id, id));
@@ -62,7 +67,7 @@ export async function sharedInfoAction(messageId: number): Promise<R<{ info: Sha
   const me = await allowed();
   if (!me) return bad("O chat está desligado.");
   const [m] = await db.select().from(chatMessages).where(eq(chatMessages.id, messageId));
-  if (!m || m.deletedAt || !m.shareKind || !m.shareId || !canUseChannel(me.roles, m.channel)) return bad("Item não encontrado.");
+  if (!m || m.deletedAt || !m.shareKind || !m.shareId || !canAccessChannel(me, m.channel)) return bad("Item não encontrado.");
   return { ok: true, info: await shareInfo(me, m.shareKind, m.shareId) };
 }
 
@@ -71,13 +76,13 @@ export async function toggleReactionAction(messageId: number, emoji: string): Pr
   if (!me) return bad("O chat está desligado.");
   if (!(REACTION_EMOJIS as readonly string[]).includes(emoji)) return bad("Reação inválida.");
   const [m] = await db.select({ channel: chatMessages.channel, deletedAt: chatMessages.deletedAt }).from(chatMessages).where(eq(chatMessages.id, messageId));
-  if (!m || m.deletedAt || !canUseChannel(me.roles, m.channel)) return bad("Mensagem não encontrada.");
+  if (!m || m.deletedAt || !canAccessChannel(me, m.channel)) return bad("Mensagem não encontrada.");
   const gone = await db.delete(chatReactions).where(and(eq(chatReactions.messageId, messageId), eq(chatReactions.userId, me.id), eq(chatReactions.emoji, emoji))).returning({ id: chatReactions.messageId });
   if (!gone.length) await db.insert(chatReactions).values({ messageId, userId: me.id, emoji }).onConflictDoNothing();
   return { ok: true };
 }
 
-export type ChatProfile = { id: number; name: string; username: string; roles: Role[]; sent: number; lastLoginAt: string | null; active: boolean; isAdminView: boolean };
+export type ChatProfile = { id: number; name: string; username: string; roles: Role[]; sent: number; lastLoginAt: string | null; active: boolean; isAdminView: boolean; /** conquistas liberadas (só chaves; o ícone vem do catálogo) */ badges: { key: string; name: string }[]; badgeTotal: number; style: Record<string, string>; theme: { hex: string; hex2: string | null; on: string } };
 
 /** Perfil de quem escreveu. Todos veem nome, @usuário e cargos; o Adm vê também situação e último acesso. */
 export async function chatProfileAction(userId: number): Promise<R<{ profile: ChatProfile }>> {
@@ -88,7 +93,11 @@ export async function chatProfileAction(userId: number): Promise<R<{ profile: Ch
   const admin = me.roles.includes("admin");
   if (!u.inMetrics && !admin && u.id !== me.id) return bad("Conta não encontrada.");
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(chatMessages).where(and(eq(chatMessages.userId, userId), sql`${chatMessages.deletedAt} is null`));
-  return { ok: true, profile: { id: u.id, name: u.name, username: u.username, roles: publicRoles(u.roles as Role[], admin), sent: n, active: u.active, lastLoginAt: admin ? u.lastLoginAt?.toISOString() ?? null : null, isAdminView: admin } };
+  const { list } = await achievementsOf(u.id, u.roles);
+  const got = list.filter((a) => a.earned).sort((a, b) => b.goal - a.goal || a.key.localeCompare(b.key));
+  const [st] = await db.select().from(chatStyles).where(eq(chatStyles.userId, u.id));
+  const ac = resolveAccent(u.accent, u.roles as Role[]);
+  return { ok: true, profile: { theme: { hex: ac.hex, hex2: ac.hex2, on: ac.onAccent }, badges: got.map((a) => ({ key: a.key, name: a.name })), badgeTotal: list.length, style: st?.equipped ?? {}, id: u.id, name: u.name, username: u.username, roles: publicRoles(u.roles as Role[], admin), sent: n, active: u.active, lastLoginAt: admin ? u.lastLoginAt?.toISOString() ?? null : null, isAdminView: admin } };
 }
 
 /** Só o Adm: apaga todas as mensagens de um grupo, ou todas as de uma pessoa (em um grupo ou em todos). */
@@ -100,4 +109,22 @@ export async function adminChatPurgeAction(input: { channel?: string; userId?: n
   const gone = await db.delete(chatMessages).where(and(p.data.channel ? eq(chatMessages.channel, p.data.channel) : undefined, p.data.userId ? eq(chatMessages.userId, p.data.userId) : undefined)).returning({ id: chatMessages.id });
   await logAudit(db, { userId: me.id, entity: "setting", action: "apagou mensagens do chat", field: p.data.channel ?? "pessoa", newValue: `${gone.length} mensagens${p.data.userId ? ` (conta ${p.data.userId})` : ""}` });
   return { ok: true, removed: gone.length };
+}
+
+/** @usuario no texto vira aviso para a pessoa, se ela puder ver esse canal (na conversa privada, só o outro participante). */
+async function saveMentions(authorId: number, channel: string, messageId: number, body: string) {
+  const names = [...new Set([...body.matchAll(/(?:^|[^\w@])@([a-z0-9][a-z0-9._-]{1,40})/gi)].map((m) => m[1].toLowerCase().replace(/[._-]+$/, "")))].slice(0, 10);
+  if (!names.length) return;
+  const found = await db.select({ id: users.id, roles: users.roles }).from(users).where(and(eq(users.active, true), sql`lower(${users.username}) in (${sql.join(names.map((n) => sql`${n}`), sql`, `)})`));
+  const ok = found.filter((u) => u.id !== authorId && (channel.startsWith("dm:") ? dmOther(channel, authorId) === u.id : channelsFor(u.roles as Role[]).some((c) => c.key === channel)));
+  if (ok.length) await db.insert(chatMentions).values(ok.map((u) => ({ messageId, userId: u.id }))).onConflictDoNothing();
+}
+
+export type ChatPerson = { id: number; name: string; username: string; hex: string };
+/** Pessoas para marcar (@) e para abrir conversa privada. */
+export async function chatPeopleAction(): Promise<R<{ people: ChatPerson[] }>> {
+  const me = await allowed();
+  if (!me) return bad("O chat está desligado.");
+  const rows = await db.select({ id: users.id, name: users.name, username: users.username, accent: users.accent, roles: users.roles }).from(users).where(and(eq(users.active, true), sql`${users.id} <> ${me.id}`)).orderBy(users.name);
+  return { ok: true, people: rows.map((u) => ({ id: u.id, name: u.name, username: u.username, hex: bubbleHex(u.accent, u.id, u.roles as Role[]) })) };
 }

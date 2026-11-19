@@ -1,13 +1,17 @@
 "use client";
 
-import { Building2, EllipsisVertical, ExternalLink, FileText, Handshake, Loader2, MessageCircle, Paperclip, Search, Send, SmilePlus, Trash2, WifiOff, X } from "lucide-react";
+import { ACHIEVEMENT_BY_KEY } from "@/config/achievements";
+import { chatStyle } from "@/components/chat/styled";
+import { ChatShop } from "@/components/chat/chat-shop";
+import { Plus, Coins, Building2, EllipsisVertical, ExternalLink, FileText, Handshake, Loader2, MessageCircle, Paperclip, Search, Send, SmilePlus, Trash2, WifiOff, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/toast";
 import { RoleBadge } from "@/components/role-badge";
-import { REACTION_EMOJIS } from "@/modules/chat/channels";
+import { REACTION_EMOJIS, dmKey } from "@/modules/chat/channels";
+import type { DmItem } from "@/modules/chat/data";
 import type { ChatMsg, Reaction } from "@/modules/chat/data";
-import { adminChatPurgeAction, chatProfileAction, deleteChatMessageAction, searchShareAction, sendChatMessageAction, sharedInfoAction, toggleReactionAction, type ChatProfile } from "@/modules/chat/actions";
+import { adminChatPurgeAction, chatPeopleAction, chatProfileAction, type ChatPerson, deleteChatMessageAction, searchShareAction, sendChatMessageAction, sharedInfoAction, toggleReactionAction, type ChatProfile } from "@/modules/chat/actions";
 import type { ShareInfo, ShareItem, ShareKind } from "@/modules/chat/share";
 
 import { useConfirm } from "@/components/confirm-dialog";
@@ -119,34 +123,57 @@ function ProfileDialog({ userId, hex, isAdmin, onClose, onPurged }: { userId: nu
     if (!r || !r.ok) return toast("bad", r && !r.ok ? r.message : "Não consegui apagar.");
     toast("ok", `${r.removed} mensagens apagadas.`); onPurged(); onClose();
   };
+  const th = p?.theme;
+  const themeVars = (th ? { "--accent": th.hex, "--accent-2": th.hex2 ?? `color-mix(in oklab, ${th.hex} 78%, black)`, "--on-accent": th.on } : { "--accent": hex }) as unknown as React.CSSProperties;
+  const sty = chatStyle(p?.style);
   return (
-    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label="Perfil" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-sm space-y-4 rounded-2xl border border-line bg-panel p-5 shadow-2xl">
-        <div className="flex items-start gap-3">
-          <span className="grid size-14 shrink-0 place-items-center rounded-full text-lg font-bold text-white" style={{ background: hex }}>{p ? initials(p.name) : "…"}</span>
-          <div className="min-w-0 flex-1"><h2 className="display break-words text-xl">{p?.name ?? "Carregando…"}</h2>{p && <p className="text-xs text-muted">@{p.username}</p>}</div>
-          <button type="button" aria-label="Fechar" className="rounded-lg p-1.5 hover:bg-sunk" onClick={onClose}><X size={18} /></button>
+    <div className="spawn-fade fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-label="Perfil" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={themeVars} className="spawn-in relative w-full max-w-sm overflow-hidden rounded-3xl border border-line bg-panel shadow-2xl">
+        <div className="relative h-32 overflow-hidden bg-grad">
+          <span aria-hidden className="sh-card absolute -left-6 -top-8 size-32 rounded-full bg-white/25 blur-2xl" style={{ "--d": "0s" } as React.CSSProperties} />
+          <span aria-hidden className="sh-card absolute -bottom-10 right-2 size-40 rounded-full bg-black/20 blur-2xl" style={{ "--d": "-1.8s" } as React.CSSProperties} />
+          <span aria-hidden className="sh-card absolute right-16 top-5 size-3 rounded-full bg-white/70" style={{ "--d": "-.6s" } as React.CSSProperties} />
+          <span aria-hidden className="sh-card absolute left-24 top-12 size-2 rounded-full bg-white/60" style={{ "--d": "-2.4s" } as React.CSSProperties} />
+          <button type="button" aria-label="Fechar" className="absolute right-3 top-3 grid size-8 place-items-center rounded-full bg-black/25 text-white backdrop-blur transition hover:bg-black/40" onClick={onClose}><X size={16} /></button>
         </div>
-        {err && <p className="text-sm text-danger">{err}</p>}
-        {p && (
-          <>
-            <div className="flex flex-wrap gap-1.5">{p.roles.map((r) => <RoleBadge key={r} role={r} />)}</div>
-            <dl className="grid grid-cols-2 gap-2 text-sm">
-              <div className="rounded-xl bg-sunk px-3 py-2"><dt className="text-xs text-muted">Mensagens no chat</dt><dd className="figure font-semibold">{p.sent}</dd></div>
-              {p.isAdminView && <div className="rounded-xl bg-sunk px-3 py-2"><dt className="text-xs text-muted">Conta</dt><dd className="font-semibold">{p.active ? "Ativa" : "Bloqueada"}</dd></div>}
-              {p.isAdminView && <div className="col-span-2 rounded-xl bg-sunk px-3 py-2"><dt className="text-xs text-muted">Último acesso</dt><dd className="font-semibold">{p.lastLoginAt ? dtFmt.format(new Date(p.lastLoginAt)) : "—"}</dd></div>}
-            </dl>
-            {isAdmin && (confirm
-              ? <div className="flex flex-wrap items-center gap-2 rounded-xl border border-danger/50 bg-danger/5 p-3 text-sm"><span className="flex-1 font-medium text-danger">Apagar todas as mensagens de {p.name.split(" ")[0]}?</span><button type="button" className="rounded-lg bg-danger px-3 py-1.5 text-xs font-semibold text-white" onClick={purge}>Sim, apagar</button><button type="button" className="rounded-lg px-3 py-1.5 text-xs hover:bg-sunk" onClick={() => setConfirm(false)}>Cancelar</button></div>
-              : <button type="button" className="flex items-center gap-1.5 text-sm font-medium text-danger hover:underline" onClick={() => setConfirm(true)}><Trash2 size={14} aria-hidden /> Apagar todas as mensagens desta pessoa</button>)}
-          </>
-        )}
+        <div className="-mt-12 px-5 pb-5">
+          <span className="sh-rise relative grid size-24 place-items-center rounded-full border-4 border-panel bg-grad text-3xl font-bold text-on-accent shadow-xl" style={{ "--d": ".05s" } as React.CSSProperties}>
+            <span aria-hidden className="sh-go pointer-events-none absolute inset-0 rounded-full after:hidden" />
+            {p ? initials(p.name) : "…"}
+          </span>
+          <div className="sh-rise mt-3" style={{ "--d": ".12s" } as React.CSSProperties}>
+            <h2 className={`display break-words text-2xl ${sty.nameCls}`} style={p ? sty.name : undefined}>{p?.name ?? "Carregando…"}</h2>
+            {p && <p className="text-sm text-muted">@{p.username}</p>}
+          </div>
+          {err && <p className="mt-3 text-sm text-danger">{err}</p>}
+          {p && (
+            <div className="mt-4 space-y-4">
+              <div className="sh-rise flex flex-wrap gap-1.5" style={{ "--d": ".18s" } as React.CSSProperties}>{p.roles.map((r) => <RoleBadge key={r} role={r} />)}</div>
+              <dl className="grid grid-cols-2 gap-2 text-sm">
+                {[["Mensagens", String(p.sent)], ["Conquistas", `${p.badges.length}/${p.badgeTotal}`], ...(p.isAdminView ? [["Conta", p.active ? "Ativa" : "Bloqueada"], ["Último acesso", p.lastLoginAt ? dtFmt.format(new Date(p.lastLoginAt)) : "nunca"]] : [])].map(([t, v], i) => (
+                  <div key={t} className="sh-rise rounded-2xl bg-sunk px-3 py-2.5" style={{ "--d": `${0.22 + i * 0.06}s` } as React.CSSProperties}><dt className="text-[11px] text-muted">{t}</dt><dd className="figure text-base font-bold">{v}</dd></div>
+                ))}
+              </dl>
+              <div className="sh-rise" style={{ "--d": ".4s" } as React.CSSProperties}>
+                <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted"><span>Conquistas</span><span className="h-1.5 flex-1 overflow-hidden rounded-full bg-sunk"><span className="sh-fill block h-full rounded-full bg-grad" style={{ "--w": `${p.badgeTotal ? (p.badges.length / p.badgeTotal) * 100 : 0}%`, borderRight: 0 } as React.CSSProperties} /></span></div>
+                {p.badges.length === 0 ? <p className="rounded-xl bg-sunk px-3 py-2.5 text-sm text-muted">Nenhuma conquista liberada ainda.</p> : (
+                  <ul className="flex max-h-32 flex-wrap gap-2 overflow-y-auto p-1">
+                    {p.badges.map((b, i) => { const a = ACHIEVEMENT_BY_KEY.get(b.key); if (!a) return null; const I = a.icon; return <li key={b.key} title={`${b.name} — ${a.desc}`} className="sh-rise grid size-11 place-items-center rounded-full border-2 border-white/40 text-white shadow-md transition hover:-translate-y-1 hover:scale-110" style={{ background: a.color, "--d": `${0.45 + i * 0.05}s` } as React.CSSProperties}><I size={19} aria-hidden /><span className="sr-only">{b.name}</span></li>; })}
+                  </ul>
+                )}
+              </div>
+              {isAdmin && (confirm
+                ? <div className="flex flex-wrap items-center gap-2 rounded-xl border border-danger/50 bg-danger/5 p-3 text-sm"><span className="flex-1 font-medium text-danger">Apagar todas as mensagens de {p.name.split(" ")[0]}?</span><button type="button" className="rounded-lg bg-danger px-3 py-1.5 text-xs font-semibold text-white" onClick={purge}>Apagar</button><button type="button" className="rounded-lg px-3 py-1.5 text-xs hover:bg-sunk" onClick={() => setConfirm(false)}>Cancelar</button></div>
+                : <button type="button" className="flex items-center gap-1.5 text-sm font-medium text-danger hover:underline" onClick={() => setConfirm(true)}><Trash2 size={14} aria-hidden /> Apagar todas as mensagens desta pessoa</button>)}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-export function ChatWidget({ channels, meId, isAdmin, initialUnread }: { channels: Channel[]; meId: number; isAdmin: boolean; initialUnread: Record<string, number> }) {
+export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = "" }: { myName?: string; channels: Channel[]; meId: number; isAdmin: boolean; initialUnread: Record<string, number> }) {
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const { ask, dialog } = useConfirm();
@@ -165,6 +192,18 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread }: { channel
   const [profile, setProfile] = useState<{ id: number; hex: string } | null>(null);
   const [pickFor, setPickFor] = useState<number | null>(null);
   const [menu, setMenu] = useState(false);
+  const [shop, setShop] = useState(false);
+  const [dms, setDms] = useState<DmItem[]>([]);
+  const [people, setPeople] = useState<ChatPerson[]>([]);
+  const [dmPick, setDmPick] = useState(false);
+  const [dmQ, setDmQ] = useState("");
+  const allChannels: Channel[] = [...channels, ...dms.map((d) => ({ key: d.key, label: d.name.split(" ")[0], hint: "Conversa direta" }))];
+  useEffect(() => { if (open && !people.length) void chatPeopleAction().then((r) => { if (r.ok) setPeople(r.people); }).catch(() => {}); }, [open, people.length]);
+  const startDm = (p: ChatPerson) => { const key = dmKey(meId, p.id); setDms((cur) => (cur.some((d) => d.key === key) ? cur : [...cur, { key, withId: p.id, name: p.name, username: p.username, hex: p.hex }])); setChannel(key); setDmPick(false); setDmQ(""); setShop(false); };
+  /** @ no fim do texto: sugere pessoas para marcar */
+  const mention = /(?:^|\s)@([a-z0-9._-]*)$/i.exec(draft);
+  const suggestions = mention ? people.filter((p) => p.username.toLowerCase().startsWith(mention[1].toLowerCase()) || p.name.toLowerCase().includes(mention[1].toLowerCase())).slice(0, 5) : [];
+  const pickMention = (u: string) => setDraft((d) => d.replace(/@([a-z0-9._-]*)$/i, `@${u} `));
   const [confirmClear, setConfirmClear] = useState(false);
   // área realmente visível (teclado aberto, barras do navegador): o chat nunca passa dela
   const [vv, setVv] = useState<{ h: number; inset: number } | null>(null);
@@ -178,6 +217,8 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread }: { channel
   }, []);
   const btnBottom = (vv?.inset ?? 0) + 20;
   const panelStyle = vv ? { bottom: btnBottom + 60, height: Math.max(180, Math.min(544, vv.h - 60 - 20 - 16 - 8)) } : undefined;
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
   const fails = useRef(0);
   const busy = useRef(false);
   const tick = useRef(0);
@@ -199,8 +240,8 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread }: { channel
       const raw = localStorage.getItem(lsKey);
       if (raw) {
         const j = JSON.parse(raw) as { open?: boolean; channel?: string; cache?: Record<string, { msgs: ChatMsg[]; more: boolean }> };
-        if (j.cache) for (const [k, v] of Object.entries(j.cache)) if (channels.some((c) => c.key === k) && Array.isArray(v?.msgs)) cacheRef.current[k] = v;
-        if (j.channel && channels.some((c) => c.key === j.channel)) setChannel(j.channel);
+        if (j.cache) for (const [k, v] of Object.entries(j.cache)) if ((channels.some((c) => c.key === k) || k.startsWith("dm:")) && Array.isArray(v?.msgs)) cacheRef.current[k] = v;
+        if (j.channel && (channels.some((c) => c.key === j.channel) || j.channel.startsWith("dm:"))) setChannel(j.channel);
         if (j.open) { justOpened.current = true; setOpen(true); }
       }
     } catch { /* sem armazenamento: segue sem salvar */ }
@@ -238,9 +279,11 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread }: { channel
       const r = await fetch(`/api/chat?${u}`, { cache: "no-store" });
       if (r.status === 401) { fails.current = 99; setOffline(true); return; }
       if (!r.ok) throw new Error(String(r.status));
-      const j = (await r.json()) as { enabled: boolean; unread: Record<string, number>; messages: ChatMsg[]; gone: number[]; reactions: Record<number, Reaction[]> };
+      const j = (await r.json()) as { dms?: DmItem[]; mentions?: { id: number; by: string; channel: string; preview: string }[]; enabled: boolean; unread: Record<string, number>; messages: ChatMsg[]; gone: number[]; reactions: Record<number, Reaction[]> };
       fails.current = 0; setOffline(false);
       if (!j.enabled) { setOff(true); return; }
+      if (j.dms) setDms((cur) => [...j.dms!, ...cur.filter((c) => !j.dms!.some((d) => d.key === c.key))]);
+      for (const m of j.mentions ?? []) toastRef.current("info", `${m.by} te marcou${m.preview ? `: ${m.preview}` : ""}`);
       setUnread(open ? { ...j.unread, [ch]: 0 } : j.unread);
       if (!open || chRef.current !== ch) return;
       if (reset) { setMsgs(j.messages); setMore(j.messages.length >= 40); setLoaded(true); }
@@ -352,9 +395,9 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread }: { channel
       <div key={m.id} className={`group flex min-w-0 gap-2 ${mine ? "flex-row-reverse" : ""} ${first ? "mt-2" : ""}`}>
         {first ? <button type="button" disabled={!m.userId} onClick={() => m.userId && setProfile({ id: m.userId, hex: m.hex })} aria-label={`Perfil de ${m.name}`} className="grid size-7 shrink-0 place-items-center rounded-full text-[10px] font-bold text-white transition hover:scale-110" style={{ background: m.hex }} title={m.name}>{initials(m.name)}</button> : <span className="size-7 shrink-0" />}
         <div className={`flex min-w-0 max-w-[82%] flex-col ${mine ? "items-end" : "items-start"}`}>
-          {first && <p className={`mb-0.5 flex flex-wrap items-center gap-1.5 px-1 text-[11px] text-muted ${mine ? "justify-end" : ""}`}><button type="button" disabled={!m.userId} onClick={() => m.userId && setProfile({ id: m.userId, hex: m.hex })} className="font-medium hover:text-ink hover:underline">{mine ? "Você" : m.name.split(" ")[0]}</button>{[...m.roles].sort((x, y) => ROLE_RANK[y] - ROLE_RANK[x]).slice(0, 2).map((r) => <span key={r} className="rounded-full border border-line bg-sunk px-1.5 py-px text-[10px] font-semibold text-ink"><span className="mr-1 inline-block size-1.5 rounded-full" style={{ background: ROLE_DOT[r] }} />{ROLE_META[r].label}</span>)}</p>}
-          <div className={`min-w-0 max-w-full rounded-2xl px-3 py-2 text-sm ${mine ? "rounded-tr-md bg-accent text-on-accent" : "rounded-tl-md bg-sunk"}`}>
-            {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
+          {first && <p className={`mb-0.5 flex flex-wrap items-center gap-1.5 px-1 text-[11px] text-muted ${mine ? "justify-end" : ""}`}><button type="button" disabled={!m.userId} onClick={() => m.userId && setProfile({ id: m.userId, hex: m.hex })} className={`font-medium hover:underline ${chatStyle(m.style).nameCls}`} style={chatStyle(m.style).name}>{mine ? "Você" : m.name.split(" ")[0]}</button>{[...m.roles].sort((x, y) => ROLE_RANK[y] - ROLE_RANK[x]).slice(0, 2).map((r) => <span key={r} className="rounded-full border border-line bg-sunk px-1.5 py-px text-[10px] font-semibold text-ink"><span className="mr-1 inline-block size-1.5 rounded-full" style={{ background: ROLE_DOT[r] }} />{ROLE_META[r].label}</span>)}</p>}
+          <div style={chatStyle(m.style).bubble ?? undefined} className={`min-w-0 max-w-full rounded-2xl px-3 py-2 text-sm ${mine ? "rounded-tr-md" : "rounded-tl-md"} ${chatStyle(m.style).bubble ? "" : mine ? "bg-accent text-on-accent" : "bg-sunk"}`}>
+            {m.body && <p className="whitespace-pre-wrap break-words">{m.body.split(/(@[a-z0-9][a-z0-9._-]+)/gi).map((t, i) => (i % 2 ? <b key={i} className={`rounded px-0.5 ${mine ? "bg-white/25" : "bg-accent/15 text-accent"}`}>{t}</b> : t))}</p>}
             {m.share && S && (
               <button type="button" onClick={() => setInfo(m.id)} className={`${m.body ? "mt-2" : ""} flex w-full min-w-0 items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition ${mine ? "border-white/30 bg-white/15 hover:bg-white/25" : "border-line bg-panel hover:border-accent/50"}`}>
                 <S.Icon size={18} aria-hidden className="shrink-0" />
@@ -369,14 +412,15 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread }: { channel
       </div>,
     );
   }
-  const cur = channels.find((c) => c.key === channel);
+  const cur = allChannels.find((c) => c.key === channel) ?? (channel.startsWith("dm:") ? { key: channel, label: "Conversa", hint: "Conversa direta" } : undefined);
   return (
     <>
       {open && (
         <section aria-label="Chat" style={panelStyle} className="fixed inset-x-3 bottom-20 z-40 flex h-[min(34rem,calc(100vh-7rem))] max-h-[calc(100%-1rem)] flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl sm:inset-x-auto sm:right-5 sm:w-[24rem]">
           <header className="flex items-center gap-2 border-b border-line px-4 py-3">
             <span className="grid size-8 place-items-center rounded-lg bg-grad-soft text-accent"><MessageCircle size={16} aria-hidden /></span>
-            <div className="min-w-0 flex-1"><h2 className="text-sm font-semibold leading-tight">Chat · {cur?.label}</h2><p className="truncate text-[11px] text-muted">{cur?.hint}</p></div>
+            <div className="min-w-0 flex-1"><h2 className="text-sm font-semibold leading-tight">{shop ? "Loja do chat" : channel.startsWith("dm:") ? `Conversa com ${dms.find((d) => d.key === channel)?.name ?? "…"}` : `Chat · ${cur?.label}`}</h2><p className="truncate text-[11px] text-muted">{shop ? "Gaste suas moedas no seu estilo" : channel.startsWith("dm:") ? "Conversa direta" : cur?.hint}</p></div>
+            <button type="button" aria-label="Loja de moedas" aria-pressed={shop} title="Loja" className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${shop ? "bg-grad text-on-accent" : "text-muted hover:bg-sunk hover:text-ink"}`} onClick={() => setShop((v) => !v)}><Coins size={15} aria-hidden /> Loja</button>
             {isAdmin && (
               <div className="relative">
                 <button type="button" aria-label="Opções do Adm" aria-expanded={menu} className="rounded-lg p-1.5 text-muted hover:bg-sunk" onClick={() => { setMenu(!menu); setConfirmClear(false); }}><EllipsisVertical size={17} /></button>
@@ -394,30 +438,45 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread }: { channel
             <button type="button" aria-label="Fechar chat" className="rounded-lg p-1.5 text-muted hover:bg-sunk" onClick={() => setOpen(false)}><X size={17} /></button>
           </header>
           {offline && <p role="status" className="flex items-center gap-2 bg-warn/15 px-4 py-1.5 text-xs font-medium text-warn"><WifiOff size={13} aria-hidden /> Sem conexão com o servidor. Tentando de novo…</p>}
-          {channels.length > 1 && (
-            <div role="tablist" aria-label="Grupos" className="flex gap-1 overflow-x-auto border-b border-line px-2 py-1.5">
-              {channels.map((c) => (
-                <button key={c.key} type="button" role="tab" aria-selected={channel === c.key} onClick={() => setChannel(c.key)} className={`relative shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition ${channel === c.key ? "bg-grad-soft text-accent" : "text-muted hover:bg-sunk hover:text-ink"}`}>
-                  {c.label}{unread[c.key] ? <span className="figure ml-1.5 rounded-full bg-danger px-1.5 text-[10px] font-bold leading-4 text-white">{unread[c.key]}</span> : null}
-                </button>
-              ))}
+          {shop && <ChatShop myName={myName} />}
+          {!shop && (
+            <div className="relative">
+              <div role="tablist" aria-label="Grupos e conversas" className="flex items-center gap-1 overflow-x-auto border-b border-line px-2 py-1.5">
+                {allChannels.map((c) => (
+                  <button key={c.key} type="button" role="tab" aria-selected={channel === c.key} onClick={() => setChannel(c.key)} className={`relative shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition ${channel === c.key ? "bg-grad-soft text-accent" : "text-muted hover:bg-sunk hover:text-ink"}`}>
+                    {c.key.startsWith("dm:") && <span aria-hidden className="mr-1 inline-block size-1.5 rounded-full" style={{ background: dms.find((d) => d.key === c.key)?.hex }} />}{c.label}{unread[c.key] ? <span className="figure ml-1.5 rounded-full bg-danger px-1.5 text-[10px] font-bold leading-4 text-white">{unread[c.key]}</span> : null}
+                  </button>
+                ))}
+                <button type="button" aria-label="Nova conversa direta" title="Nova conversa direta" aria-expanded={dmPick} onClick={() => setDmPick((v) => !v)} className="ml-auto grid size-7 shrink-0 place-items-center rounded-lg text-muted hover:bg-sunk hover:text-accent"><Plus size={16} aria-hidden /></button>
+              </div>
+              {dmPick && (
+                <div className="absolute inset-x-2 top-full z-20 mt-1 rounded-xl border border-line bg-panel p-2 shadow-xl">
+                  <input autoFocus value={dmQ} onChange={(e) => setDmQ(e.target.value)} placeholder="Conversar com…" className="mb-1.5 w-full rounded-lg border border-line bg-sunk px-3 py-2 text-sm" />
+                  <ul className="max-h-48 overflow-y-auto">
+                    {people.filter((p) => !dmQ || `${p.name} ${p.username}`.toLowerCase().includes(dmQ.toLowerCase())).map((p) => (
+                      <li key={p.id}><button type="button" onClick={() => startDm(p)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-sunk"><span aria-hidden className="size-2.5 rounded-full" style={{ background: p.hex }} /><span className="flex-1 truncate">{p.name}</span><span className="text-xs text-muted">@{p.username}</span></button></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
-          <div ref={scroller} onScroll={(e) => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }} className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+          {!shop && <div ref={scroller} onScroll={(e) => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }} className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
             {!loaded && <p className="flex items-center justify-center gap-2 py-8 text-sm text-muted"><Loader2 size={15} className="animate-spin" aria-hidden /> Carregando…</p>}
             {loaded && more && <button type="button" onClick={loadOlder} className="mx-auto mb-2 block rounded-lg px-3 py-1 text-xs text-muted hover:bg-sunk">Ver mensagens anteriores</button>}
             {loaded && msgs.length === 0 && <p className="py-10 text-center text-sm text-muted">Nenhuma mensagem ainda. Comece a conversa!</p>}
             {rows}
-          </div>
-          <footer className="relative border-t border-line p-2.5">
+          </div>}
+          {!shop && <footer className="relative border-t border-line p-2.5">
             {picker && <SharePicker onClose={() => setPicker(false)} onPick={(p) => { setPicked(p); setPicker(false); }} />}
             {picked && (() => { const K = KIND_META[picked.kind]; return <div className="mb-2 flex items-center gap-2 rounded-xl bg-sunk px-3 py-1.5 text-xs"><K.Icon size={14} aria-hidden className="shrink-0 text-accent" /><span className="min-w-0 flex-1 truncate"><b>{K.label}:</b> {picked.label}</span><button type="button" aria-label="Remover anexo" onClick={() => setPicked(null)} className="rounded p-0.5 hover:bg-line"><X size={13} /></button></div>; })()}
+            {suggestions.length > 0 && <ul className="absolute inset-x-2.5 bottom-full mb-1 rounded-xl border border-line bg-panel p-1 shadow-xl">{suggestions.map((p) => <li key={p.id}><button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pickMention(p.username)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-sunk"><span aria-hidden className="size-2.5 rounded-full" style={{ background: p.hex }} /><span className="flex-1 truncate">{p.name}</span><span className="text-xs text-muted">@{p.username}</span></button></li>)}</ul>}
             <div className="flex items-end gap-1.5">
               <button type="button" aria-label="Compartilhar lead, negociação ou cotação" title="Compartilhar" onClick={() => setPicker(true)} className="grid size-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-sunk hover:text-accent"><Paperclip size={18} aria-hidden /></button>
-              <textarea value={draft} rows={1} maxLength={2000} placeholder="Escreva uma mensagem…" aria-label="Mensagem" onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }} className="max-h-28 min-h-10 flex-1 resize-none rounded-xl border border-line bg-sunk px-3 py-2 text-sm outline-none focus:border-accent" />
+              <textarea value={draft} rows={1} maxLength={2000} placeholder={channel.startsWith("dm:") ? "Mensagem direta…" : "Escreva uma mensagem… (@ para marcar)"} aria-label="Mensagem" onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }} className="max-h-28 min-h-10 flex-1 resize-none rounded-xl border border-line bg-sunk px-3 py-2 text-sm outline-none focus:border-accent" />
               <button type="button" aria-label="Enviar" disabled={sending || (!draft.trim() && !picked)} onClick={send} className="grid size-10 shrink-0 place-items-center rounded-xl bg-grad text-on-accent transition disabled:opacity-50">{sending ? <Loader2 size={17} className="animate-spin" aria-hidden /> : <Send size={17} aria-hidden />}</button>
             </div>
-          </footer>
+          </footer>}
         </section>
       )}
       <button type="button" aria-label={open ? "Fechar chat" : total ? `Abrir chat (${total} não lidas)` : "Abrir chat"} aria-expanded={open} onClick={() => setOpen(!open)} style={vv ? { bottom: btnBottom } : undefined} className="fixed bottom-5 right-5 z-40 grid size-14 place-items-center rounded-full bg-grad text-on-accent shadow-xl transition hover:scale-105 active:scale-95">
