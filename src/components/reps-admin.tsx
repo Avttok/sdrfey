@@ -80,9 +80,9 @@ export function RepsAdmin({ rows, canEdit, isAdmin = false }: { rows: RepRow[]; 
               <span className="absolute bottom-1.5 right-3 flex items-center gap-1 rounded-full bg-black/25 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm"><CalendarCheck size={11} aria-hidden /><span className="figure">{r.visits ?? 0}</span> {(r.visits ?? 0) === 1 ? "visita" : "visitas"}</span>
             </div>
             <div className="flex flex-1 flex-col gap-3 p-4 pt-0">
-              <div className="-mt-7 flex items-end justify-between gap-3">
+              <div className="-mt-7 flex items-start justify-between gap-3">
                 <span className="relative z-10 grid size-14 shrink-0 place-items-center rounded-2xl border-4 border-panel text-base font-bold text-white shadow-md" style={{ background: `linear-gradient(135deg, hsl(${hue} 65% 48%), hsl(${(hue + 40) % 360} 65% 42%))` }}>{(r.repName || "?").split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}</span>
-                <button type="button" aria-label={canEdit ? `Editar ${r.repName}` : `Ver detalhes de ${r.repName}`} title={canEdit ? "Editar" : "Ver detalhes"} className="rounded-xl border border-line p-2 text-muted transition hover:border-accent/50 hover:bg-accent/10 hover:text-accent" onClick={() => setEdit(r)}>{canEdit ? <Pencil size={16} /> : <Eye size={16} />}</button>
+                <button type="button" aria-label={canEdit ? `Editar ${r.repName}` : `Ver detalhes de ${r.repName}`} title={canEdit ? "Editar" : "Ver detalhes"} className="mt-9 rounded-xl border border-line p-2 text-muted transition hover:border-accent/50 hover:bg-accent/10 hover:text-accent" onClick={() => setEdit(r)}>{canEdit ? <Pencil size={16} /> : <Eye size={16} />}</button>
               </div>
               <div className="min-w-0">
                 <p className="truncate font-semibold leading-tight">{r.repName}</p>
