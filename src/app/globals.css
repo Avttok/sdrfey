@@ -335,3 +335,8 @@ body.dragging, body.dragging * { user-select: none !important; cursor: grabbing 
 .admin-content section.rounded-2xl, .admin-content section[class*="panel"] { transition: border-color .2s, box-shadow .2s; }
 .admin-content section.rounded-2xl:hover { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
 @media (prefers-reduced-motion: reduce) { .admin-content > * { animation: none; } }
+
+/* Sem barras de rolagem visíveis em todo o site (a rolagem continua funcionando) */
+html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
+*::-webkit-scrollbar, *::-webkit-scrollbar-thumb, *::-webkit-scrollbar-track { display: none; width: 0; height: 0; }
+.no-sb { scrollbar-width: none; }

@@ -32,7 +32,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ u
   return (
     <div className="space-y-5">
       <PageHead icon={PanelTop} size="md" title="Barra de menus" />
-      <section className={`${panelCls} max-w-3xl space-y-4 p-5`}>
+      <section className={`${panelCls} space-y-4 p-5`}>
         <h2 className="display text-lg">Nome, ícone e ordem</h2>
         <div className="flex flex-wrap items-center gap-2">
           <nav className="inline-flex rounded-full border border-line bg-sunk p-1"><Link href="/admin/barra" className={tab(!person)}>Para todos</Link><span className={tab(!!person)}>Individual</span></nav>

@@ -1,5 +1,6 @@
 "use client";
 
+import { ImportEditor } from "@/components/import-editor";
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, Upload, X } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
@@ -12,6 +13,7 @@ import { ExistingClientDialog } from "@/components/deals/existing-client-dialog"
 import { DEAL_GUIDE } from "@/config/import-guide";
 import { ImportExample } from "@/components/import-example";
 import { DEAL_TEMPLATE_HEADERS, DEAL_TEMPLATE_ROWS } from "@/modules/import/deals-parse";
+import { hasBlocker, ImportInsight, needsAck } from "@/components/import-insight";
 import { applyDealImportAction, previewDealImportAction, type DealImportPreview } from "@/modules/import/deals-actions";
 
 const nf = new Intl.NumberFormat("pt-BR");
@@ -31,18 +33,19 @@ export function DealImportForm({ sellers, terms = [] }: { sellers: { id: number;
   const [details, setDetails] = useState<string[]>([]);
   const [drag, setDrag] = useState(false);
   const [ask, setAsk] = useState(false);
+  const [ack, setAck] = useState(false);
   const [view, setView] = useState<{ id: number; name: string } | null>(null);
   const [pending, start] = useTransition();
   useBusyWhile(pending);
   const input = useRef<HTMLInputElement>(null);
-  const fd = () => { const d = new FormData(); if (file) d.set("file", file); if (sellers) d.set("sellerId", String(seller)); return d; };
+  const fd = (f: File | null = file) => { const d = new FormData(); if (f) d.set("file", f); if (sellers) d.set("sellerId", String(seller)); return d; };
   const pick = (f: File | null | undefined) => { setFile(f ?? null); setPrev(null); setDetails([]); };
   const reset = () => { setPrev(null); setFile(null); if (input.current) input.current.value = ""; };
-  const check = () => start(async () => { const r = await previewDealImportAction(fd()); setPrev(r); if (!r.ok) toast("bad", r.message); });
+  const check = (f?: File) => start(async () => { const r = await previewDealImportAction(fd(f)); setAck(false); setPrev(r); if (!r.ok) toast("bad", r.message); });
   const apply = () => start(async () => { const r = await applyDealImportAction(fd()); toast(r.ok ? "ok" : "bad", r.message); setDetails(r.details ?? []); if (r.ok) reset(); });
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5">
+    <div className="space-y-5">
       <section className={`${panelCls} space-y-3 p-5`}>
         <Step n={1} done={!!file}>Modelo da planilha</Step>
         <ImportExample headers={DEAL_TEMPLATE_HEADERS} rows={DEAL_TEMPLATE_ROWS} required={["CNPJ"]} fileName="modelo-negociacoes.csv" guide={DEAL_GUIDE} extra={{ "CONDICAO DE PAGAMENTO": terms }} />
@@ -62,7 +65,7 @@ export function DealImportForm({ sellers, terms = [] }: { sellers: { id: number;
               <FileSpreadsheet size={36} className="text-accent" aria-hidden />
               <p className="font-semibold">{file.name}</p>
               <div className="flex flex-wrap justify-center gap-2">
-                <button type="button" className={btnPrimary} disabled={pending} onClick={check}>{pending && !prev ? <Spinner size={16} /> : <CheckCircle2 size={16} aria-hidden />} {pending && !prev ? "Conferindo…" : "Conferir arquivo"}</button>
+                <button type="button" className={btnPrimary} disabled={pending} onClick={() => check()}>{pending && !prev ? <Spinner size={16} /> : <CheckCircle2 size={16} aria-hidden />} {pending && !prev ? "Conferindo…" : "Conferir arquivo"}</button>
                 <button type="button" className={btnGhost} disabled={pending} onClick={reset}><X size={15} aria-hidden /> Trocar arquivo</button>
               </div>
             </>
@@ -80,6 +83,8 @@ export function DealImportForm({ sellers, terms = [] }: { sellers: { id: number;
       {prev?.ok && (
         <section className={`${panelCls} space-y-4 p-5`}>
           <Step n={3}>Confira antes de importar</Step>
+          <ImportInsight info={prev.insight} ack={ack} onAck={setAck} />
+          {file && <ImportEditor file={file} busy={pending} onApply={(f) => { setFile(f); check(f); }} />}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Stat label="Linhas no arquivo" value={prev.report.total} />
             <Stat label="Vão entrar" value={prev.willCreate} tone="ok" />
@@ -102,7 +107,7 @@ export function DealImportForm({ sellers, terms = [] }: { sellers: { id: number;
           )}
           {prev.report.warnings.map((w) => <p key={w} className="rounded-lg bg-sunk p-3 text-sm text-muted">{w}</p>)}
           {prev.report.rejected.length > 0 && <div className="rounded-lg border border-danger/40 p-3 text-sm"><p className="mb-1 font-medium text-danger">Linhas rejeitadas (primeiras {Math.min(8, prev.report.rejected.length)})</p>{prev.report.rejected.slice(0, 8).map((r) => <p key={r.line}>Linha {r.line}: {r.reason}{r.company ? ` (${r.company})` : ""}</p>)}</div>}
-          <button type="button" className={`${btnPrimary} !px-6 !py-3 text-base`} disabled={pending || prev.willCreate === 0} onClick={() => (prev.inPortfolio.length ? setAsk(true) : apply())}>{pending ? <Spinner size={18} /> : <Upload size={18} aria-hidden />} {pending ? "Importando…" : `Importar ${prev.willCreate} ${prev.willCreate === 1 ? "negociação" : "negociações"}`}</button>
+          <button type="button" className={`${btnPrimary} !px-6 !py-3 text-base`} disabled={pending || prev.willCreate === 0 || hasBlocker(prev.insight.checks) || (needsAck(prev.insight.checks) && !ack)} onClick={() => (prev.inPortfolio.length ? setAsk(true) : apply())}>{pending ? <Spinner size={18} /> : <Upload size={18} aria-hidden />} {pending ? "Importando…" : `Importar ${prev.willCreate} ${prev.willCreate === 1 ? "negociação" : "negociações"}`}</button>
         </section>
       )}
       {prev?.ok && (

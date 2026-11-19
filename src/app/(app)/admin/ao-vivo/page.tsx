@@ -18,10 +18,11 @@ export default async function Page() {
   const me = await requireAdmin();
   const rows = await db
     .select({ name: users.name, accent: users.accent, roles: users.roles, uid: users.id, last: presence.lastSeenAt, activity: presence.activity, company: leads.company })
-    .from(presence).innerJoin(users, eq(users.id, presence.userId)).leftJoin(leads, eq(leads.id, presence.leadId))
-    .orderBy(desc(presence.lastSeenAt));
+    .from(users).leftJoin(presence, eq(users.id, presence.userId)).leftJoin(leads, eq(leads.id, presence.leadId))
+    .where(eq(users.active, true))
+    .orderBy(desc(presence.lastSeenAt), users.name);
   const now = Date.now();
-  const list = rows.map((r) => ({ ...r, online: now - r.last.getTime() < 90_000 })).sort((a, b) => Number(b.online) - Number(a.online));
+  const list = rows.map((r) => ({ ...r, online: !!r.last && now - r.last.getTime() < 90_000 })).sort((a, b) => Number(b.online) - Number(a.online));
   return (
     <div className="space-y-5">
       <LiveRefresh />
@@ -39,14 +40,14 @@ export default async function Page() {
                 <p className="flex items-center gap-2 truncate font-semibold">{r.name}<RoleBadge role={topRole(r.roles)} /></p>
                 <p className={`flex items-center gap-1.5 truncate text-sm ${!r.online ? "text-muted" : r.activity?.startsWith("Ausente") ? "text-warn" : "text-ok"}`}>
                   <ActivityIcon text={r.online ? r.activity : null} kind={r.online ? undefined : "away"} size={14} className="shrink-0" />
-                  <span className="truncate">{r.online ? (r.activity ?? "Online") : `Offline · visto ${fmtDateTime(r.last)}`}</span>
+                  <span className="truncate">{r.online ? (r.activity ?? "Online") : (r.last ? `Offline · visto ${fmtDateTime(r.last)}` : "Nunca acessou")}</span>
                 </p>
               </div>
               {r.uid !== me.id && <DisconnectButton id={r.uid} name={r.name} />}
             </li>
           );
         })}
-        {list.length === 0 && <li className={`${panelCls} p-10 text-center text-muted md:col-span-2`}>Ninguém acessou ainda.</li>}
+        {list.length === 0 && <li className={`${panelCls} p-10 text-center text-muted md:col-span-2`}>Nenhuma conta ativa.</li>}
       </ul>
     </div>
   );

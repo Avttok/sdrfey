@@ -6,7 +6,9 @@ import { Spinner } from "@/components/spinner";
 import { useBusyWhile, useToast } from "@/components/toast";
 import { btnGhost, btnPrimary, panelCls } from "@/components/ui";
 import { LEAD_GUIDE, REP_GUIDE } from "@/config/import-guide";
+import { ImportEditor } from "@/components/import-editor";
 import { ImportExample } from "@/components/import-example";
+import { hasBlocker, ImportInsight, needsAck } from "@/components/import-insight";
 import { applyImportAction, previewImportAction, type ImportPreview } from "@/modules/import/actions";
 
 const KINDS = [
@@ -55,16 +57,17 @@ export function ImportForm() {
   const [file, setFile] = useState<File | null>(null);
   const [prev, setPrev] = useState<ImportPreview | null>(null);
   const [details, setDetails] = useState<string[]>([]);
+  const [ack, setAck] = useState(false);
   const [drag, setDrag] = useState(false);
   const [pending, start] = useTransition();
   useBusyWhile(pending);
   const input = useRef<HTMLInputElement>(null);
-  const fd = () => { const d = new FormData(); d.set("kind", kind); d.set("leadKind", leadKind); if (file) d.set("file", file); return d; };
+  const fd = (f: File | null = file) => { const d = new FormData(); d.set("kind", kind); d.set("leadKind", leadKind); if (f) d.set("file", f); return d; };
   const pick = (f: File | null | undefined) => { setFile(f ?? null); setPrev(null); setDetails([]); };
   const reset = () => { setPrev(null); setFile(null); if (input.current) input.current.value = ""; };
   const current = KINDS.find((k) => k.key === kind)!;
 
-  const check = () => start(async () => { const r = await previewImportAction(fd()); setPrev(r); if (!r.ok) toast("bad", r.message); });
+  const check = (f?: File) => start(async () => { const r = await previewImportAction(fd(f)); setAck(false); setPrev(r); if (!r.ok) toast("bad", r.message); });
   const apply = () => start(async () => {
     const r = await applyImportAction(fd());
     toast(r.ok ? "ok" : "bad", r.message);
@@ -73,7 +76,7 @@ export function ImportForm() {
   });
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5">
+    <div className="space-y-5">
       <section className={`${panelCls} p-5`}>
         <StepTitle n={1} done={!!file}>O que você vai importar?</StepTitle>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -107,7 +110,7 @@ export function ImportForm() {
               <p className="font-semibold">{file.name}</p>
               <p className="text-sm text-muted">{(file.size / 1024).toLocaleString("pt-BR", { maximumFractionDigits: 0 })} KB</p>
               <div className="flex flex-wrap justify-center gap-2">
-                <button type="button" className={btnPrimary} disabled={pending} onClick={check}>{pending && !prev ? <Spinner size={16} /> : <CheckCircle2 size={16} aria-hidden />} Conferir arquivo</button>
+                <button type="button" className={btnPrimary} disabled={pending} onClick={() => check()}>{pending && !prev ? <Spinner size={16} /> : <CheckCircle2 size={16} aria-hidden />} Conferir arquivo</button>
                 <button type="button" className={btnGhost} disabled={pending} onClick={reset}><X size={15} aria-hidden /> Trocar arquivo</button>
               </div>
             </>
@@ -125,13 +128,17 @@ export function ImportForm() {
       {prev?.ok && (
         <section className={`${panelCls} space-y-4 p-5`}>
           <StepTitle n={3}>Confira antes de importar</StepTitle>
+          <ImportInsight info={prev.insight} ack={ack} onAck={setAck} />
+          {file && <ImportEditor file={file} busy={pending} onApply={(f) => { setFile(f); check(f); }} />}
           {prev.kind === "leads" ? (
             <>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 <Stat label="Linhas no arquivo" value={prev.report.total} />
                 <Stat label="Válidas" value={prev.report.valid} tone="ok" />
                 <Stat label="Repetidas no arquivo" value={prev.report.duplicatesInFile} tone={prev.report.duplicatesInFile ? "warn" : undefined} />
                 <Stat label="Rejeitadas" value={prev.report.rejected.length} tone={prev.report.rejected.length ? "bad" : undefined} />
+                <Stat label="Novos no sistema" value={prev.fresh} tone="ok" />
+                <Stat label="Já existem (pulados)" value={prev.existing} tone={prev.existing ? "warn" : undefined} />
               </div>
               {Object.keys(prev.report.fixes).length > 0 && <div className="rounded-lg bg-sunk p-3 text-sm"><p className="mb-1 font-medium">Correções automáticas</p>{Object.entries(prev.report.fixes).map(([k, v]) => <p key={k} className="text-muted">{k} ({nf.format(v as number)})</p>)}</div>}
               {prev.report.warnings.length > 0 && <div className="rounded-lg bg-sunk p-3 text-sm"><p className="mb-1 flex items-center gap-1.5 font-medium text-warn"><AlertTriangle size={15} aria-hidden /> Avisos</p>{prev.report.warnings.slice(0, 6).map((w) => <p key={w} className="text-muted">{w}</p>)}</div>}
@@ -139,11 +146,11 @@ export function ImportForm() {
             </>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4"><Stat label="Representantes" value={prev.total} tone="ok" /></div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4"><Stat label="Representantes" value={prev.total} tone="ok" /><Stat label="Novos" value={prev.fresh} tone="ok" /><Stat label="Atualizados" value={prev.existing} tone={prev.existing ? "warn" : undefined} /></div>
               {prev.warnings.length > 0 && <div className="rounded-lg bg-sunk p-3 text-sm">{prev.warnings.map((w) => <p key={w} className="text-muted">{w}</p>)}</div>}
             </>
           )}
-          <button type="button" className={`${btnPrimary} !px-6 !py-3 text-base`} disabled={pending} onClick={apply}>{pending ? <Spinner size={18} /> : <Upload size={18} aria-hidden />} Importar agora</button>
+          <button type="button" className={`${btnPrimary} !px-6 !py-3 text-base`} disabled={pending || hasBlocker(prev.insight.checks) || (needsAck(prev.insight.checks) && !ack)} onClick={apply}>{pending ? <Spinner size={18} /> : <Upload size={18} aria-hidden />} Importar agora</button>
         </section>
       )}
 

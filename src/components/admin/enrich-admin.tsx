@@ -65,15 +65,14 @@ export function EnrichAdmin({ initial, on: on0, cronReady, live: live0 }: { init
   }, []);
   const [, setStats] = useState(initial);
   const [on, setOn] = useState(on0);
-  const [size, setSize] = useState(15);
-  const [busy, setBusy] = useState(false);
+    const [busy, setBusy] = useState(false);
   const [loop, setLoop] = useState(false);
   const [log, setLog] = useState("");
   const [pending, start] = useTransition();
   const stop = useRef(false);
   const pct = live.stats.total ? Math.round((live.stats.done / live.stats.total) * 100) : 0;
 
-  const once = async () => {
+  const once = async (size = 10) => {
     setBusy(true);
     try {
       const r = await runEnrichBatchAction(size);
@@ -84,13 +83,13 @@ export function EnrichAdmin({ initial, on: on0, cronReady, live: live0 }: { init
   };
   const runLoop = async () => {
     stop.current = false; setLoop(true);
-    while (!stop.current) { const r = await once(); if (r && r.tried === 0) break; await new Promise((x) => setTimeout(x, 1500)); }
+    while (!stop.current) { const r = await once(1); if (r && r.tried === 0) break; await new Promise((x) => setTimeout(x, 1500)); }
     setLoop(false);
   };
   useEffect(() => () => { stop.current = true; }, []);
 
   return (
-    <div className="max-w-3xl space-y-4">
+    <div className="space-y-4">
       <section className={`${panelCls} stat-glow space-y-4 p-5`}>
         <div className="flex items-center gap-4">
           <span className="grid size-14 place-items-center rounded-2xl bg-grad-soft text-accent"><DatabaseZap size={26} aria-hidden /></span>
@@ -109,9 +108,8 @@ export function EnrichAdmin({ initial, on: on0, cronReady, live: live0 }: { init
       <section className={`${panelCls} space-y-3 p-5`}>
         <h2 className="font-semibold">Consultar agora</h2>
         <div className="flex flex-wrap items-end gap-3">
-          <label className="block w-40 text-sm"><span className="mb-1 block text-muted">Leads por lote (1 a 40)</span><input type="number" min={1} max={40} className={inputCls} value={size} onChange={(e) => setSize(Number(e.target.value))} /></label>
-          <button type="button" className={btnPrimary} disabled={busy || loop} onClick={() => void once()}>{busy && !loop ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Zap size={16} aria-hidden />} Consultar um lote</button>
-          {loop ? <button type="button" className={btnGhost} onClick={() => { stop.current = true; }}><Pause size={16} aria-hidden /> Parar contínuo</button> : <button type="button" className={btnGhost} disabled={busy} onClick={() => void runLoop()}><Play size={16} aria-hidden /> Modo contínuo</button>}
+                    <button type="button" className={btnPrimary} disabled={busy || loop} onClick={() => void once(10)}>{busy && !loop ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Zap size={16} aria-hidden />} Consultar um lote (10)</button>
+          {loop ? <button type="button" className={btnGhost} onClick={() => { stop.current = true; }}><Pause size={16} aria-hidden /> Parar contínuo</button> : <button type="button" className={btnGhost} disabled={busy} onClick={() => void runLoop()}><Play size={16} aria-hidden /> Modo contínuo (1 em 1)</button>}
           <button type="button" className={btnGhost} disabled={busy || loop || pending} onClick={() => start(async () => { await retryFailedEnrichAction(); const r = await runEnrichBatchAction(1); setStats(r.stats); })}><RotateCcw size={15} aria-hidden /> Tentar os sem resposta de novo</button>
         </div>
         <p className="text-sm text-muted" aria-live="polite">{loop ? <span className="inline-flex items-center gap-1.5"><Loader2 size={13} className="animate-spin" aria-hidden /> Contínuo ativo: continua até acabar ou você parar. Não feche esta página. </span> : null}{log}</p>

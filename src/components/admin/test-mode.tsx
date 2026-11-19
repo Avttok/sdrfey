@@ -13,7 +13,7 @@ export function TestMode({ count }: { count: number }) {
   const { run, pending } = useRun();
   const { ask, dialog } = useConfirm(pending);
   return (
-    <div className="max-w-3xl space-y-4">
+    <div className="space-y-4">
       <section className={`${panelCls} flex items-center gap-4 p-5`}>
         <span className="grid size-14 place-items-center rounded-2xl bg-grad-soft text-accent"><FlaskConical size={26} aria-hidden /></span>
         <div><p className="figure text-3xl font-bold leading-none">{count}</p><p className="mt-1 text-sm text-muted">leads de teste existentes. Eles nunca aparecem em Leads, Dashboard, metas ou histórico real.</p></div>
