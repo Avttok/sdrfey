@@ -70,7 +70,7 @@ export function PermissionMatrix({ users, roles: initialRoles, target: ext, onTa
       <section className={`${panelCls} overflow-hidden`}>
         {SECTIONS.map((sec) => (
           <div key={sec.group}>
-            <header className="sticky top-14 z-10 flex items-center gap-3 border-y border-line bg-sunk px-4 py-2.5 first:border-t-0">
+            <header className="flex items-center gap-3 border-y border-line bg-sunk px-4 py-2.5 first:border-t-0">
               <sec.icon size={17} className="text-accent" aria-hidden />
               <h2 className="text-sm font-semibold">{sec.title}</h2><p className="text-xs text-muted">{sec.hint}</p>
             </header>

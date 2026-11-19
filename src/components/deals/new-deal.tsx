@@ -44,8 +44,9 @@ export function NewDeal({ terms }: { terms: string[] }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
   const [reading, setReading] = useState(false);
+  const [billed, setBilled] = useState(false);
   const set = (k: keyof typeof EMPTY, v: string | boolean) => setF((p) => ({ ...p, [k]: v }));
-  const close = () => { setOpen(false); setF(EMPTY); setItems([]); setLook(null); setConsult(null); setPhase("idle"); setColor(null); };
+  const close = () => { setOpen(false); setF(EMPTY); setItems([]); setLook(null); setConsult(null); setPhase("idle"); setColor(null); setBilled(false); };
 
   /** Busca no banco e, se o CNPJ é novo (ou nunca foi consultado), já consulta a Receita sozinho. */
   const search = async (cnpj = f.cnpj) => {
@@ -78,14 +79,14 @@ export function NewDeal({ terms }: { terms: string[] }) {
     const cnpj = q.cnpj?.length === 14 ? maskCnpj(q.cnpj) : f.cnpj;
     setF((p) => ({ ...p, cnpj, company: q.clientName ?? p.company, quoteNumber: q.quoteNumber ?? "", quoteDate: q.quoteDate ?? "", freight: q.freight ?? "", sapCode: q.sapCode ?? "", paymentTerms: q.paymentTerms ?? "", quoteValue: brl(q.totalCents), email: q.email ?? p.email, phone: q.phone ?? p.phone, street: q.address ?? p.street, neighborhood: q.neighborhood ?? p.neighborhood, zip: q.zip ?? p.zip, stateReg: q.stateReg ?? p.stateReg, city: q.city ?? p.city, uf: q.uf ?? p.uf }));
     setItems(q.items); setWeight(q.weightKg);
-    toast("ok", `PDF lido: cotação ${q.quoteNumber ?? "?"}, ${q.items.length} itens. O arquivo não é guardado.`);
+    toast("ok", `PDF lido: ${billed ? "pedido faturado" : "cotação"} ${q.quoteNumber ?? "?"}, ${q.items.length} itens. O arquivo não é guardado.`);
     if (q.cnpj?.length === 14) search(cnpj);
   };
   /** Cliente que já tem negociações no sistema: mostra o histórico e só cria se a pessoa confirmar. */
   const tryCreate = () => { if (look?.ok && look.found && look.deals > 0) setAskExisting(true); else create(); };
   const create = () => { setAskExisting(false); createNow(); };
   const createNow = () => start(async () => {
-    const r = await createDealManualAction({ cnpj: f.cnpj, company: f.company, contactName: f.contactName, phone: f.phone, email: f.email, address: { street: f.street || null, neighborhood: f.neighborhood || null, zip: f.zip || null, stateReg: f.stateReg || null, city: f.city || null, uf: f.uf || null }, note: f.note, color, items, weightKg: weight,
+    const r = await createDealManualAction({ cnpj: f.cnpj, company: f.company, contactName: f.contactName, phone: f.phone, email: f.email, address: { street: f.street || null, neighborhood: f.neighborhood || null, zip: f.zip || null, stateReg: f.stateReg || null, city: f.city || null, uf: f.uf || null }, note: f.note, color, billed: billed && items.length + (f.quoteValue ? 1 : 0) > 0, items, weightKg: weight,
       data: { freight: f.freight, sapCode: f.sapCode, orderNumber: f.orderNumber, quoteNumber: f.quoteNumber, quoteDate: f.quoteDate, quoteValue: f.quoteValue, paymentTerms: f.paymentTerms, isReactivation: f.isReactivation } });
     if (!r.ok) return toast("bad", r.message);
     toast("ok", r.message ?? "Negociação criada.");
@@ -98,9 +99,14 @@ export function NewDeal({ terms }: { terms: string[] }) {
   const panel = (
     <div className="fixed inset-0 z-[60] overflow-y-auto bg-black/45 p-4" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
     <section role="dialog" aria-modal="true" style={{ backgroundImage: "none" }} className={`${panelCls} mx-auto my-6 w-full max-w-3xl space-y-4 p-5 shadow-2xl sm:p-6`} aria-label="Nova negociação">
-      <div className="flex items-center gap-3">
-        <h2 className="display flex-1 text-xl">Nova negociação</h2>
-        <label className={`${btnGhost} cursor-pointer`}><FileUp size={16} aria-hidden /> {reading ? "Lendo…" : "Começar por um PDF de cotação"}<input type="file" accept="application/pdf" className="sr-only" disabled={reading} onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ""; if (file) void readPdf(file); }} /></label>
+      <div className="flex flex-wrap items-center gap-3">
+        <h2 className="display min-w-40 flex-1 text-xl">Nova negociação</h2>
+        <div role="radiogroup" aria-label="O PDF é de" className="inline-flex rounded-xl border border-line bg-sunk p-0.5 text-xs font-medium">
+          {([[false, "Cotação"], [true, "Pedido faturado"]] as const).map(([v, l]) => (
+            <button key={l} type="button" role="radio" aria-checked={billed === v} onClick={() => setBilled(v)} className={`rounded-[10px] px-3 py-1.5 transition ${billed === v ? "bg-grad text-white shadow" : "text-muted hover:text-ink"}`}>{l}</button>
+          ))}
+        </div>
+        <label className={`${btnGhost} cursor-pointer`}><FileUp size={16} aria-hidden /> {reading ? "Lendo…" : `Começar por um PDF de ${billed ? "pedido" : "cotação"}`}<input type="file" accept="application/pdf" className="sr-only" disabled={reading} onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ""; if (file) void readPdf(file); }} /></label>
         <button type="button" aria-label="Fechar" className="grid size-9 place-items-center rounded-lg text-muted hover:bg-sunk" onClick={close}><X size={18} aria-hidden /></button>
       </div>
       <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); void search(); }}>
@@ -157,7 +163,7 @@ export function NewDeal({ terms }: { terms: string[] }) {
             <label className="flex items-center gap-2 pt-6"><input type="checkbox" checked={f.isReactivation} onChange={(e) => set("isReactivation", e.target.checked)} /> Cliente reativado</label>
           </div>
           <textarea className={`${inputCls} min-h-16`} placeholder="Anotação (de onde veio, o que combinaram…)" value={f.note} onChange={(e) => set("note", e.target.value)} />
-          {items.length > 0 && <p className="text-xs text-muted">{items.length} itens lidos do PDF ({fmtBRL(items.reduce((a, i) => a + (i.totalCents ?? 0), 0))} em produtos) serão salvos junto.</p>}
+          {items.length > 0 && <p className="text-xs text-muted">{items.length} itens lidos do PDF ({fmtBRL(items.reduce((a, i) => a + (i.totalCents ?? 0), 0))} em produtos) serão salvos junto.{billed ? " A negociação já nasce faturada." : ""}</p>}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <ColorPicker value={color} onChange={setColor} disabled={busy} />
             <button type="button" className={btnPrimary} disabled={busy || blocked || f.cnpj.replace(/\D/g, "").length < 14} onClick={tryCreate}><Check size={16} aria-hidden /> Criar negociação</button>

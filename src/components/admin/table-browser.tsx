@@ -46,7 +46,7 @@ export function TableBrowser({ table, onClose, onChanged }: { table: string; onC
                   <tr key={r.key} className={`border-t border-line/60 ${sel.has(r.key) ? "bg-accent/8" : "hover:bg-sunk/50"}`}>
                     <td className="px-3 py-1.5"><input type="checkbox" aria-label="Marcar registro" checked={sel.has(r.key)} onChange={(e) => { const n = new Set(sel); if (e.target.checked) n.add(r.key); else n.delete(r.key); setSel(n); }} /></td>
                     {r.cells.map((c, i) => <td key={i} className="max-w-72 truncate px-3 py-1.5" title={c}>{c}</td>)}
-                    <td className="px-2"><button type="button" aria-label="Apagar este registro" title="Apagar este registro" disabled={busy} onClick={() => del([r.key])} className="rounded-md p-1.5 text-muted hover:bg-sunk hover:text-danger"><Trash2 size={14} aria-hidden /></button></td>
+                    <td className="sticky right-0 bg-panel px-2 shadow-[-8px_0_8px_-8px_rgba(0,0,0,.15)]"><button type="button" aria-label="Apagar este registro" title="Apagar este registro" disabled={busy} onClick={() => del([r.key])} className="rounded-md p-1.5 text-muted hover:bg-sunk hover:text-danger"><Trash2 size={14} aria-hidden /></button></td>
                   </tr>
                 ))}
                 {ok.rows.length === 0 && <tr><td colSpan={ok.columns.length + 2} className="p-8 text-center text-muted">Nenhum registro.</td></tr>}

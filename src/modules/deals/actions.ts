@@ -361,7 +361,7 @@ export async function lookupCnpjAction(raw: string): Promise<CnpjLookup> {
   };
 }
 
-export type NewDealInput = { cnpj: string; company: string; contactName: string; phone: string; email?: string; address?: { street: string | null; neighborhood: string | null; zip: string | null; stateReg: string | null; city: string | null; uf: string | null }; note: string; color: string | null; data: DealDataInput; items?: QuoteItem[]; /** Peso total da cotação (kg), lido do PDF. */ weightKg?: number | null };
+export type NewDealInput = { cnpj: string; company: string; contactName: string; phone: string; email?: string; address?: { street: string | null; neighborhood: string | null; zip: string | null; stateReg: string | null; city: string | null; uf: string | null }; note: string; color: string | null; billed?: boolean; data: DealDataInput; items?: QuoteItem[]; /** Peso total da cotação (kg), lido do PDF. */ weightKg?: number | null };
 
 /** Vendedor abre uma negociação por conta própria (algo que veio por fora, sem passar pelo SDR). CNPJ obrigatório. */
 export async function createDealManualAction(input: NewDealInput): Promise<ActionResult & { id?: number }> {
@@ -434,6 +434,12 @@ export async function createDealManualAction(input: NewDealInput): Promise<Actio
       await logAudit(tx, { userId: me.id, leadId, entity: "deal", action: "abriu negociação", field: "Negociação", newValue: isNew ? "novo lead" : "lead existente", meta: { negociacao: d.id, itens: items.length } });
       return d.id;
     });
+    if (input.billed && cents) {
+      // O PDF era de um pedido já faturado: a negociação nasce encerrada como venda.
+      const [q] = await db.select({ id: dealQuotes.id }).from(dealQuotes).where(eq(dealQuotes.dealId, id)).orderBy(sql`${dealQuotes.id} desc`).limit(1);
+      const c = await closeDealAction(id, { won: true, quoteId: q?.id ?? null, closedOn: dp.patch.quoteDate ?? null, data: { orderNumber: dp.patch.orderNumber ?? null } });
+      if (!c.ok) return { ok: true, message: `Negociação criada, mas não consegui faturar: ${c.message}`, id };
+    }
     if (!isNew && !lead.enrichedAt) { try { await enrichLead(leadId, me.id, "novo"); } catch { /* sem internet/APIs: segue sem a consulta */ } }
     revalidatePath("/negociacoes"); revalidatePath("/painel"); revalidatePath("/leads");
     return { ok: true, message: "Negociação criada.", id };

@@ -200,7 +200,6 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
   const [offline, setOffline] = useState(false);
   const [profile, setProfile] = useState<{ id: number; hex: string } | null>(null);
   const [pickFor, setPickFor] = useState<number | null>(null);
-  const [actFor, setActFor] = useState<number | null>(null);
   const [menu, setMenu] = useState(false);
   const [shop, setShop] = useState(false);
   const [dms, setDms] = useState<DmItem[]>([]);
@@ -400,23 +399,23 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
     rows.push(
       <div key={m.id} className={`group flex min-w-0 gap-2 ${mine ? "flex-row-reverse" : ""} ${first ? "mt-2" : ""}`}>
         {first ? <button type="button" disabled={!m.userId} onClick={() => m.userId && setProfile({ id: m.userId, hex: m.hex })} aria-label={`Perfil de ${m.name}`} className="grid size-7 shrink-0 place-items-center rounded-full text-[10px] font-bold text-white transition hover:scale-110" style={{ background: m.hex }} title={m.name}><AvatarGlyph avatar={m.avatar} initials={initials(m.name)} size={15} /></button> : <span className="size-7 shrink-0" />}
-        <div className={`flex min-w-0 max-w-[82%] flex-col ${mine ? "items-end" : "items-start"}`}>
+        <div className={`flex min-w-0 max-w-[85%] flex-col ${mine ? "items-end" : "items-start"}`}>
           {first && <p className={`mb-0.5 flex flex-wrap items-center gap-1.5 px-1 text-[11px] text-muted ${mine ? "justify-end" : ""}`}><button type="button" disabled={!m.userId} onClick={() => m.userId && setProfile({ id: m.userId, hex: m.hex })} className={`font-medium hover:underline ${chatStyle(m.style).nameCls}`} style={chatStyle(m.style).name}>{mine ? "Você" : m.name.split(" ")[0]}</button><span className="text-[10px] font-normal opacity-70">{hm.format(new Date(m.at))}</span></p>}
-          <div className="group/b relative min-w-0 max-w-full" onClick={() => setActFor(actFor === m.id ? null : m.id)}>
-          <div title={hm.format(new Date(m.at))} style={chatStyle(m.style).bubble ?? undefined} className={`min-w-0 max-w-full rounded-2xl px-3 py-2 text-sm ${mine ? "rounded-tr-md" : "rounded-tl-md"} ${chatStyle(m.style).bubble ? "" : mine ? "bg-accent text-on-accent" : "bg-sunk"}`}>
-            {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
-            {m.share && S && (
-              <button type="button" onClick={() => setInfo(m.id)} className={`${m.body ? "mt-2" : ""} flex w-full min-w-0 items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition ${mine ? "border-white/30 bg-white/15 hover:bg-white/25" : "border-line bg-panel hover:border-accent/50"}`}>
-                <S.Icon size={18} aria-hidden className="shrink-0" />
-                <span className="min-w-0"><span className="block text-[11px] opacity-75">{S.label}</span><span className="block truncate text-sm font-semibold">{m.share.label}</span></span>
-              </button>
-            )}
-          </div>
-          <div className={`absolute top-1/2 z-10 flex -translate-y-1/2 items-center gap-0.5 rounded-full border border-line bg-panel px-1 py-0.5 shadow-md transition ${mine ? "right-full mr-1.5" : "left-full ml-1.5"} ${actFor === m.id || pickFor === m.id ? "opacity-100" : "pointer-events-none opacity-0 group-hover/b:pointer-events-auto group-hover/b:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100"}`}>
-            <button type="button" aria-label="Reagir" title="Reagir" onClick={(e) => { e.stopPropagation(); setPickFor(pickFor === m.id ? null : m.id); }} className="rounded-full p-1 text-muted transition hover:bg-sunk hover:text-accent"><SmilePlus size={14} /></button>
-            {m.canDelete && (m.delUntil === null || Date.now() < m.delUntil) && <button type="button" aria-label="Apagar mensagem" title="Apagar" onClick={(e) => { e.stopPropagation(); ask({ title: "Apagar esta mensagem?", body: "Ela some para todos no chat.", label: "Sim, apagar", icon: Trash2, onConfirm: () => void del(m.id) }); }} className="rounded-full p-1 text-muted transition hover:bg-danger/10 hover:text-danger"><Trash2 size={14} /></button>}
-          </div>
-          {pickFor === m.id && <div className={`absolute z-20 flex gap-0.5 rounded-full border border-line bg-panel p-1 shadow-lg ${mine ? "right-0" : "left-0"} -top-10`}>{REACTION_EMOJIS.map((e) => <button key={e} type="button" onClick={(ev) => { ev.stopPropagation(); react(m.id, e); setPickFor(null); }} className="rounded-full px-1.5 py-0.5 text-base transition hover:scale-125 hover:bg-sunk" aria-label={`Reagir com ${e}`}>{e}</button>)}</div>}
+          <div className="min-w-0 max-w-full">
+            <div title={hm.format(new Date(m.at))} style={chatStyle(m.style).bubble ?? undefined} className={`min-w-0 max-w-full rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm ${mine ? "rounded-br-md" : "rounded-bl-md"} ${chatStyle(m.style).bubble ? "" : mine ? "bg-grad text-on-accent" : "border border-line bg-panel"}`}>
+              {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
+              {m.share && S && (
+                <button type="button" onClick={() => setInfo(m.id)} className={`${m.body ? "mt-2" : ""} flex w-full min-w-0 items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition ${mine ? "border-white/30 bg-white/15 hover:bg-white/25" : "border-line bg-sunk hover:border-accent/50"}`}>
+                  <S.Icon size={18} aria-hidden className="shrink-0" />
+                  <span className="min-w-0"><span className="block text-[11px] opacity-75">{S.label}</span><span className="block truncate text-sm font-semibold">{m.share.label}</span></span>
+                </button>
+              )}
+            </div>
+            <div className={`mt-0.5 flex items-center gap-0.5 px-0.5 ${mine ? "justify-end" : ""}`}>
+              <button type="button" aria-label="Reagir" title="Reagir" aria-expanded={pickFor === m.id} onClick={() => setPickFor(pickFor === m.id ? null : m.id)} className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] transition hover:bg-sunk hover:text-accent ${pickFor === m.id ? "bg-sunk text-accent" : "text-muted"}`}><SmilePlus size={13} aria-hidden /> Reagir</button>
+              {m.canDelete && (m.delUntil === null || Date.now() < m.delUntil) && <button type="button" aria-label="Apagar mensagem" title="Apagar" onClick={() => ask({ title: "Apagar esta mensagem?", body: "Ela some para todos no chat.", label: "Sim, apagar", icon: Trash2, onConfirm: () => void del(m.id) })} className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] text-muted transition hover:bg-danger/10 hover:text-danger"><Trash2 size={13} aria-hidden /> Apagar</button>}
+            </div>
+            {pickFor === m.id && <div role="group" aria-label="Escolha uma reação" className={`mt-1 inline-flex max-w-full flex-wrap gap-0.5 rounded-2xl border border-line bg-panel p-1 shadow-md`}>{REACTION_EMOJIS.map((e) => <button key={e} type="button" onClick={() => { react(m.id, e); setPickFor(null); }} className="rounded-full px-1.5 py-0.5 text-lg transition hover:scale-125 hover:bg-sunk" aria-label={`Reagir com ${e}`}>{e}</button>)}</div>}
           </div>
           {m.reactions.length > 0 && <div className={`mt-1 flex flex-wrap gap-1 ${mine ? "justify-end" : ""}`}>{m.reactions.map((x) => <button key={x.emoji} type="button" onClick={() => react(m.id, x.emoji)} title={x.names.join(", ")} aria-label={`${x.emoji} ${x.count}`} aria-pressed={x.mine} className={`figure rounded-full border px-1.5 py-0.5 text-xs transition ${x.mine ? "border-accent bg-accent/15" : "border-line bg-panel hover:border-accent/50"}`}>{x.emoji} {x.count}</button>)}</div>}
         </div>
@@ -427,9 +426,9 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
   return (
     <>
       {open && (
-        <section aria-label="Chat" style={panelStyle} className="fixed inset-x-3 bottom-20 z-40 flex h-[min(34rem,calc(100vh-7rem))] max-h-[calc(100%-1rem)] flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl sm:inset-x-auto sm:right-5 sm:w-[24rem]">
-          <header className="flex items-center gap-2 border-b border-line px-4 py-3">
-            <span className="grid size-8 place-items-center rounded-lg bg-grad-soft text-accent"><MessageCircle size={16} aria-hidden /></span>
+        <section aria-label="Chat" style={panelStyle} className="fixed inset-x-3 bottom-20 z-40 flex h-[min(42rem,calc(100vh-7rem))] max-h-[calc(100%-1rem)] flex-col overflow-hidden rounded-3xl border border-line bg-panel shadow-2xl sm:inset-x-auto sm:right-5 sm:w-[min(36rem,calc(100vw-2.5rem))]">
+          <header className="flex items-center gap-2.5 border-b border-line bg-sunk/50 px-4 py-3">
+            <span className="grid size-10 place-items-center rounded-2xl bg-grad text-on-accent shadow"><MessageCircle size={18} aria-hidden /></span>
             <div className="min-w-0 flex-1"><h2 className="text-sm font-semibold leading-tight">{shop ? "Loja do chat" : channel.startsWith("dm:") ? `Conversa com ${dms.find((d) => d.key === channel)?.name ?? "…"}` : `Chat · ${cur?.label}`}</h2><p className="truncate text-[11px] text-muted">{shop ? "Gaste suas moedas no seu estilo" : channel.startsWith("dm:") ? "Conversa direta" : cur?.hint}</p></div>
             <button type="button" aria-label="Loja de moedas" aria-pressed={shop} title="Loja" className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${shop ? "bg-grad text-on-accent" : "text-muted hover:bg-sunk hover:text-ink"}`} onClick={() => setShop((v) => !v)}><Coins size={15} aria-hidden /> Loja</button>
             {isAdmin && (
@@ -441,7 +440,7 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
                     {confirmClear
                       ? <div className="space-y-2 rounded-lg border border-danger/50 bg-danger/5 p-2"><p className="text-xs font-medium text-danger">Apagar TODAS as mensagens do grupo {cur?.label}? Não dá para desfazer.</p><div className="flex gap-2"><button type="button" className="rounded-lg bg-danger px-2.5 py-1 text-xs font-semibold text-white" onClick={clearChannel}>Sim, apagar</button><button type="button" className="rounded-lg px-2.5 py-1 text-xs hover:bg-sunk" onClick={() => setConfirmClear(false)}>Cancelar</button></div></div>
                       : <button type="button" role="menuitem" className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-danger hover:bg-sunk" onClick={() => setConfirmClear(true)}><Trash2 size={14} aria-hidden /> Limpar o grupo {cur?.label}</button>}
-                    <p className="px-2 text-[11px] text-muted">Para apagar uma mensagem use a lixeira ao lado dela (até 15 minutos depois de enviar; o Adm apaga sempre). Para apagar tudo de uma pessoa, abra o perfil dela.</p>
+                    <p className="px-2 text-[11px] text-muted">Para apagar uma mensagem use o botão Apagar logo abaixo dela (até 15 minutos depois de enviar; o Adm apaga sempre). Para apagar tudo de uma pessoa, abra o perfil dela.</p>
                   </div>
                 )}
               </div>
@@ -452,9 +451,9 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
           {shop && <ChatShop myName={myName} meId={meId} />}
           {!shop && (
             <div className="relative">
-              <div role="tablist" aria-label="Grupos e conversas" className="flex items-center gap-1 overflow-x-auto border-b border-line px-2 py-1.5">
+              <div role="tablist" aria-label="Grupos e conversas" className="no-sb flex items-center gap-1.5 overflow-x-auto border-b border-line px-3 py-2">
                 {allChannels.map((c) => (
-                  <button key={c.key} type="button" role="tab" aria-selected={channel === c.key} onClick={() => setChannel(c.key)} className={`relative shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition ${channel === c.key ? "bg-grad-soft text-accent" : "text-muted hover:bg-sunk hover:text-ink"}`}>
+                  <button key={c.key} type="button" role="tab" aria-selected={channel === c.key} onClick={() => setChannel(c.key)} className={`relative shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${channel === c.key ? "bg-grad text-on-accent shadow-sm" : "bg-sunk text-muted hover:text-ink"}`}>
                     {c.key.startsWith("dm:") && <span aria-hidden className="mr-1 inline-block size-1.5 rounded-full" style={{ background: dms.find((d) => d.key === c.key)?.hex }} />}{c.label}{unread[c.key] ? <span className="figure ml-1.5 rounded-full bg-danger px-1.5 text-[10px] font-bold leading-4 text-white">{unread[c.key]}</span> : null}
                   </button>
                 ))}
@@ -472,18 +471,18 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
               )}
             </div>
           )}
-          {!shop && <div ref={scroller} onScroll={(e) => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }} className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+          {!shop && <div ref={scroller} onScroll={(e) => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }} className="min-h-0 flex-1 overflow-y-auto bg-sunk/30 px-4 py-4">
             {!loaded && <p className="flex items-center justify-center gap-2 py-8 text-sm text-muted"><Loader2 size={15} className="animate-spin" aria-hidden /> Carregando…</p>}
             {loaded && more && <button type="button" onClick={loadOlder} className="mx-auto mb-2 block rounded-lg px-3 py-1 text-xs text-muted hover:bg-sunk">Ver mensagens anteriores</button>}
             {loaded && msgs.length === 0 && <p className="py-10 text-center text-sm text-muted">Nenhuma mensagem ainda. Comece a conversa!</p>}
             {rows}
           </div>}
-          {!shop && <footer className="relative border-t border-line p-2.5">
+          {!shop && <footer className="relative border-t border-line bg-panel p-3">
             {picker && <SharePicker onClose={() => setPicker(false)} onPick={(p) => { setPicked(p); setPicker(false); }} />}
             {picked && (() => { const K = KIND_META[picked.kind]; return <div className="mb-2 flex items-center gap-2 rounded-xl bg-sunk px-3 py-1.5 text-xs"><K.Icon size={14} aria-hidden className="shrink-0 text-accent" /><span className="min-w-0 flex-1 truncate"><b>{K.label}:</b> {picked.label}</span><button type="button" aria-label="Remover anexo" onClick={() => setPicked(null)} className="rounded p-0.5 hover:bg-line"><X size={13} /></button></div>; })()}
             <div className="flex items-end gap-1.5">
               <button type="button" aria-label="Compartilhar lead, negociação ou cotação" title="Compartilhar" onClick={() => setPicker(true)} className="grid size-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-sunk hover:text-accent"><Paperclip size={18} aria-hidden /></button>
-              <textarea value={draft} rows={1} maxLength={2000} placeholder={channel.startsWith("dm:") ? "Mensagem direta…" : "Escreva uma mensagem…"} aria-label="Mensagem" onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }} className="max-h-28 min-h-10 flex-1 resize-none rounded-xl border border-line bg-sunk px-3 py-2 text-sm outline-none focus:border-accent" />
+              <textarea value={draft} rows={1} maxLength={2000} placeholder={channel.startsWith("dm:") ? "Mensagem direta…" : "Escreva uma mensagem…"} aria-label="Mensagem" onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }} className="max-h-28 min-h-10 flex-1 resize-none rounded-2xl border border-line bg-sunk px-3.5 py-2.5 text-sm outline-none transition focus:border-accent focus:bg-panel" />
               <button type="button" aria-label="Enviar" disabled={sending || (!draft.trim() && !picked)} onClick={send} className="grid size-10 shrink-0 place-items-center rounded-xl bg-grad text-on-accent transition disabled:opacity-50">{sending ? <Loader2 size={17} className="animate-spin" aria-hidden /> : <Send size={17} aria-hidden />}</button>
             </div>
           </footer>}

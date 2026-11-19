@@ -75,6 +75,7 @@ export function SalesDashboard({ s, showRanking }: { s: SalesStats; showRanking:
           {s.upcoming.length ? <ul className="space-y-1.5 text-sm">{s.upcoming.map((u) => <li key={u.id}><Link href={`/visitas?v=${u.id}`} className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition hover:bg-sunk"><span className="figure shrink-0 rounded-md bg-grad px-2 py-0.5 text-xs font-bold text-on-accent">{fmtDate(u.date).slice(0, 5)}</span><span className="min-w-0 flex-1 truncate font-medium">{u.company}</span><span className="shrink-0 text-xs text-muted">{u.status === "confirmada" ? "Confirmada" : "Aguardando"}</span></Link></li>)}</ul> : <p className="text-sm text-muted">Nenhuma visita marcada pela frente.</p>}
         </Block>
       </div>
+      <ShufflerBlock s={s} showRanking={showRanking} />
       {s.daily.length > 0 && (
         <Block icon={CircleDollarSign} title="Vendas por dia">
           <div className="flex h-24 items-end gap-1">
@@ -109,5 +110,58 @@ export function SalesDashboard({ s, showRanking }: { s: SalesStats; showRanking:
         </Block>
       )}
     </div>
+  );
+}
+
+const secs = (n: number | null) => (n == null ? "—" : n < 90 ? `${Math.round(n)} s` : n < 5400 ? `${Math.round(n / 60)} min` : `${(n / 3600).toFixed(1).replace(".", ",")} h`);
+
+/** Métricas do shuffler de vendas (leads inativos sorteados): o que foi trabalhado, o que virou negócio e quem trabalha mais. */
+function ShufflerBlock({ s, showRanking }: { s: SalesStats; showRanking: boolean }) {
+  const h = s.shuffler;
+  const used = h.saved + h.visit + h.deal;
+  const closed = h.worked - h.open;
+  const rows = [
+    { k: "Virou negócio", n: h.deal, c: "var(--color-ok)" }, { k: "Visita marcada", n: h.visit, c: "var(--color-accent)" }, { k: "Salvo para depois", n: h.saved, c: "var(--color-accent-2, var(--color-accent))" },
+    { k: "Devolvido ao SDR", n: h.toSdr, c: "var(--color-warn)" }, { k: "Não atendeu", n: h.noAnswer, c: "var(--color-muted)" }, { k: "Sem interesse", n: h.noInterest, c: "var(--color-danger)" }, { k: "Pulado", n: h.skipped, c: "var(--color-muted)" },
+  ];
+  const max = Math.max(1, ...rows.map((r) => r.n));
+  return (
+    <Block icon={Shuffle} title="Shuffler de vendas">
+      {h.worked === 0 ? <p className="text-sm text-muted">Nenhum lead sorteado no período. Há {nf.format(h.pool)} leads inativos disponíveis no estoque.</p> : (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              ["Sorteados", nf.format(h.worked), `${nf.format(h.open)} em aberto`],
+              ["Aproveitamento", pct(closed ? used / closed : null), `${nf.format(used)} de ${nf.format(closed)} finalizados`],
+              ["Negócios abertos", nf.format(h.dealsOpened), `${nf.format(h.won)} faturados${h.wonValue ? ` · ${fmtBRL(h.wonValue)}` : ""}`],
+              ["Tempo por lead", secs(h.avgSeconds), `${nf.format(h.pool)} no estoque`],
+            ].map(([t, v, sub]) => (
+              <div key={t} className="min-w-0 rounded-xl border border-line bg-sunk/50 p-3"><p className="truncate text-xs text-muted">{t}</p><p className="figure mt-0.5 text-xl font-bold">{v}</p><p className="truncate text-xs text-muted">{sub}</p></div>
+            ))}
+          </div>
+          <div className="space-y-2">
+            {rows.map((r) => (
+              <div key={r.k} className="flex items-center gap-3 text-sm">
+                <span className="w-36 shrink-0 truncate text-muted">{r.k}</span>
+                <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-sunk"><span className="block h-full rounded-full" style={{ width: `${Math.max(r.n ? 3 : 0, Math.round((r.n / max) * 100))}%`, background: r.c }} /></span>
+                <span className="figure w-10 shrink-0 text-right text-xs font-medium">{nf.format(r.n)}</span>
+              </div>
+            ))}
+          </div>
+          {showRanking && h.sellers.length > 0 && (
+            <div className="overflow-x-auto rounded-xl border border-line">
+              <table className="w-full min-w-[34rem] text-sm">
+                <thead className="bg-sunk/60 text-left text-xs text-muted"><tr><th className="px-3 py-2 font-medium">Vendedor</th><th className="px-3 py-2 text-right font-medium">Sorteados</th><th className="px-3 py-2 text-right font-medium">Aproveitados</th><th className="px-3 py-2 text-right font-medium">Negócios</th><th className="px-3 py-2 text-right font-medium">Sem resposta</th><th className="px-3 py-2 text-right font-medium">Sem interesse</th><th className="px-3 py-2 text-right font-medium">Tempo médio</th></tr></thead>
+                <tbody className="divide-y divide-line/60">
+                  {h.sellers.map((r) => (
+                    <tr key={r.id}><td className="px-3 py-2 font-medium">{r.name.split(" ")[0]}</td><td className="figure px-3 py-2 text-right">{r.worked}</td><td className="figure px-3 py-2 text-right">{r.used}</td><td className="figure px-3 py-2 text-right">{r.deals}</td><td className="figure px-3 py-2 text-right">{r.noAnswer}</td><td className="figure px-3 py-2 text-right">{r.noInterest}</td><td className="figure px-3 py-2 text-right">{secs(r.avgSeconds)}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </Block>
   );
 }

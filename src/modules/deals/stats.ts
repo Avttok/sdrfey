@@ -45,6 +45,27 @@ export async function getSalesStats(period: Period, sellerIds: number[]) {
     db.execute<{ v: number }>(sql`select coalesce(sum(value_cents),0)::bigint as v from deals where seller_id in (${U}) and stage = 'perdido' and not is_test and closed_at between ${from} and ${to}`),
     db.execute<{ outcome: string; n: number }>(sql`select coalesce(outcome,'aberto') as outcome, count(*)::int as n from seller_shuffles where user_id in (${U}) and not is_test and shown_at between ${from} and ${to} group by 1`),
   ]);
+  const [shExtra, shSellers, shPool] = await Promise.all([
+    db.execute<{ avg_s: number | null; won: number; won_v: number; deals: number }>(sql`
+      select avg(extract(epoch from (s.done_at - s.shown_at)))::float as avg_s,
+        count(*) filter (where d.stage = 'ganho')::int as won,
+        coalesce(sum(case when d.stage = 'ganho' then ${soldCents} end),0)::bigint as won_v,
+        count(*) filter (where s.deal_id is not null)::int as deals
+      from seller_shuffles s left join deals d on d.id = s.deal_id
+      where s.user_id in (${U}) and not s.is_test and s.shown_at between ${from} and ${to}`),
+    db.execute<{ id: number; name: string; worked: number; used: number; deals: number; no_answer: number; no_interest: number; skipped: number; avg_s: number | null }>(sql`
+      select u.id, u.name, count(*)::int as worked,
+        count(*) filter (where s.outcome in ('saved','visit','deal'))::int as used,
+        count(*) filter (where s.deal_id is not null)::int as deals,
+        count(*) filter (where s.outcome = 'no_answer')::int as no_answer,
+        count(*) filter (where s.outcome = 'no_interest')::int as no_interest,
+        count(*) filter (where s.outcome = 'skipped')::int as skipped,
+        avg(extract(epoch from (s.done_at - s.shown_at)))::float as avg_s
+      from seller_shuffles s join users u on u.id = s.user_id
+      where s.user_id in (${U}) and not s.is_test and s.shown_at between ${from} and ${to}
+      group by u.id, u.name order by worked desc, u.name`),
+    db.execute<{ n: number }>(sql`select count(*)::int as n from leads l where l.kind = 'inativo' and not l.is_test and l.locked_by is null and not exists (select 1 from deals d where d.lead_id = l.id and d.stage not in ('ganho','perdido'))`),
+  ]);
   const vN = (k: string) => vis.find((x) => x.status === k)?.n ?? 0;
   const shN = (k: string) => shuf.find((x) => x.outcome === k)?.n ?? 0;
   const all = await listDeals(0, true);
@@ -63,7 +84,7 @@ export async function getSalesStats(period: Period, sellerIds: number[]) {
     visits: { pending: vN("pendente"), confirmed: vN("confirmada"), done: vN("realizada") },
     upcoming: upcoming.map((r) => ({ id: r.id, leadId: r.lead_id, company: r.company, date: r.visit_date, status: r.status })),
     cycleDays: cycle[0]?.days ?? null, lostValue: Number(lostV[0]?.v ?? 0),
-    shuffler: { worked: shuf.reduce((a, r) => a + r.n, 0), saved: shN("saved"), visit: shN("visit"), deal: shN("deal"), toSdr: shN("to_sdr"), noInterest: shN("no_interest"), noAnswer: shN("no_answer"), skipped: shN("skipped") },
+    shuffler: { worked: shuf.reduce((a, r) => a + r.n, 0), saved: shN("saved"), visit: shN("visit"), deal: shN("deal"), toSdr: shN("to_sdr"), noInterest: shN("no_interest"), noAnswer: shN("no_answer"), skipped: shN("skipped"), released: shN("released"), open: shN("aberto"), avgSeconds: shExtra[0]?.avg_s ?? null, dealsOpened: shExtra[0]?.deals ?? 0, won: shExtra[0]?.won ?? 0, wonValue: Number(shExtra[0]?.won_v ?? 0), pool: shPool[0]?.n ?? 0, sellers: shSellers.map((r) => ({ id: r.id, name: r.name, worked: r.worked, used: r.used, deals: r.deals, noAnswer: r.no_answer, noInterest: r.no_interest, skipped: r.skipped, avgSeconds: r.avg_s })) },
     alerts: mine.map((d) => ({ id: d.id, company: d.company, text: d.alerts[0].text, tone: d.alerts[0].tone })),
   };
 }
