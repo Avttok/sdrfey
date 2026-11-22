@@ -77,6 +77,14 @@ export const SHOP: ShopItem[] = [
   effect("shimmer", "Reluzente", 200, "fx-shimmer"),
   effect("crown", "Coroa", 260, "fx-crown"),
   effect("rgb", "Ciclo de cores", 300, "fx-rgb"),
+  effect("flame", "Chama", 150, "fx-flame"),
+  effect("frost", "Gelo cintilante", 150, "fx-frost"),
+  effect("glitch", "Falha digital", 170, "fx-glitch"),
+  effect("float", "Flutuar", 120, "fx-float"),
+  effect("rocket", "Foguete", 140, "fx-rocket"),
+  effect("coin", "Moedinha", 130, "fx-coin"),
+  effect("underline", "Sublinhado animado", 110, "fx-underline"),
+  effect("aura", "Aura", 220, "fx-aura"),
 
   /* ───── Balões ───── */
   bubble("paper", "Papel", 40, { background: "#fbf7ee", color: "#3b2f1d", borderColor: "#e6dcc3" }),
@@ -103,6 +111,10 @@ export const SHOP: ShopItem[] = [
   bubble("soap", "Bolha de sabão", 190, { background: "linear-gradient(135deg, #bae6fd88, #fbcfe888, #bbf7d088, #e9d5ff88)", backdropFilter: "blur(4px)", borderColor: "#ffffffaa", boxShadow: "inset 0 0 12px #ffffff99, 0 2px 10px #a5b4fc55" }),
   bubble("neon", "Neon", 180, { background: "#0b0b14", color: "#e9d5ff", borderColor: "#a855f7", boxShadow: "0 0 0 1px #a855f7, 0 0 16px #a855f7aa" }),
   bubble("gold", "Dourado", 250, { background: "linear-gradient(135deg,#fde68a,#f59e0b)", color: "#451a03", borderColor: "#b45309" }),
+  bubble("candy", "Doce", 60, { background: "linear-gradient(135deg,#fecdd3,#fde68a)", color: "#5b2130", borderColor: "transparent" }),
+  bubble("lavaBub", "Lava", 130, { background: "linear-gradient(135deg,#fb923c,#dc2626)", color: "#fff", borderColor: "transparent" }),
+  bubble("matrix", "Matrix", 170, { background: "#000", color: "#4ade80", borderColor: "#22c55e", fontFamily: "ui-monospace, Menlo, monospace", boxShadow: "0 0 12px #22c55e66" }),
+  bubble("royal", "Realeza", 280, { background: "linear-gradient(135deg,#4c1d95,#7c3aed)", color: "#fde68a", borderColor: "#fbbf24", boxShadow: "0 0 0 1px #fbbf24" }),
   bubble("aurora", "Aurora", 300, { background: "linear-gradient(135deg,#22d3ee,#818cf8,#e879f9)", color: "#fff", borderColor: "transparent", boxShadow: "0 6px 20px #818cf855" }),
 ];
 export const SHOP_BY_KEY = new Map(SHOP.map((i) => [i.key, i]));

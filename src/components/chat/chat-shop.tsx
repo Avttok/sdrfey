@@ -50,6 +50,20 @@ export function ChatShop({ myName, meId }: { myName: string; meId: number }) {
           <div style={sty.bubble ?? undefined} className={`inline-block max-w-full rounded-2xl rounded-tl-md px-3 py-2 text-sm ${sty.bubble ? "" : "bg-sunk"}`}>Bom dia, time! Bora bater a meta? 🚀</div>
         </div>
       </div>
+      {(() => {
+        const idle = CATEGORIES.filter((c) => !st.equipped[c.key] && SHOP.some((i) => i.cat === c.key && st.owned.includes(i.key)));
+        if (!idle.length) return null;
+        return (
+          <div className="space-y-1.5 border-b border-line bg-accent/5 px-3 py-2 text-xs">
+            <p className="flex items-center gap-1.5 font-semibold"><Sparkles size={13} className="text-accent" aria-hidden /> Você tem itens guardados — que tal usar?</p>
+            <div className="flex flex-wrap gap-1.5">
+              {idle.map((c) => { const mine = SHOP.find((i) => i.cat === c.key && st.owned.includes(i.key))!; return (
+                <button key={c.key} type="button" disabled={pending} onClick={() => { setCat(c.key); act(() => equipItemAction(c.key, mine.key)); }} className="rounded-full border border-line bg-panel px-2.5 py-1 font-medium transition hover:border-accent">{c.label}: usar “{mine.name}”</button>
+              ); })}
+            </div>
+          </div>
+        );
+      })()}
       <div role="tablist" aria-label="Categorias" className="flex gap-1 overflow-x-auto border-b border-line px-2 py-1.5">
         {CATEGORIES.map((c) => <button key={c.key} type="button" role="tab" aria-selected={cat === c.key} onClick={() => { setCat(c.key); setTrying(null); }} className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition ${cat === c.key ? "bg-grad-soft text-accent" : "text-muted hover:bg-sunk"}`}>{c.label}</button>)}
       </div>

@@ -34,7 +34,10 @@ export async function buyItemAction(key: string): Promise<R> {
     await tx.insert(shopPurchases).values({ userId: me.id, itemKey: key, price: item.price });
     await tx.insert(coinLedger).values({ userId: me.id, amount: -item.price, reason: `Loja: ${item.name}`, ref: `buy:${key}` });
     await logAudit(tx, { userId: me.id, entity: "shop", action: "comprou na loja", field: item.name, newValue: `${item.price} moedas` });
-    return { ok: true as const, message: `${item.name} é seu!` };
+    const [cur] = await tx.select().from(chatStyles).where(eq(chatStyles.userId, me.id));
+    const equipped = { ...(cur?.equipped ?? {}), [item.cat]: key };
+    await tx.insert(chatStyles).values({ userId: me.id, equipped }).onConflictDoUpdate({ target: chatStyles.userId, set: { equipped } });
+    return { ok: true as const, message: `${item.name} é seu — já está em uso!` };
   });
   return { ...res, state: await shopState(me.id, me.shownRoles) };
 }
