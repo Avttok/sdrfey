@@ -59,7 +59,7 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   await logAudit(db, { userId: user.id, entity: "user", action: "entrou no sistema" });
   await setSessionCookie(user.id, user.sessionVersion, remember);
 
-  redirect(user.mustChangePassword ? "/trocar-senha" : "/painel");
+  redirect(user.mustChangePassword ? "/primeiro-acesso" : "/painel");
 }
 
 const quickOpts = { httpOnly: true, sameSite: "lax" as const, secure: process.env.NODE_ENV === "production", path: "/", maxAge: QUICK_SECONDS };
@@ -100,7 +100,7 @@ export async function quickLoginAction(formData: FormData) {
   await db.update(users).set({ failedAttempts: 0, lockedUntil: null, lastLoginAt: new Date() }).where(eq(users.id, user.id));
   await logAudit(db, { userId: user.id, entity: "user", action: "entrou no sistema (1 clique)" });
   await setSessionCookie(user.id, user.sessionVersion, q.rem);
-  redirect(user.mustChangePassword ? "/trocar-senha" : "/painel");
+  redirect(user.mustChangePassword ? "/primeiro-acesso" : "/painel");
 }
 
 /** Tira uma conta (ou todas, sem `uid`) da lista deste aparelho. */

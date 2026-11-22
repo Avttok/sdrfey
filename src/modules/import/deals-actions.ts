@@ -114,7 +114,7 @@ export async function applyDealImportAction(formData: FormData): Promise<DealImp
   await db.insert(importBatches).values({ kind: "deals", fileName: f.name, userId: s.me.id, total: plan.create.length + plan.skipped.length, inserted: r.created, skipped: plan.skipped.length });
   /* antes de aparecer no kanban, cada lead novo passa pela consulta de CNPJ (os primeiros já; o resto fica aguardando) */
   const enr = r.created > 0 ? await enrichPendingDeals(10, 40_000, s.me.id) : null;
-  for (const p of ["/negociacoes", "/leads", "/painel", "/metas"]) revalidatePath(p);
+  for (const p of ["/negociacoes", "/leads", "/painel", "/metas", "/metas-vendas"]) revalidatePath(p);
   const skipped = plan.skipped.length + r.raced - m.updated;
   return { ok: true, message: `${m.updated ? `${m.updated} ${m.updated === 1 ? "negociação existente " : "negociações existentes "}${policy === "overwrite" ? "atualizada(s) com os dados da planilha" : "completada(s) com o que faltava"}; ` : ""}${r.created} ${r.created === 1 ? "negociação importada" : "negociações importadas"}${r.leadsCreated ? ` (${r.leadsCreated} ${r.leadsCreated === 1 ? "lead novo" : "leads novos"})` : ""}; ${skipped} já existiam ou foram ignoradas.${enr ? ` Consulta de CNPJ: ${enr.tried} consultado(s)${enr.left ? `; ${enr.left} aguardam a consulta e aparecem no kanban depois (use "Consultar agora" em Negociações)` : ""}.` : ""}`, details: f.report.rejected.slice(0, 5).map((x) => `Linha ${x.line} rejeitada: ${x.reason}`) };
 }

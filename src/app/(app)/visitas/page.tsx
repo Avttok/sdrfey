@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { EoxIcon, SalesforceIcon } from "@/components/brand-icons";
-import { CalendarCheck, CalendarClock, CalendarX2, CheckCircle2, Hourglass } from "lucide-react";
+import { CalendarCheck, CalendarClock, CalendarX2, CheckCircle2, Globe, Hourglass, UserRound, Users } from "lucide-react";
 import { Suspense } from "react";
 import { DashboardFilters } from "@/components/dashboard-filters";
 import { VisitCards } from "@/components/visit-cards";
@@ -21,7 +21,7 @@ import { resolvePeriod } from "@/modules/dashboard/stats";
 export const metadata: Metadata = { title: "Visitas" };
 export const dynamic = "force-dynamic";
 
-type Row = { cnpj: string | null; phones: string[] | null; email: string | null; contact_name: string | null; role_title: string | null; owner_id: number | null; status: "pendente" | "confirmada" | "realizada" | "cancelada"; link: string | null; rep_name: string | null; rep_sap: string | null; rep_city: string | null; rep_km: number | null; kind: "rep" | "seller"; seller_name: string | null; sf_url: string | null; eox_url: string | null; confirmed_at: Date | null; visit_date: string | null; id: number; code: string; at: Date; note: string | null; canceled_at: Date | null; lead_id: number; company: string; city: string | null; uf: string | null; uid: number | null; name: string | null; accent: string | null; roles: Role[] | null };
+type Row = { cnpj: string | null; phones: string[] | null; email: string | null; contact_name: string | null; role_title: string | null; owner_id: number | null; is_public: boolean; status: "pendente" | "confirmada" | "realizada" | "cancelada"; link: string | null; rep_name: string | null; rep_sap: string | null; rep_city: string | null; rep_km: number | null; kind: "rep" | "seller"; seller_name: string | null; sf_url: string | null; eox_url: string | null; confirmed_at: Date | null; visit_date: string | null; id: number; code: string; at: Date; note: string | null; canceled_at: Date | null; lead_id: number; company: string; city: string | null; uf: string | null; uid: number | null; name: string | null; accent: string | null; roles: Role[] | null };
 
 /** Todas as visitas agendadas. Cada pessoa vê as suas; quem tem a permissão vê as da equipe. */
 export default async function VisitsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -30,7 +30,7 @@ export default async function VisitsPage({ searchParams }: { searchParams: Promi
   const one = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : undefined);
   const iso = (k: string) => (/^\d{4}-\d{2}-\d{2}$/.test(one(k) ?? "") ? one(k) : undefined);
   const period = resolvePeriod({ p: one("p") ?? (one("from") || one("to") ? undefined : "30"), from: iso("from"), to: iso("to") });
-  const COLS = sql.raw(`select v.id, v.visit_date::text as visit_date, v.link, v.rep_name, v.rep_sap, v.rep_city, v.rep_km, v.kind, (select name from users su where su.id = v.seller_id) as seller_name, v.code, v.created_at as at, v.note, v.canceled_at, v.confirmed_at, v.status, l.id as lead_id, l.company, l.city, l.uf, l.salesforce_url as sf_url, l.eox_url, l.cnpj, l.phones, l.email, l.contact_name, l.role_title, v.user_id as owner_id, u.id as uid, u.name, u.accent, u.roles`); // texto fixo (sem entrada do usuário)
+  const COLS = sql.raw(`select v.id, v.visit_date::text as visit_date, v.link, v.rep_name, v.rep_sap, v.rep_city, v.rep_km, v.kind, (select name from users su where su.id = v.seller_id) as seller_name, v.code, v.created_at as at, v.note, v.canceled_at, v.confirmed_at, v.status, l.id as lead_id, l.company, l.city, l.uf, l.salesforce_url as sf_url, l.eox_url, l.cnpj, l.phones, l.email, l.contact_name, l.role_title, v.user_id as owner_id, v.is_public, u.id as uid, u.name, u.accent, u.roles`); // texto fixo (sem entrada do usuário)
   const team = !!me.permissions["visits.team"];
 
   const all = await db.select().from(users).where(and(eq(users.active, true), visibleUsers(me))).orderBy(asc(users.name));
@@ -40,7 +40,17 @@ export default async function VisitsPage({ searchParams }: { searchParams: Promi
 
   const from = dayStart(period.from).toISOString();
   const to = dayEnd(period.to).toISOString();
-  const who = scope ? sql`and v.user_id in (${sql.join(scope.map((i) => sql`${i}`), sql`, `)})` : sql``;
+  /** Filtro de quais visitas aparecem: as minhas, as públicas, as compartilhadas (do mesmo lead) ou todas. */
+  const VIS = [["todas", "Todas", Globe], ["minhas", "Minhas", UserRound], ["publicas", "Públicas", Globe], ["compartilhadas", "Compartilhadas", Users]] as const;
+  const vis = VIS.find(([k]) => k === one("vis"))?.[0] ?? "todas";
+  const meId = me.id;
+  const shared = sql`(exists (select 1 from deals d where d.lead_id = v.lead_id and (d.seller_id = ${meId} or d.sdr_id = ${meId}))
+    or exists (select 1 from attendance_sessions s where s.lead_id = v.lead_id and s.user_id = ${meId} and s.outcome = 'saved')
+    or exists (select 1 from visits v2 where v2.lead_id = v.lead_id and v2.user_id = ${meId} and v2.id <> v.id))`;
+  const mine = sql`v.user_id = ${meId}`;
+  const ownScope = scope ? sql`v.user_id in (${sql.join(scope.map((i) => sql`${i}`), sql`, `)})` : sql`true`;
+  const clause = vis === "minhas" ? mine : vis === "publicas" ? sql`v.is_public` : vis === "compartilhadas" ? sql`(${shared} and v.user_id is distinct from ${meId})` : team ? ownScope : sql`(${mine} or v.is_public or ${shared})`;
+  const who = sql`and ${clause}`;
   const rows = await db.execute<Row>(sql`
     ${COLS}
     from visits v join leads l on l.id = v.lead_id left join users u on u.id = v.user_id
@@ -72,6 +82,10 @@ export default async function VisitsPage({ searchParams }: { searchParams: Promi
           </div>
         ))}
       </div>
+      <nav aria-label="Quais visitas mostrar" className="flex w-fit flex-wrap gap-1 rounded-2xl border border-line bg-panel p-1 text-sm font-semibold">
+        {VIS.map(([k, l, I]) => { const u = new URLSearchParams(Object.entries(sp).flatMap(([a, b]) => (typeof b === "string" ? [[a, b]] : []))); u.set("vis", k); u.delete("v");
+          return <Link key={k} prefetch={false} href={`/visitas?${u}`} aria-current={vis === k ? "page" : undefined} className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 transition ${vis === k ? "bg-grad text-on-accent shadow" : "text-muted hover:bg-sunk hover:text-ink"}`}><I size={15} aria-hidden /> {l}</Link>; })}
+      </nav>
       <div className={`${panelCls} p-4`}><Suspense fallback={null}>
         <DashboardFilters preset={period.preset} from={period.preset === "custom" ? period.from : ""} to={period.preset === "custom" ? period.to : ""} people={team ? people : []} selected={scope ?? []} />
       </Suspense></div>
@@ -82,7 +96,7 @@ export default async function VisitsPage({ searchParams }: { searchParams: Promi
           <p className="font-semibold">Nenhuma visita neste período</p>
         </div>
       ) : (
-        <VisitCards openId={wanted} list={list.map((v) => ({ id: v.id, code: v.code, status: v.status, canceled: !!v.canceled_at, kind: v.kind, visitDate: v.visit_date, link: v.link, at: new Date(v.at).toISOString(), note: v.note, confirmedAt: v.confirmed_at ? new Date(v.confirmed_at).toISOString() : null, repName: v.rep_name, repSap: v.rep_sap, repCity: v.rep_city, repKm: v.rep_km, sellerName: v.seller_name, leadId: v.lead_id, company: v.company, city: v.city, uf: v.uf, sfUrl: v.sf_url, eoxUrl: v.eox_url, cnpj: v.cnpj, phones: v.phones ?? [], email: v.email, contactName: v.contact_name, roleTitle: v.role_title, canManage: v.owner_id === me.id || !!me.permissions["lead.edit"] || (v.kind === "seller" && hasSellerPart(me.roles)), by: v.name ? { name: v.name, hex: bubbleHex(v.accent, v.uid ?? 0, v.roles ?? undefined) } : null }))} />
+        <VisitCards openId={wanted} list={list.map((v) => ({ id: v.id, code: v.code, status: v.status, canceled: !!v.canceled_at, kind: v.kind, visitDate: v.visit_date, link: v.link, at: new Date(v.at).toISOString(), note: v.note, confirmedAt: v.confirmed_at ? new Date(v.confirmed_at).toISOString() : null, repName: v.rep_name, repSap: v.rep_sap, repCity: v.rep_city, repKm: v.rep_km, sellerName: v.seller_name, leadId: v.lead_id, company: v.company, city: v.city, uf: v.uf, sfUrl: v.sf_url, eoxUrl: v.eox_url, cnpj: v.cnpj, phones: v.phones ?? [], email: v.email, contactName: v.contact_name, roleTitle: v.role_title, isPublic: v.is_public, relation: v.owner_id === me.id ? "mine" : v.is_public ? "public" : team && !( v.is_public) ? "team" : "shared", canManage: v.owner_id === me.id || !!me.permissions["lead.edit"] || (v.kind === "seller" && hasSellerPart(me.roles)), by: v.name ? { name: v.name, hex: bubbleHex(v.accent, v.uid ?? 0, v.roles ?? undefined) } : null }))} />
       )}
     </div>
   );

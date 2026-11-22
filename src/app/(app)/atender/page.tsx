@@ -11,6 +11,7 @@ import { startAction } from "@/modules/leads/actions";
 import { peekNextSeller } from "@/modules/deals/handoff";
 import { getSettings } from "@/modules/settings/get";
 import { effectiveGoals } from "@/modules/settings/goals";
+import { listScripts } from "@/modules/scripts/list";
 import { getActiveTemplates, getLeadView, getTagCatalog } from "@/modules/leads/view";
 
 export const metadata: Metadata = { title: "Shuffler" };
@@ -29,7 +30,7 @@ export default async function AttendPage() {
     db.select({ n: sql<number>`count(*)::int` }).from(attendanceSessions).where(and(eq(attendanceSessions.userId, me.id), eq(attendanceSessions.outcome, "saved"), eq(attendanceSessions.isTest, false), sql`${attendanceSessions.savedAt} >= ${today}`)),
     db.select({ n: sql<number>`((select count(*) from visits v where v.user_id = ${me.id} and v.canceled_at is null and v.created_at >= ${today}) + (select count(*) from deals d where d.sdr_id = ${me.id} and not d.is_test and d.created_at >= ${today}))::int` }).from(sql`(select 1) x`),
     mine ? getTagCatalog() : Promise.resolve(null),
-    mine ? getActiveTemplates() : Promise.resolve([]),
+    mine ? getActiveTemplates(me.id) : Promise.resolve([]),
     mine ? db.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.active, true), sql`'seller' = any(${users.roles})`, visibleUsers(me))).orderBy(users.name) : Promise.resolve([]),
     mine ? db.execute<{ at: Date; name: string | null; channels: string[] | null; note: string | null }>(sql`
     select s.saved_at as at, u.name, l.notes as note,
@@ -62,5 +63,5 @@ export default async function AttendPage() {
   }
 
   const previous = prev ? { by: prev.name ?? "Outra pessoa", at: new Date(prev.at).toISOString(), channels: prev.channels ?? [], note: prev.note } : null;
-  return <AttendFlow autoEnrichOn={(await getSettings()).auto_enrich === 1} lead={lead} catalog={catalog!} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={previous} doneToday={done?.n ?? 0} scheduledToday={sched?.n ?? 0} goals={goals} sellers={sellers} queue={{ on: settings.seller_queue_on === 1, nextId: await peekNextSeller() }} />;
+  return <AttendFlow scripts={await listScripts(me.id)} autoEnrichOn={(await getSettings()).auto_enrich === 1} lead={lead} catalog={catalog!} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={previous} doneToday={done?.n ?? 0} scheduledToday={sched?.n ?? 0} goals={goals} sellers={sellers} queue={{ on: settings.seller_queue_on === 1, nextId: await peekNextSeller() }} />;
 }

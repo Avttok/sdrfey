@@ -30,7 +30,7 @@ async function del(tx: Tx, table: string, where: SQL): Promise<number> {
 }
 
 const revalidateAll = () => {
-  for (const p of ["/leads", "/negociacoes", "/visitas", "/painel", "/metas", "/historico", "/registro", "/atender", "/admin/apagar"]) revalidatePath(p);
+  for (const p of ["/leads", "/negociacoes", "/visitas", "/painel", "/metas", "/metas-vendas", "/historico", "/historico-vendas", "/registro", "/atender", "/admin/apagar"]) revalidatePath(p);
 };
 
 /** Apaga uma categoria inteira, ou só o que é de teste, ou só o que for anterior a uma data. */

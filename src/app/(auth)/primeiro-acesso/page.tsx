@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { FirstAccessForm } from "@/components/first-access-form";
 import { Logo } from "@/components/logo";
-import { PasswordForm } from "@/components/password-form";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { panelCls } from "@/components/ui";
 import { requireUser } from "@/modules/auth/guard";
 
 export const metadata: Metadata = { title: "Primeiro acesso" };
@@ -11,18 +10,8 @@ export const metadata: Metadata = { title: "Primeiro acesso" };
 export default async function ChangePasswordPage() {
   const user = await requireUser({ allowMustChange: true });
 
-  if (!user.mustChangePassword && user.profileDone) {
-    return (
-      <main className="min-h-screen">
-        <div className="mx-auto w-full max-w-md px-6 py-12">
-          <Logo />
-          <h1 className="display mt-10 text-3xl">Trocar senha</h1>
-          <p className="mb-8 mt-2 text-muted">Informe a senha atual e escolha uma nova.</p>
-          <div className={`${panelCls} p-6`}><PasswordForm submitLabel="Salvar nova senha" /></div>
-        </div>
-      </main>
-    );
-  }
+  /* Primeiro acesso concluído: nada mais a fazer aqui. A senha só muda em Minha conta. */
+  if (!user.mustChangePassword && user.profileDone) redirect("/painel");
   return (
     <main className="min-h-screen">
       <div className="mx-auto w-full max-w-xl px-5 py-10">

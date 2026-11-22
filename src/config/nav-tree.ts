@@ -29,12 +29,18 @@ export function cleanTree(input: unknown): NavTree | null {
     }
   }
   // abas novas que ainda não estão na estrutura entram no fim, soltas
-  for (const n of NAV) if (!seen.has(n.href) && n.href !== "/conta") out.push({ type: "link", href: n.href });
+  // (se a aba pertence a um grupo cuja pasta já existe, ela entra nessa pasta: ex.: Metas de Vendas na pasta Vendas)
+  for (const n of NAV) {
+    if (seen.has(n.href) || n.href === "/conta") continue;
+    const sibling = n.group ? NAV.filter((x) => x.group === n.group && x.href !== n.href).map((x) => x.href) : [];
+    const folder = out.find((o): o is TreeFolder => o.type === "folder" && o.items.some((h) => sibling.includes(h)));
+    if (folder) folder.items.push(n.href); else out.push({ type: "link", href: n.href });
+  }
   return out;
 }
 
 /** Ponto de partida do editor: as pastas padrão do sistema (com os nomes/ícones atuais). */
-const GROUP_ICON_KEY: Record<string, string> = { Pessoas: "contact", Info: "info", SDR: "headset", Vendas: "handshake", "Gestão": "shieldhalf" };
+const GROUP_ICON_KEY: Record<string, string> = { Pessoas: "contact", Info: "info", SDR: "headset", Vendas: "handshake", "Opções": "settings", "Gestão": "shieldhalf" };
 
 export function defaultTree(order: string[], groupLabels: Record<string, string | undefined> = {}, groupIcons: Record<string, string | undefined> = {}): NavTree {
   const items = order.map((h) => NAV.find((n) => n.href === h)).filter((n): n is (typeof NAV)[number] => !!n && n.href !== "/conta");

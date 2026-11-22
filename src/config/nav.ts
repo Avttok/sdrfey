@@ -1,4 +1,4 @@
-import { Gauge, Headset, Info, ShieldHalf, Contact, History, Play, CalendarCheck, ScrollText, ShieldCheck, Target, UserRound, Users, MapPin, Handshake, FileSpreadsheet, type LucideIcon } from "lucide-react";
+import { Gauge, Headset, Info, ShieldHalf, Contact, History, Play, CalendarCheck, ScrollText, ShieldCheck, Target, UserRound, Users, MapPin, Handshake, FileSpreadsheet, Mail, ScrollText as ScriptIcon, Settings2, type LucideIcon } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: string; adminOnly?: boolean; /** Menu a que pertence. Menu com um item só aparece como link solto; sem grupo = link solto. */ group?: string };
 
@@ -7,20 +7,24 @@ export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: st
  * `perm` liga o item a uma permissão (config/permissions.ts); sem `perm`, todos veem.
  */
 /** Ícone de cada menu (grupo) da barra. */
-export const GROUP_ICONS: Record<string, LucideIcon> = { Pessoas: Contact, Info: Info, SDR: Headset, Vendas: Handshake, "Gestão": ShieldHalf };
+export const GROUP_ICONS: Record<string, LucideIcon> = { Pessoas: Contact, Info: Info, SDR: Headset, Vendas: Handshake, "Opções": Settings2, "Gestão": ShieldHalf };
 
 export const NAV: NavItem[] = [
   { href: "/painel", label: "Dashboard", icon: Gauge, perm: "tab.painel" },
   { href: "/leads", label: "Leads", icon: Users, perm: "tab.leads", group: "Pessoas" },
   { href: "/representantes", label: "Representantes", icon: MapPin, perm: "tab.representantes", group: "Pessoas" },
-  { href: "/metas", label: "Metas", icon: Target, perm: "tab.metas", group: "Info" },
-  { href: "/historico", label: "Histórico", icon: History, perm: "tab.historico", group: "Info" },
   { href: "/atender", label: "Shuffler", icon: Play, perm: "tab.comecar", group: "SDR" },
   { href: "/visitas", label: "Visitas", icon: CalendarCheck, perm: "tab.visitas", group: "SDR" },
+  { href: "/metas", label: "Metas", icon: Target, perm: "tab.metas", group: "SDR" },
+  { href: "/historico", label: "Histórico", icon: History, perm: "tab.historico", group: "SDR" },
   { href: "/desempenho", label: "Desempenho", icon: FileSpreadsheet, perm: "tab.desempenho", group: "SDR" },
   { href: "/negociacoes", label: "Negociações", icon: Handshake, perm: "tab.negociacoes", group: "Vendas" },
   { href: "/shuffler-vendas", label: "Shuffler", icon: Play, perm: "tab.shuffler_vendas", group: "Vendas" },
+  { href: "/metas-vendas", label: "Metas", icon: Target, perm: "tab.metas_vendas", group: "Vendas" },
+  { href: "/historico-vendas", label: "Histórico", icon: History, perm: "tab.historico_vendas", group: "Vendas" },
   { href: "/desempenho-vendas", label: "Desempenho", icon: FileSpreadsheet, perm: "tab.desempenho_vendas", group: "Vendas" },
+  { href: "/email", label: "E-mail", icon: Mail, perm: "tab.email", group: "Opções" },
+  { href: "/scripts", label: "Scripts", icon: ScriptIcon, perm: "tab.scripts", group: "Opções" },
   { href: "/registro", label: "Registro", icon: ScrollText, perm: "tab.registro", group: "Gestão" },
   { href: "/admin", label: "Adm", icon: ShieldCheck, adminOnly: true, group: "Gestão" },
   { href: "/conta", label: "Minha conta", icon: UserRound },

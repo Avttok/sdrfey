@@ -109,7 +109,7 @@ export async function addVisitAction(leadId: number, input: { code: string; visi
 }
 
 /** Edita código, data, link e observação de uma visita. */
-export async function updateVisitAction(leadId: number, visitId: number, input: { code: string; visitDate: string; link?: string | null; note?: string | null }): Promise<ActionResult> {
+export async function updateVisitAction(leadId: number, visitId: number, input: { code: string; visitDate: string; link?: string | null; note?: string | null; isPublic?: boolean }): Promise<ActionResult> {
   const { me, v, allowed } = await visitForEditing(leadId, visitId);
   if (!v) return fail("Visita não encontrada.");
   if (!allowed) return fail("Só quem agendou a visita (ou quem pode editar leads) pode alterá-la.");
@@ -119,7 +119,7 @@ export async function updateVisitAction(leadId: number, visitId: number, input: 
   const link = cleanVisitLink(p.data.link);
   if (p.data.link && !link) return fail("O link da visita precisa começar com https://.");
   await db.transaction(async (tx) => {
-    await tx.update(visits).set({ code: p.data.code, visitDate: p.data.visitDate, link, note }).where(eq(visits.id, visitId));
+    await tx.update(visits).set({ code: p.data.code, visitDate: p.data.visitDate, link, note, ...(typeof input.isPublic === "boolean" ? { isPublic: input.isPublic } : {}) }).where(eq(visits.id, visitId));
     await logAudit(tx, diffToAudit({ userId: me.id, leadId, entity: "visit", meta: { visita: v.code } }, { code: v.code, visitDate: v.visitDate, link: v.link, note: v.note } as Record<string, unknown>, { code: p.data.code, visitDate: p.data.visitDate, link, note } as Record<string, unknown>, { code: "Código da visita", visitDate: "Data da visita", link: "Link da visita" }));
   });
   revalidatePath(`/leads/${leadId}`);

@@ -22,7 +22,7 @@ import { loadDeal } from "./access";
 import type { ActionResult } from "@/modules/leads/actions";
 
 const fail = (message: string): ActionResult => ({ ok: false, message });
-const refresh = (id: number) => { revalidatePath("/negociacoes"); revalidatePath(`/negociacoes/${id}`); revalidatePath("/painel"); revalidatePath("/metas"); revalidatePath("/historico"); };
+const refresh = (id: number) => { revalidatePath("/negociacoes"); revalidatePath(`/negociacoes/${id}`); revalidatePath("/painel"); revalidatePath("/metas"); revalidatePath("/metas-vendas"); revalidatePath("/historico"); revalidatePath("/historico-vendas"); };
 
 const load = loadDeal;
 
@@ -191,7 +191,7 @@ export async function returnDealToSdrAction(id: number, reason?: string): Promis
     await tx.update(leads).set({ ownerId: deal.sdrId, lockedBy: null, lockedAt: null, nextEligibleAt: null, returnAt: null, updatedAt: new Date() }).where(eq(leads.id, deal.leadId));
     await logAudit(tx, { userId: me.id, leadId: deal.leadId, entity: "deal", action: "devolveu lead ao SDR", field: "Negociação", oldValue: `${s.snap.empresa} · ${s.snap.etapa}`, newValue: `SDR ${sdrUser.name}`, meta: { negociacao: id, motivo: why, visitasCanceladas: canceled.length, ...s.snap } });
   });
-  revalidatePath("/negociacoes"); revalidatePath("/painel"); revalidatePath("/metas"); revalidatePath("/historico"); revalidatePath("/leads"); revalidatePath("/visitas"); revalidatePath("/atender");
+  revalidatePath("/negociacoes"); revalidatePath("/painel"); revalidatePath("/metas"); revalidatePath("/metas-vendas"); revalidatePath("/historico"); revalidatePath("/historico-vendas"); revalidatePath("/leads"); revalidatePath("/visitas"); revalidatePath("/atender");
   return { ok: true, message: `Lead devolvido para ${sdrUser.name}. Ele já pode ser atendido de novo no Shuffler.` };
 }
 
@@ -470,7 +470,7 @@ export async function deleteDealAction(id: number): Promise<ActionResult> {
     await tx.delete(deals).where(eq(deals.id, id));
     await logAudit(tx, { userId: me.id, leadId: s.d.leadId, entity: "deal", action: "apagou negociação", field: "Negociação", oldValue: `${s.snap.empresa} · ${s.snap.etapa}`, meta: { negociacao: id, ...s.snap } });
   });
-  revalidatePath("/negociacoes"); revalidatePath("/painel"); revalidatePath("/metas"); revalidatePath("/historico");
+  revalidatePath("/negociacoes"); revalidatePath("/painel"); revalidatePath("/metas"); revalidatePath("/metas-vendas"); revalidatePath("/historico"); revalidatePath("/historico-vendas");
   return { ok: true, message: "Negociação apagada." };
 }
 

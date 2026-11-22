@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, CalendarCheck, Check, CircleSlash, Link2, MapPin, Pause, Trash2, Undo2, UserCheck, Users, Workflow } from "lucide-react";
+import { Ban, CalendarCheck, Check, CircleSlash, Globe, Link2, MapPin, Pause, Trash2, Undo2, UserCheck, Users, Workflow } from "lucide-react";
 import { useContext } from "react";
 import { AvatarGlyph } from "@/components/avatar-glyph";
 import { TagIcons } from "@/components/tag-chip";
@@ -111,7 +111,7 @@ export function SellerQueue({ sellers, nextId, queueOn, value, onChange }: { sel
 }
 
 /** Dados da visita: código, data e link do Salesforce (todos obrigatórios). */
-export function VisitFields({ code, setCode, date, dateInput, link, setLink }: { code: string; setCode: (v: string) => void; date: string; dateInput: React.ReactNode; link: string; setLink: (v: string) => void }) {
+export function VisitFields({ code, setCode, date, dateInput, link, setLink, isPublic, setPublic }: { code: string; setCode: (v: string) => void; date: string; dateInput: React.ReactNode; link: string; setLink: (v: string) => void; isPublic?: boolean; setPublic?: (v: boolean) => void }) {
   void date;
   const okLink = /^https:\/\/\S+$/i.test(link.trim());
   return (
@@ -122,6 +122,12 @@ export function VisitFields({ code, setCode, date, dateInput, link, setLink }: {
         <input className={`${inputCls} ${link && !okLink ? "!border-danger" : ""}`} placeholder="https://…" value={link} onChange={(e) => setLink(e.target.value)} aria-required aria-invalid={!!link && !okLink} />
         {link && !okLink && <span className="mt-1 block text-xs text-danger">O link precisa começar com https://</span>}
       </label>
+      {setPublic && (
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-sunk/60 p-3 text-sm sm:col-span-3">
+          <input type="checkbox" checked={!!isPublic} onChange={(e) => setPublic(e.target.checked)} className="mt-0.5" />
+          <span><span className="flex items-center gap-1.5 font-semibold"><Globe size={14} aria-hidden /> Visita pública</span><span className="text-xs text-muted">Ligada: todos os usuários, de qualquer cargo, veem esta visita na janela de Visitas. Desligada: só você, a equipe de gestão e quem negocia o mesmo lead.</span></span>
+        </label>
+      )}
     </div>
   );
 }

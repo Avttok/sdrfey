@@ -23,6 +23,8 @@ export type SaveInput = {
   visitDate?: string | null;
   /** Link da visita no Salesforce (opcional). */
   visitLink?: string | null;
+  /** Visita pública: todos os usuários enxergam na janela de Visitas. */
+  visitPublic?: boolean;
   /** Para onde o lead vai ao fim do atendimento: vendedores (negociação imediata) ou representante (visita). */
   handoff?: { to: "sellers" | "reps" | "none"; sellerId?: number | null; note?: string | null } | null;
 };
@@ -77,7 +79,7 @@ export async function saveAttendance(userId: number, input: SaveInput): Promise<
 
     if (visitCode) {
       const rep = toSellers ? null : await nearestRep(lead.city, lead.uf);
-      await tx.insert(visits).values({ leadId: lead.id, userId, code: visitCode, visitDate, link: visitLink, ...(toSellers ? { kind: "seller" as const, sellerId: input.handoff?.sellerId ?? null } : repSnapshot(rep)) });
+      await tx.insert(visits).values({ leadId: lead.id, userId, code: visitCode, visitDate, link: visitLink, isPublic: !!input.visitPublic, ...(toSellers ? { kind: "seller" as const, sellerId: input.handoff?.sellerId ?? null } : repSnapshot(rep)) });
       await logAudit(tx, { userId, leadId: lead.id, entity: "visit", action: "agendou visita", field: "Agenda", oldValue: null, newValue: visitCode, meta: { dataDaVisita: visitDate, modalidade: toSellers ? "Vendedores SDR" : "Representante", representante: rep?.repName ?? null, km: rep?.km ?? null } });
     }
 

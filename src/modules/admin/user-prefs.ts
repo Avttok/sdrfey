@@ -56,7 +56,7 @@ export async function resetUserSettingsAction(userId: number, keys: ResetKey[]):
     await tx.update(users).set(patch).where(eq(users.id, userId));
     await logAudit(tx, { userId: me.id, entity: "user", action: "restaurou configurações", field: list.map((k) => RESET_KEYS.find((r) => r.key === k)?.label ?? k).join(", "), meta: { usuario: u.name, chaves: list } });
   });
-  for (const p of ["/", "/metas", "/painel", "/atender"]) revalidatePath(p, p === "/" ? "layout" : undefined);
+  for (const p of ["/", "/metas", "/metas-vendas", "/painel", "/atender"]) revalidatePath(p, p === "/" ? "layout" : undefined);
   revalidatePath("/admin/usuarios");
   return { ok: true, message: `${u.name}: ${list.length === 1 ? "configuração restaurada" : `${list.length} configurações restauradas`} ao padrão.` };
 }

@@ -6,13 +6,13 @@ import type { Metadata } from "next";
 import { PageHead } from "@/components/page-head";
 import { History, CalendarCheck, CheckCircle2, Clock, Search, Timer } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AttendButton } from "@/components/attend-button";
 import { DateField } from "@/components/date-field";
 import { TagChip } from "@/components/tag-chip";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { fmtCnpj, fmtDate, fmtDuration, plural, TZ } from "@/lib/format";
-import { SellerHistory } from "@/components/deals/seller-history";
-import { hasSellerPart, isSellerOnly } from "@/config/roles";
+import { isSellerOnly } from "@/config/roles";
 import { requirePerm } from "@/modules/auth/guard";
 import { parseHistFilters, userHistoryRich, type HistRow } from "@/modules/leads/history";
 
@@ -25,15 +25,8 @@ const dayKey = (d: string) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ })
 export default async function HistoryPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const me = await requirePerm("tab.historico");
   const sp = await searchParams;
-  if (isSellerOnly(me.roles)) return <SellerHistory userId={me.id} sp={sp} />;
-  const both = hasSellerPart(me.roles);
-  const view = sp.aba === "vendas" ? "vendas" : "atendimentos";
-  const tabs = both ? (
-    <div role="tablist" aria-label="Tipo de histórico" className="flex w-fit gap-1 rounded-xl border border-line bg-panel p-1 text-sm font-medium">
-      {([["atendimentos", "Atendimentos (SDR)"], ["vendas", "Negociações (vendas)"]] as const).map(([k, l]) => <Link key={k} role="tab" aria-selected={view === k} href={k === "vendas" ? "/historico?aba=vendas" : "/historico"} className={`rounded-lg px-3 py-1.5 transition ${view === k ? "bg-grad-soft text-accent" : "text-muted hover:text-ink"}`}>{l}</Link>)}
-    </div>
-  ) : null;
-  if (both && view === "vendas") return <div className="space-y-5">{tabs}<SellerHistory userId={me.id} sp={sp} /></div>;
+  /* Quem só vende tem o histórico dele na janela de Vendas. */
+  if (isSellerOnly(me.roles) && me.permissions["tab.historico_vendas"]) redirect("/historico-vendas");
   const f = parseHistFilters(sp);
   const rows = await userHistoryRich(me.id, f);
   const dealRows = rows.length ? await db.execute<{ lead_id: number }>(sql`select distinct lead_id from deals where lead_id in (${sql.join([...new Set(rows.map((r) => r.lead_id))].map((i) => sql`${i}`), sql`, `)})`) : [];
@@ -68,7 +61,6 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="space-y-6">
-      {tabs}
       <PageHead icon={History} title="Meu histórico">
         <Link prefetch={false} className={btnGhost} href={preset(1)}>Hoje</Link>
         <Link prefetch={false} className={btnGhost} href={preset(7)}>7 dias</Link>

@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
 import { getSettings } from "@/modules/settings/get";
 import { effectiveGoals } from "@/modules/settings/goals";
+import { listScripts } from "@/modules/scripts/list";
 import { getActiveTemplates, getLeadView, getTagCatalog } from "@/modules/leads/view";
 import { startSalesShuffleAction } from "@/modules/sales/actions";
 import { inactiveStock, openShuffle } from "@/modules/sales/shuffler";
@@ -19,8 +20,8 @@ export default async function SalesShufflePage() {
   const open = await openShuffle(me.id);
   if (open) {
     // mesmo fluxo do SDR (perfil, e-mail, WhatsApp, ligação, finalizar), só que com os destinos do vendedor
-    const [lead, catalog, templates, settings] = await Promise.all([getLeadView(open.leadId), getTagCatalog(), getActiveTemplates(), getSettings()]);
-    if (lead) return <AttendFlow autoEnrichOn={settings.auto_enrich === 1} sales={{ shuffleId: open.id }} lead={lead} catalog={catalog} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={null} doneToday={0} scheduledToday={0} goals={effectiveGoals(me, settings)} sellers={[]} />;
+    const [lead, catalog, templates, settings] = await Promise.all([getLeadView(open.leadId), getTagCatalog(), getActiveTemplates(me.id), getSettings()]);
+    if (lead) return <AttendFlow scripts={await listScripts(me.id)} autoEnrichOn={settings.auto_enrich === 1} sales={{ shuffleId: open.id }} lead={lead} catalog={catalog} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={null} doneToday={0} scheduledToday={0} goals={effectiveGoals(me, settings)} sellers={[]} />;
   }
 
   const today = sql`(date_trunc('day', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo')`;

@@ -45,7 +45,7 @@ export async function saveSalesWork(userId: number, shuffleId: number, input: Sa
 
     let dealId: number | null = null;
     if (final === "visit") {
-      await tx.insert(visits).values({ leadId: lead.id, userId, code: visitCode!, visitDate: input.visitDate!, link, kind: "seller" as const, sellerId: userId });
+      await tx.insert(visits).values({ leadId: lead.id, userId, code: visitCode!, visitDate: input.visitDate!, link, isPublic: !!input.visitPublic, kind: "seller" as const, sellerId: userId });
       await logAudit(tx, { userId, leadId: lead.id, entity: "visit", action: "agendou visita", field: "Agenda", oldValue: null, newValue: visitCode, meta: { dataDaVisita: input.visitDate, modalidade: "Vendedor (lead inativo)" } });
     }
     if (final === "visit") dealId = await createDealTx(tx, { leadId: lead.id, sdrId: userId, sellerId: userId, note: input.note ?? null, isTest: lead.isTest });

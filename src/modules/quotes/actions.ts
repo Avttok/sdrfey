@@ -14,7 +14,7 @@ import type { ActionResult } from "@/modules/leads/actions";
 import { getExtraTaxPct, normalizeItem, normTerm, syncDealFromQuotes, totalsOf, upsertPaymentTerm, upsertProducts } from "./db";
 
 const fail = (message: string): ActionResult => ({ ok: false, message });
-const refresh = (id: number) => { for (const p of ["/negociacoes", `/negociacoes/${id}`, "/painel", "/metas", "/historico"]) revalidatePath(p); };
+const refresh = (id: number) => { for (const p of ["/negociacoes", `/negociacoes/${id}`, "/painel", "/metas", "/metas-vendas", "/historico", "/historico-vendas"]) revalidatePath(p); };
 
 const cents = z.number().int().nullable();
 const itemSchema = z.object({

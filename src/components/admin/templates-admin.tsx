@@ -8,10 +8,11 @@ import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { htmlToText, TEMPLATE_VARIABLES } from "@/modules/email/render";
 import { deleteTemplateAction, saveTemplateAction } from "@/modules/admin/config";
+import { deleteMyTemplateAction, saveMyTemplateAction } from "@/modules/email/my-templates";
 
 export type TplRow = { id?: number; name: string; subject: string; body: string; bodyHtml: string | null; active: boolean };
 
-function Card({ t, isNew }: { t: TplRow; isNew?: boolean }) {
+function Card({ t, isNew, mine }: { t: TplRow; isNew?: boolean; mine?: boolean }) {
   const [f, setF] = useState(t);
   const [rk, setRk] = useState(0);
   const [open, setOpen] = useState(!!isNew);
@@ -36,8 +37,8 @@ function Card({ t, isNew }: { t: TplRow; isNew?: boolean }) {
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} /> Ativo</label>
         <span className="flex-1" />
-        <button type="button" className={isNew ? btnPrimary : btnGhost} disabled={pending} onClick={() => run(() => saveTemplateAction({ ...f, id: t.id }), undefined, () => { if (isNew) { setF(t); setRk((n) => n + 1); } })}>{isNew ? <><Plus size={15} aria-hidden /> Criar modelo</> : "Salvar"}</button>
-        {!isNew && <button type="button" aria-label="Excluir modelo" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => ask({ title: "Excluir este modelo?", body: `O modelo "${t.name}" será excluído e não poderá mais ser usado nos atendimentos.`, label: "Sim, excluir", icon: Trash2, onConfirm: () => run(() => deleteTemplateAction(t.id!)) })}><Trash2 size={15} /></button>}
+        <button type="button" className={isNew ? btnPrimary : btnGhost} disabled={pending} onClick={() => run(() => (mine ? saveMyTemplateAction : saveTemplateAction)({ ...f, id: t.id }), undefined, () => { if (isNew) { setF(t); setRk((n) => n + 1); } })}>{isNew ? <><Plus size={15} aria-hidden /> Criar modelo</> : "Salvar"}</button>
+        {!isNew && <button type="button" aria-label="Excluir modelo" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => ask({ title: "Excluir este modelo?", body: `O modelo "${t.name}" será excluído e não poderá mais ser usado nos atendimentos.`, label: "Sim, excluir", icon: Trash2, onConfirm: () => run(() => (mine ? deleteMyTemplateAction : deleteTemplateAction)(t.id!)) })}><Trash2 size={15} /></button>}
       </div>
       </div>}
       {dialog}
@@ -45,11 +46,11 @@ function Card({ t, isNew }: { t: TplRow; isNew?: boolean }) {
   );
 }
 
-export function TemplatesAdmin({ rows }: { rows: TplRow[] }) {
+export function TemplatesAdmin({ rows, mine }: { rows: TplRow[]; mine?: boolean }) {
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted">Variáveis: {TEMPLATE_VARIABLES.map((v) => `{${v}}`).join(" ")}. Com alternativa para quando faltar o dado: <code>{"{contato|tudo bem}"}</code>.</p>
-      <ul className="space-y-3">{rows.map((t) => <Card key={t.id} t={t} />)}<Card isNew t={{ name: "", subject: "", body: "", bodyHtml: "", active: true }} /></ul>
+      <ul className="space-y-3">{rows.map((t) => <Card key={t.id} t={t} mine={mine} />)}<Card isNew mine={mine} t={{ name: "", subject: "", body: "", bodyHtml: "", active: true }} /></ul>
     </div>
   );
 }

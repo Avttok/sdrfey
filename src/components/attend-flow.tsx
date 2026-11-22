@@ -7,6 +7,8 @@ import { ConfirmDialog, useConfirm } from "@/components/confirm-dialog";
 import { DateInput } from "@/components/date-input";
 import { GoalBar } from "@/components/goal-bar";
 import { CopyVal } from "@/components/copy-val";
+import { ScriptPicker } from "@/components/script-picker";
+import type { ScriptDoc } from "@/config/scripts";
 import { LeadInfoPanel } from "@/components/lead-info-panel";
 import { TagChip } from "@/components/tag-chip";
 import { DestPicker, FinalActions, FlashTag, SellerQueue, TagDeck, VisitFields } from "@/components/attend-final";
@@ -53,7 +55,7 @@ const copy = async (text: string, toast: ReturnType<typeof useToast>) => {
   }
 };
 
-export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myName, showMap, previous, doneToday, scheduledToday, goals, sellers, sales, queue }: { /** Fila de distribuição aos vendedores: ligada? e quem é o próximo. */ queue?: { on: boolean; nextId: number | null }; /** Consulta automática de CNPJ ligada pelo Adm: o shuffler não consulta sozinho. */ autoEnrichOn?: boolean; /** Modo vendedor (lead inativo): mesmo fluxo, destinos diferentes no fim. */ sales?: { shuffleId: number }; sellers: { id: number; name: string }[]; lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; previous: PreviousAttendance | null; doneToday: number; scheduledToday: number; goals: Goals }) {
+export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myName, showMap, previous, doneToday, scheduledToday, goals, sellers, sales, queue, scripts = [] }: { /** Scripts de ligação que a pessoa pode usar (do time e dela). */ scripts?: ScriptDoc[]; /** Fila de distribuição aos vendedores: ligada? e quem é o próximo. */ queue?: { on: boolean; nextId: number | null }; /** Consulta automática de CNPJ ligada pelo Adm: o shuffler não consulta sozinho. */ autoEnrichOn?: boolean; /** Modo vendedor (lead inativo): mesmo fluxo, destinos diferentes no fim. */ sales?: { shuffleId: number }; sellers: { id: number; name: string }[]; lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; previous: PreviousAttendance | null; doneToday: number; scheduledToday: number; goals: Goals }) {
   const toast = useToast();
   const [pending, start] = useTransition();
   const openedAt = useRef(Date.now());
@@ -68,6 +70,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
   const [visit, setVisit] = useState("");
   const [visitDate, setVisitDate] = useState("");
   const [visitLink, setVisitLink] = useState("");
+  const [visitPublic, setVisitPublic] = useState(false);
   const dir = useRef<"fwd" | "back">("fwd");
   /** Para onde o lead vai ao final: ninguém, vendedores (negociação imediata) ou representante (visita). */
   const [dest, setDest] = useState<"none" | "sellers" | "reps" | "visit" | "sdr">("none");
@@ -161,7 +164,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
   /** Antes de salvar: encaminhar exige visita preenchida (o servidor confere de novo). */
   const linkOk = /^https:\/\/\S+$/i.test(visitLink.trim());
   const visitMissing = showVisit && (!visit.trim() || !visitDate || !linkOk);
-  const payload = () => ({ leadId: lead.id, channels: [...used], temperature, qualification, situations: [...situations], note, visitCode: showVisit ? visit : null, visitDate: showVisit ? visitDate : null, visitLink: showVisit ? visitLink || null : null, handoff: { to: dest, sellerId: dest === "sellers" ? sellerId : null, note: null } });
+  const payload = () => ({ leadId: lead.id, channels: [...used], temperature, qualification, situations: [...situations], note, visitCode: showVisit ? visit : null, visitDate: showVisit ? visitDate : null, visitLink: showVisit ? visitLink || null : null, visitPublic: showVisit ? visitPublic : false, handoff: { to: dest, sellerId: dest === "sellers" ? sellerId : null, note: null } });
   /** Salva e sorteia o próximo lead. */
   const blocked = () => { if (!visitMissing) return false; toast("warn", "Para encaminhar o lead, preencha o código, a data e o link da visita no Salesforce (começando com https://)."); return true; };
   const save = () => blocked() || run(async () => {
@@ -191,7 +194,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
   };
   const resetNow = () => run(async () => {
     const r = await resetLeadAction(lead.id);
-    if (r.ok) { setUsed(new Set()); setTemperature(null); setQualification(null); setSituations(new Set()); setNote(""); setVisit(""); setVisitDate(""); setVisitLink(""); setDest("none"); setSellerId(null); setConfirmReset(false); setStep(0); router.refresh(); }
+    if (r.ok) { setUsed(new Set()); setTemperature(null); setQualification(null); setSituations(new Set()); setNote(""); setVisit(""); setVisitDate(""); setVisitLink(""); setVisitPublic(false); setDest("none"); setSellerId(null); setConfirmReset(false); setStep(0); router.refresh(); }
     return r;
   });
   const discardNow = () => run(async () => { const r = await discardThis(); if (r.ok) await nextLead(); return r; });
@@ -355,6 +358,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
               {goodPhones.map((p) => <li key={p.id} className="lift flex items-center gap-3 rounded-2xl border border-line bg-sunk/60 px-4 py-3"><span aria-hidden className="grid size-10 place-items-center rounded-xl bg-accent/15 text-accent"><Phone size={18} /></span><span className="figure flex-1 text-lg">{fmtPhone(p.value)}</span><button type="button" className={btnGhost} onClick={() => { void copy(p.value, toast); setUsed(new Set(used).add("ligacao")); }}><Copy size={15} aria-hidden /> Copiar</button></li>)}
               {goodPhones.length === 0 && <li className="text-sm text-muted">Sem telefone válido.</li>}
             </ul>
+            {scripts.length > 0 && <details className="group rounded-2xl border border-line bg-sunk/40 p-3" open><summary className="cursor-pointer text-sm font-semibold">Script da ligação (toque nas respostas do lead)</summary><div className="mt-3"><ScriptPicker scripts={scripts} goal={sales ? "vendas" : "sdr"} vars={{ empresa: vars.empresa, contato: vars.contato, cidade: vars.cidade, meunome: vars.meu_nome }} compact /></div></details>}
             <UsedToggle on={used.has("ligacao")} onClick={() => toggle(used, "ligacao", setUsed)} label="Ligação feita" />
           </section>
         )}
@@ -379,7 +383,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
                 ? ([["none", "Só salvar", "Registra o que você fez e segue sem encaminhar"], ["visit", "Agendar visita e levar ao meu painel", "A negociação abre no seu painel Novo; exige visita marcada"], ["sdr", "Devolver à fila dos SDR", "Volta a ser prospecção e entra no Shuffler dos SDR"]] as const)
                 : ([["none", "Sem encaminhamento", "Só registrar o atendimento"], ["sellers", "Vendedores SDR", "Negociação imediata; o vendedor entra na visita pelo Salesforce e confirma"], ["reps", "Representante", "Agenda uma visita (leva dias para confirmar)"]] as const)} />
               {!sales && dest === "sellers" && <SellerQueue sellers={sellers} nextId={queue?.nextId ?? null} queueOn={!!queue?.on} value={sellerId} onChange={setSellerId} />}
-              {showVisit && <VisitFields code={visit} setCode={setVisit} date={visitDate} dateInput={<DateInput label="Data da visita" value={visitDate} onChange={setVisitDate} />} link={visitLink} setLink={setVisitLink} />}
+              {showVisit && <VisitFields code={visit} setCode={setVisit} date={visitDate} dateInput={<DateInput label="Data da visita" value={visitDate} onChange={setVisitDate} />} link={visitLink} setLink={setVisitLink} isPublic={visitPublic} setPublic={setVisitPublic} />}
               {showVisit && !sales && <p className="text-xs text-muted">{dest === "sellers" ? "Obrigatório: o lead só vai para os vendedores com a visita registrada (código, data e link do Salesforce)." : "Obrigatório: o lead só vai para o representante com a visita registrada (código, data e link). Agendar qualifica o lead e guarda o representante mais próximo e a distância."}</p>}
             </div>
             <label className="block text-sm font-medium">Observação<textarea className={`${inputCls} mt-1 min-h-24 font-normal`} value={note} onChange={(e) => setNote(e.target.value)} /></label>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarCheck, Check, CheckCircle2, Clock, Mail, MapPin, Pencil, Phone, Save, StickyNote, UserRound, UserRoundCheck, X } from "lucide-react";
+import { CalendarCheck, Check, CheckCircle2, Clock, Globe, Users, Mail, MapPin, Pencil, Phone, Save, StickyNote, UserRound, UserRoundCheck, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { BrandLink, SalesforceIcon } from "@/components/brand-icons";
 import { PersonBubble } from "@/components/person-bubble";
@@ -18,6 +18,7 @@ export type VisitCard = {
   repName: string | null; repSap: string | null; repCity: string | null; repKm: number | null; sellerName: string | null;
   leadId: number; company: string; city: string | null; uf: string | null; sfUrl: string | null; eoxUrl: string | null;
   by: { name: string; hex: string } | null;
+  isPublic: boolean; /** Como a visita chegou até quem está olhando. */ relation: "mine" | "public" | "shared" | "team";
   cnpj: string | null; phones: string[]; email: string | null; contactName: string | null; roleTitle: string | null; canManage: boolean;
 };
 
@@ -79,7 +80,11 @@ export function VisitCards({ list, openId }: { list: VisitCard[]; openId?: numbe
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <VisitCodeChip code={c.code} />
-                          <VisitStatusChip status={st} />
+                          <span className="flex flex-wrap items-center gap-1.5">
+                            {c.isPublic && <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent"><Globe size={11} aria-hidden /> Pública</span>}
+                            {c.relation === "shared" && !c.isPublic && <span className="inline-flex items-center gap-1 rounded-full bg-ok/15 px-2 py-0.5 text-[11px] font-semibold text-ok"><Users size={11} aria-hidden /> Compartilhada</span>}
+                            <VisitStatusChip status={st} />
+                          </span>
                         </div>
                         <p className="mt-2 font-semibold leading-snug">{c.company}</p>
                         {(c.city || c.uf) && <p className="text-sm text-muted">{[c.city, c.uf].filter(Boolean).join(" / ")}</p>}
@@ -123,7 +128,7 @@ const fmtPhone = (d: string) => (d.length === 11 ? d.replace(/^(\d{2})(\d{5})(\d
 function VisitDialog({ v, onClose }: { v: VisitCard; onClose: () => void }) {
   const closeRef = useRef(onClose); closeRef.current = onClose;
   const [editing, setEditing] = useState(false);
-  const [f, setF] = useState({ code: v.code, date: v.visitDate ?? "", link: v.link ?? "", note: v.note ?? "" });
+  const [f, setF] = useState({ code: v.code, date: v.visitDate ?? "", link: v.link ?? "", note: v.note ?? "", pub: v.isPublic });
   const { run, pending } = useRun();
   useEffect(() => {
     const key = (e: KeyboardEvent) => { if (e.key === "Escape" && !editing) closeRef.current(); };
@@ -169,11 +174,12 @@ function VisitDialog({ v, onClose }: { v: VisitCard; onClose: () => void }) {
               <label className="block"><span className="mb-1 block text-muted">Código</span><input className={inputCls} value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} /></label>
               <div className="block"><span className="mb-1 block text-muted">Data da visita</span><DateInput label="Data da visita" value={f.date} onChange={(x) => setF({ ...f, date: x })} /></div>
               <label className="block sm:col-span-2"><span className="mb-1 block text-muted">Link da visita (Salesforce, opcional)</span><input className={inputCls} placeholder="https://…" value={f.link} onChange={(e) => setF({ ...f, link: e.target.value })} /></label>
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-panel p-3 sm:col-span-2"><input type="checkbox" className="mt-0.5" checked={f.pub} onChange={(e) => setF({ ...f, pub: e.target.checked })} /><span><span className="flex items-center gap-1.5 font-semibold"><Globe size={14} aria-hidden /> Visita pública</span><span className="text-xs text-muted">Todos os usuários, de qualquer cargo, veem esta visita.</span></span></label>
               <label className="block sm:col-span-2"><span className="mb-1 block text-muted">Observação</span><textarea className={`${inputCls} min-h-24`} maxLength={1000} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} /></label>
             </div>
             <div className="flex gap-2">
-              <button type="button" className={btnPrimary} disabled={pending} onClick={() => run(() => updateVisitAction(v.leadId, v.id, { code: f.code, visitDate: f.date, link: f.link || null, note: f.note }), "Visita atualizada.", () => { setEditing(false); onClose(); })}><Save size={15} aria-hidden /> Salvar alterações</button>
-              <button type="button" className={btnGhost} disabled={pending} onClick={() => { setEditing(false); setF({ code: v.code, date: v.visitDate ?? "", link: v.link ?? "", note: v.note ?? "" }); }}><X size={15} aria-hidden /> Cancelar</button>
+              <button type="button" className={btnPrimary} disabled={pending} onClick={() => run(() => updateVisitAction(v.leadId, v.id, { code: f.code, visitDate: f.date, link: f.link || null, note: f.note, isPublic: f.pub }), "Visita atualizada.", () => { setEditing(false); onClose(); })}><Save size={15} aria-hidden /> Salvar alterações</button>
+              <button type="button" className={btnGhost} disabled={pending} onClick={() => { setEditing(false); setF({ code: v.code, date: v.visitDate ?? "", link: v.link ?? "", note: v.note ?? "", pub: v.isPublic }); }}><X size={15} aria-hidden /> Cancelar</button>
             </div>
           </div>
         ) : (

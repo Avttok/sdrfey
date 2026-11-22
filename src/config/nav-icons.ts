@@ -1,10 +1,10 @@
-import { Activity, BarChart3, Bell, BookOpen, Briefcase, Building2, CalendarCheck, Compass, Contact, Crown, Flame, Gauge, Gift, Handshake, Headset, History, Info, LayoutGrid, Lightbulb, ListChecks, MapPin, MessageCircle, Phone, Play, Rocket, ScrollText, ShieldCheck, ShieldHalf, Shuffle, Sparkles, Star, Target, Trophy, UserRound, Users, Wallet, Zap, type LucideIcon } from "lucide-react";
+import { Activity, BarChart3, Bell, BookOpen, Briefcase, Building2, CalendarCheck, Compass, Contact, Crown, Flame, Gauge, Gift, Handshake, Headset, History, Info, LayoutGrid, Lightbulb, ListChecks, MapPin, MessageCircle, Phone, Play, Rocket, ScrollText, Settings2, Mail, ShieldCheck, ShieldHalf, Shuffle, Sparkles, Star, Target, Trophy, UserRound, Users, Wallet, Zap, type LucideIcon } from "lucide-react";
 import { NAV } from "@/config/nav";
 
 /** Ícones que o Adm pode escolher para abas e pastas do menu. A chave é o que fica guardado. */
 export const NAV_ICONS: Record<string, LucideIcon> = {
   gauge: Gauge, users: Users, contact: Contact, map: MapPin, target: Target, history: History, play: Play, shuffle: Shuffle, calendar: CalendarCheck,
-  handshake: Handshake, scroll: ScrollText, shield: ShieldCheck, shieldhalf: ShieldHalf, info: Info, headset: Headset, user: UserRound, phone: Phone,
+  handshake: Handshake, settings: Settings2, mail: Mail, scroll: ScrollText, shield: ShieldCheck, shieldhalf: ShieldHalf, info: Info, headset: Headset, user: UserRound, phone: Phone,
   chart: BarChart3, bell: Bell, book: BookOpen, briefcase: Briefcase, building: Building2, compass: Compass, crown: Crown, flame: Flame, gift: Gift,
   grid: LayoutGrid, idea: Lightbulb, list: ListChecks, chat: MessageCircle, rocket: Rocket, sparkles: Sparkles, star: Star, trophy: Trophy, wallet: Wallet, zap: Zap, activity: Activity,
 };

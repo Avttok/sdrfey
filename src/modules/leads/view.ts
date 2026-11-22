@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { bubbleHex } from "@/config/theme";
 import { db, emailTemplates, leadChannels, leadPeople, leads, leadTags, tagGroups, tags, users, visits } from "@/db";
 import { mergeInfo, parseBrasilApi, parseReceitaWs } from "@/modules/enrich/parse";
@@ -58,6 +58,7 @@ export async function getLeadView(leadId: number) {
 }
 export type LeadView = NonNullable<Awaited<ReturnType<typeof getLeadView>>>;
 
-export async function getActiveTemplates() {
-  return db.select({ id: emailTemplates.id, name: emailTemplates.name, subject: emailTemplates.subject, body: emailTemplates.body, bodyHtml: emailTemplates.bodyHtml }).from(emailTemplates).where(eq(emailTemplates.active, true)).orderBy(asc(emailTemplates.sort), asc(emailTemplates.id));
+/** Modelos do time (sem dono) + os pessoais de quem atende. */
+export async function getActiveTemplates(userId: number) {
+  return db.select({ id: emailTemplates.id, name: emailTemplates.name, subject: emailTemplates.subject, body: emailTemplates.body, bodyHtml: emailTemplates.bodyHtml }).from(emailTemplates).where(and(eq(emailTemplates.active, true), or(isNull(emailTemplates.ownerId), eq(emailTemplates.ownerId, userId)))).orderBy(asc(emailTemplates.sort), asc(emailTemplates.id));
 }

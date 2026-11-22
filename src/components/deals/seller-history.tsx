@@ -37,15 +37,14 @@ export async function SellerHistory({ userId, sp }: { userId: number; sp: Record
         {stat(FileText, "Cotações enviadas", String(rows.reduce((a, r) => a + r.quotes, 0)))}
       </div>
       <FilterBar id="historico-vendas" active={[f.q, f.stage, f.from, f.to].filter(Boolean).length}>
-      <form className="flex flex-wrap items-end gap-3" action="/historico">
-        {sp.aba === "vendas" && <input type="hidden" name="aba" value="vendas" />}
+      <form className="flex flex-wrap items-end gap-3" action="/historico-vendas">
         <label className="block min-w-48 flex-1 text-sm"><span className="mb-1 block text-muted">Buscar cliente</span><input name="q" defaultValue={f.q} className={inputCls} placeholder="Nome da empresa" /></label>
         <label className="block w-44 text-sm"><span className="mb-1 block text-muted">Etapa</span>
           <select name="etapa" defaultValue={f.stage ?? ""} className={inputCls}><option value="">Todas</option>{(Object.keys(STAGE_META) as DealStage[]).map((s) => <option key={s} value={s}>{STAGE_META[s].label}</option>)}</select></label>
         <div className="w-40 text-sm"><span className="mb-1 block text-muted">De</span><DateField name="from" label="De" defaultValue={f.from} /></div>
         <div className="w-40 text-sm"><span className="mb-1 block text-muted">Até</span><DateField name="to" label="Até" defaultValue={f.to} /></div>
         <button className={btnPrimary}><Search size={16} aria-hidden /> Filtrar</button>
-        <Link prefetch={false} href={sp.aba === "vendas" ? "/historico?aba=vendas" : "/historico"} className={`${btnGhost} !py-3`}>Limpar</Link>
+        <Link prefetch={false} href="/historico-vendas" className={`${btnGhost} !py-3`}>Limpar</Link>
       </form>
       </FilterBar>
       <ul className="space-y-2.5">

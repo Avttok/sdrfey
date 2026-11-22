@@ -30,7 +30,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const sp = await searchParams;
   const f = parseAuditFilters(sp);
   const [people, { total, rows, pages }, stats] = await Promise.all([db.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.active, true), visibleUsers(me))).orderBy(asc(users.name)), listAudit({ ...f, viewer: me }), auditStats(me)]);
-  const types: [string, string][] = [["lead", "Lead"], ["user", "Usuário"], ["tag", "Tag"], ["setting", "Configuração"], ["import", "Importação"], ["rep", "Representante"], ["template", "Modelo de e-mail"], ["session", "Atendimento"], ["goal", "Meta"], ["deal", "Negociação"], ["purge", "Exclusão"], ["shop", "Loja"], ["chat", "Chat"]];
+  const types: [string, string][] = [["lead", "Lead"], ["user", "Usuário"], ["tag", "Tag"], ["setting", "Configuração"], ["import", "Importação"], ["rep", "Representante"], ["template", "Modelo de e-mail"], ["session", "Atendimento"], ["goal", "Meta"], ["deal", "Negociação"], ["purge", "Exclusão"], ["shop", "Loja"], ["chat", "Chat"], ["script", "Script"]];
   const href = (n: number) => { const p = new URLSearchParams(); for (const [k, v] of Object.entries(sp)) if (typeof v === "string" && k !== "page") p.set(k, v); p.set("page", String(n)); return `/registro?${p}`; };
   const typeHref = (t: string) => { const p = new URLSearchParams(); for (const [k, v] of Object.entries(sp)) if (typeof v === "string" && k !== "page" && k !== "type") p.set(k, v); if (t) p.set("type", t); return `/registro?${p}`; };
 

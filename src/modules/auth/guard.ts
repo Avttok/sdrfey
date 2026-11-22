@@ -114,7 +114,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 export async function requireUser(opts: { allowMustChange?: boolean } = {}): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if ((user.mustChangePassword || !user.profileDone) && !opts.allowMustChange) redirect("/trocar-senha");
+  if ((user.mustChangePassword || !user.profileDone) && !opts.allowMustChange) redirect("/primeiro-acesso");
   return user;
 }
 

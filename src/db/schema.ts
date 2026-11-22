@@ -227,6 +227,8 @@ export const visits = pgTable(
     kind: text("kind").$type<"rep" | "seller">().notNull().default("rep"),
     /** Vendedor escolhido para a visita (kind = seller); vazio = grupo dos vendedores. */
     sellerId: integer("seller_id").references(() => users.id, { onDelete: "set null" }),
+    /** Pública: aparece para todos os usuários, de qualquer cargo, na janela de Visitas. */
+    isPublic: boolean("is_public").notNull().default(false),
     canceledAt: timestamp("canceled_at", { withTimezone: true }),
     /** Visita de representante leva dias para ser confirmada: pendente → confirmada → realizada (ou cancelada). */
     status: text("status").$type<"pendente" | "confirmada" | "realizada" | "cancelada">().notNull().default("pendente"),
@@ -425,7 +427,27 @@ export const emailTemplates = pgTable("email_templates", {
   bodyHtml: text("body_html"),
   active: boolean("active").notNull().default(true),
   sort: integer("sort").notNull().default(0),
+  /** Vazio = modelo global (do Adm, todos usam). Preenchido = modelo pessoal de quem criou. */
+  ownerId: integer("owner_id").references(() => users.id, { onDelete: "cascade" }),
   createdAt: now(),
+});
+
+/** Scripts de ligação: árvore de passos. Global (Adm) ou pessoal. `nodes` é validado em modules/scripts/schema.ts. */
+export const scripts = pgTable("scripts", {
+  id: serial("id").primaryKey(),
+  /** Vazio = script global. */
+  ownerId: integer("owner_id").references(() => users.id, { onDelete: "cascade" }),
+  /** Modelos que vêm de fábrica têm uma chave fixa (para não duplicar ao semear). */
+  seedKey: text("seed_key").unique(),
+  title: text("title").notNull(),
+  segment: text("segment").notNull().default("geral"),
+  goal: text("goal").$type<"sdr" | "vendas" | "retorno">().notNull().default("sdr"),
+  summary: text("summary"),
+  nodes: jsonb("nodes").$type<unknown>().notNull(),
+  startId: text("start_id").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: now(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 /* ───────────── Vendas: lead repassado a um vendedor ───────────── */

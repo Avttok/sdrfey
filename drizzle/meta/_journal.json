@@ -267,6 +267,20 @@
       "when": 1795104803013,
       "tag": "0037_produtos_codigos_alternativos",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1795355214501,
+      "tag": "0038_visitas_publicas",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1795355293624,
+      "tag": "0039_scripts_e_modelos_pessoais",
+      "breakpoints": true
     }
   ]
 }
