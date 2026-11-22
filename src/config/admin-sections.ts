@@ -1,4 +1,4 @@
-import { Activity, Archive, Megaphone, Coins, Clock, DatabaseZap, Download, Eraser, Handshake, KeyRound, Mail, PanelTop, Settings2, Tags, Upload, Users, type LucideIcon } from "lucide-react";
+import { Activity, Archive, Megaphone, Coins, Clock, DatabaseZap, Download, Eraser, Handshake, KeyRound, PhoneCall, Mail, PanelTop, Settings2, Tags, Upload, Users, type LucideIcon } from "lucide-react";
 
 export type AdminItem = { href: string; label: string; hint: string; icon: LucideIcon };
 export type AdminSection = { id: string; title: string; hue: string; items: AdminItem[] };
@@ -24,6 +24,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     { href: "/admin/apagar", label: "Apagar", hint: "Excluir dados com segurança", icon: Eraser },
   ] },
   { id: "sistema", title: "Sistema", hue: "#ec4899", items: [
+    { href: "/admin/ligacoes", label: "Ligações (VocallPhone)", hint: "Botão Ligar direto do sistema", icon: PhoneCall },
     { href: "/admin/barra", label: "Barra de menus", hint: "Ordem do menu para todos", icon: PanelTop },
     { href: "/admin/parametros", label: "Parâmetros", hint: "SDR: sorteio · Vendas: avisos das negociações · Segurança", icon: Settings2 },
     { href: "/admin/banco", label: "Saúde do sistema", hint: "Banco, conexões e números", icon: Activity },

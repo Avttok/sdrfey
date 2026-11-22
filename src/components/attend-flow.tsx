@@ -7,6 +7,7 @@ import { ConfirmDialog, useConfirm } from "@/components/confirm-dialog";
 import { DateInput } from "@/components/date-input";
 import { GoalBar } from "@/components/goal-bar";
 import { CopyVal } from "@/components/copy-val";
+import { useVocall } from "@/components/vocall-provider";
 import { ProductHints } from "@/components/product-hints";
 import type { Reco } from "@/modules/recommendations/data";
 import { ScriptPicker } from "@/components/script-picker";
@@ -49,12 +50,16 @@ function Elapsed({ since }: { since: number }) {
 }
 
 /**
- * "Ligar": copia o número já pronto para colar no VocallPhone. No celular abre também o discador do aparelho.
- * (O aplicativo do VocallPhone no computador não aceita comandos de fora, então a discagem em si é um Ctrl+V.)
+ * "Ligar": se a pessoa tem agente/ramal configurados, pede a chamada ao VocallPhone (como o clique no número da EOX).
+ * Sem isso, ou se o app não confirmar, copia o número já pronto para colar no VocallPhone e dar Enter. No celular abre o discador.
  */
-const callNumber = async (digits: string, toast: ReturnType<typeof useToast>) => {
-  try { await navigator.clipboard.writeText(digits); toast("info", "Número copiado. No VocallPhone, cole com Ctrl+V e ligue."); }
-  catch { toast("warn", "Não consegui copiar. Selecione o número e copie manualmente."); }
+const callNumber = async (digits: string, label: string | null, toast: ReturnType<typeof useToast>, vocall: ReturnType<typeof useVocall>) => {
+  if (vocall.configured && vocall.state === "online") {
+    toast("info", "Pedindo a ligação ao VocallPhone…");
+    if (await vocall.dial(digits, label)) { toast("ok", "Ligando pelo VocallPhone."); return; }
+    toast("warn", "O VocallPhone não confirmou. Número copiado: cole no app e dê Enter.");
+  } else toast("info", "Número copiado. No VocallPhone, cole (Ctrl+V) e dê Enter.");
+  try { await navigator.clipboard.writeText(digits); } catch { toast("warn", "Não consegui copiar. Selecione o número e copie manualmente."); }
   if (typeof navigator !== "undefined" && /Android|iPhone|iPad/i.test(navigator.userAgent)) window.location.href = `tel:+55${digits.replace(/^55/, "")}`;
 };
 
@@ -69,6 +74,7 @@ const copy = async (text: string, toast: ReturnType<typeof useToast>) => {
 
 export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myName, showMap, previous, doneToday, scheduledToday, goals, sellers, sales, queue, scripts = [], recos = [] }: { /** Produtos para oferecer, por tipo de cliente. */ recos?: Reco[]; /** Scripts de ligação que a pessoa pode usar (do time e dela). */ scripts?: ScriptDoc[]; /** Fila de distribuição aos vendedores: ligada? e quem é o próximo. */ queue?: { on: boolean; nextId: number | null }; /** Consulta automática de CNPJ ligada pelo Adm: o shuffler não consulta sozinho. */ autoEnrichOn?: boolean; /** Modo vendedor (lead inativo): mesmo fluxo, destinos diferentes no fim. */ sales?: { shuffleId: number }; sellers: { id: number; name: string }[]; lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; previous: PreviousAttendance | null; doneToday: number; scheduledToday: number; goals: Goals }) {
   const toast = useToast();
+  const vocall = useVocall();
   const [pending, start] = useTransition();
   const openedAt = useRef(Date.now());
   useBusyWhile(pending);
@@ -368,7 +374,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
             <StepTitle i={3} />
             <p className="text-sm text-muted">Toque em “Ligar” para copiar o número já pronto e cole no VocallPhone (Ctrl+V).</p>
             <ul className="space-y-1.5">
-              {goodPhones.map((p) => <li key={p.id} className="lift flex items-center gap-3 rounded-2xl border border-line bg-sunk/60 px-4 py-3"><span aria-hidden className="grid size-10 place-items-center rounded-xl bg-accent/15 text-accent"><Phone size={18} /></span><span className="figure flex-1 text-lg">{fmtPhone(p.value)}</span><button type="button" className={btnPrimary} onClick={() => { void callNumber(p.value, toast); setUsed(new Set(used).add("ligacao")); }}><Phone size={15} aria-hidden /> Ligar</button><button type="button" className={btnGhost} onClick={() => { void copy(p.value, toast); setUsed(new Set(used).add("ligacao")); }}><Copy size={15} aria-hidden /> Copiar</button></li>)}
+              {goodPhones.map((p) => <li key={p.id} className="lift flex items-center gap-3 rounded-2xl border border-line bg-sunk/60 px-4 py-3"><span aria-hidden className="grid size-10 place-items-center rounded-xl bg-accent/15 text-accent"><Phone size={18} /></span><span className="figure flex-1 text-lg">{fmtPhone(p.value)}</span><button type="button" className={btnPrimary} onClick={() => { void callNumber(p.value, lead.tradeName ?? lead.company, toast, vocall); setUsed(new Set(used).add("ligacao")); }}><Phone size={15} aria-hidden /> Ligar</button><button type="button" className={btnGhost} onClick={() => { void copy(p.value, toast); setUsed(new Set(used).add("ligacao")); }}><Copy size={15} aria-hidden /> Copiar</button></li>)}
               {goodPhones.length === 0 && <li className="text-sm text-muted">Sem telefone válido.</li>}
             </ul>
             <ProductHints recos={recos} />

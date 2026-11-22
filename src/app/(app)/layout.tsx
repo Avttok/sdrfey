@@ -4,7 +4,9 @@ import { Presence } from "@/components/presence";
 import { ToastProvider } from "@/components/toast";
 import { AppHeader, SideBarFor } from "@/components/app-header";
 import { navBadges } from "@/modules/deals/queries";
-import { getSettings } from "@/modules/settings/get";
+import { getSettings, settingValue } from "@/modules/settings/get";
+import { VocallProvider } from "@/components/vocall-provider";
+import { parseVocall, VOCALL_KEY } from "@/modules/vocall/config";
 import { AdminViewSwitch } from "@/components/admin-view-switch";
 import { GoldMode } from "@/components/gold-mode";
 import { goldStatus } from "@/modules/goals/gold";
@@ -20,7 +22,7 @@ import { AvatarProvider } from "@/components/person-bubble";
 import { db, tags, users } from "@/db";
 import { tagIconKey } from "@/config/tag-icons";
 import { TagIconProvider } from "@/components/tag-chip";
-import { isNotNull } from "drizzle-orm";
+import { eq, isNotNull } from "drizzle-orm";
 import { requireUser } from "@/modules/auth/guard";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -32,7 +34,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const avatars = { byId: Object.fromEntries(av.map((a) => [a.id, a.avatar!])), byName: Object.fromEntries(av.map((a) => [a.name, a.avatar!])) };
   const tagRows = await db.select({ label: tags.label, key: tags.key, group: tags.groupKey, icon: tags.icon }).from(tags);
   const tagIcons = Object.fromEntries(tagRows.map((t) => [t.label.toUpperCase(), tagIconKey(t.icon, t.key, t.group)]));
-  return (
+  const vocall = parseVocall(await settingValue(VOCALL_KEY));
+  const [me] = vocall.on && vocall.host ? await db.select({ a: users.vocallAgentId, r: users.vocallRamal }).from(users).where(eq(users.id, user.id)) : [];
+  const dialer = vocall.on && vocall.host && me?.a && me?.r ? { cfg: { host: vocall.host, port: vocall.port, secure: vocall.secure, dac: vocall.dac, senha: vocall.senha, prefix: vocall.prefix }, agentId: me.a, ramal: me.r } : null;
+  const shell = (children: React.ReactNode) => (dialer ? <VocallProvider cfg={dialer.cfg} agentId={dialer.agentId} ramal={dialer.ramal}>{children}</VocallProvider> : <>{children}</>);
+  return shell(
     <ToastProvider>
       <TagIconProvider value={tagIcons}>
       <AvatarProvider value={avatars}>

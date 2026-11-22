@@ -39,6 +39,9 @@ export const users = pgTable("users", {
   coinsSpendBlocked: boolean("coins_spend_blocked").notNull().default(false),
   /** Barra de navegação: "top" (horizontal) ou "side" (vertical à esquerda). */
   navLayout: text("nav_layout").notNull().default("top"),
+  /** Ligação pelo VocallAgent (EOX): código do agente e ramal desta pessoa. */
+  vocallAgentId: text("vocall_agent_id"),
+  vocallRamal: text("vocall_ramal"),
   /** Ordem preferida dos itens do menu (hrefs). Vazio = ordem padrão. */
   navOrder: text("nav_order").array().notNull().default(sql`ARRAY[]::text[]`),
   /** Barra lateral recolhida (só ícones). */
