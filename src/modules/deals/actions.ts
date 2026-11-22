@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getSettings } from "@/modules/settings/get";
 import { fetchCnpjInfo } from "@/modules/enrich/enrich";
+import { notify } from "@/modules/notifications/notify";
 import { getExtraTaxPct, icmsPctFor, normalizeItem, syncDealFromQuotes, totalsOf, upsertPaymentTerm, upsertProducts, withIcmsPct } from "@/modules/quotes/db";
 import { leadChannels, dealEvents, dealQuoteItems, dealQuotes, deals, paymentTerms, interactions, leads, tags, users, visits, type DealStage } from "@/db";
 import { desc } from "drizzle-orm";
@@ -162,6 +163,7 @@ export async function reassignDealAction(id: number, sellerId: number | null): P
     await tx.insert(dealEvents).values({ dealId: id, userId: me.id, kind: "repassado", note: sellerId ? null : "Devolvida ao grupo" });
     await logAudit(tx, { userId: me.id, leadId: deal.leadId, entity: "deal", action: "trocou vendedor", field: "Vendedor", oldValue: deal.sellerId, newValue: sellerId, meta: { negociacao: id } });
   });
+  if (sellerId && sellerId !== me.id) await notify(sellerId, { kind: "negociacao", title: "Uma negociação foi passada para você", href: `/negociacoes/${id}` });
   refresh(id);
   return { ok: true, message: "Negociação atualizada." };
 }

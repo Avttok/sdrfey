@@ -7,6 +7,7 @@ import { Logo } from "./logo";
 import { NavLinks } from "./nav-links";
 import { SideBar } from "./side-bar";
 import { UserMenu } from "./user-menu";
+import { NotificationBell } from "./notification-bell";
 
 function navFor(user: CurrentUser) {
   return orderNav(visibleNav(user.permissions, user.isAdmin).filter((i) => i.href !== "/conta"), user.navOrder).map((i) => i.href);
@@ -21,6 +22,7 @@ export function AppHeader({ user, badges = {}, groupNav = true }: { user: Curren
         <Link href="/painel" aria-label="SDR FEY, ir para o início" className="flex items-center transition hover:scale-[1.03]"><Logo /></Link>
         <div className="min-w-0 flex-1"><NavLinks hrefs={navFor(user)} badges={badges} grouped={groupNav} custom={user.navCustom} tree={user.navTree} /></div>
         {user.isAdmin && <AdminViewSwitch mode={user.adminView} />}
+        <NotificationBell />
         <UserMenu name={user.name} username={user.username} hex={accent.hex} onHex={accent.onAccent} accentKey={accent.key} roles={user.shownRoles} avatar={user.avatar} banner={user.banner} />
       </div>
     </header>

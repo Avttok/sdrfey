@@ -1,5 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
-import { db, dealEvents, deals, settings, users, type Db } from "@/db";
+import { db, dealEvents, deals, leads, settings, users, type Db } from "@/db";
+import { notify } from "@/modules/notifications/notify";
 import { getSettings } from "@/modules/settings/get";
 import { logAudit, type DbOrTx } from "@/modules/audit/log";
 import { leftPortfolio } from "./portfolio";
@@ -53,6 +54,11 @@ export async function createDealTx(tx: Tx, o: { leadId: number; sdrId: number; s
   const note = o.note?.trim() || null;
   const [d] = await tx.insert(deals).values({ leadId: o.leadId, sdrId: o.sdrId, sellerId, handoffNote: note, claimedAt: sellerId ? new Date() : null, isTest: o.isTest }).returning({ id: deals.id });
   await tx.insert(dealEvents).values({ dealId: d.id, userId: o.sdrId, kind: "criado", note });
+  if (!o.isTest) {
+    const [lead] = await tx.select({ company: leads.company }).from(leads).where(eq(leads.id, o.leadId));
+    const who = sellerId ? [sellerId] : (await tx.select({ id: users.id }).from(users).where(and(eq(users.active, true), sql`'seller' = any(${users.roles})`))).map((u) => u.id);
+    await notify(who, { kind: "negociacao", title: sellerId ? "Nova negociação para você" : "Nova negociação no grupo", body: lead?.company ?? null, href: `/negociacoes/${d.id}` }, tx);
+  }
   await logAudit(tx, { userId: o.sdrId, leadId: o.leadId, entity: "deal", action: "repassou para vendedores", field: "Negociação", newValue: sellerId ? (viaQueue ? "próximo da fila" : "vendedor escolhido") : "grupo dos vendedores", meta: { negociacao: d.id, vendedor: sellerId } });
   return d.id;
 }

@@ -5,6 +5,7 @@ import { achievementsOf } from "@/modules/achievements/stats";
 import { and, eq, gt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { chatMentions, chatMessages, chatStyles, chatReactions, db, presence, users } from "@/db";
+import { notify } from "@/modules/notifications/notify";
 import { logAudit } from "@/modules/audit/log";
 import { publicRoles, type Role } from "@/config/roles";
 import { requireUser } from "@/modules/auth/guard";
@@ -118,6 +119,10 @@ async function saveMentions(authorId: number, channel: string, messageId: number
   const found = await db.select({ id: users.id, roles: users.roles }).from(users).where(and(eq(users.active, true), sql`lower(${users.username}) in (${sql.join(names.map((n) => sql`${n}`), sql`, `)})`));
   const ok = found.filter((u) => u.id !== authorId && (channel.startsWith("dm:") ? dmOther(channel, authorId) === u.id : channelsFor(u.roles as Role[]).some((c) => c.key === channel)));
   if (ok.length) await db.insert(chatMentions).values(ok.map((u) => ({ messageId, userId: u.id }))).onConflictDoNothing();
+  if (ok.length) {
+    const [a] = await db.select({ name: users.name }).from(users).where(eq(users.id, authorId));
+    await notify(ok.map((u) => u.id), { kind: "mencao", title: `${a?.name ?? "Alguém"} marcou você no chat`, body: body.replace(/\s+/g, " ").slice(0, 120) });
+  }
 }
 
 export type ChatPerson = { id: number; name: string; username: string; hex: string };

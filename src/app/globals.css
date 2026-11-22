@@ -365,3 +365,6 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .ann-shine { animation: ann-sweep 2.8s ease-in-out infinite; }
 .ann-icon { animation: ico-wiggle 2.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .ann-drop, .ann-card, .ann-shine, .ann-icon { animation: none !important; } }
+@keyframes bell-ring { 0%, 100% { transform: rotate(0); } 15% { transform: rotate(18deg); } 30% { transform: rotate(-16deg); } 45% { transform: rotate(12deg); } 60% { transform: rotate(-8deg); } 75% { transform: rotate(4deg); } }
+.bell-ring { transform-origin: 50% 12%; animation: bell-ring 1s ease-in-out 2; }
+@media (prefers-reduced-motion: reduce) { .bell-ring { animation: none; } }
