@@ -1,9 +1,10 @@
 "use client";
 
 import { useConfirm } from "@/components/confirm-dialog";
-import { CalendarCheck, Eye, ExternalLink, MapPin, Pencil, Plus, Trash2, UserRound, Users, X } from "lucide-react";
+import { CalendarCheck, Eye, ExternalLink, IdCard, MapPin, Pencil, Plus, Trash2, UserRound, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CopyVal } from "@/components/copy-val";
+import { Block, Modal } from "@/components/modal";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { deleteRepAction, saveRepAction } from "@/modules/reps/actions";
@@ -11,20 +12,23 @@ import { deleteRepAction, saveRepAction } from "@/modules/reps/actions";
 export type RepRow = { id?: number; sapCode: string; repName: string; managerName: string; team: string; cnpj: string; address: string; cep: string; city: string; uf: string; active: boolean; visits?: number; lastVisit?: string | null };
 const EMPTY: RepRow = { sapCode: "", repName: "", managerName: "", team: "", cnpj: "", address: "", cep: "", city: "", uf: "", active: true };
 
+const fmtDay = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+const mapsUrl = (r: RepRow) => { const addr = [r.address, r.cep, r.city && `${r.city}/${r.uf}`].filter(Boolean).join(", "); return addr ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}` : null; };
+
 /** Visão só de leitura: tudo do representante, com copiar e mapa. */
 function ReadOnly({ r }: { r: RepRow }) {
-  const item = (label: string, v: string | null | undefined, copy = false) => <div className="rounded-xl bg-sunk px-3.5 py-2.5"><dt className="text-xs text-muted">{label}</dt><dd className="mt-0.5 text-sm font-medium">{v ? (copy ? <CopyVal text={v}>{v}</CopyVal> : v) : <span className="font-normal text-muted">—</span>}</dd></div>;
-  const addr = [r.address, r.cep, r.city && `${r.city}/${r.uf}`].filter(Boolean).join(", ");
+  const item = (label: string, v: string | null | undefined, copy = false) => <div className="min-w-0 rounded-xl bg-panel px-3.5 py-2.5 ring-1 ring-line"><dt className="text-xs text-muted">{label}</dt><dd className="mt-0.5 break-words text-sm font-medium">{v ? (copy ? <CopyVal text={v}>{v}</CopyVal> : v) : <span className="font-normal text-muted">—</span>}</dd></div>;
+  const map = mapsUrl(r);
   return (
-    <div className="space-y-3">
-      <dl className="grid gap-2 sm:grid-cols-2">
-        {item("Código SAP", r.sapCode, true)}{item("CNPJ", r.cnpj, true)}{item("Gestor", r.managerName)}{item("Equipe", r.team)}
-        {item("Cidade / UF", r.city ? `${r.city}/${r.uf}` : "")}{item("CEP", r.cep, true)}
-        <div className="sm:col-span-2">{item("Endereço", r.address, true)}</div>
-        {item("Situação", r.active ? "Ativo (pode ser o mais próximo de um lead)" : "Inativo (não aparece como mais próximo)")}
-        {item("Visitas agendadas com ele", `${r.visits ?? 0}${r.lastVisit ? ` · última em ${new Date(r.lastVisit).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}` : ""}`)}
-      </dl>
-      {addr && <a className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline" target="_blank" rel="noopener noreferrer" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`}><ExternalLink size={14} aria-hidden /> Ver no mapa</a>}
+    <div className="grid gap-4 md:grid-cols-2">
+      <Block title="Identificação" icon={IdCard}><dl className="grid gap-2 sm:grid-cols-2 md:grid-cols-1 xl:grid-cols-2">{item("Código SAP", r.sapCode, true)}{item("CNPJ", r.cnpj, true)}{item("Gestor", r.managerName)}{item("Equipe", r.team)}</dl></Block>
+      <Block title="Localização" icon={MapPin}>
+        <dl className="grid gap-2 sm:grid-cols-2 md:grid-cols-1 xl:grid-cols-2">{item("Cidade / UF", r.city ? `${r.city}/${r.uf}` : "")}{item("CEP", r.cep, true)}<div className="sm:col-span-2 md:col-span-1 xl:col-span-2">{item("Endereço", r.address, true)}</div></dl>
+        {map && <a className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline" target="_blank" rel="noopener noreferrer" href={map}><ExternalLink size={14} aria-hidden /> Ver no mapa</a>}
+      </Block>
+      <Block title="Situação e visitas" icon={CalendarCheck} className="md:col-span-2">
+        <dl className="grid gap-2 sm:grid-cols-2">{item("Situação", r.active ? "Ativo (pode ser o mais próximo de um lead)" : "Inativo (não aparece como mais próximo)")}{item("Visitas agendadas com ele", `${r.visits ?? 0}${r.lastVisit ? ` · última em ${fmtDay(r.lastVisit)}` : ""}`)}</dl>
+      </Block>
     </div>
   );
 }
@@ -33,30 +37,41 @@ function ReadOnly({ r }: { r: RepRow }) {
 function Editor({ r, canEdit, isAdmin, onClose }: { r: RepRow; canEdit: boolean; isAdmin: boolean; onClose: () => void }) {
   const isNew = r.id === undefined;
   const [f, setF] = useState(r);
+  const dirty = JSON.stringify(f) !== JSON.stringify(r);
   const { run, pending } = useRun();
   const { ask, dialog } = useConfirm(pending);
-  const field = (k: keyof RepRow, label: string, span = "") => <label className={`block text-sm ${span}`}><span className="mb-1 block text-muted">{label}</span><input className={inputCls} disabled={!canEdit} value={String(f[k] ?? "")} onChange={(e) => setF({ ...f, [k]: e.target.value })} /></label>;
+  const field = (k: keyof RepRow, label: string, opt: { span?: string; hint?: string; mono?: boolean; max?: number } = {}) => (
+    <label className={`block text-sm ${opt.span ?? ""}`}><span className="mb-1 flex items-baseline justify-between gap-2 text-xs font-medium text-muted"><span>{label}</span>{opt.hint && <span className="font-normal">{opt.hint}</span>}</span>
+      <input className={`${inputCls} ${opt.mono ? "figure" : ""}`} disabled={!canEdit} maxLength={opt.max} value={String(f[k] ?? "")} onChange={(e) => setF({ ...f, [k]: k === "uf" ? e.target.value.toUpperCase() : e.target.value })} /></label>
+  );
+  const readOnly = !canEdit && !isNew;
+  const missing = !f.repName.trim() || !f.sapCode.trim();
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label={isNew ? "Novo representante" : `Representante ${r.repName}`} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className={`${panelCls} max-h-[90vh] w-full max-w-2xl space-y-5 overflow-y-auto p-6 shadow-2xl`}>
+    <Modal onClose={onClose} locked={dirty} size="lg" icon={isNew ? Plus : UserRound}
+      title={isNew ? "Novo representante" : r.repName} subtitle={isNew ? "Preencha o básico; o resto pode ficar para depois." : `SAP ${r.sapCode}${r.city ? ` · ${r.city}/${r.uf}` : ""}`}
+      badges={!isNew && <><span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${r.active ? "bg-ok/15 text-ok" : "bg-danger/15 text-danger"}`}>{r.active ? "Ativo" : "Inativo"}</span><span className="rounded-full bg-sunk px-2.5 py-0.5 text-xs font-semibold text-muted"><span className="figure">{r.visits ?? 0}</span> {(r.visits ?? 0) === 1 ? "visita" : "visitas"}</span></>}
+      footer={<>
         {dialog}
-        <div className="flex items-start gap-3">
-          <span className="grid size-11 place-items-center rounded-2xl bg-grad-soft text-accent">{isNew ? <Plus size={20} aria-hidden /> : <UserRound size={20} aria-hidden />}</span>
-          <div className="flex-1"><h2 className="display text-xl">{isNew ? "Novo representante" : r.repName}</h2>{!isNew && <p className="text-xs text-muted">SAP {r.sapCode}</p>}</div>
-          <button type="button" aria-label="Fechar" className="rounded-lg p-1.5 hover:bg-sunk" onClick={onClose}><X size={18} /></button>
+        {canEdit && <button type="button" className={btnPrimary} disabled={pending || missing || (!isNew && !dirty)} onClick={() => run(() => saveRepAction({ ...f, id: r.id, managerName: f.managerName || null, team: f.team || null, cnpj: f.cnpj || null, address: f.address || null, cep: f.cep || null }), undefined, onClose)}>{isNew ? "Criar representante" : "Salvar alterações"}</button>}
+        <button type="button" className={btnGhost} onClick={onClose}>{readOnly ? "Fechar" : "Cancelar"}</button>
+        {canEdit && dirty && <span className="text-xs text-warn">Alterações não salvas</span>}
+        {canEdit && missing && <span className="text-xs text-muted">Nome e código SAP são obrigatórios</span>}
+        <span className="flex-1" />
+        {isAdmin && !isNew && <button type="button" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => ask({ title: "Excluir este representante?", body: `${r.repName} será excluído por completo. Visitas já agendadas guardam a cópia dos dados dele.`, label: "Sim, excluir", icon: Trash2, onConfirm: () => run(() => deleteRepAction(r.id!)) })}><Trash2 size={15} aria-hidden /> Excluir</button>}
+      </>}>
+      {readOnly ? <ReadOnly r={r} /> : (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Block title="Identificação" icon={IdCard}><div className="grid gap-3 sm:grid-cols-2 md:grid-cols-1 xl:grid-cols-2">{field("repName", "Representante", { span: "sm:col-span-2 md:col-span-1 xl:col-span-2" })}{field("sapCode", "Código SAP", { mono: true })}{field("cnpj", "CNPJ", { mono: true })}{field("managerName", "Gestor")}{field("team", "Equipe")}</div></Block>
+          <Block title="Localização" icon={MapPin}><div className="grid gap-3 sm:grid-cols-2 md:grid-cols-1 xl:grid-cols-2">{field("address", "Endereço", { span: "sm:col-span-2 md:col-span-1 xl:col-span-2" })}{field("cep", "CEP", { mono: true })}{field("uf", "UF", { max: 2 })}{field("city", "Cidade", { span: "sm:col-span-2 md:col-span-1 xl:col-span-2" })}</div></Block>
+          <label className={`flex cursor-pointer items-center justify-between gap-4 rounded-xl border p-4 transition md:col-span-2 ${f.active ? "border-ok/40 bg-ok/10" : "border-line bg-sunk/40"}`}>
+            <span><b className="block text-sm font-semibold">{f.active ? "Representante ativo" : "Representante inativo"}</b><span className="text-xs text-muted">Inativos não aparecem como “mais próximo” nos leads e nas visitas.</span></span>
+            <input type="checkbox" role="switch" className="peer sr-only" checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} />
+            <span aria-hidden className={`relative h-7 w-12 shrink-0 rounded-full transition ${f.active ? "bg-ok" : "bg-line"} after:absolute after:left-0.5 after:top-0.5 after:size-6 after:rounded-full after:bg-white after:shadow after:transition-transform ${f.active ? "after:translate-x-5" : ""}`} />
+          </label>
+          {!isNew && mapsUrl(f) && <a className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline md:col-span-2" target="_blank" rel="noopener noreferrer" href={mapsUrl(f)!}><ExternalLink size={14} aria-hidden /> Ver no mapa</a>}
         </div>
-        {!canEdit && !isNew ? <ReadOnly r={r} /> : <>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {field("repName", "Representante")}{field("sapCode", "Código SAP")}{field("managerName", "Gestor")}{field("team", "Equipe")}{field("cnpj", "CNPJ")}{field("cep", "CEP")}{field("address", "Endereço", "sm:col-span-2")}{field("city", "Cidade")}{field("uf", "UF")}
-        </div>
-        <label className="flex items-center gap-2.5 rounded-xl bg-sunk px-3.5 py-2.5 text-sm"><input type="checkbox" className="size-4" disabled={!canEdit} checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} /> <span><b className="font-medium">Ativo</b> <span className="text-muted">· inativos não aparecem como “mais próximo”</span></span></label></>}
-        <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
-          {canEdit && <button type="button" className={btnPrimary} disabled={pending} onClick={() => run(() => saveRepAction({ ...f, id: r.id, managerName: f.managerName || null, team: f.team || null, cnpj: f.cnpj || null, address: f.address || null, cep: f.cep || null }), undefined, onClose)}>{isNew ? "Criar representante" : "Salvar"}</button>}
-          <span className="flex-1" />
-          {isAdmin && !isNew && <button type="button" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => ask({ title: "Excluir este representante?", body: `${r.repName} será excluído por completo. Visitas já agendadas guardam a cópia dos dados dele.`, label: "Sim, excluir", icon: Trash2, onConfirm: () => run(() => deleteRepAction(r.id!)) })}><Trash2 size={15} aria-hidden /> Excluir</button>}
-        </div>
-      </div>
-    </div>
+      )}
+    </Modal>
   );
 }
 

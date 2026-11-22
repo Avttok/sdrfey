@@ -1,12 +1,14 @@
 "use client";
 
-import { ChevronDown, Coins, Lock, LockOpen, Minus, Plus, ShoppingBag, TrendingUp } from "lucide-react";
+import { ChevronDown, Coins, Egg, Lock, LockOpen, Minus, Plus, ShoppingBag, TrendingUp } from "lucide-react";
 import { useState } from "react";
+import { useConfirm } from "@/components/confirm-dialog";
 import { useRun } from "@/components/use-run";
+import { revokeEggAction } from "@/modules/easter/admin";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { adjustCoinsAction, coinHistoryAction, setCoinsBlockAction, setCoinRewardsAction, setCoinsGlobalAction } from "@/modules/coins/admin";
 
-export type CoinRow = { id: number; name: string; username: string; accent: string | null; roles: string[]; earnBlocked: boolean; spendBlocked: boolean; balance: number; earned: number; spent: number };
+export type CoinRow = { id: number; name: string; username: string; accent: string | null; roles: string[]; egg: boolean; earnBlocked: boolean; spendBlocked: boolean; balance: number; earned: number; spent: number };
 type Hist = { id: number; amount: number; reason: string; at: string }[];
 
 function Switch({ on, onClick, label, disabled }: { on: boolean; onClick: () => void; label: string; disabled?: boolean }) {
@@ -15,6 +17,7 @@ function Switch({ on, onClick, label, disabled }: { on: boolean; onClick: () => 
 
 function Row({ r }: { r: CoinRow }) {
   const { run, pending } = useRun();
+  const { ask, dialog } = useConfirm(pending);
   const [open, setOpen] = useState(false);
   const [val, setVal] = useState(10);
   const [why, setWhy] = useState("");
@@ -23,6 +26,7 @@ function Row({ r }: { r: CoinRow }) {
   const adj = (mode: "add" | "set", value: number) => run(() => adjustCoinsAction(r.id, { mode, value, reason: why }), undefined, () => { setWhy(""); void coinHistoryAction(r.id).then(setHist); });
   return (
     <li className="px-4 py-3">
+      {dialog}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <div className="min-w-0 flex-1"><p className="truncate font-semibold">{r.name}</p><p className="text-xs text-muted">@{r.username}</p></div>
         <div className="figure text-right"><p className="inline-flex items-center gap-1.5 text-xl font-bold"><Coins size={17} className="text-accent" aria-hidden />{r.balance.toLocaleString("pt-BR")}</p><p className="text-[11px] text-muted">+{r.earned.toLocaleString("pt-BR")} · −{r.spent.toLocaleString("pt-BR")}</p></div>
@@ -51,6 +55,14 @@ function Row({ r }: { r: CoinRow }) {
               {hist && !hist.length && <li className="text-muted">Sem movimentos.</li>}{!hist && <li className="text-muted">Carregando…</li>}
             </ul>
           </div>
+          {r.egg && (
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-400/50 bg-amber-400/10 p-3 lg:col-span-2">
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#f5c542] text-[#3b2a00]"><Egg size={17} aria-hidden /></span>
+              <p className="min-w-48 flex-1 text-sm"><b className="font-semibold">Douradovo concluído</b><span className="block text-xs text-muted">A pessoa achou o segredo. Remover o status faz ela perder o acesso ao mural “Estive aqui” e poder refazer a jornada.</span></p>
+              <button type="button" className={btnGhost} disabled={pending} onClick={() => ask({ title: `Remover o Douradovo de ${r.name}?`, body: "Só o status: ela mantém as moedas e os itens que já ganhou, perde o post-it do mural e pode refazer a jornada.", label: "Remover só o status", tone: "warn", onConfirm: () => run(() => revokeEggAction(r.id, false)) })}>Remover só o status</button>
+              <button type="button" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => ask({ title: `Remover tudo do Douradovo de ${r.name}?`, body: "Tira o status, as 1.000 moedas, os 4 itens exclusivos da loja (desequipando-os) e o post-it do mural. Não dá para desfazer.", label: "Sim, remover tudo", tone: "danger", onConfirm: () => run(() => revokeEggAction(r.id, true)) })}>Remover tudo</button>
+            </div>
+          )}
         </div>
       )}
     </li>

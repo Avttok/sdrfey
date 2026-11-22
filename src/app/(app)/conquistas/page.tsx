@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, like } from "drizzle-orm";
 import { Trophy } from "lucide-react";
 import Link from "next/link";
 import { AchievementsView } from "@/components/achievements-view";
 import { PageHead } from "@/components/page-head";
 import { groupsFor } from "@/config/achievements";
-import { db, users } from "@/db";
+import { coinLedger, db, users } from "@/db";
 import { requireUser } from "@/modules/auth/guard";
 import { achievementsOf } from "@/modules/achievements/stats";
 
@@ -19,7 +19,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ u
   const target = isAdmin && Number(sp.u) > 0 ? Number(sp.u) : me.id;
   const [person] = target === me.id ? [{ id: me.id, name: me.name, roles: me.roles }] : await db.select({ id: users.id, name: users.name, roles: users.roles }).from(users).where(eq(users.id, target));
   if (!person) return <p className="text-sm text-muted">Pessoa não encontrada.</p>;
-  const [{ list }, people] = await Promise.all([achievementsOf(person.id, person.roles), isAdmin ? db.select({ id: users.id, name: users.name }).from(users).where(eq(users.active, true)).orderBy(asc(users.name)) : Promise.resolve([])]);
+  const [{ list }, paidRows, people] = await Promise.all([achievementsOf(person.id, person.roles), db.select({ ref: coinLedger.ref, amount: coinLedger.amount, at: coinLedger.createdAt }).from(coinLedger).where(and(eq(coinLedger.userId, person.id), like(coinLedger.ref, "ach:%"))), isAdmin ? db.select({ id: users.id, name: users.name }).from(users).where(eq(users.active, true)).orderBy(asc(users.name)) : Promise.resolve([])]);
   return (
     <div className="space-y-5">
       <PageHead icon={Trophy} title="Conquistas">
@@ -29,7 +29,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ u
           </nav>
         )}
       </PageHead>
-      <AchievementsView rows={list.map((a) => ({ key: a.key, earned: a.earned, value: a.value, manual: a.manual }))} groups={groupsFor(person.roles)} who={person.id === me.id ? "Suas medalhas" : `Medalhas de ${person.name}`} adminFor={isAdmin ? person.id : undefined} />
+      <AchievementsView paid={Object.fromEntries(paidRows.map((r) => [(r.ref ?? "").slice(4), { amount: r.amount, at: r.at.toISOString() }]))} rows={list.map((a) => ({ key: a.key, earned: a.earned, value: a.value, manual: a.manual }))} groups={groupsFor(person.roles)} who={person.id === me.id ? "Suas medalhas" : `Medalhas de ${person.name}`} adminFor={isAdmin ? person.id : undefined} />
     </div>
   );
 }

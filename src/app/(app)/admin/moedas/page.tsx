@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Page() {
   const [rows, s] = await Promise.all([
-    db.execute<CoinRow>(sql`select u.id, u.name, u.username, u.accent, u.roles, u.coins_earn_blocked as "earnBlocked", u.coins_spend_blocked as "spendBlocked",
+    db.execute<CoinRow>(sql`select u.id, u.name, exists (select 1 from coin_ledger e where e.user_id = u.id and e.ref = 'egg:done') as egg, u.username, u.accent, u.roles, u.coins_earn_blocked as "earnBlocked", u.coins_spend_blocked as "spendBlocked",
       coalesce(sum(c.amount), 0)::int as balance, coalesce(sum(c.amount) filter (where c.amount > 0), 0)::int as earned, coalesce(-sum(c.amount) filter (where c.amount < 0), 0)::int as spent
       from users u left join coin_ledger c on c.user_id = u.id where u.active group by u.id order by u.name`),
     getSettings(),

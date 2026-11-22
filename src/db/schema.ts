@@ -887,3 +887,13 @@ export const productTerms = pgTable("product_terms", {
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Mural de post-its de quem encontrou o segredo ("Estive aqui"): um por pessoa. */
+export const eggNotes = pgTable("egg_notes", {
+  userId: integer("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  text: text("text").notNull(),
+  color: text("color").notNull().default("amarelo"),
+  sticker: text("sticker").notNull().default("estrela"),
+  createdAt: now(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

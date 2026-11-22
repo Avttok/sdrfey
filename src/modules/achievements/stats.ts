@@ -54,6 +54,14 @@ export async function achievementsOf(uid: number, roles: readonly string[]): Pro
 }
 
 /** Quem tem o Douradovo (achou o segredo, ou o Adm deu na mão e não bloqueou). Mostrado no perfil. */
+/** Esta pessoa tem o Douradovo? (mesma regra de eggHolders, para uma só pessoa) */
+export async function hasEgg(uid: number): Promise<boolean> {
+  const [r] = await db.execute<{ ok: boolean }>(sql`
+    select ((exists (select 1 from coin_ledger c where c.user_id = ${uid} and c.ref = 'egg:done') or exists (select 1 from achievement_overrides o where o.user_id = ${uid} and o.key = 'egg' and o.granted))
+      and not exists (select 1 from achievement_overrides o where o.user_id = ${uid} and o.key = 'egg' and not o.granted)) as ok`);
+  return !!r?.ok;
+}
+
 export async function eggHolders(): Promise<number[]> {
   const rows = await db.execute<{ id: number }>(sql`
     select u.id from users u

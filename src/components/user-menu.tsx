@@ -3,7 +3,7 @@
 import { BannerRain } from "@/components/banner-rain";
 import { bannerStyle } from "@/config/banners";
 import { AvatarGlyph } from "@/components/avatar-glyph";
-import { Check, LogOut, Palette, Plus, Settings2, Trophy } from "lucide-react";
+import { Check, LogOut, Palette, Pin, Plus, Settings2, Trophy } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -23,9 +23,10 @@ import { badgesSummaryAction } from "@/modules/achievements/actions";
 import { ACHIEVEMENT_BY_KEY } from "@/config/achievements";
 import { SubmitButton } from "./submit-button";
 import { GoldFxToggle } from "./gold-fx-toggle";
+import { GoldSim } from "./gold-sim";
 
 /** Foto (iniciais) da pessoa e as tags de cargo. Ao clicar abre o menu da conta. */
-export function UserMenu({ banner, avatar, name, username, hex, onHex, accentKey, roles, side = false, collapsed = false }: { banner?: string | null; avatar?: string | null; accentKey?: string; name: string; username: string; hex: string; onHex: string; roles: Role[]; side?: boolean; collapsed?: boolean }) {
+export function UserMenu({ banner, avatar, name, username, hex, onHex, accentKey, roles, isAdmin = false, side = false, collapsed = false }: { isAdmin?: boolean; banner?: string | null; avatar?: string | null; accentKey?: string; name: string; username: string; hex: string; onHex: string; roles: Role[]; side?: boolean; collapsed?: boolean }) {
   const [open, setOpen] = useState(false);
   const path = usePathname();
   const [live, setLive] = useState<string | null>(null);
@@ -109,13 +110,14 @@ export function UserMenu({ banner, avatar, name, username, hex, onHex, accentKey
             </Link>
             <ThemeTile />
           </div>
-          {egg && <Link role="menuitem" href="/conquistas" onClick={() => setOpen(false)} className="egg-card mx-3 mb-3 flex items-center gap-3 rounded-2xl border border-amber-400/60 px-3 py-2.5"><EggBadge size={34} /><span className="text-sm font-bold">Douradovo<span className="block text-xs font-normal text-muted">Você achou o segredo!</span></span></Link>}
+          {egg && <Link role="menuitem" href="/ee-board" onClick={() => setOpen(false)} className="egg-card mx-3 mb-3 flex w-[calc(100%-1.5rem)] items-center gap-3 rounded-2xl border border-amber-400/60 px-3 py-2.5 text-left"><EggBadge size={34} /><span className="min-w-0 flex-1 text-sm font-bold">Douradovo<span className="block text-xs font-normal text-muted">Mural “Estive aqui” · cole seu post-it</span></span><Pin size={16} aria-hidden className="shrink-0 text-amber-500" /></Link>}
           <Link role="menuitem" href="/conquistas" onClick={() => setOpen(false)} className="menu-tile group mx-3 mb-3 flex items-center gap-3 rounded-2xl bg-sunk p-3 transition hover:-translate-y-0.5 hover:shadow-md">
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-grad text-on-accent shadow-sm"><Trophy size={17} aria-hidden className="transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-110" /></span>
             <span className="min-w-0 flex-1 text-sm font-semibold">Conquistas<span className="block text-xs font-normal text-muted">{badges ? `${badges.earned} de ${badges.total}` : "Suas medalhas"}</span></span>
             <span className="flex -space-x-1.5">{(badges?.top ?? []).slice(0, 4).map((b) => { const a = ACHIEVEMENT_BY_KEY.get(b.key); if (!a) return null; const I = a.icon; return <span key={b.key} title={b.name} className="grid size-7 place-items-center rounded-full border-2 border-sunk text-white" style={{ background: a.color }}><I size={13} aria-hidden /></span>; })}</span>
           </Link>
           <GoldFxToggle />
+          {isAdmin && <GoldSim />}
           <form action={setAccentAction} className="px-4 pb-3">
             <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold"><Palette size={14} aria-hidden /> Cor do tema<span className="ml-auto text-xs font-normal text-muted">{CHOOSABLE_ACCENTS.find((a) => a.key === accentKey)?.label ?? "Padrão"}</span></p>
             <div className="grid grid-cols-7 gap-2">

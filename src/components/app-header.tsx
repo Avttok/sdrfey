@@ -26,7 +26,7 @@ export function AppHeader({ user, badges = {}, groupNav = true, navAlign = 0 }: 
         <div className="ml-auto flex items-center gap-2 lg:ml-0">
         {user.isAdmin && <div className="hidden sm:block"><AdminViewSwitch mode={user.adminView} /></div>}
         <NotificationBell />
-        <UserMenu name={user.name} username={user.username} hex={accent.hex} onHex={accent.onAccent} accentKey={accent.key} roles={user.shownRoles} avatar={user.avatar} banner={user.banner} />
+        <UserMenu name={user.name} username={user.username} hex={accent.hex} onHex={accent.onAccent} accentKey={accent.key} roles={user.shownRoles} isAdmin={user.isAdmin} avatar={user.avatar} banner={user.banner} />
         </div>
       </div>
     </header>
@@ -36,5 +36,5 @@ export function AppHeader({ user, badges = {}, groupNav = true, navAlign = 0 }: 
 /** Barra vertical à esquerda (só em telas largas). */
 export function SideBarFor({ user, badges = {}, groupNav = true }: { user: CurrentUser; badges?: Record<string, number>; groupNav?: boolean }) {
   const accent = resolveAccent(user.accent, user.shownRoles);
-  return <SideBar hrefs={navFor(user)} name={user.name} username={user.username} hex={accent.hex} onHex={accent.onAccent} accentKey={accent.key} roles={user.shownRoles} avatar={user.avatar} banner={user.banner} initialCollapsed={user.navCollapsed} badges={badges} grouped={groupNav} custom={user.navCustom} tree={user.navTree} />;
+  return <SideBar hrefs={navFor(user)} name={user.name} username={user.username} hex={accent.hex} onHex={accent.onAccent} accentKey={accent.key} roles={user.shownRoles} isAdmin={user.isAdmin} avatar={user.avatar} banner={user.banner} initialCollapsed={user.navCollapsed} badges={badges} grouped={groupNav} custom={user.navCustom} tree={user.navTree} />;
 }

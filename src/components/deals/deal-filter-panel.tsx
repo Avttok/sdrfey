@@ -1,40 +1,18 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { FilterGroup as Group, Pill, Tri3 } from "@/components/filter-ui";
 import { DateInput } from "@/components/date-input";
 import { inputCls } from "@/components/ui";
 import { STAGE_META } from "@/config/deals";
 import type { DealStage } from "@/db/schema";
 import type { DealAlertKind } from "@/modules/deals/queries";
 import { DEAL_COLORS } from "./color-picker";
-import { ALERT_LABEL, SORTS, reaisToCents, type DF, type Tri } from "./deal-filters";
+import { ALERT_LABEL, SORTS, reaisToCents, type DF } from "./deal-filters";
 
 export type FilterOpts = { sellers: { id: number; name: string }[]; sdrs: { id: number; name: string }[]; ufs: string[] };
 const STAGES: DealStage[] = ["novo", "contato", "cotacao", "negociacao", "ganho", "perdido"];
 const ALERTS: DealAlertKind[] = ["pool", "novo", "retorno", "cobrar", "parado"];
 const IDLE = [["", "Qualquer tempo"], ["1", "1 dia ou mais"], ["2", "2 dias ou mais"], ["3", "3 dias ou mais"], ["7", "1 semana ou mais"], ["15", "15 dias ou mais"], ["30", "1 mês ou mais"]] as const;
-
-function Group({ title, hint, children, span = "" }: { title: string; hint?: string; children: React.ReactNode; span?: string }) {
-  return <fieldset className={`min-w-0 space-y-2 ${span}`}><legend className="text-sm font-semibold">{title}{hint && <span className="ml-1.5 text-xs font-normal text-muted">{hint}</span>}</legend>{children}</fieldset>;
-}
-function Pill({ on, onClick, children, color }: { on: boolean; onClick: () => void; children: React.ReactNode; color?: string }) {
-  return (
-    <button type="button" aria-pressed={on} onClick={onClick} style={on && color ? { background: color, borderColor: color } : undefined}
-      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition active:scale-95 ${on ? (color ? "text-white shadow-sm" : "border-accent bg-accent/12 text-accent") : "border-line bg-panel text-muted hover:text-ink"}`}>
-      {on && <Check size={13} aria-hidden />}{children}
-    </button>
-  );
-}
-function Tri3({ label, v, set }: { label: string; v: Tri; set: (t: Tri) => void }) {
-  return (
-    <div role="radiogroup" aria-label={label} className="flex items-center justify-between gap-3 rounded-xl bg-sunk/60 px-3 py-2">
-      <span className="text-sm">{label}</span>
-      <span className="flex gap-1 rounded-full border border-line bg-panel p-0.5">
-        {([["", "Tudo"], ["sim", "Tem"], ["nao", "Não tem"]] as const).map(([k, l]) => <button key={k} type="button" role="radio" aria-checked={v === k} onClick={() => set(k)} className={`rounded-full px-2.5 py-1 text-xs font-semibold transition ${v === k ? "bg-grad text-on-accent" : "text-muted hover:text-ink"}`}>{l}</button>)}
-      </span>
-    </div>
-  );
-}
 
 /** Filtros avançados da lista de negociações. Tudo opcional; cada grupo mostra o que faz em linguagem simples. */
 export function DealFilterPanel({ f, set, opts }: { f: DF; set: (p: Partial<DF>) => void; opts: FilterOpts }) {
