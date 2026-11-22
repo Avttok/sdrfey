@@ -2,14 +2,16 @@
  * Cargos do sistema. O Adm é o topo: faz tudo que Gestor e Usuário fazem.
  * Para criar um cargo novo, adicione aqui e use `hasRole()` onde precisar.
  */
+import { term } from "@/config/terms";
+
 export const ROLES = ["user", "seller", "manager", "admin"] as const;
 export type Role = (typeof ROLES)[number];
 
 export const ROLE_META: Record<Role, { label: string; defaultAccent: string; rank: number }> = {
-  user: { label: "SDR", defaultAccent: "azul", rank: 1 },
-  seller: { label: "Vendas", defaultAccent: "verde", rank: 1 },
-  manager: { label: "Gestor", defaultAccent: "amarelo", rank: 2 },
-  admin: { label: "Adm", defaultAccent: "vermelho", rank: 3 },
+  user: { label: term("sdr"), defaultAccent: "azul", rank: 1 },
+  seller: { label: term("vendas"), defaultAccent: "verde", rank: 1 },
+  manager: { label: term("gestor"), defaultAccent: "amarelo", rank: 2 },
+  admin: { label: term("adm"), defaultAccent: "vermelho", rank: 3 },
 };
 
 /** Cargos que os outros podem ver: o "Adm" só aparece para o próprio Adm (a equipe não vê quem é admin). */

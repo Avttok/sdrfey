@@ -1,3 +1,4 @@
+import { term } from "@/config/terms";
 import { LayoutGrid, Gauge, Headset, Info, ShieldHalf, Contact, History, Play, CalendarCheck, ScrollText, ShieldCheck, Target, UserRound, Users, MapPin, Handshake, FileSpreadsheet, Filter, Mail, Truck, ScrollText as ScriptIcon, Settings2, type LucideIcon } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: string; adminOnly?: boolean; /** Menu a que pertence. Menu com um item só aparece como link solto; sem grupo = link solto. */ group?: string };
@@ -10,27 +11,27 @@ export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: st
 export const GROUP_ICONS: Record<string, LucideIcon> = { Mais: LayoutGrid, Sistema: ShieldCheck, Pessoas: Contact, Info: Info, SDR: Headset, Vendas: Handshake, "Opções": Settings2, "Gestão": ShieldHalf };
 
 export const NAV: NavItem[] = [
-  { href: "/painel", label: "Dashboard", icon: Gauge, perm: "tab.painel" },
-  { href: "/atender", label: "Shuffler Prospecção", icon: Play, perm: "tab.comecar", group: "SDR" },
-  { href: "/lista-flow", label: "Lista Flow", icon: Filter, perm: "tab.lista_flow", group: "SDR" },
-  { href: "/visitas", label: "Visitas", icon: CalendarCheck, perm: "tab.visitas", group: "SDR" },
-  { href: "/metas", label: "Metas", icon: Target, perm: "tab.metas", group: "SDR" },
-  { href: "/historico", label: "Histórico", icon: History, perm: "tab.historico", group: "SDR" },
-  { href: "/desempenho", label: "Desempenho", icon: FileSpreadsheet, perm: "tab.desempenho", group: "SDR" },
-  { href: "/negociacoes", label: "Negociações", icon: Handshake, perm: "tab.negociacoes", group: "Vendas" },
-  { href: "/shuffler-vendas", label: "Shuffler Vendas", icon: Play, perm: "tab.shuffler_vendas", group: "Vendas" },
-  { href: "/lista-flow-vendas", label: "Lista Flow", icon: Filter, perm: "tab.lista_flow_vendas", group: "Vendas" },
-  { href: "/metas-vendas", label: "Metas", icon: Target, perm: "tab.metas_vendas", group: "Vendas" },
-  { href: "/historico-vendas", label: "Histórico", icon: History, perm: "tab.historico_vendas", group: "Vendas" },
-  { href: "/desempenho-vendas", label: "Desempenho", icon: FileSpreadsheet, perm: "tab.desempenho_vendas", group: "Vendas" },
-  { href: "/leads", label: "Leads", icon: Users, perm: "tab.leads", group: "Pessoas" },
-  { href: "/representantes", label: "Representantes", icon: MapPin, perm: "tab.representantes", group: "Pessoas" },
-  { href: "/transportadoras", label: "Transportadoras", icon: Truck, perm: "tab.transportadoras", group: "Pessoas" },
-  { href: "/email", label: "Modelos de E-mails", icon: Mail, perm: "tab.email", group: "Mais" },
-  { href: "/scripts", label: "Modelos de Scripts", icon: ScriptIcon, perm: "tab.scripts", group: "Mais" },
-  { href: "/registro", label: "Registro", icon: ScrollText, perm: "tab.registro", group: "Sistema" },
-  { href: "/admin", label: "Painel Administrador", icon: ShieldCheck, adminOnly: true, group: "Sistema" },
-  { href: "/conta", label: "Minha conta", icon: UserRound },
+  { href: "/painel", label: term("dashboard"), icon: Gauge, perm: "tab.painel" },
+  { href: "/atender", label: term("shuffler_sdr"), icon: Play, perm: "tab.comecar", group: term("sdr") },
+  { href: "/lista-flow", label: term("lista_flow"), icon: Filter, perm: "tab.lista_flow", group: term("sdr") },
+  { href: "/visitas", label: term("visitas"), icon: CalendarCheck, perm: "tab.visitas", group: term("sdr") },
+  { href: "/metas", label: term("metas"), icon: Target, perm: "tab.metas", group: term("sdr") },
+  { href: "/historico", label: term("historico"), icon: History, perm: "tab.historico", group: term("sdr") },
+  { href: "/desempenho", label: term("desempenho"), icon: FileSpreadsheet, perm: "tab.desempenho", group: term("sdr") },
+  { href: "/negociacoes", label: term("negociacoes"), icon: Handshake, perm: "tab.negociacoes", group: term("vendas") },
+  { href: "/shuffler-vendas", label: term("shuffler_sales"), icon: Play, perm: "tab.shuffler_vendas", group: term("vendas") },
+  { href: "/lista-flow-vendas", label: term("lista_flow"), icon: Filter, perm: "tab.lista_flow_vendas", group: term("vendas") },
+  { href: "/metas-vendas", label: term("metas"), icon: Target, perm: "tab.metas_vendas", group: term("vendas") },
+  { href: "/historico-vendas", label: term("historico"), icon: History, perm: "tab.historico_vendas", group: term("vendas") },
+  { href: "/desempenho-vendas", label: term("desempenho"), icon: FileSpreadsheet, perm: "tab.desempenho_vendas", group: term("vendas") },
+  { href: "/leads", label: term("leads"), icon: Users, perm: "tab.leads", group: term("pessoas") },
+  { href: "/representantes", label: term("representantes"), icon: MapPin, perm: "tab.representantes", group: term("pessoas") },
+  { href: "/transportadoras", label: term("transportadoras"), icon: Truck, perm: "tab.transportadoras", group: term("pessoas") },
+  { href: "/email", label: term("modelos_email"), icon: Mail, perm: "tab.email", group: term("mais") },
+  { href: "/scripts", label: term("modelos_script"), icon: ScriptIcon, perm: "tab.scripts", group: term("mais") },
+  { href: "/registro", label: term("registro"), icon: ScrollText, perm: "tab.registro", group: term("sistema") },
+  { href: "/admin", label: term("painel_adm"), icon: ShieldCheck, adminOnly: true, group: term("sistema") },
+  { href: "/conta", label: term("minha_conta"), icon: UserRound },
 ];
 
 /**

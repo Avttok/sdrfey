@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { term } from "@/config/terms";
+import { useT } from "@/components/terms";
 import { startAction } from "@/modules/leads/actions";
 import { startSalesShuffleAction } from "@/modules/sales/actions";
 
@@ -15,8 +17,8 @@ export const QUICK_SLOT_ID = "quick-slot";
 export type QuickKey = "new-deal" | "shuffle" | "shuffle-sales" | "leads" | "visits" | "admin";
 const META: Record<QuickKey, { label: string; icon: LucideIcon; tone?: "main" }> = {
   "new-deal": { label: "Nova negociação", icon: Plus, tone: "main" },
-  shuffle: { label: "Shuffler Prospecção", icon: Shuffle, tone: "main" },
-  "shuffle-sales": { label: "Shuffler Vendas", icon: BadgeDollarSign, tone: "main" },
+  shuffle: { label: term("shuffler_sdr"), icon: Shuffle, tone: "main" },
+  "shuffle-sales": { label: term("shuffler_sales"), icon: BadgeDollarSign, tone: "main" },
   leads: { label: "Buscar lead", icon: Users },
   visits: { label: "Visitas", icon: CalendarCheck },
   admin: { label: "Painel Adm", icon: ShieldCheck },
@@ -31,9 +33,10 @@ function Tip({ children }: { children: string }) {
 
 function SubmitBtn({ k }: { k: QuickKey }) {
   const { pending } = useFormStatus();
+  const t = useT();
   const m = META[k];
   return (
-    <button type="submit" disabled={pending} aria-label={m.label} className={`${btn} ${toneCls(m.tone === "main")} disabled:opacity-70`}>
+    <button type="submit" disabled={pending} aria-label={t(m.label)} className={`${btn} ${toneCls(m.tone === "main")} disabled:opacity-70`}>
       {pending ? <Loader2 size={19} className="animate-spin" aria-hidden /> : <m.icon size={19} aria-hidden />}
     </button>
   );
@@ -44,6 +47,7 @@ function SubmitBtn({ k }: { k: QuickKey }) {
  * O botão "Centralizar" do roteiro entra no espaço `#quick-slot`, no topo da pilha (só aparece na etapa dos shufflers).
  */
 export function QuickDock({ items, hasChat }: { items: QuickKey[]; hasChat: boolean }) {
+  const t = useT();
   const path = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(true);
@@ -56,11 +60,11 @@ export function QuickDock({ items, hasChat }: { items: QuickKey[]; hasChat: bool
       {open && visible.map((k) => {
         const m = META[k];
         const wrap = "group pointer-events-auto relative quick-pop";
-        if (k === "shuffle") return <form key={k} action={startAction} className={wrap}><SubmitBtn k={k} /><Tip>{m.label}</Tip></form>;
-        if (k === "shuffle-sales") return <form key={k} action={startSalesShuffleAction} className={wrap}><SubmitBtn k={k} /><Tip>{m.label}</Tip></form>;
-        if (k === "new-deal") return <div key={k} className={wrap}><button type="button" onClick={newDeal} aria-label={m.label} className={`${btn} ${toneCls(true)}`}><m.icon size={20} aria-hidden /></button><Tip>{m.label}</Tip></div>;
+        if (k === "shuffle") return <form key={k} action={startAction} className={wrap}><SubmitBtn k={k} /><Tip>{t(m.label)}</Tip></form>;
+        if (k === "shuffle-sales") return <form key={k} action={startSalesShuffleAction} className={wrap}><SubmitBtn k={k} /><Tip>{t(m.label)}</Tip></form>;
+        if (k === "new-deal") return <div key={k} className={wrap}><button type="button" onClick={newDeal} aria-label={t(m.label)} className={`${btn} ${toneCls(true)}`}><m.icon size={20} aria-hidden /></button><Tip>{t(m.label)}</Tip></div>;
         const href = k === "leads" ? "/leads" : k === "visits" ? "/visitas" : "/admin";
-        return <div key={k} className={wrap}><Link href={href} aria-label={m.label} className={`${btn} ${toneCls()}`}><m.icon size={19} aria-hidden /></Link><Tip>{m.label}</Tip></div>;
+        return <div key={k} className={wrap}><Link href={href} aria-label={t(m.label)} className={`${btn} ${toneCls()}`}><m.icon size={19} aria-hidden /></Link><Tip>{t(m.label)}</Tip></div>;
       })}
       {/* espaço do "Centralizar" (portal do roteiro): fica colado no botão do chat */}
       <div id={QUICK_SLOT_ID} className="pointer-events-auto order-first flex flex-col items-end gap-2.5 empty:hidden" />

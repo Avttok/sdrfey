@@ -1,4 +1,5 @@
 import { Filter, SearchX, Shuffle } from "lucide-react";
+import { Term } from "@/components/terms";
 import { FeyMark } from "@/components/logo";
 import { BrandMark } from "@/components/logo-morph";
 import { RefreshButton } from "@/components/refresh-button";
@@ -32,7 +33,7 @@ export function ShuffleHero({ action, children, avatar, roles, empty, list, titl
       <div className="relative -my-3 flex min-h-[26rem] flex-1 flex-col items-center justify-center gap-8 overflow-y-auto overflow-x-hidden p-4 text-center sm:gap-9 sm:p-8">
         <div className="sh-rise flex flex-col items-center gap-4">
           <span className="text-accent"><BrandMark size={92} color="currentColor" legacy={<FeyMark animated size={92} color="currentColor" />} /></span>
-          <h1 className="sr-only">{title}</h1>
+          <h1 className="sr-only"><Term>{title}</Term></h1>
         </div>
         <div className="w-full">{children}</div>
         <form action={action} className="sh-rise flex flex-col items-center gap-3" style={{ "--d": ".5s" } as React.CSSProperties}>

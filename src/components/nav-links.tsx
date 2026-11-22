@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
+import { useT } from "@/components/terms";
 import Link, { useLinkStatus } from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
@@ -61,12 +62,13 @@ export function NavLinks({ hrefs, vertical = false, collapsed = false, badges = 
     document.addEventListener("mousedown", close); document.addEventListener("keydown", key); window.addEventListener("resize", close);
     return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", key); window.removeEventListener("resize", close); };
   }, [open]);
+  const t = useT();
   const gLabel = (g: string) => custom.groups[g]?.label ?? g;
-  const eTitle = (e: Extract<Entry, { kind: "menu" }>) => (tree ? e.title : gLabel(e.label));
+  const eTitle = (e: Extract<Entry, { kind: "menu" }>) => t(tree ? e.title : gLabel(e.label));
   const eIcon = (e: Extract<Entry, { kind: "menu" }>) => NAV_ICONS[(tree ? e.icon : custom.groups[e.label]?.icon) ?? ""] ?? GROUP_ICONS[e.label] ?? NAV_ICONS.grid;
   const link = (n: Item, inMenu = false) => {
     const { href } = n;
-    const label = custom.items[href]?.label ?? n.label;
+    const label = t(custom.items[href]?.label ?? n.label);
     const Icon = NAV_ICONS[custom.items[href]?.icon ?? ""] ?? n.icon;
     const active = isActive(href);
     return (

@@ -897,3 +897,18 @@ export const eggNotes = pgTable("egg_notes", {
   createdAt: now(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Trocas de termo feitas no banco (Glossário → "Trocar termo no banco"): guarda o antes e o depois de cada linha para poder desfazer. */
+export const termSwaps = pgTable("term_swaps", {
+  id: serial("id").primaryKey(),
+  at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+  from: text("from_text").notNull(),
+  to: text("to_text").notNull(),
+  matchCase: boolean("match_case").notNull().default(false),
+  wholeWord: boolean("whole_word").notNull().default(false),
+  /** [{ t: alvo, id, old, neu }] — só as linhas que mudaram. */
+  changes: jsonb("changes").$type<{ t: string; id: string | number; old: unknown; neu: unknown }[]>().notNull(),
+  rows: integer("rows").notNull().default(0),
+  undoneAt: timestamp("undone_at", { withTimezone: true }),
+});

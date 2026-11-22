@@ -12,6 +12,8 @@ import { GoldMode } from "@/components/gold-mode";
 import { goldStatus } from "@/modules/goals/gold";
 import { AnnouncementHost } from "@/components/announcement-host";
 import { BottomFade } from "@/components/bottom-fade";
+import { TermsProvider } from "@/components/terms";
+import { getTermOverrides } from "@/modules/terms/get";
 import { QuickDock, type QuickKey } from "@/components/quick-dock";
 import { EnrichDock } from "@/components/enrich-dock";
 import { LiveSnap } from "@/components/live-snap";
@@ -32,6 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const [settings, badges] = await Promise.all([getSettings(), navBadges(user).catch(() => ({}))]);
   const gold = await goldStatus(user, settings).catch(() => ({ reached: false, label: "", done: 0, qty: 0 }));
   const groupNav = settings.nav_group === 1;
+  const termOverrides = await getTermOverrides();
   const av = await db.select({ id: users.id, name: users.name, avatar: users.avatar }).from(users).where(isNotNull(users.avatar));
   const avatars = { byId: Object.fromEntries(av.map((a) => [a.id, a.avatar!])), byName: Object.fromEntries(av.map((a) => [a.name, a.avatar!])), eggs: await eggHolders().catch(() => [] as number[]), me: user.id };
   const tagRows = await db.select({ label: tags.label, key: tags.key, group: tags.groupKey, icon: tags.icon }).from(tags);
@@ -52,6 +55,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const hasChat = user.permissions["chat.use"] && settings.chat_on === 1;
   return shell(
     <ToastProvider>
+      <TermsProvider value={termOverrides}>
       <TagIconProvider value={tagIcons}>
       <AvatarProvider value={avatars}>
       <div className={`flex flex-1 flex-col ${user.navLayout === "side" ? "lg:flex-row" : ""}`}>
@@ -76,6 +80,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Suspense fallback={null}><ChatMount user={user} /></Suspense>
       </AvatarProvider>
       </TagIconProvider>
+      </TermsProvider>
     </ToastProvider>
   );
 }
