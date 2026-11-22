@@ -1,5 +1,6 @@
 "use client";
 
+import { HScroll } from "@/components/h-scroll";
 import { Check, Coins, ShoppingBag, Loader2, Lock, Sparkles } from "lucide-react";
 import { useState, useTransition } from "react";
 import { chatStyle } from "@/components/chat/styled";
@@ -64,9 +65,9 @@ export function ChatShop({ myName, meId }: { myName: string; meId: number }) {
           </div>
         );
       })()}
-      <div role="tablist" aria-label="Categorias" className="flex gap-1 overflow-x-auto border-b border-line px-2 py-1.5">
+      <HScroll role="tablist" label="Categorias" className="flex gap-1 border-b border-line px-2 py-1.5">
         {CATEGORIES.map((c) => <button key={c.key} type="button" role="tab" aria-selected={cat === c.key} onClick={() => { setCat(c.key); setTrying(null); }} className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition ${cat === c.key ? "bg-grad-soft text-accent" : "text-muted hover:bg-sunk"}`}>{c.label}</button>)}
-      </div>
+      </HScroll>
       <ul className="grid min-h-0 flex-1 grid-cols-2 content-start gap-2 overflow-y-auto p-2.5">
         {st.equipped[cat] && <li className="col-span-2"><button type="button" disabled={pending} onClick={() => act(() => equipItemAction(cat, null))} className="w-full rounded-lg border border-line px-3 py-1.5 text-xs text-muted hover:bg-sunk">Tirar {CATEGORIES.find((c) => c.key === cat)!.label.toLowerCase()} (voltar ao padrão)</button></li>}
         {items.map((i) => {

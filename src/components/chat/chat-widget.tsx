@@ -3,6 +3,7 @@
 import { BannerRain } from "@/components/banner-rain";
 import { bannerStyle } from "@/config/banners";
 import { lsGet, lsSet } from "@/lib/use-cached";
+import { HScroll } from "@/components/h-scroll";
 import { EggBadge } from "@/components/egg-badge";
 import { AvatarGlyph } from "@/components/avatar-glyph";
 import { CountUp } from "@/components/goal-tiles";
@@ -453,14 +454,14 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
           {shop && <ChatShop myName={myName} meId={meId} />}
           {!shop && (
             <div className="relative">
-              <div role="tablist" aria-label="Grupos e conversas" className="no-sb flex items-center gap-1.5 overflow-x-auto border-b border-line px-3 py-2">
+              <HScroll role="tablist" label="Grupos e conversas" className="flex items-center gap-1.5 border-b border-line px-3 py-2">
                 {allChannels.map((c) => (
                   <button key={c.key} type="button" role="tab" aria-selected={channel === c.key} onClick={() => setChannel(c.key)} className={`relative shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${channel === c.key ? "bg-grad text-on-accent shadow-sm" : "bg-sunk text-muted hover:text-ink"}`}>
                     {c.key.startsWith("dm:") && <span aria-hidden className="mr-1 inline-block size-1.5 rounded-full" style={{ background: dms.find((d) => d.key === c.key)?.hex }} />}{c.label}{unread[c.key] ? <span className="figure ml-1.5 rounded-full bg-danger px-1.5 text-[10px] font-bold leading-4 text-white">{unread[c.key]}</span> : null}
                   </button>
                 ))}
                 <button type="button" aria-label="Nova conversa direta" title="Nova conversa direta" aria-expanded={dmPick} onClick={() => setDmPick((v) => !v)} className="ml-auto grid size-7 shrink-0 place-items-center rounded-lg text-muted hover:bg-sunk hover:text-accent"><Plus size={16} aria-hidden /></button>
-              </div>
+              </HScroll>
               {dmPick && (
                 <div className="absolute inset-x-2 top-full z-20 mt-1 rounded-xl border border-line bg-panel p-2 shadow-xl">
                   <input autoFocus value={dmQ} onChange={(e) => setDmQ(e.target.value)} placeholder="Conversar com…" className="mb-1.5 w-full rounded-lg border border-line bg-sunk px-3 py-2 text-sm" />

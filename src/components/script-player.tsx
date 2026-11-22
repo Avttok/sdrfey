@@ -4,6 +4,7 @@ import { ArrowLeft, Ear, Flame, Lightbulb, Mic, RotateCcw, ShieldAlert, Notebook
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fillScript, shortCompany, KIND_LABEL, moodOf, OUTCOMES, type ScriptDoc, type ScriptKind } from "@/config/scripts";
 import { btnGhost } from "@/components/ui";
+import { HScroll } from "./h-scroll";
 import { GOAL_THEME, MOODS, OUTCOME_ICON, SEGMENT_ICON, tint } from "./script-theme";
 
 export type ScriptVars = { empresa?: string | null; /** nome da pessoa com quem se fala (contato do telefone), se houver */ contatoCompleto?: string | null; contato?: string | null; cidade?: string | null; meunome?: string | null };
@@ -85,7 +86,7 @@ export function ScriptPlayer({ script, vars, onOutcome, onNote }: { script: Scri
       </div>
 
       {/* Mapa do caminho (toque numa etapa para voltar a ela) */}
-      <div className="flex items-center gap-1 overflow-x-auto px-2 py-2.5" aria-label="Caminho percorrido">
+      <HScroll className="flex items-center gap-1 px-2 py-2.5" label="Caminho percorrido">
         {trail.map((t, i) => {
           const n = by.get(t.id); const m = MOODS[n ? moodOf(n) : "apoio"]; const last = i === trail.length - 1;
           return (
@@ -98,7 +99,7 @@ export function ScriptPlayer({ script, vars, onOutcome, onNote }: { script: Scri
           );
         })}
         {!ended && <span aria-hidden className="ml-1 text-xs text-muted">…</span>}
-      </div>
+      </HScroll>
 
       {/* Palco */}
       <div key={node.id} className="script-pop relative overflow-hidden rounded-3xl border-2 bg-panel" style={{ borderColor: `color-mix(in srgb, ${mood.hex} 55%, transparent)` }}>

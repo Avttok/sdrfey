@@ -126,3 +126,33 @@ export function moodOf(n: Pick<ScriptNode, "id" | "type" | "title" | "mood">): S
   if (/pitch|proposta|visita|desconto|interesse|apresent|cota/.test(k)) return "proposta";
   return "apoio";
 }
+
+/** Palavras que indicam o segmento do lead (nome + atividade). A primeira regra que bater vence; as mais específicas vêm antes. */
+const SEGMENT_RULES: [string, RegExp][] = [
+  ["posto_molas", /\b(mola|molas|feixe de mola|posto de mola)/],
+  ["distribuidor_fixadores", /(distribuidor.*(parafus|fixador)|parafus.*distribui|fixador.*(atacad|distribui))/],
+  ["parafusos", /(parafus|fixador|porca|arruela)/],
+  ["autopecas_atacado", /(auto ?pe[cç]as?.*atacad|atacad.*auto ?pe[cç]as?|distribuidor.*(auto|pe[cç]as))/],
+  ["autopecas", /(auto ?pe[cç]as?|pe[cç]as (para|p\/) ve[ií]culos|acess[oó]rios automotivos)/],
+  ["oficina_pesados", /(caminh[oõ]|[oô]nibus|pesados|diesel)/],
+  ["transportadora_frota", /(transport|frete|log[ií]stica|frota)/],
+  ["carrocerias", /(carroceri|[oô]nibus)/],
+  ["implementos", /(implement|carreta|reboque|rodovi[aá]ri)/],
+  ["maquinas_agricolas", /(agr[ií]cola|agropecu|m[aá]quinas? agr|trator)/],
+  ["auto_center", /(auto ?center|centro automotivo|mec[aâ]nic|oficina)/],
+  ["concessionaria", /(concession|ve[ií]culos)/],
+  ["construcao_pesada", /(terraplen|constru[cç][aã]o pesada|minera|escava)/],
+  ["material_construcao", /(material de constru|constru[cç][aã]o|ferrag)/],
+  ["ferramentas", /(ferrament)/],
+  ["serralheria", /(serralh|esquadria|estrutura met)/],
+  ["metalurgica", /(metal[uú]rg|usinagem|caldeiraria|fundi[cç])/],
+  ["moveis", /(m[oó]veis|marcenar)/],
+  ["eletro_energia", /(el[eé]tric|energia|subesta)/],
+  ["industria", /(ind[uú]stria|fabrica[cç]|f[aá]brica)/],
+  ["distribuidor_industrial", /(industrial.*(distribu|com[eé]rcio)|com[eé]rcio.*industrial)/],
+];
+export function guessSegment(...texts: (string | null | undefined)[]): string | null {
+  const t = texts.filter(Boolean).join(" ").toLowerCase();
+  if (!t.trim()) return null;
+  return SEGMENT_RULES.find(([, re]) => re.test(t))?.[0] ?? null;
+}

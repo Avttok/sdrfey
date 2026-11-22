@@ -11,7 +11,7 @@ import { useVocall } from "@/components/vocall-provider";
 import { ProductHints } from "@/components/product-hints";
 import type { Reco } from "@/modules/recommendations/data";
 import { ScriptPicker } from "@/components/script-picker";
-import type { ScriptDoc } from "@/config/scripts";
+import { guessSegment, type ScriptDoc } from "@/config/scripts";
 import { LeadInfoPanel } from "@/components/lead-info-panel";
 import { TagChip } from "@/components/tag-chip";
 import { DestPicker, FinalActions, FlashTag, SellerQueue, TagDeck, VisitFields } from "@/components/attend-final";
@@ -378,7 +378,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
         {step === 3 && (
           <section className="space-y-4">
             <StepTitle i={3} />
-            <ul className="grid gap-2 sm:grid-cols-2">
+            <ul className="grid gap-2">
               {goodPhones.map((p) => {
                 const who = p.personId ? lead.people.find((x) => x.id === p.personId) : null;
                 const on = callPhone?.id === p.id;
@@ -414,7 +414,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
                 </div>
                 <ProductHints recos={recos} />
                 {scripts.length > 0
-                  ? <ScriptPicker scripts={scripts} goal={sales ? "vendas" : "sdr"} vars={{ empresa: vars.empresa, contato: vars.contato, contatoCompleto: callPerson?.name ?? null, cidade: vars.cidade, meunome: vars.meu_nome }} onNote={addNote} />
+                  ? <ScriptPicker scripts={scripts} goal={sales ? "vendas" : "sdr"} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} vars={{ empresa: vars.empresa, contato: vars.contato, contatoCompleto: callPerson?.name ?? null, cidade: vars.cidade, meunome: vars.meu_nome }} onNote={addNote} />
                   : <p className="text-sm text-muted">Ainda não há roteiros. O Adm pode criar em Scripts.</p>}
               </div>
             </div>

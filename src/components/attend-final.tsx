@@ -1,5 +1,6 @@
 "use client";
 
+import { HScroll } from "@/components/h-scroll";
 import { Ban, CalendarCheck, Check, CircleSlash, Globe, Link2, MapPin, Pause, Trash2, Undo2, UserCheck, Users, Workflow } from "lucide-react";
 import { useContext } from "react";
 import { AvatarGlyph } from "@/components/avatar-glyph";
@@ -13,13 +14,13 @@ export function FlashTag({ label, color, on, onClick, icon, Comp, hint }: { labe
   const Icon = Comp ?? TAG_ICONS[icon ?? map[label.toUpperCase()] ?? ""];
   return (
     <button type="button" role="switch" aria-checked={on} onClick={onClick} data-on={on}
-      className="ft group relative flex min-h-24 flex-col items-start justify-between gap-2 overflow-hidden rounded-2xl border-2 p-3 text-left transition-all duration-300 hover:-translate-y-0.5 active:scale-[.97]"
+      className="ft group relative grid h-full min-h-28 grid-rows-[auto_1fr] items-start gap-2 overflow-hidden rounded-2xl border-2 p-3 text-left transition-all duration-300 hover:-translate-y-0.5 active:scale-[.97]"
       style={{ "--cor": color } as React.CSSProperties}>
-      <span className="flex w-full items-center justify-between">
-        <span className="ft-ico grid size-9 place-items-center rounded-xl transition-all duration-300">{Icon ? <Icon size={18} aria-hidden /> : <Check size={18} aria-hidden />}</span>
-        <span className="ft-pill rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">{on ? "Ligado" : "Desligado"}</span>
+      <span className="flex w-full items-center justify-between gap-2">
+        <span className="ft-ico grid size-9 shrink-0 place-items-center rounded-xl transition-all duration-300">{Icon ? <Icon size={18} aria-hidden /> : <Check size={18} aria-hidden />}</span>
+        <span className="ft-pill whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold uppercase leading-4 tracking-wider">{on ? "Ligado" : "Desligado"}</span>
       </span>
-      <span><span className="block text-sm font-bold uppercase leading-tight tracking-wide">{label}</span>{hint && <span className="mt-0.5 block text-[11px] font-normal normal-case leading-snug text-muted">{hint}</span>}</span>
+      <span className="self-end"><span className="block break-words text-sm font-bold uppercase leading-tight tracking-wide">{label}</span>{hint && <span className="mt-0.5 block text-[11px] font-normal normal-case leading-snug text-muted">{hint}</span>}</span>
       {on && <span aria-hidden className="ft-check absolute -right-1 -top-1 grid size-6 place-items-center rounded-bl-xl text-white" style={{ background: color }}><Check size={14} /></span>}
     </button>
   );
@@ -85,7 +86,7 @@ export function SellerQueue({ sellers, nextId, queueOn, value, onChange }: { sel
         {value && <button type="button" className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-accent hover:bg-accent/10" onClick={() => onChange(null)}>Voltar para a fila</button>}
       </div>
       {ordered.length > 0 && (
-        <ol className="no-sb flex items-start gap-1 overflow-x-auto px-1 pb-2 pt-1" aria-label="Ordem da fila">
+        <HScroll className="px-1 pb-2 pt-1" label="Ordem da fila"><ol className="flex items-start gap-1">
           {line.map((s, i) => {
             const on = s.id === target;
             return (
@@ -103,7 +104,7 @@ export function SellerQueue({ sellers, nextId, queueOn, value, onChange }: { sel
               </li>
             );
           })}
-        </ol>
+        </ol></HScroll>
       )}
       <p className="text-xs text-muted">{queueOn ? "A fila gira sozinha: cada lead encaminhado vai para a próxima pessoa. Se precisar, toque em alguém para escolher." : "Sem fila ligada: o lead cai no grupo e o primeiro a assumir fica com ele. Toque em alguém para escolher."}</p>
     </div>
