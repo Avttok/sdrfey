@@ -3,7 +3,7 @@
 import { ArrowLeft, Crosshair, Ear, Flame, Lightbulb, Mic, RotateCcw, ShieldAlert, NotebookPen, ShieldCheck, Sparkles, ThumbsUp, ChevronRight, Trophy, Volume2 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { fillScript, shortCompany, KIND_LABEL, moodOf, OUTCOMES, type ScriptDoc, type ScriptKind } from "@/config/scripts";
+import { fillScript, sayOf, shortCompany, KIND_LABEL, moodOf, OUTCOMES, TONE_KEYS, TONES, type ScriptDoc, type ScriptKind, type ScriptTone } from "@/config/scripts";
 import { btnGhost } from "@/components/ui";
 import { HScroll } from "./h-scroll";
 import { GOAL_THEME, MOODS, OUTCOME_ICON, SEGMENT_ICON, tint } from "./script-theme";
@@ -37,17 +37,20 @@ export function ScriptPlayer({ script, vars, extra, onOutcome, onNote, onRun, fl
   const goal = GOAL_THEME[script.goal];
   const Seg = SEGMENT_ICON[script.segment] ?? Sparkles;
 
+  const [tone, setToneState] = useState<ScriptTone>("normal");
+  useEffect(() => { try { const t = localStorage.getItem("script_tone"); if (t === "formal" || t === "solto" || t === "normal") setToneState(t); } catch { /* sem armazenamento */ } }, []);
+  const setTone = (t: ScriptTone) => { setToneState(t); try { localStorage.setItem("script_tone", t); } catch { /* sem armazenamento */ } };
   const [noted, setNoted] = useState<string[]>([]);
   const [runId, setRunId] = useState(() => crypto.randomUUID());
   useEffect(() => { setNoted([]); setRunId(crypto.randomUUID()); }, [script.id, script.startId]);
   const restart = () => { setTrail([{ id: script.startId }]); setNoted([]); setRunId(crypto.randomUUID()); };
   useEffect(() => {
     if (!onRun || trail.length < 2) return;
-    const steps = trail.map((t, i) => { const n = by.get(t.id); return { id: t.id, title: n?.title ?? t.id, mood: n ? moodOf(n) : "apoio", say: n ? fillScript(n.say, vars) : "", answer: trail[i + 1]?.via ?? null, kind: trail[i + 1]?.kind ?? null }; });
+    const steps = trail.map((t, i) => { const n = by.get(t.id); return { id: t.id, title: n?.title ?? t.id, mood: n ? moodOf(n) : "apoio", say: n ? fillScript(sayOf(n, tone), vars) : "", answer: trail[i + 1]?.via ?? null, kind: trail[i + 1]?.kind ?? null }; });
     const last = by.get(trail[trail.length - 1].id);
     onRun({ runId, scriptId: script.id, scriptTitle: script.title, goal: script.goal, segment: script.segment, contactName: vars.contatoCompleto ?? null, steps, notes: noted, outcome: last?.type === "fim" ? last.outcome ?? null : null, finished: last?.type === "fim" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trail, noted, runId]);
+  }, [trail, noted, runId, tone]);
   const pick = useCallback((i: number) => {
     const op = node.options[i];
     if (!op?.to || !by.has(op.to)) return;
@@ -132,6 +135,14 @@ export function ScriptPlayer({ script, vars, extra, onOutcome, onNote, onRun, fl
         {!ended && <span aria-hidden className="ml-1 text-xs text-muted">…</span>}
       </HScroll>
 
+      <div role="radiogroup" aria-label="Tom da fala" className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-bold uppercase tracking-wider text-muted">Tom</span>
+        <span className="inline-flex gap-1 rounded-xl border border-line bg-panel p-1">
+          {TONE_KEYS.map((k) => <button key={k} type="button" role="radio" aria-checked={tone === k} title={TONES[k].hint} onClick={() => setTone(k)} className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${tone === k ? "bg-grad text-on-accent shadow-sm" : "text-muted hover:bg-sunk hover:text-ink"}`}>{TONES[k].label}</button>)}
+        </span>
+        <span className="text-xs text-muted">{TONES[tone].hint}. O caminho é o mesmo; troque quando quiser.</span>
+      </div>
+
       {/* Palco */}
       <div key={node.id} className="script-pop relative overflow-hidden rounded-3xl border-2 bg-panel" style={{ borderColor: `color-mix(in srgb, ${mood.hex} 55%, transparent)` }}>
         <div className="flex items-center gap-2.5 px-4 py-2.5 text-white" style={{ background: mood.hex }}>
@@ -154,7 +165,7 @@ export function ScriptPlayer({ script, vars, extra, onOutcome, onNote, onRun, fl
                 <p className="text-xl font-extrabold">{success ? "Objetivo alcançado!" : "Conversa encerrada"}</p>
                 <p className="text-sm font-semibold" style={{ color: success ? "#16a34a" : undefined }}>{node.outcome ? OUTCOMES[node.outcome].label : node.title}</p>
               </div>
-              <p className="max-w-md whitespace-pre-line text-base">{fillScript(node.say, vars)}</p>
+              <p className="max-w-md whitespace-pre-line text-base">{fillScript(sayOf(node, tone), vars)}</p>
               {node.outcome && <p className="max-w-md rounded-xl bg-sunk px-3 py-2 text-sm text-muted">{OUTCOMES[node.outcome].hint}</p>}
               <p className="flex flex-wrap justify-center gap-2 text-xs font-semibold">
                 <span className="rounded-full bg-sunk px-2.5 py-1">{trail.length} etapas</span>
@@ -166,7 +177,7 @@ export function ScriptPlayer({ script, vars, extra, onOutcome, onNote, onRun, fl
             <>
               <div className="relative rounded-2xl rounded-tl-sm px-4 py-3.5" style={{ ...tint(mood.hex, 9, 30), border: "1px solid" }}>
                 <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider" style={{ color: mood.hex }}><Volume2 size={12} aria-hidden /> Diga ao lead</p>
-                <p className="whitespace-pre-line text-lg font-medium leading-relaxed sm:text-xl">{fillScript(node.say, vars)}</p>
+                <p className="whitespace-pre-line text-lg font-medium leading-relaxed sm:text-xl">{fillScript(sayOf(node, tone), vars)}</p>
               </div>
               {node.tip && <p className="flex items-start gap-2 rounded-xl border border-dashed border-line bg-sunk/60 px-3 py-2 text-sm"><Lightbulb size={16} aria-hidden className="mt-0.5 shrink-0 text-warn" /><span><b className="text-warn">Dica só para você</b> (não é para falar): {node.tip}</span></p>}
               {extra?.(node.id, pick)}

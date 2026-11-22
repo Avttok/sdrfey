@@ -58,6 +58,10 @@ export function ScriptEditor({ initial, isAdmin, onClose }: { initial: ScriptDoc
               <button type="button" aria-label="Excluir passo" className={`${btnGhost} text-danger`} disabled={d.nodes.length <= 1} onClick={() => remove(i)}><Trash2 size={15} /></button>
             </div>
             <textarea aria-label="Fala" rows={3} maxLength={1500} className={inputCls} value={n.say} onChange={(e) => setNode(i, { say: e.target.value })} placeholder="O que você diz ao lead, do jeito que falaria (sem instruções aqui: elas vão na dica)" />
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="space-y-1 text-xs font-semibold text-muted">Mesma fala no tom Formal (opcional)<textarea aria-label="Fala no tom formal" rows={3} maxLength={1500} className={`${inputCls} font-normal`} value={n.v?.formal ?? ""} onChange={(e) => setNode(i, { v: { ...n.v, formal: e.target.value } })} placeholder="Vazio = usa a fala normal" /></label>
+              <label className="space-y-1 text-xs font-semibold text-muted">Mesma fala no tom Solto (opcional)<textarea aria-label="Fala no tom solto" rows={3} maxLength={1500} className={`${inputCls} font-normal`} value={n.v?.solto ?? ""} onChange={(e) => setNode(i, { v: { ...n.v, solto: e.target.value } })} placeholder="Vazio = usa a fala normal" /></label>
+            </div>
             <input aria-label="Dica" className={inputCls} value={n.tip ?? ""} maxLength={400} onChange={(e) => setNode(i, { tip: e.target.value })} placeholder="Dica só para quem lê, não é falada (opcional)" />
             {n.type === "fim" ? (
               <label className="text-sm">Resultado<select className={inputCls} value={n.outcome ?? "encerrar"} onChange={(e) => setNode(i, { outcome: e.target.value as ScriptNode["outcome"] })}>{Object.entries(OUTCOMES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></label>

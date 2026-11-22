@@ -64,7 +64,7 @@ export function EggHunt() {
 /** Para quem já achou o segredo: um Douradovo discreto ao lado da assinatura (balança de leve e solta um reflexo). */
 export function GoldFooterEgg() {
   return (
-    <span aria-hidden className="gold-foot pointer-events-none absolute left-1/2 top-1/2 ml-[5.6rem] -mt-[1.05rem] sm:ml-24">
+    <span aria-hidden className="gold-foot pointer-events-none absolute left-full top-1/2 -ml-3 -mt-[0.6rem]">
       <EggBadge size={15} title="" />
       <i className="gold-twinkle" style={{ right: "-45%", top: "-5%" }} />
     </span>

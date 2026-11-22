@@ -3,6 +3,14 @@ export type ScriptKind = "ok" | "objecao" | "neutro";
 export type ScriptOption = { label: string; /** id do próximo passo; vazio = termina aqui. */ to: string | null; kind: ScriptKind; /** Anotação que esta resposta gera para a observação do lead (ex.: "Contato: decisor de compra"). */ note?: string };
 /** O "papel" do passo na conversa: define ícone e cor na ligação. */
 export type ScriptMood = "abertura" | "ponte" | "confirma" | "pergunta" | "proposta" | "objecao" | "fideliza" | "fechamento" | "apoio";
+/** O jeito de falar: o caminho da conversa é o mesmo, muda o tom das frases. */
+export type ScriptTone = "normal" | "formal" | "solto";
+export const TONE_KEYS: ScriptTone[] = ["normal", "formal", "solto"];
+export const TONES: Record<ScriptTone, { label: string; hint: string }> = {
+  normal: { label: "Normal", hint: "Profissional e natural, o equilíbrio de sempre" },
+  formal: { label: "Formal", hint: "Mais polido e cerimonioso, sem exagero" },
+  solto: { label: "Solto", hint: "Amigável, leve e cordial" },
+};
 export type ScriptNode = {
   id: string;
   /** fala = o usuário fala; fim = encerra com um resultado. */
@@ -11,6 +19,8 @@ export type ScriptNode = {
   title: string;
   /** O que o usuário lê/fala. Aceita {empresa}, {contato}, {cidade}, {meunome}. */
   say: string;
+  /** A mesma fala nos outros tons. Se faltar um, vale a fala normal. */
+  v?: { formal?: string; solto?: string };
   /** Dica de postura/objetivo do passo (opcional). */
   tip?: string;
   options: ScriptOption[];
@@ -62,6 +72,11 @@ export const OUTCOMES: Record<NonNullable<ScriptNode["outcome"]>, { label: strin
   venda: { label: "Fechar a venda", hint: "Confirme condições e abra o pedido." },
   encerrar: { label: "Encerrar a conversa", hint: "Agradeça, registre o motivo e passe para o próximo." },
 };
+
+/** A fala do passo no tom escolhido (cai na normal quando o tom não tem texto). */
+export function sayOf(n: Pick<ScriptNode, "say" | "v">, tone: ScriptTone): string {
+  return (tone === "normal" ? n.say : n.v?.[tone]?.trim() || n.say);
+}
 
 export const KIND_LABEL: Record<ScriptKind, string> = { ok: "Bom sinal", objecao: "Objeção", neutro: "Neutro" };
 

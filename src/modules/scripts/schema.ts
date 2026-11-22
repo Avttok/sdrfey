@@ -8,6 +8,7 @@ export const nodeSchema = z.object({
   type: z.enum(["fala", "fim"]),
   title: text(60).min(1, "Todo passo precisa de um nome."),
   say: text(1500),
+  v: z.object({ formal: text(1500).optional(), solto: text(1500).optional() }).optional(),
   tip: text(400).optional(),
   mood: z.enum(MOOD_KEYS as [string, ...string[]]).optional(),
   options: z.array(z.object({ label: text(120).min(1, "Toda resposta precisa de um texto."), to: z.string().trim().max(24).nullable(), kind: z.enum(["ok", "objecao", "neutro"]), note: text(160).optional() })).max(10),
