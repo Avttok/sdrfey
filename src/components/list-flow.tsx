@@ -240,7 +240,7 @@ export function ListFlow({ kind, lists, tagGroups, used, shared }: { kind: ListK
           </ul>
           {(pv?.sample.length ?? 0) > 0 && <p className="text-[11px] text-muted">Exemplos sorteados. A cada abertura aparecem outros.</p>}
           <label className="block text-sm font-medium">Nome da lista<input className={inputCls} value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Postos de molas de SP" /></label>
-          {(pv?.count ?? 0) > LIST_MAX_LEADS && <p className="rounded-xl border border-line bg-sunk/50 px-3 py-2 text-xs">Há {pv!.count.toLocaleString("pt-BR")} leads livres. A lista reserva {LIST_MAX_LEADS} deles, escolhidos ao acaso.</p>}
+          {(pv?.count ?? 0) > LIST_MAX_LEADS && <p className="rounded-xl border border-line bg-sunk/50 px-3 py-2 text-xs">Há {pv!.count.toLocaleString("pt-BR")} leads livres. Ao salvar, a lista fica só com os {LIST_MAX_LEADS} primeiros; o resto é ignorado.</p>}
           {full && <p role="alert" className="rounded-xl border border-warn/50 bg-warn/10 px-3 py-2 text-xs">Você já usa {used} de {LIST_MAX_PER_USER} listas. Exclua, zere ou compartilhe uma em “Minhas listas” para abrir espaço.</p>}
           <p className="text-[11px] text-muted">Limites: até {LIST_MAX_LEADS} leads por lista e {LIST_MAX_PER_USER} listas por pessoa ({used} em uso). Um lead fica em uma lista só.</p>
           <div className="grid gap-2">
