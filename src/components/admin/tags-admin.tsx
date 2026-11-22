@@ -9,7 +9,8 @@ import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { deleteTagAction, reorderTagsAction, saveTagAction } from "@/modules/admin/config";
 
-export type TagRow = { id?: number; groupKey: string; label: string; color: string; blocksSorting: boolean; cooldownDays: number | null; active: boolean; autoOnly?: boolean; icon?: string | null; tagKey?: string };
+export type TagRow = { id?: number; groupKey: string; label: string; color: string; blocksSorting: boolean; cooldownDays: number | null; active: boolean; autoOnly?: boolean; icon?: string | null; tagKey?: string; uses?: number };
+const PALETTE = ["#ef4444", "#f97316", "#f59e0b", "#84cc16", "#22c55e", "#14b8a6", "#06b6d4", "#3b82f6", "#6366f1", "#a855f7", "#ec4899", "#64748b"];
 
 function Row({ t, isNew, onGrip, dragging }: { t: TagRow; isNew?: boolean; onGrip?: (e: React.PointerEvent) => void; dragging?: boolean }) {
   const [f, setF] = useState(t);
@@ -22,8 +23,10 @@ function Row({ t, isNew, onGrip, dragging }: { t: TagRow; isNew?: boolean; onGri
           <button type="button" aria-label={`Arrastar ${t.label} para mudar a ordem`} title="Segure e arraste para mudar a ordem" onPointerDown={onGrip} className="cursor-grab touch-none rounded-lg p-1.5 text-muted hover:bg-sunk active:cursor-grabbing"><GripVertical size={18} /></button>
         ) : <span className="grid size-8 place-items-center text-muted"><Plus size={18} aria-hidden /></span>}
         <input type="color" aria-label="Cor" className="size-9 shrink-0 cursor-pointer rounded-lg border border-line bg-transparent p-0.5" value={f.color} onChange={(e) => setF({ ...f, color: e.target.value })} />
+        <span className="hidden gap-1 sm:flex" aria-label="Cores prontas">{PALETTE.map((c) => <button key={c} type="button" aria-label={`Cor ${c}`} onClick={() => setF({ ...f, color: c })} className={`size-4 rounded-full ring-offset-1 transition hover:scale-125 ${f.color.toLowerCase() === c ? "ring-2 ring-ink" : "ring-1 ring-black/10"}`} style={{ background: c }} />)}</span>
         <input className={`${inputCls} !w-44 !py-1.5`} aria-label="Nome" placeholder={isNew ? "Nova tag…" : "Nome da tag"} value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} />
         {!isNew && <TagChip label={f.label || "—"} color={f.color} icon={tagIconKey(f.icon, t.tagKey ?? "", t.groupKey)} />}
+        {!isNew && <span className="figure rounded-full bg-sunk px-2 py-0.5 text-xs text-muted" title="Leads com esta tag">{(t.uses ?? 0).toLocaleString("pt-BR")} {t.uses === 1 ? "lead" : "leads"}</span>}
         {t.autoOnly && <span className="rounded-full bg-sunk px-2 py-0.5 text-xs text-muted">só o sistema aplica</span>}
         <span className="flex-1" />
         <button type="button" className={isNew ? btnPrimary : btnGhost} disabled={pending} onClick={() => run(() => saveTagAction({ ...f, id: t.id }), undefined, () => isNew && setF(t))}>{isNew ? <><Plus size={15} aria-hidden /> Criar</> : "Salvar"}</button>
@@ -46,7 +49,8 @@ function Row({ t, isNew, onGrip, dragging }: { t: TagRow; isNew?: boolean; onGri
   );
 }
 
-function Group({ g }: { g: { key: string; name: string; tags: TagRow[] } }) {
+function Group({ g, q }: { g: { key: string; name: string; tags: TagRow[] }; q: string }) {
+  const [open, setOpen] = useState(true);
   const initial = g.tags.map((t) => t.id!);
   const [ord, setOrder] = useState<number[]>(initial);
   const [drag, setDrag] = useState<number | null>(null);
@@ -81,7 +85,7 @@ function Group({ g }: { g: { key: string; name: string; tags: TagRow[] } }) {
   return (
     <section className={`${panelCls} overflow-hidden ${dirty ? "ring-2 ring-accent" : ""}`}>
       <div className="flex flex-wrap items-center gap-3 border-b border-line bg-sunk/60 px-4 py-3 sm:px-5">
-        <span aria-hidden className="size-2.5 rounded-full bg-grad" /><h2 className="text-base font-semibold">{g.name}</h2><span className="figure rounded-full bg-panel px-2 py-0.5 text-xs text-muted">{g.tags.length} tags</span>
+        <button type="button" aria-expanded={open || !!q} onClick={() => setOpen(!open)} className="flex items-center gap-2 text-left"><span aria-hidden className={`inline-block text-xs text-muted transition ${open || q ? "rotate-90" : ""}`}>▶</span><h2 className="text-base font-semibold">{g.name}</h2></button><span className="figure rounded-full bg-panel px-2 py-0.5 text-xs text-muted">{g.tags.length} tags</span>
         <span className="hidden flex-wrap gap-1.5 md:flex">{g.tags.slice(0, 6).map((t) => <span key={t.id} title={t.label} className="size-3 rounded-full ring-1 ring-black/10" style={{ background: t.color }} />)}</span>
         {dirty && (
           <span className="ml-auto flex items-center gap-2">
@@ -91,14 +95,21 @@ function Group({ g }: { g: { key: string; name: string; tags: TagRow[] } }) {
           </span>
         )}
       </div>
-      <ul ref={ul} className="space-y-2.5 p-4 sm:p-5">
-        {order.map((id) => <Row key={id} t={byId.get(id)!} onGrip={grip(id)} dragging={drag === id} />)}
+      {(open || !!q) && <ul ref={ul} className="space-y-2.5 p-4 sm:p-5">
+        {order.filter((id) => !q || byId.get(id)!.label.toLowerCase().includes(q.toLowerCase())).map((id) => <Row key={id} t={byId.get(id)!} onGrip={grip(id)} dragging={drag === id} />)}
         <Row isNew t={{ groupKey: g.key, label: "", color: "#64748b", blocksSorting: false, cooldownDays: null, active: true }} />
-      </ul>
+      </ul>}
     </section>
   );
 }
 
 export function TagsAdmin({ groups }: { groups: { key: string; name: string; tags: TagRow[] }[] }) {
-  return <div className="space-y-4">{groups.map((g) => <Group key={g.key} g={g} />)}</div>;
+  const [q, setQ] = useState("");
+  const total = groups.reduce((n, g) => n + g.tags.length, 0);
+  return (
+    <div className="space-y-4">
+      <input value={q} onChange={(e) => setQ(e.target.value)} aria-label="Buscar tag" placeholder={`Buscar entre ${total} tags…`} className={`${inputCls} !py-2.5`} />
+      {groups.map((g) => <Group key={g.key} g={g} q={q.trim()} />)}
+    </div>
+  );
 }
