@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, LayoutDashboard, ShieldCheck, MessageCircle, PanelTop, Shuffle } from "lucide-react";
+import { Clock, Database, LayoutDashboard, ShieldCheck, MessageCircle, PanelTop, Shuffle } from "lucide-react";
 import { useState } from "react";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
@@ -41,6 +41,13 @@ const GROUPS: { title: string; sub: string; icon: typeof Clock; fields: Field[] 
   ] },
   { title: "Comunicação", sub: "Chat interno", icon: MessageCircle, fields: [
     { key: "chat_on", label: "Chat interno", hint: "Botão flutuante. Desligado, some para todos (as conversas ficam guardadas).", kind: "toggle" },
+  ] },
+  { title: "Fontes da consulta de CNPJ", sub: "De onde vêm telefones, e-mails e dados", icon: Database, fields: [
+    { key: "enrich_receitaws", label: "ReceitaWS", hint: "Dados cadastrais e telefones da Receita. Gratuita, com limite de consultas por minuto.", kind: "toggle" },
+    { key: "enrich_brasilapi", label: "BrasilAPI", hint: "Mesma base da Receita, sem o limite apertado. Gratuita.", kind: "toggle" },
+    { key: "enrich_minhareceita", label: "Minha Receita (reserva)", hint: "Só entra quando as duas de cima não respondem. Gratuita.", kind: "toggle" },
+    { key: "enrich_places", label: "Google Places (Maps)", hint: "Acha telefone e site que só estão no Maps. É paga e precisa da chave GOOGLE_PLACES_API_KEY nas variáveis da Vercel. Sem a chave, fica sem efeito.", kind: "toggle" },
+    { key: "enrich_site", label: "Site do estabelecimento", hint: "Quando o lead tem site, lê a página inicial e a de contato e guarda telefones, e-mails, WhatsApp e Instagram. Gratuita; deixa a consulta um pouco mais lenta.", kind: "toggle" },
   ] },
   { title: "Segurança", sub: "Proteção dos dados", icon: ShieldCheck, fields: [
     { key: "copy_guard", label: "Bloquear cópia de telas", hint: "Para quem não é Adm: impede selecionar, copiar, arrastar e clicar com o botão direito (campos de texto continuam normais).", kind: "toggle" },

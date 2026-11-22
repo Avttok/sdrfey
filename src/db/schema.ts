@@ -161,6 +161,9 @@ export const leads = pgTable(
     brasilApiData: jsonb("brasilapi_data"),
     receitaWsData: jsonb("receitaws_data"),
     tradeName: text("trade_name"),
+    /** Achados da internet pela consulta: site e Instagram do estabelecimento. */
+    site: text("site"),
+    instagram: text("instagram"),
     /** Lead de teste (modo teste): nunca entra nas métricas reais. */
     isTest: boolean("is_test").notNull().default(false),
     /** Data combinada para voltar a falar com o lead. */
@@ -336,7 +339,7 @@ export const leadChannels = pgTable(
     /** Telefone só com dígitos; e-mail em minúsculas. */
     value: text("value").notNull(),
     label: text("label"),
-    origin: text("origin").$type<"import" | "manual" | "brasilapi" | "receitaws">().notNull().default("manual"),
+    origin: text("origin").$type<"import" | "manual" | "brasilapi" | "receitaws" | "site" | "google">().notNull().default("manual"),
     wrong: boolean("wrong").notNull().default(false),
     createdAt: now(),
   },

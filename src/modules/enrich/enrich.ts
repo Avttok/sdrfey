@@ -5,6 +5,8 @@ import { logAudit } from "@/modules/audit/log";
 import { setLeadTags } from "@/modules/tags/apply";
 import { slugify } from "@/modules/import/normalize";
 import { classifyCapital, classifyPorte } from "./classify";
+import { getSettings } from "@/modules/settings/get";
+import { findPlace, scanSite } from "./web";
 import { mergeInfo, parseBrasilApi, parseReceitaWs, statusToSituation, type CnpjInfo } from "./parse";
 
 export type EnrichResult = {
@@ -76,13 +78,17 @@ async function enrichCore(leadId: number, userId: number | null): Promise<Enrich
   const [lead] = await db.select().from(leads).where(eq(leads.id, leadId));
   if (!lead) throw new Error("Lead não encontrado.");
 
-  /* As duas fontes ao mesmo tempo (antes uma esperava a outra, e as falhas somavam até 1 minuto). Se nenhuma responder, uma segunda rodada. */
+  /* As fontes ligadas no painel Adm, ao mesmo tempo (antes uma esperava a outra). Se nenhuma responder, uma segunda rodada. */
+  const cfg = await getSettings();
   const rwUrl = `https://receitaws.com.br/v1/cnpj/${lead.cnpj}`;
   const bUrl = `https://brasilapi.com.br/api/cnpj/v1/${lead.cnpj}`;
-  let [rwRes, bRes] = await Promise.all([getJson(rwUrl), getJson(bUrl)]);
-  if (!parseReceitaWs(rwRes.data) && !parseBrasilApi(bRes.data) && !(rwRes.final && bRes.final)) {
+  const off = { data: null, why: "desligada no painel", final: true };
+  const call = (on: boolean, url: string) => (on ? getJson(url) : Promise.resolve(off));
+  const useRw = cfg.enrich_receitaws === 1, useB = cfg.enrich_brasilapi === 1;
+  let [rwRes, bRes] = await Promise.all([call(useRw, rwUrl), call(useB, bUrl)]);
+  if ((useRw || useB) && !parseReceitaWs(rwRes.data) && !parseBrasilApi(bRes.data) && !(rwRes.final && bRes.final)) {
     await new Promise((r) => setTimeout(r, 600));
-    const [rw2, b2] = await Promise.all([rwRes.final ? rwRes : getJson(rwUrl), bRes.final ? bRes : getJson(bUrl)]);
+    const [rw2, b2] = await Promise.all([rwRes.final ? rwRes : call(useRw, rwUrl), bRes.final ? bRes : call(useB, bUrl)]);
     rwRes = rw2; bRes = b2;
   }
   const rw = rwRes.data, whyW = rwRes.why, whyB = bRes.why;
@@ -90,7 +96,7 @@ async function enrichCore(leadId: number, userId: number | null): Promise<Enrich
   const b = parseReceitaWs(rw);
   let a = parseBrasilApi(rb);
   /* Reserva: a Minha Receita usa o mesmo formato da BrasilAPI e atende quando as duas fontes caem. */
-  if (!a && !b) {
+  if (!a && !b && cfg.enrich_minhareceita === 1) {
     const m = await getJson(`https://minhareceita.org/${lead.cnpj}`);
     const pm = parseBrasilApi(m.data);
     if (pm) { a = pm; rb = m.data; }
@@ -105,7 +111,7 @@ async function enrichCore(leadId: number, userId: number | null): Promise<Enrich
     newEmails: 0,
     autoDiscarded: false,
   };
-  if (!info) return result;
+  if (!info) { await enrichWeb(leadId, lead, cfg, result); return result.newPhones + result.newEmails > 0 ? { ...result, state: "ok" } : result; }
 
   await db.transaction(async (tx) => {
     await tx
@@ -173,7 +179,32 @@ async function enrichCore(leadId: number, userId: number | null): Promise<Enrich
       }
     }
   });
+  await enrichWeb(leadId, lead, cfg, result);
   return result;
+}
+
+
+type Cfg = Awaited<ReturnType<typeof getSettings>>;
+
+/** Fontes extras da internet (Google Places e site do estabelecimento), se ligadas no painel Adm. Nunca derrubam a consulta. */
+async function enrichWeb(leadId: number, lead: typeof leads.$inferSelect, cfg: Cfg, result: EnrichResult): Promise<void> {
+  if (cfg.enrich_places !== 1 && cfg.enrich_site !== 1) return;
+  try {
+    let site = lead.site, instagram = lead.instagram;
+    const phones: { v: string; o: "google" | "site" }[] = [], emails: string[] = [];
+    if (cfg.enrich_places === 1) {
+      const pl = await findPlace(lead.tradeName ?? lead.company, lead.city ?? result.info?.city ?? null, lead.uf ?? result.info?.uf ?? null);
+      if (pl?.phone) phones.push({ v: pl.phone, o: "google" });
+      if (pl?.website && !site) site = pl.website;
+    }
+    if (cfg.enrich_site === 1 && site) {
+      const f = await scanSite(site);
+      if (f) { for (const p of f.phones) phones.push({ v: p, o: "site" }); emails.push(...f.emails); if (f.instagram && !instagram) instagram = f.instagram; }
+    }
+    if (site !== lead.site || instagram !== lead.instagram) await db.update(leads).set({ site, instagram, updatedAt: new Date() }).where(eq(leads.id, leadId));
+    for (const p of phones) { const r = await db.insert(leadChannels).values({ leadId, kind: "phone", value: p.v, origin: p.o }).onConflictDoNothing().returning({ id: leadChannels.id }); result.newPhones += r.length; }
+    for (const e of emails) { const r = await db.insert(leadChannels).values({ leadId, kind: "email", value: e, origin: "site" }).onConflictDoNothing().returning({ id: leadChannels.id }); result.newEmails += r.length; }
+  } catch { /* fonte extra falhou: a consulta da Receita já valeu */ }
 }
 
 /** Consulta a Receita (ReceitaWS e BrasilAPI) sem gravar nada: serve para pré-preencher um cadastro novo. */

@@ -54,6 +54,12 @@ export const SETTING_DEFAULTS = {
   pdf_max_mb: 5,
   /** 1 = bloqueia copiar, arrastar e clique direito fora de campos de texto (só para quem não é Adm). */
   copy_guard: 0,
+  /** Fontes da consulta de CNPJ (1 = usa). Places precisa da chave GOOGLE_PLACES_API_KEY. */
+  enrich_receitaws: 1,
+  enrich_brasilapi: 1,
+  enrich_minhareceita: 1,
+  enrich_places: 0,
+  enrich_site: 1,
 } as const;
 export type SettingKey = keyof typeof SETTING_DEFAULTS;
 
