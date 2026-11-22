@@ -1,4 +1,4 @@
-import { Activity, Archive, Coins, Clock, DatabaseZap, Download, Eraser, Handshake, KeyRound, Mail, PanelTop, Settings2, Tags, Upload, Users, type LucideIcon } from "lucide-react";
+import { Activity, Archive, Megaphone, Coins, Clock, DatabaseZap, Download, Eraser, Handshake, KeyRound, Mail, PanelTop, Settings2, Tags, Upload, Users, type LucideIcon } from "lucide-react";
 
 export type AdminItem = { href: string; label: string; hint: string; icon: LucideIcon };
 export type AdminSection = { id: string; title: string; hue: string; items: AdminItem[] };
@@ -15,6 +15,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   ] },
   { id: "conteudo", title: "Conteúdo e dados", hue: "#f59e0b", items: [
     { href: "/admin/tags", label: "Tags", hint: "Nomes, cores, ícones e ordem", icon: Tags },
+    { href: "/admin/avisos", label: "Avisos globais", hint: "Cards que caem do topo para todos", icon: Megaphone },
     { href: "/admin/modelos", label: "Modelos de e-mail", hint: "Textos prontos", icon: Mail },
     { href: "/admin/importar", label: "Importar CSV", hint: "Leads e representantes", icon: Upload },
     { href: "/admin/consulta-cnpj", label: "Consulta de CNPJ", hint: "Buscar dados dos leads em lote", icon: DatabaseZap },

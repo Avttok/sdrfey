@@ -352,3 +352,16 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .ft[data-on="true"] .ft-ico { background: var(--cor); color: #fff; filter: none; box-shadow: 0 6px 14px -4px color-mix(in srgb, var(--cor) 70%, transparent); }
 .ft[data-on="true"] .ft-pill { background: color-mix(in srgb, var(--cor) 22%, transparent); color: color-mix(in srgb, var(--cor) 75%, var(--ink)); }
 @media (prefers-reduced-motion: reduce) { .ft[data-on="true"] { animation: none; } }
+
+/* ── Avisos globais do Adm ── */
+@keyframes ann-drop { 0% { opacity: 0; transform: translateY(-140%) scale(.96); } 60% { opacity: 1; transform: translateY(8%) scale(1.01); } 80% { transform: translateY(-3%); } 100% { transform: none; } }
+@keyframes ann-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ann) 55%, transparent); } 50% { box-shadow: 0 0 0 10px transparent; } }
+@keyframes ann-shake { 0%, 100% { transform: translateX(0); } 15% { transform: translateX(-7px); } 30% { transform: translateX(6px); } 45% { transform: translateX(-4px); } 60% { transform: translateX(3px); } 75% { transform: translateX(-1px); } }
+@keyframes ann-sweep { from { transform: translateX(-120%) skewX(-18deg); } to { transform: translateX(420%) skewX(-18deg); } }
+.ann-drop { animation: ann-drop .85s cubic-bezier(.2, .9, .3, 1) both; }
+.ann-card[data-ann-effect="pulse"] { animation: ann-pulse 1.8s ease-out infinite; }
+.ann-drop[data-ann-effect="pulse"] { animation: ann-drop .85s cubic-bezier(.2, .9, .3, 1) both, ann-pulse 1.8s .9s ease-out infinite; }
+.ann-drop[data-ann-effect="shake"] { animation: ann-drop .85s cubic-bezier(.2, .9, .3, 1) both, ann-shake .6s .9s ease-in-out 2, ann-pulse 2.2s 2.2s ease-out infinite; }
+.ann-shine { animation: ann-sweep 2.8s ease-in-out infinite; }
+.ann-icon { animation: ico-wiggle 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .ann-drop, .ann-card, .ann-shine, .ann-icon { animation: none !important; } }

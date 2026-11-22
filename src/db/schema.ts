@@ -790,3 +790,18 @@ export const carriers = pgTable(
   },
   (t) => [uniqueIndex("carriers_uf_mode_name").on(t.uf, t.mode, t.name)],
 );
+
+/** Avisos globais do Adm: caem do topo da tela de todo mundo (ou de quem tem o cargo escolhido) e sempre podem ser fechados. */
+export const announcements = pgTable("announcements", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  body: text("body").notNull().default(""),
+  theme: text("theme").notNull().default("aviso"), // urgente | atencao | aviso | sucesso | novidade
+  effect: text("effect").notNull().default("auto"), // auto | none | pulse | shake | shine
+  /** Cargos que veem o aviso (vazio = todos). */
+  roles: text("roles").array().notNull().default(sql`'{}'::text[]`),
+  active: boolean("active").notNull().default(true),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

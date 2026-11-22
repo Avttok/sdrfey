@@ -6,6 +6,7 @@ import { AppHeader, SideBarFor } from "@/components/app-header";
 import { navBadges } from "@/modules/deals/queries";
 import { getSettings } from "@/modules/settings/get";
 import { AdminViewSwitch } from "@/components/admin-view-switch";
+import { AnnouncementHost } from "@/components/announcement-host";
 import { BottomFade } from "@/components/bottom-fade";
 import { SwRegister } from "@/components/sw-register";
 import { ChatMount } from "@/components/chat/chat-mount";
@@ -39,6 +40,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <footer className="relative z-40 px-4 pb-6 text-center text-xs text-muted"><span className="relative inline-block px-4 py-1.5"><span aria-hidden className="glow-pulse absolute inset-0 rounded-full bg-accent/50 blur-lg" /><span className="relative font-medium">Made by Ruan Carlos</span></span></footer>
         </div>
       </div>
+      <AnnouncementHost />
       <BottomFade />
       <SwRegister />
       <Suspense fallback={null}><ChatMount user={user} /></Suspense>

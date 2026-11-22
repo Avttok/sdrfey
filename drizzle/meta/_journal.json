@@ -302,6 +302,13 @@
       "when": 1795356008563,
       "tag": "0042_transportadoras",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1795356184163,
+      "tag": "0043_avisos_globais",
+      "breakpoints": true
     }
   ]
 }
