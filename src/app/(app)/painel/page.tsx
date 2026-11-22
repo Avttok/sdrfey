@@ -36,7 +36,7 @@ function Bar({ label, value, max, color, right }: { label: string; value: number
   return (
     <div className="mb-2.5 flex items-center gap-3 text-sm last:mb-0">
       <span className="w-20 shrink-0 truncate text-muted sm:w-24">{label}</span>
-      <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-sunk"><span className="block h-full rounded-full transition-[width] duration-700" style={{ width: `${max ? Math.max(value ? 3 : 0, Math.round((value / max) * 100)) : 0}%`, background: color }} /></span>
+      <span className="h-3 flex-1 overflow-hidden rounded-full bg-sunk"><span className="block h-full rounded-full transition-[width] duration-1000" style={{ width: `${max ? Math.max(value ? 3 : 0, Math.round((value / max) * 100)) : 0}%`, background: `linear-gradient(90deg, color-mix(in srgb, ${color} 70%, white), ${color})` }} /></span>
       <span className="figure min-w-24 shrink-0 whitespace-nowrap text-right text-xs font-medium">{right ?? nf.format(value)}</span>
     </div>
   );
@@ -61,11 +61,23 @@ function AlertTile({ icon: I, tone, n, text, hint, href }: { icon: typeof Clock;
     : <div className={cls} style={{ borderLeft: `3px solid ${c}` }}>{body}</div>;
 }
 const Block = ({ icon: I, title, children }: { icon: typeof Clock; title: string; children: React.ReactNode }) => (
-  <section className={`${panelCls} p-5`}>
-    <h2 className="mb-4 flex items-center gap-2.5 text-[15px] font-semibold"><span className="grid size-8 place-items-center rounded-lg bg-grad-soft text-accent"><I size={16} aria-hidden /></span> {title}</h2>
+  <section className={`${panelCls} card-in relative overflow-hidden p-5`}>
+    <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-grad opacity-80" />
+    <h2 className="mb-4 flex items-center gap-2.5 text-[15px] font-bold"><span className="grid size-9 place-items-center rounded-xl bg-grad text-on-accent shadow-sm"><I size={17} aria-hidden /></span> {title}</h2>
     {children}
   </section>
 );
+/** Anel de progresso (metas). */
+function Ring({ value, color }: { value: number; color: string }) {
+  const v = Math.max(0, Math.min(100, value)); const r = 22; const c = 2 * Math.PI * r;
+  return (
+    <svg viewBox="0 0 56 56" className="size-14 shrink-0 -rotate-90" aria-hidden>
+      <circle cx="28" cy="28" r={r} fill="none" stroke="var(--sunk)" strokeWidth="6" />
+      <circle cx="28" cy="28" r={r} fill="none" stroke={color} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(v / 100) * c} ${c}`} className="transition-[stroke-dasharray] duration-1000" />
+    </svg>
+  );
+}
+const KPI_HEX: Record<string, string> = { contatos: "#378ADD", meta: "#1D9E75", meta_agend: "#7F77DD", meta_ligacoes: "#0ea5e9", meta_convertidos: "#22c55e", qualificados: "#1D9E75", agendados: "#7F77DD", taxa_qualif: "#14b8a6", taxa_agend: "#a855f7", tempo: "#f59e0b", media_dia: "#eab308", ligacoes: "#0ea5e9", convertidos: "#22c55e", descartados: "#E24B4A", visitas_ok: "#ec4899", tempo_total: "#BA7517", vendas_origem: "#10b981", sequencia: "#f97316", novos: "#64748b" };
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const me = await requirePerm("tab.painel");
@@ -153,14 +165,22 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         sdr={<>
       {kpis.some((x) => can(`panel.kpi.${x.k}`)) && (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-          {kpis.filter((x) => can(`panel.kpi.${x.k}`)).map(({ I, t, v, s: sub, bar }) => (
-            <div key={t} className={`${panelCls} relative overflow-hidden p-4 transition hover:border-accent/50 hover:shadow-md`}>
-              <div className="flex items-center justify-between"><p className="text-xs font-medium text-muted">{t}</p><span className="grid size-8 place-items-center rounded-lg bg-grad-soft text-accent"><I size={15} aria-hidden /></span></div>
-              <p className="figure mt-2 text-3xl font-bold leading-none">{v}</p>
-              <p className="mt-1.5 text-xs text-muted">{sub}</p>
-              {bar !== undefined && <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-sunk"><div className={`h-full rounded-full ${bar >= 100 ? "bg-ok" : "bg-accent"}`} style={{ width: `${Math.min(100, bar)}%` }} /></div>}
-            </div>
-          ))}
+          {kpis.filter((x) => can(`panel.kpi.${x.k}`)).map(({ k, I, t, v, s: sub, bar }, i) => {
+            const hex = KPI_HEX[k] ?? "var(--accent)";
+            return (
+              <div key={t} style={{ "--i": i } as React.CSSProperties} className={`${panelCls} card-in lift relative overflow-hidden p-4 hover:shadow-lg`}>
+                <span aria-hidden className="pointer-events-none absolute -right-6 -top-6 size-24 rounded-full opacity-[.13]" style={{ background: hex }} />
+                <div className="relative flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted">{t}</p>
+                    <p className="figure mt-2 text-4xl font-extrabold leading-none" style={bar !== undefined ? { color: bar >= 100 ? "var(--ok)" : undefined } : undefined}>{v}</p>
+                    <p className="mt-2 text-xs text-muted">{sub}</p>
+                  </div>
+                  {bar !== undefined ? <Ring value={bar} color={bar >= 100 ? "var(--ok)" : hex} /> : <span className="grid size-11 shrink-0 place-items-center rounded-2xl text-white shadow-sm" style={{ background: hex }}><I size={20} aria-hidden /></span>}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -189,8 +209,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         {can("panel.horas") && (
           <Block icon={x.prev.contacts <= d.contacts ? TrendingUp : TrendingDown} title="Evolução por dia">
             {x.daily.length < 2 ? <p className="text-sm text-muted">Escolha 7 ou 30 dias para ver a evolução.</p> : <>
-              <div className="flex h-28 items-end gap-1">
-                {x.daily.map((p) => <div key={p.d} title={`${fmtDate(p.d)}: ${p.n}`} className="flex-1 rounded-t bg-accent/80 transition hover:bg-accent" style={{ height: `${Math.max(3, (p.n / Math.max(1, ...x.daily.map((q) => q.n))) * 100)}%`, opacity: p.n ? 1 : 0.25 }} />)}
+              <div className="flex h-36 items-end gap-1 border-b border-line">
+                {x.daily.map((p) => <div key={p.d} title={`${fmtDate(p.d)}: ${p.n}`} className="flex-1 rounded-t-md bg-grad transition hover:brightness-110" style={{ height: `${Math.max(3, (p.n / Math.max(1, ...x.daily.map((q) => q.n))) * 100)}%`, opacity: p.n ? 1 : 0.25 }} />)}
               </div>
               <p className="mt-2 text-xs text-muted">{fmtDate(x.daily[0].d)} a {fmtDate(x.daily[x.daily.length - 1].d)} · melhor dia: <b className="figure text-ink">{Math.max(...x.daily.map((q) => q.n))}</b> atendimentos{vs(d.contacts, x.prev.contacts)}</p>
             </>}
@@ -201,7 +221,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       {can("panel.horas") && (
         <Block icon={Clock} title="Atividade por hora">
           {hoursRange.length === 0 ? <p className="text-sm text-muted">Nenhuma atividade neste período ainda.</p> : <>
-          <div className="flex h-28 items-end gap-1.5">
+          <div className="flex h-36 items-end gap-1.5 border-b border-line">
             {perHour.map(({ h, parts }) => {
               const total = parts.reduce((a, p) => a + p.n, 0);
               return (
