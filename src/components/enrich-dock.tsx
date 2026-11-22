@@ -4,7 +4,8 @@ import { CheckCircle2, ChevronLeft, Clock3, DatabaseZap, Gauge, ListChecks, Load
 import { useEffect, useRef, useState } from "react";
 import { ENRICH_GROUPS, ENRICH_LISTS, ENRICH_LIST_BY_KEY } from "@/config/enrich-lists";
 import { DAEMON_OFFLINE_MIN } from "@/config/enrich-daemon";
-import { dockAction, daemonStartAction, daemonStopAction, daemonTickAction, type DockData } from "@/modules/enrich/daemon-actions";
+import type { DockData } from "@/modules/enrich/daemon-actions";
+import { dockApi, startApi, stopApi, tickApi } from "./enrich-api";
 import { ENRICH_ASK, ENRICH_SET, publishEnrich } from "./enrich-bridge";
 
 const nf = new Intl.NumberFormat("pt-BR");
@@ -29,7 +30,7 @@ export function EnrichDock({ side }: { side?: boolean }) {
   /* acompanha o estado (4 s) e o relógio (1 s); atende a tela do Adm */
   useEffect(() => {
     let alive = true;
-    const load = async () => { if (document.visibilityState === "hidden" && running.current) return; try { const r = await dockAction(); if (alive) put(r); } catch { /* tenta de novo */ } };
+    const load = async () => { if (document.visibilityState === "hidden" && running.current) return; try { const r = await dockApi(); if (alive) put(r); } catch { /* tenta de novo */ } };
     void load();
     const t = setInterval(load, 4000), c = setInterval(() => setNow(Date.now()), 1000);
     const onSet = (e: Event) => { if (alive) put((e as CustomEvent<DockData>).detail); };
@@ -47,7 +48,7 @@ export function EnrichDock({ side }: { side?: boolean }) {
     (async () => {
       while (alive) {
         let go = false;
-        try { const r = await daemonTickAction(); if (alive) put(r); go = r.go; } catch { await new Promise((x) => setTimeout(x, 5000)); go = true; }
+        try { const r = await tickApi(); if (alive) put(r); go = r.go; } catch { await new Promise((x) => setTimeout(x, 5000)); go = true; }
         if (!go) break;
         await new Promise((x) => setTimeout(x, 1500));
       }
@@ -120,8 +121,8 @@ export function EnrichDock({ side }: { side?: boolean }) {
           )}
 
           {on
-            ? <button type="button" disabled={busy} onClick={() => act(daemonStopAction)} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-bold text-danger transition hover:bg-danger/20">{busy ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Pause size={16} aria-hidden />} Parar consulta</button>
-            : <button type="button" disabled={busy || (d.stats.lists?.[scope] ?? 0) === 0} onClick={() => act(() => daemonStartAction(scope))} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-grad px-3 py-2 text-sm font-bold text-on-accent shadow transition hover:brightness-110 disabled:opacity-60">{busy ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Play size={16} aria-hidden />} {(d.stats.lists?.[scope] ?? 0) === 0 ? "Nada nesta lista" : "Ligar até eu parar"}</button>}
+            ? <button type="button" disabled={busy} onClick={() => act(stopApi)} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-bold text-danger transition hover:bg-danger/20">{busy ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Pause size={16} aria-hidden />} Parar consulta</button>
+            : <button type="button" disabled={busy || (d.stats.lists?.[scope] ?? 0) === 0} onClick={() => act(() => startApi(scope))} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-grad px-3 py-2 text-sm font-bold text-on-accent shadow transition hover:brightness-110 disabled:opacity-60">{busy ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Play size={16} aria-hidden />} {(d.stats.lists?.[scope] ?? 0) === 0 ? "Nada nesta lista" : "Ligar até eu parar"}</button>}
           <p className="flex items-start gap-1.5 text-[11px] leading-snug text-muted"><Gauge size={12} className="mt-0.5 shrink-0" aria-hidden />Roda em qualquer página. Para sozinha se você ficar offline por mais de {DAEMON_OFFLINE_MIN} min ou quando a lista acabar.</p>
 
           <section aria-label="Últimas consultas">

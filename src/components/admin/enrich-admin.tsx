@@ -5,7 +5,8 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { ENRICH_GROUPS, ENRICH_LISTS, ENRICH_LIST_BY_KEY } from "@/config/enrich-lists";
 import { ENRICH_STATE, askEnrich, setEnrich } from "@/components/enrich-bridge";
-import { daemonStartAction, daemonStopAction, type DockData } from "@/modules/enrich/daemon-actions";
+import type { DockData } from "@/modules/enrich/daemon-actions";
+import { startApi, stopApi } from "@/components/enrich-api";
 import type { EnrichStats } from "@/modules/enrich/batch";
 import { enrichLiveAction, enrichLogAction, retryFailedEnrichAction, runEnrichBatchAction, setAutoEnrichAction } from "@/modules/enrich/admin";
 import type { Live, LogRow } from "@/modules/enrich/live";
@@ -93,7 +94,7 @@ export function EnrichAdmin({ initial, on: on0, cronReady, live: live0 }: { init
   };
   const toggleLoop = async () => {
     setBusy(true);
-    try { const r = await (loop ? daemonStopAction() : daemonStartAction(scope)); setEnrich(r); setDock(r); setStats(r.stats); setLog(loop ? "Consulta contínua parada." : ""); } catch { setLog("Não consegui mudar o modo contínuo. Tente de novo."); } finally { setBusy(false); }
+    try { const r = await (loop ? stopApi() : startApi(scope)); setEnrich(r); setDock(r); setStats(r.stats); setLog(loop ? "Consulta contínua parada." : ""); } catch { setLog("Não consegui mudar o modo contínuo. Tente de novo."); } finally { setBusy(false); }
   };
 
   return (
