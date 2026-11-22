@@ -4,6 +4,9 @@ import { logAudit } from "@/modules/audit/log";
 import type { LeadDraft, TagRef } from "./leads-parse";
 import { stripAccents } from "./normalize";
 
+/** novos = só os que não existem (os que já existem ficam intactos); nutrir = só completa os que já existem; ambos = os dois. */
+export type ImportMode = "novos" | "nutrir" | "ambos";
+
 export type ApplyResult = {
   inserted: number;
   skippedExisting: number;
@@ -28,7 +31,7 @@ const chunk = <T>(arr: T[], size: number): T[][] => {
  */
 export async function applyLeadDrafts(
   drafts: LeadDraft[],
-  opts: { importedBy: number | null; sourceName: string; kind?: "prospect" | "inativo"; batchId?: number },
+  opts: { importedBy: number | null; sourceName: string; kind?: "prospect" | "inativo"; batchId?: number; mode?: ImportMode },
   database: Db = db,
 ): Promise<ApplyResult> {
   return database.transaction(async (tx) => {
@@ -41,9 +44,10 @@ export async function applyLeadDrafts(
       const rows = await tx.select({ cnpj: leads.cnpj }).from(leads).where(inArray(leads.cnpj, part));
       rows.forEach((r) => existing.add(r.cnpj));
     }
-    const fresh = drafts.filter((d) => !existing.has(d.cnpj));
-    result.skippedExisting = drafts.length - fresh.length;
-    if (kind === "inativo" && existing.size) {
+    const mode = opts.mode ?? "ambos";
+    const fresh = mode === "nutrir" ? [] : drafts.filter((d) => !existing.has(d.cnpj));
+    result.skippedExisting = drafts.filter((d) => existing.has(d.cnpj)).length;
+    if (kind === "inativo" && existing.size && mode === "ambos") {
       /* cliente que já estava na base como lead novo, sem negociação aberta nem atendimento em andamento, passa a inativo */
       const have = drafts.filter((d) => existing.has(d.cnpj)).map((d) => d.cnpj);
       for (const part of chunk(have, 2000)) {
@@ -54,7 +58,7 @@ export async function applyLeadDrafts(
       }
     }
     const old = drafts.filter((d) => existing.has(d.cnpj));
-    if (old.length) result.enriched = await enrichExisting(tx, old, opts);
+    if (old.length && mode !== "novos") result.enriched = await enrichExisting(tx, old, opts);
     if (fresh.length === 0) return result;
 
     /* 2. garantir que todas as tags citadas existem (porte e capital nascem aqui) */

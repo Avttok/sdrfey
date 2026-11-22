@@ -1,17 +1,19 @@
 "use client";
 
 import Papa from "papaparse";
-import { ChevronLeft, ChevronRight, Pencil, RotateCcw, Search, Trash2, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, CircleHelp, EyeOff, Pencil, RotateCcw, Search, Sparkles, Trash2, TriangleAlert, Wand2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { btnGhost, btnPrimary, inputCls } from "@/components/ui";
 import { decodeCsv, parseCsv } from "@/modules/import/csv";
+import { colLetter, FIELDS, fieldOfHeader, IGNORE_HEADER, suggestField, type FieldInfo, type ImportKind } from "@/modules/import/fields";
+import { headerKey } from "@/modules/import/normalize";
 
 const PAGE = 50;
 type Row = { id: number; cells: string[] };
 
 /** Edição direta dos dados do CSV na prévia: células, cabeçalhos e remoção de linhas. Gera um novo CSV e devolve ao formulário para reconferir. */
-export function ImportEditor({ file, busy, onApply }: { file: File; busy?: boolean; onApply: (f: File) => void }) {
+export function ImportEditor({ file, kind, busy, onApply }: { file: File; kind: ImportKind; busy?: boolean; onApply: (f: File) => void }) {
   const [open, setOpen] = useState(false);
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<Row[]>([]);
@@ -22,8 +24,8 @@ export function ImportEditor({ file, busy, onApply }: { file: File; busy?: boole
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    if (!open || orig?.headers.length) return;
     let alive = true;
+    setOrig(null); setErr(""); setDirty(false);
     file.arrayBuffer().then((buf) => {
       if (!alive) return;
       try {
@@ -33,7 +35,7 @@ export function ImportEditor({ file, busy, onApply }: { file: File; busy?: boole
       } catch { setErr("Não consegui abrir o arquivo para edição."); }
     });
     return () => { alive = false; };
-  }, [open, file, orig]);
+  }, [file]);
 
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -45,6 +47,24 @@ export function ImportEditor({ file, busy, onApply }: { file: File; busy?: boole
 
   const setCell = (id: number, c: number, v: string) => { setRows((rs) => rs.map((r) => (r.id === id ? { ...r, cells: r.cells.map((x, i) => (i === c ? v : x)) } : r))); setDirty(true); };
   const setHead = (c: number, v: string) => { setHeaders((h) => h.map((x, i) => (i === c ? v : x))); setDirty(true); };
+  const colInfo = useMemo(() => headers.map((h, c) => {
+    const field = fieldOfHeader(kind, h);
+    const ignored = headerKey(h) === IGNORE_HEADER;
+    const sample = field || ignored ? [] : rows.slice(0, 60).map((r) => r.cells[c] ?? "");
+    return { field, ignored, sample };
+  }), [headers, rows, kind]);
+  const usedKeys = new Set(colInfo.flatMap((i) => (i.field ? [i.field.key] : [])));
+  const suggestions = colInfo.map((i, c) => { const f = i.field || i.ignored ? null : suggestField(kind, i.sample, orig?.headers[c] ?? headers[c]); return f && !usedKeys.has(f.key) ? f : null; });
+  const missing = FIELDS[kind].filter((f) => f.required && !usedKeys.has(f.key));
+  const unknownCount = colInfo.filter((i, c) => !i.field && !i.ignored && headers[c].trim()).length;
+  const sugCount = suggestions.filter(Boolean).length;
+  const pick = (c: number, v: string) => {
+    if (v === "__ignore") return setHead(c, IGNORE_HEADER);
+    if (v === "") return setHead(c, orig?.headers[c] ?? headers[c]);
+    const f = FIELDS[kind].find((x) => x.key === v);
+    if (f) setHead(c, f.header);
+  };
+  const acceptAll = () => { const taken = new Set(usedKeys); setHeaders((hs) => hs.map((h, c) => { const f = suggestions[c]; if (f && !taken.has(f.key)) { taken.add(f.key); return f.header; } return h; })); setDirty(true); };
   const del = (id: number) => { setRows((rs) => rs.filter((r) => r.id !== id)); setDirty(true); };
   const undo = () => { if (!orig) return; setHeaders(orig.headers); setRows(orig.rows); setDirty(false); };
   const apply = () => {
@@ -62,10 +82,24 @@ export function ImportEditor({ file, busy, onApply }: { file: File; busy?: boole
   }, [open]);
 
   return (
-    <div className="rounded-xl border border-line">
-      <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium">
-        <Pencil size={16} aria-hidden /> Editar os dados antes de importar
-        <span className="ml-auto text-xs font-normal text-muted">Abre uma janela grande para corrigir células, cabeçalhos e remover linhas</span>
+    <div className="space-y-3">
+      <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" disabled={!orig && !err}
+        className="group relative flex w-full items-center gap-4 overflow-hidden rounded-2xl border-2 border-accent/60 bg-grad-soft p-4 text-left shadow-lg transition hover:-translate-y-0.5 hover:border-accent hover:shadow-xl sm:p-5">
+        <span aria-hidden className="glow-pulse pointer-events-none absolute -left-6 top-1/2 size-28 -translate-y-1/2 rounded-full bg-accent/30 blur-2xl" />
+        <span className="relative grid size-14 shrink-0 place-items-center rounded-2xl bg-grad text-on-accent shadow-md transition group-hover:rotate-6"><Pencil size={26} aria-hidden /></span>
+        <span className="relative min-w-0 flex-1">
+          <span className="block text-lg font-bold">Revisar e editar o arquivo</span>
+          <span className="block text-sm text-muted">Diga o que é cada coluna, corrija células e tire linhas antes de importar. Quanto mais certinho, melhor o resultado.</span>
+        </span>
+        <span className="relative hidden shrink-0 flex-col items-end gap-1.5 text-xs font-semibold sm:flex">
+          {!orig ? <span className="text-muted">Abrindo o arquivo…</span> : (<>
+            {missing.length > 0 ? <span className="inline-flex items-center gap-1.5 rounded-full bg-danger/15 px-3 py-1 text-danger"><TriangleAlert size={13} aria-hidden /> Falta: {missing.map((m) => m.label).join(", ")}</span>
+              : unknownCount > 0 ? <span className="inline-flex items-center gap-1.5 rounded-full bg-warn/20 px-3 py-1 text-warn"><CircleHelp size={13} aria-hidden /> {unknownCount} {unknownCount === 1 ? "coluna" : "colunas"} sem reconhecimento</span>
+              : <span className="inline-flex items-center gap-1.5 rounded-full bg-ok/15 px-3 py-1 text-ok"><Check size={13} aria-hidden /> Todas as colunas reconhecidas</span>}
+            {sugCount > 0 && <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-3 py-1 text-accent"><Sparkles size={13} aria-hidden /> {sugCount} {sugCount === 1 ? "sugestão" : "sugestões"} para você</span>}
+          </>)}
+        </span>
+        <ChevronRight size={22} className="relative shrink-0 text-accent transition group-hover:translate-x-1" aria-hidden />
       </button>
       {open && createPortal(
         <div className="fixed inset-0 z-[70] grid place-items-center bg-black/55 p-3 backdrop-blur-[2px]" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !dirty) setOpen(false); }}>
@@ -84,6 +118,14 @@ export function ImportEditor({ file, busy, onApply }: { file: File; busy?: boole
               )}
               <button type="button" aria-label="Fechar" title={dirty ? "Fechar sem aplicar" : "Fechar"} onClick={() => setOpen(false)} className="grid size-9 place-items-center rounded-lg text-muted hover:bg-sunk"><X size={18} aria-hidden /></button>
             </header>
+            {orig && (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-sunk/50 px-5 py-2.5 text-sm">
+                <span className="flex items-center gap-1.5 font-medium"><Check size={15} className="text-ok" aria-hidden /> {colInfo.filter((i) => i.field).length} de {headers.length} colunas reconhecidas</span>
+                {missing.length > 0 && <span className="flex items-center gap-1.5 font-semibold text-danger"><TriangleAlert size={15} aria-hidden /> Falta dizer qual é: {missing.map((m) => m.label).join(", ")}</span>}
+                {sugCount > 0 && <button type="button" onClick={acceptAll} className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-grad px-3 py-1.5 text-xs font-bold text-on-accent shadow-sm transition hover:-translate-y-0.5"><Wand2 size={14} aria-hidden /> Aceitar as {sugCount} {sugCount === 1 ? "sugestão" : "sugestões"}</button>}
+                <span className={`${sugCount > 0 ? "" : "ml-auto"} text-xs text-muted`}>Escolha no topo de cada coluna o que ela é. As células também podem ser editadas.</span>
+              </div>
+            )}
             {err && <p className="p-4 text-sm text-danger">{err}</p>}
             {!orig && !err && <p className="p-6 text-sm text-muted">Abrindo…</p>}
             {orig && (
@@ -92,7 +134,26 @@ export function ImportEditor({ file, busy, onApply }: { file: File; busy?: boole
                   <table className="w-full min-w-max text-sm">
                     <thead className="sticky top-0 z-10 bg-sunk">
                       <tr><th className="w-10 p-1.5" />
-                        {headers.map((h, c) => <th key={c} className="p-1"><input aria-label={`Cabeçalho ${c + 1}`} className={`${inputCls} !min-h-8 !py-1 text-xs font-semibold uppercase`} value={h} onChange={(e) => setHead(c, e.target.value)} /></th>)}
+                        {headers.map((h, c) => {
+                          const i = colInfo[c], sug = suggestions[c];
+                          const tone = i.ignored ? "border-line opacity-70" : i.field ? "border-ok/50" : sug ? "border-accent/70" : "border-warn/60";
+                          return (
+                            <th key={c} className="min-w-48 p-1.5 align-top font-normal">
+                              <div className={`space-y-1.5 rounded-xl border-2 bg-panel p-2 text-left ${tone}`}>
+                                <p className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-muted"><span>Coluna {colLetter(c)}</span><span className="max-w-32 truncate normal-case" title={orig?.headers[c]}>{orig?.headers[c] || "(sem título)"}</span></p>
+                                <select aria-label={`O que é a coluna ${colLetter(c)}`} className={`${inputCls} !min-h-9 !py-1 text-sm font-semibold`} value={i.ignored ? "__ignore" : i.field?.key ?? ""} onChange={(e) => pick(c, e.target.value)}>
+                                  <option value="">{i.field || i.ignored ? "Voltar ao nome do arquivo" : "Escolha o que é…"}</option>
+                                  <optgroup label="Campos do sistema">{FIELDS[kind].map((f: FieldInfo) => <option key={f.key} value={f.key}>{f.label}{f.required ? " *" : ""}{usedKeys.has(f.key) && i.field?.key !== f.key ? " (já usada)" : ""}</option>)}</optgroup>
+                                  <option value="__ignore">Ignorar esta coluna</option>
+                                </select>
+                                {i.ignored ? <p className="flex items-center gap-1 text-xs text-muted"><EyeOff size={12} aria-hidden /> Não será importada</p>
+                                  : i.field ? <p className="flex items-start gap-1 text-xs text-ok"><Check size={12} className="mt-0.5 shrink-0" aria-hidden /> <span className="font-normal text-muted">{i.field.hint}</span></p>
+                                  : sug ? <button type="button" onClick={() => pick(c, sug.key)} className="flex w-full items-center gap-1.5 rounded-lg bg-accent/15 px-2 py-1 text-left text-xs font-semibold text-accent transition hover:bg-accent/25"><Sparkles size={12} className="shrink-0" aria-hidden /> Parece ser {sug.label}. Usar</button>
+                                  : <p className="flex items-center gap-1 text-xs text-warn"><CircleHelp size={12} aria-hidden /> Não reconheço. Escolha acima ou ignore.</p>}
+                              </div>
+                            </th>
+                          );
+                        })}
                       </tr>
                     </thead>
                     <tbody>

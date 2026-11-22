@@ -1,8 +1,9 @@
 "use client";
 
 import { ImportEditor } from "@/components/import-editor";
+import { needsMapping } from "@/modules/import/fields";
 import Papa from "papaparse";
-import { AlertTriangle, CheckCircle2, FileSpreadsheet, FileText, Layers, Upload, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CircleHelp, FileSpreadsheet, FileText, Layers, Upload, X } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { Spinner } from "@/components/spinner";
@@ -128,6 +129,14 @@ export function DealImportForm({ sellers, terms = [] }: { sellers: { id: number;
         </section>
       )}
 
+      {prev && !prev.ok && file && needsMapping(prev.message) && (
+        <section className={`${panelCls} space-y-4 border-warn/60 p-5`}>
+          <h2 className="flex items-center gap-2.5 text-lg font-semibold"><span className="grid size-8 place-items-center rounded-full bg-warn/20 text-warn"><CircleHelp size={18} aria-hidden /></span> Preciso da sua ajuda com as colunas</h2>
+          <p className="text-sm text-muted">{prev.message} Isso acontece quando os títulos das colunas têm outros nomes. Abra a edição, diga o que é cada coluna e o sistema reconfere sozinho.</p>
+          <ImportEditor kind={"deals"} file={file} busy={pending} onApply={(f) => { setFile(f); check(f); }} />
+        </section>
+      )}
+
       {prev?.ok && (
         <section className={`${panelCls} space-y-4 p-5`}>
           <Step n={3}>Confira antes de importar</Step>
@@ -159,7 +168,7 @@ export function DealImportForm({ sellers, terms = [] }: { sellers: { id: number;
               )}
             </div>
           </div>
-          {file && <ImportEditor file={file} busy={pending} onApply={(f) => { setFile(f); check(f); }} />}
+          {file && <ImportEditor kind="deals" file={file} busy={pending} onApply={(f) => { setFile(f); check(f); }} />}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Stat label="Linhas no arquivo" value={prev.report.total} />
             <Stat label="Vão entrar" value={prev.willCreate} tone="ok" />

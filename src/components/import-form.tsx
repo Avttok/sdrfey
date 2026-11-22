@@ -1,12 +1,13 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, FileSpreadsheet, MapPin, Upload, Users, X } from "lucide-react";
+import { AlertTriangle, Check, CircleHelp, CheckCircle2, FileSpreadsheet, Layers, ListChecks, MapPin, PackageCheck, PlusCircle, Sparkles, Upload, Users, X } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 import { Spinner } from "@/components/spinner";
 import { useBusyWhile, useToast } from "@/components/toast";
 import { btnGhost, btnPrimary, panelCls } from "@/components/ui";
 import { LEAD_GUIDE, REP_GUIDE } from "@/config/import-guide";
 import { ImportEditor } from "@/components/import-editor";
+import { needsMapping } from "@/modules/import/fields";
 import { ImportExample } from "@/components/import-example";
 import { hasBlocker, ImportInsight, needsAck } from "@/components/import-insight";
 import { applyImportAction, previewImportAction, type ImportPreview } from "@/modules/import/actions";
@@ -54,6 +55,7 @@ export function ImportForm() {
   const toast = useToast();
   const [kind, setKind] = useState<"leads" | "reps">("leads");
   const [leadKind, setLeadKind] = useState<"prospect" | "inativo">("prospect");
+  const [mode, setMode] = useState<"novos" | "nutrir" | "ambos">("ambos");
   const [file, setFile] = useState<File | null>(null);
   const [prev, setPrev] = useState<ImportPreview | null>(null);
   const [details, setDetails] = useState<string[]>([]);
@@ -62,12 +64,13 @@ export function ImportForm() {
   const [pending, start] = useTransition();
   useBusyWhile(pending);
   const input = useRef<HTMLInputElement>(null);
-  const fd = (f: File | null = file) => { const d = new FormData(); d.set("kind", kind); d.set("leadKind", leadKind); if (f) d.set("file", f); return d; };
-  const pick = (f: File | null | undefined) => { setFile(f ?? null); setPrev(null); setDetails([]); };
+  const fd = (f: File | null = file) => { const d = new FormData(); d.set("kind", kind); d.set("leadKind", leadKind); d.set("mode", mode); if (f) d.set("file", f); return d; };
+  const pickFile = (f: File | null | undefined) => { setFile(f ?? null); setPrev(null); setDetails([]); };
   const reset = () => { setPrev(null); setFile(null); if (input.current) input.current.value = ""; };
   const current = KINDS.find((k) => k.key === kind)!;
 
-  const check = (f?: File) => start(async () => { const r = await previewImportAction(fd(f)); setAck(false); setPrev(r); if (!r.ok) toast("bad", r.message); });
+  const check = (f?: File, m: typeof mode = mode) => start(async () => { const d = fd(f); d.set("mode", m); const r = await previewImportAction(d); setAck(false); setPrev(r); if (!r.ok) toast("bad", r.message); });
+  const changeMode = (m: typeof mode) => { setMode(m); if (file && prev?.ok) check(undefined, m); };
   const apply = () => start(async () => {
     const r = await applyImportAction(fd());
     toast(r.ok ? "ok" : "bad", r.message);
@@ -75,8 +78,14 @@ export function ImportForm() {
     if (r.ok) reset();
   });
 
+  const stage = !file ? 0 : !prev?.ok ? 1 : 2;
+  const TRACK = [{ t: "Escolher", i: ListChecks }, { t: "Arquivo", i: FileSpreadsheet }, { t: "Revisar", i: Sparkles }, { t: "Importar", i: PackageCheck }] as const;
   return (
     <div className="space-y-5">
+      <ol className="grid grid-cols-4 gap-2" aria-label="Etapas da importação">
+        {TRACK.map((s, i) => { const done = i < stage, cur = i === stage;
+          return <li key={s.t} className={`flex items-center justify-center gap-2 rounded-2xl border p-2.5 text-sm font-semibold transition ${cur ? "border-accent bg-grad-soft text-accent shadow-md" : done ? "border-accent/40 text-accent" : "border-line text-muted"}`}><span className={`grid size-8 place-items-center rounded-xl ${cur ? "bg-grad text-on-accent step-ping" : done ? "bg-accent/15" : "bg-panel"}`}>{done ? <Check size={16} aria-hidden /> : <s.i size={16} aria-hidden />}</span><span className="hidden sm:inline">{s.t}</span></li>; })}
+      </ol>
       <section className={`${panelCls} p-5`}>
         <StepTitle n={1} done={!!file}>O que você vai importar?</StepTitle>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -102,7 +111,7 @@ export function ImportForm() {
         <StepTitle n={2} done={!!prev?.ok}>Escolha o arquivo CSV</StepTitle>
         <div
           onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDrag(false); }}
-          onDrop={(e) => { e.preventDefault(); setDrag(false); pick(e.dataTransfer.files?.[0]); }}
+          onDrop={(e) => { e.preventDefault(); setDrag(false); pickFile(e.dataTransfer.files?.[0]); }}
           className={`flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center transition-colors ${drag ? "border-accent bg-sunk [&_*]:pointer-events-none" : "border-line"}`}>
           {file ? (
             <>
@@ -121,15 +130,41 @@ export function ImportForm() {
               <button type="button" className={btnGhost} onClick={() => input.current?.click()}>Escolher arquivo</button>
             </>
           )}
-          <input ref={input} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
+          <input ref={input} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => pickFile(e.target.files?.[0])} />
         </div>
       </section>
+
+      {prev && !prev.ok && file && needsMapping(prev.message) && (
+        <section className={`${panelCls} space-y-4 border-warn/60 p-5`}>
+          <h2 className="flex items-center gap-2.5 text-lg font-semibold"><span className="grid size-8 place-items-center rounded-full bg-warn/20 text-warn"><CircleHelp size={18} aria-hidden /></span> Preciso da sua ajuda com as colunas</h2>
+          <p className="text-sm text-muted">{prev.message} Isso acontece quando os títulos das colunas têm outros nomes. Abra a edição, diga o que é cada coluna e o sistema reconfere sozinho.</p>
+          <ImportEditor kind={kind} file={file} busy={pending} onApply={(f) => { setFile(f); check(f); }} />
+        </section>
+      )}
 
       {prev?.ok && (
         <section className={`${panelCls} space-y-4 p-5`}>
           <StepTitle n={3}>Confira antes de importar</StepTitle>
           <ImportInsight info={prev.insight} ack={ack} onAck={setAck} />
-          {file && <ImportEditor file={file} busy={pending} onApply={(f) => { setFile(f); check(f); }} />}
+          {prev.kind === "leads" && (
+            <div className="space-y-2">
+              <p className="text-sm font-semibold">Como importar?</p>
+              <div role="radiogroup" aria-label="Como importar" className="grid gap-3 md:grid-cols-3">
+                {([
+                  ["ambos", "Importar e enriquecer", "Entram os novos e quem já existe recebe só a informação nova.", Layers, `${nf.format(prev.fresh)} novos · ${nf.format(prev.enrich)} enriquecidos`],
+                  ["novos", "Importar só os novos", "Os que já estão no sistema ficam exatamente como estão (sem duplicar).", PlusCircle, `${nf.format(prev.fresh)} novos · ${nf.format(prev.existing)} ignorados`],
+                  ["nutrir", "Só enriquecer os atuais", "Ninguém novo entra: só completa telefone, e-mail, contato e tags de quem já existe.", Sparkles, `${nf.format(prev.enrich)} enriquecidos · ${nf.format(prev.fresh)} não entram`],
+                ] as const).map(([k, t, d, I, c]) => (
+                  <button key={k} type="button" role="radio" aria-checked={mode === k} disabled={pending} onClick={() => changeMode(k)}
+                    className={`relative flex flex-col items-start gap-1.5 rounded-2xl border-2 p-4 text-left transition hover:-translate-y-0.5 ${mode === k ? "border-accent bg-grad-soft shadow-lg" : "border-line bg-panel hover:border-accent/50"}`}>
+                    <span className="flex w-full items-center justify-between"><span className={`grid size-10 place-items-center rounded-xl ${mode === k ? "bg-grad text-on-accent" : "bg-sunk text-muted"}`}><I size={20} aria-hidden /></span>{mode === k && <span className="grid size-6 place-items-center rounded-full bg-accent text-on-accent"><Check size={14} aria-hidden /></span>}</span>
+                    <span className="font-bold">{t}</span><span className="text-xs text-muted">{d}</span><span className="figure mt-1 rounded-full bg-sunk px-2.5 py-1 text-xs font-semibold">{c}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {file && <ImportEditor kind={kind} file={file} busy={pending} onApply={(f) => { setFile(f); check(f); }} />}
           {prev.kind === "leads" ? (
             <>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
@@ -150,7 +185,7 @@ export function ImportForm() {
               {prev.warnings.length > 0 && <div className="rounded-lg bg-sunk p-3 text-sm">{prev.warnings.map((w) => <p key={w} className="text-muted">{w}</p>)}</div>}
             </>
           )}
-          <button type="button" className={`${btnPrimary} !px-6 !py-3 text-base`} disabled={pending || hasBlocker(prev.insight.checks) || (needsAck(prev.insight.checks) && !ack)} onClick={apply}>{pending ? <Spinner size={18} /> : <Upload size={18} aria-hidden />} Importar agora</button>
+          <button type="button" className={`${btnPrimary} !px-6 !py-3 text-base`} disabled={pending || hasBlocker(prev.insight.checks) || (needsAck(prev.insight.checks) && !ack) || (prev.kind === "leads" && ((mode === "novos" && prev.fresh === 0) || (mode === "nutrir" && prev.enrich === 0)))} onClick={apply}>{pending ? <Spinner size={18} /> : <Upload size={18} aria-hidden />} {prev.kind === "leads" && mode === "nutrir" ? "Enriquecer agora" : "Importar agora"}</button>
         </section>
       )}
 
