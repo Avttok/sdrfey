@@ -27,7 +27,7 @@ export function ChatShop({ myName, meId }: { myName: string; meId: number }) {
   const sty = chatStyle(preview);
   const first = (myName || "Você").split(" ")[0];
   const act = (fn: () => Promise<{ ok: boolean; message?: string; state?: ShopState }>) => start(async () => { const r = await fn(); if (r.state) setSt(r.state); toast(r.ok ? "ok" : "bad", r.message ?? ""); });
-  const items = SHOP.filter((i) => i.cat === cat);
+  const items = SHOP.filter((i) => i.cat === cat && (!i.secret || st.owned.includes(i.key)));
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

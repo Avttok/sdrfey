@@ -1,6 +1,6 @@
 /** Catálogo da loja do chat. Tudo é visual: nome (fonte, cor, efeito) e balão de texto. */
 export type ShopCategory = "font" | "color" | "effect" | "bubble";
-export type ShopItem = { key: string; cat: ShopCategory; name: string; price: number; /** CSS aplicado (nome ou balão) */ css: Record<string, string>; /** classe de animação opcional */ cls?: string };
+export type ShopItem = { key: string; cat: ShopCategory; name: string; price: number; /** CSS aplicado (nome ou balão) */ css: Record<string, string>; /** classe de animação opcional */ cls?: string; /** só se ganha em segredo: some da vitrine enquanto não for seu */ secret?: boolean };
 
 export const CATEGORIES: { key: ShopCategory; label: string; hint: string }[] = [
   { key: "font", label: "Fonte do nome", hint: "O jeito que seu nome é escrito" },
@@ -117,6 +117,14 @@ export const SHOP: ShopItem[] = [
   bubble("royal", "Realeza", 280, { background: "linear-gradient(135deg,#4c1d95,#7c3aed)", color: "#fde68a", borderColor: "#fbbf24", boxShadow: "0 0 0 1px #fbbf24" }),
   bubble("aurora", "Aurora", 300, { background: "linear-gradient(135deg,#22d3ee,#818cf8,#e879f9)", color: "#fff", borderColor: "transparent", boxShadow: "0 6px 20px #818cf855" }),
 ];
+/** Prêmios do easter egg: um por categoria, não se compram. */
+export const EGG_SECRET_ITEMS: ShopItem[] = [
+  { key: "font_egg", cat: "font", name: "Ovo de Ouro", price: 0, secret: true, css: { fontFamily: "'Brush Script MT', 'Segoe Script', cursive", fontSize: "1.15em", fontWeight: "700" } },
+  { key: "color_egg", cat: "color", name: "Casca Prismática", price: 0, secret: true, css: { backgroundImage: "linear-gradient(90deg,#fde68a,#f9a8d4,#a5b4fc,#6ee7b7,#fde68a)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", color: "transparent" } },
+  { key: "fx_egg", cat: "effect", name: "Choco Cósmico", price: 0, secret: true, cls: "fx-egg", css: {} },
+  { key: "bubble_egg", cat: "bubble", name: "Casca de Ovo", price: 0, secret: true, css: { background: "linear-gradient(135deg,#fffbeb,#fde68a 60%,#fbbf24)", color: "#451a03", borderColor: "#f59e0b", boxShadow: "0 0 0 1px #f59e0b, 0 0 18px #fbbf2466" } },
+];
+SHOP.push(...EGG_SECRET_ITEMS);
 export const SHOP_BY_KEY = new Map(SHOP.map((i) => [i.key, i]));
 
 /** Moedas ganhas por tarefa (a cada feito, uma vez). */

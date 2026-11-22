@@ -21,7 +21,7 @@ export async function shopStateAction(): Promise<ShopState> {
 export async function buyItemAction(key: string): Promise<R> {
   const me = await requireUser();
   const item = SHOP_BY_KEY.get(key);
-  if (!item) return { ok: false, message: "Item não encontrado." };
+  if (!item || item.secret) return { ok: false, message: "Item não encontrado." };
   const [[who], settings] = await Promise.all([db.select({ b: users.coinsSpendBlocked }).from(users).where(eq(users.id, me.id)), getSettings()]);
   if (who?.b || settings.coins_spend_on !== 1) return { ok: false, message: "Os gastos de moedas estão bloqueados pelo Adm.", state: await shopState(me.id, me.shownRoles) };
   await shopState(me.id, me.shownRoles);

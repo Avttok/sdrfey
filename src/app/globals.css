@@ -395,3 +395,15 @@ html[data-gold="on"] header, html[data-gold="on"] aside { box-shadow: 0 2px 22px
 html[data-copy-guard="on"] body { -webkit-user-select: none; user-select: none; }
 html[data-copy-guard="on"] input, html[data-copy-guard="on"] textarea, html[data-copy-guard="on"] [contenteditable="true"] { -webkit-user-select: text; user-select: text; }
 @media print { html[data-copy-guard="on"] body { display: none; } }
+
+@keyframes fx-egg { to { background-position: 200% 0; } }
+.fx-egg { background-image: linear-gradient(110deg, transparent 30%, #fff 50%, transparent 70%); background-size: 200% 100%; animation: fx-egg 2.2s linear infinite; filter: drop-shadow(0 0 6px #fbbf24); }
+.fx-egg::after { content: "🥚"; margin-left: .25em; font-size: .8em; -webkit-text-fill-color: initial; }
+@keyframes egg-rise { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes egg-pad { 0% { transform: scale(1); } 40% { transform: scale(1.12); filter: brightness(1.8); } 100% { transform: scale(1); } }
+@keyframes egg-star { 0%,100% { opacity: .2; } 50% { opacity: 1; } }
+@keyframes egg-crack { 0% { transform: rotate(0); } 25% { transform: rotate(-8deg); } 75% { transform: rotate(8deg); } 100% { transform: rotate(0); } }
+.egg-rise { animation: egg-rise .6s cubic-bezier(.2,.8,.2,1) both; }
+.egg-pad-on { animation: egg-pad .45s ease; }
+.egg-crack { animation: egg-crack .5s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .fx-egg, .egg-rise, .egg-pad-on, .egg-crack { animation: none; } }

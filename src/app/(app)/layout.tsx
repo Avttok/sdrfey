@@ -10,6 +10,7 @@ import { GoldMode } from "@/components/gold-mode";
 import { goldStatus } from "@/modules/goals/gold";
 import { AnnouncementHost } from "@/components/announcement-host";
 import { BottomFade } from "@/components/bottom-fade";
+import { EggKnock } from "@/components/egg-knock";
 import { CopyGuard } from "@/components/copy-guard";
 import { SwRegister } from "@/components/sw-register";
 import { ChatMount } from "@/components/chat/chat-mount";
@@ -41,7 +42,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <AppHeader user={user} badges={badges} groupNav={groupNav} />
           {user.isAdmin && user.navLayout === "side" && <div className="hidden justify-end px-6 pt-3 lg:flex"><AdminViewSwitch mode={user.adminView} /></div>}
           <main className="mx-auto flex w-full max-w-[92rem] flex-1 flex-col px-3 py-7 pb-10 sm:px-5 lg:px-6">{children}</main>
-          <footer className="relative z-40 px-4 pb-6 text-center text-xs text-muted"><span className="relative inline-block px-4 py-1.5"><span aria-hidden className="glow-pulse absolute inset-0 rounded-full bg-accent/50 blur-lg" /><span className="relative font-medium">Made by Ruan Carlos</span></span></footer>
+          <footer className="relative z-40 px-4 pb-6 text-center text-xs text-muted"><span className="relative inline-block px-4 py-1.5"><span aria-hidden className="glow-pulse absolute inset-0 rounded-full bg-accent/50 blur-lg" /><EggKnock>Made by Ruan Carlos</EggKnock></span></footer>
         </div>
       </div>
       <GoldMode reached={gold.reached} label={gold.label} userId={user.id} />
