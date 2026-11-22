@@ -5,6 +5,7 @@ import type { CurrentUser } from "@/modules/auth/guard";
 import { AdminViewSwitch } from "./admin-view-switch";
 import { Logo } from "./logo";
 import { NavLinks } from "./nav-links";
+import { MobileNav } from "./mobile-nav";
 import { SideBar } from "./side-bar";
 import { UserMenu } from "./user-menu";
 import { NotificationBell } from "./notification-bell";
@@ -18,12 +19,15 @@ export function AppHeader({ user, badges = {}, groupNav = true }: { user: Curren
   const accent = resolveAccent(user.accent, user.shownRoles);
   return (
     <header className={`sticky top-0 z-20 border-b border-line bg-panel ${user.navLayout === "side" ? "lg:hidden" : ""}`}>
-      <div className="mx-auto flex w-full max-w-[92rem] items-center gap-x-6 px-3 py-2.5 sm:px-5 lg:px-6">
+      <div className="mx-auto flex w-full max-w-[92rem] items-center gap-x-3 px-3 py-2.5 sm:px-5 lg:px-6">
         <Link href="/painel" aria-label="SDR FEY, ir para o início" className="flex items-center transition hover:scale-[1.03]"><Logo /></Link>
-        <div className="min-w-0 flex-1"><NavLinks hrefs={navFor(user)} badges={badges} grouped={groupNav} custom={user.navCustom} tree={user.navTree} /></div>
-        {user.isAdmin && <AdminViewSwitch mode={user.adminView} />}
+        <MobileNav hrefs={navFor(user)} badges={badges} grouped={groupNav} custom={user.navCustom} tree={user.navTree} />
+        <div className="hidden min-w-0 flex-1 lg:block"><NavLinks hrefs={navFor(user)} badges={badges} grouped={groupNav} custom={user.navCustom} tree={user.navTree} /></div>
+        <div className="ml-auto flex items-center gap-2 lg:ml-0">
+        {user.isAdmin && <div className="hidden sm:block"><AdminViewSwitch mode={user.adminView} /></div>}
         <NotificationBell />
         <UserMenu name={user.name} username={user.username} hex={accent.hex} onHex={accent.onAccent} accentKey={accent.key} roles={user.shownRoles} avatar={user.avatar} banner={user.banner} />
+        </div>
       </div>
     </header>
   );
