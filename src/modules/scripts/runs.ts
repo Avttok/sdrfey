@@ -11,7 +11,7 @@ const step = z.object({
 });
 const run = z.object({
   runId: z.string().uuid(), scriptId: z.number().int().nullable(), scriptTitle: z.string().max(160), goal: z.string().max(20), segment: z.string().max(40),
-  contactName: z.string().max(120).nullable(), steps: z.array(step).min(1).max(80), notes: z.array(z.string().max(200)).max(40),
+  contactName: z.string().max(120).nullable(), steps: z.array(step).min(1).max(120), notes: z.array(z.string().max(200)).max(40),
   outcome: z.string().max(20).nullable(), finished: z.boolean(), isTest: z.boolean().optional(),
 });
 export type ScriptRunInput = z.infer<typeof run>;

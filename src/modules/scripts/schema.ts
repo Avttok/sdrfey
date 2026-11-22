@@ -21,7 +21,7 @@ export const scriptInput = z.object({
   goal: z.enum(["sdr", "vendas", "retorno", "fidelizar"]),
   summary: text(300).nullish(),
   startId: z.string(),
-  nodes: z.array(nodeSchema).min(1, "O script precisa de pelo menos um passo.").max(60, "No máximo 60 passos."),
+  nodes: z.array(nodeSchema).min(1, "O script precisa de pelo menos um passo.").max(90, "No máximo 90 passos."),
   global: z.boolean().optional(),
   active: z.boolean().optional(),
 });
