@@ -351,6 +351,20 @@
       "when": 1795371780153,
       "tag": "0049_call_scripts",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1795380710071,
+      "tag": "0050_perf_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1795380718781,
+      "tag": "0051_known_chimera",
+      "breakpoints": true
     }
   ]
 }

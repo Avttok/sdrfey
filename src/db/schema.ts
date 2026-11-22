@@ -190,6 +190,14 @@ export const leads = pgTable(
     index("leads_owner_idx").on(t.ownerId),
     index("leads_unenriched_idx").on(t.id).where(sql`not is_test and enriched_at is null`),
     index("leads_uf_idx").on(t.uf),
+    // Busca por trecho do nome (ilike '%x%') usa índice de trigramas em vez de varrer a tabela.
+    index("leads_company_trgm").using("gin", sql`${t.company} gin_trgm_ops`),
+    index("leads_trade_trgm").using("gin", sql`${t.tradeName} gin_trgm_ops`),
+    index("leads_city_trgm").using("gin", sql`${t.city} gin_trgm_ops`),
+    index("leads_updated_idx").on(t.updatedAt.desc(), t.id.desc()),
+    index("leads_return_idx").on(t.returnAt).where(sql`return_at is not null`),
+    index("leads_batch_idx").on(t.importBatchId).where(sql`import_batch_id is not null`),
+    index("leads_sort_idx").on(t.nextEligibleAt).where(sql`not is_test and locked_by is null`),
   ],
 );
 
@@ -242,7 +250,7 @@ export const visits = pgTable(
     confirmedBy: integer("confirmed_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: now(),
   },
-  (t) => [index("visits_lead_idx").on(t.leadId), index("visits_user_idx").on(t.userId, t.createdAt), index("visits_rep_idx").on(t.repSap), index("visits_pending_idx").on(t.createdAt).where(sql`status = 'pendente' and canceled_at is null`)],
+  (t) => [index("visits_lead_idx").on(t.leadId), index("visits_user_idx").on(t.userId, t.createdAt), index("visits_rep_idx").on(t.repSap), index("visits_code_trgm").using("gin", sql`${t.code} gin_trgm_ops`), index("visits_pending_idx").on(t.createdAt).where(sql`status = 'pendente' and canceled_at is null`)],
 );
 
 /* ───────────── Representantes e cidades ───────────── */
@@ -328,7 +336,7 @@ export const leadPeople = pgTable(
     notes: text("notes"),
     createdAt: now(),
   },
-  (t) => [index("lead_people_lead_idx").on(t.leadId)],
+  (t) => [index("lead_people_lead_idx").on(t.leadId), index("lead_people_name_trgm").using("gin", sql`${t.name} gin_trgm_ops`)],
 );
 
 /** Telefones e e-mails. Pertencem à empresa (personId nulo) ou a uma pessoa. */
@@ -346,7 +354,7 @@ export const leadChannels = pgTable(
     wrong: boolean("wrong").notNull().default(false),
     createdAt: now(),
   },
-  (t) => [uniqueIndex("lead_channels_uq").on(t.leadId, t.kind, t.value), index("lead_channels_value_idx").on(t.value)],
+  (t) => [uniqueIndex("lead_channels_uq").on(t.leadId, t.kind, t.value), index("lead_channels_value_idx").on(t.value), index("lead_channels_value_trgm").using("gin", sql`${t.value} gin_trgm_ops`)],
 );
 
 /* ───────────── Atendimento ───────────── */
@@ -384,7 +392,7 @@ export const interactions = pgTable(
     isTest: boolean("is_test").notNull().default(false),
     at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("interactions_at_idx").on(t.at), index("interactions_user_idx").on(t.userId), index("interactions_lead_idx").on(t.leadId)],
+  (t) => [index("interactions_at_idx").on(t.at), index("interactions_user_idx").on(t.userId), index("interactions_lead_idx").on(t.leadId, t.at)],
 );
 
 /** Uma passada do usuário por um lead: base do tempo médio e da meta. */
@@ -401,7 +409,7 @@ export const attendanceSessions = pgTable(
     outcome: text("outcome"),
     isTest: boolean("is_test").notNull().default(false),
   },
-  (t) => [index("sessions_user_idx").on(t.userId, t.savedAt), index("sessions_saved_idx").on(t.savedAt), index("sessions_lead_idx").on(t.leadId)],
+  (t) => [index("sessions_user_idx").on(t.userId, t.savedAt), index("sessions_saved_idx").on(t.savedAt), index("sessions_lead_idx").on(t.leadId, t.userId, t.shownAt)],
 );
 
 /** Andamento do roteiro numa ligação: o caminho percorrido, as respostas do lead e as anotações. Aparece no perfil do lead para todos. */
@@ -553,7 +561,7 @@ export const deals = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    index("deals_lead_idx").on(t.leadId),
+    index("deals_lead_idx").on(t.leadId, t.createdAt),
     index("deals_seller_idx").on(t.sellerId, t.stage),
     index("deals_sdr_idx").on(t.sdrId),
     index("deals_updated_idx").on(t.updatedAt),
