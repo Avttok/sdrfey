@@ -3,9 +3,12 @@
 import { createContext, useContext } from "react";
 import { AvatarGlyph } from "@/components/avatar-glyph";
 import { AVATAR_BY_KEY } from "@/config/avatars";
+import { EggBadge } from "@/components/egg-badge";
 
-export type AvatarMap = { byId: Record<number, string>; byName: Record<string, string> };
+export type AvatarMap = { byId: Record<number, string>; byName: Record<string, string>; /** quem tem o Ovo de Ouro */ eggs?: number[]; /** quem está logado */ me?: number };
 const Ctx = createContext<AvatarMap>({ byId: {}, byName: {} });
+/** A pessoa logada tem o Ovo de Ouro? */
+export const useMyEgg = () => { const m = useContext(Ctx); return !!m.me && !!m.eggs?.includes(m.me); };
 /** Ícones de perfil de todo mundo (equipe pequena): as bolhas de nome mostram o ícone antes do nome. */
 export const AvatarProvider = ({ value, children }: { value: AvatarMap; children: React.ReactNode }) => <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 
@@ -18,6 +21,7 @@ export function PersonBubble({ name, hex, prefix, userId }: { name: string; hex:
       {prefix && <span className="opacity-70">{prefix}:</span>}
       {key && AVATAR_BY_KEY.has(key) && <AvatarGlyph avatar={key} initials="" size={12} />}
       {name.split(" ")[0]}
+      {userId && m.eggs?.includes(userId) && <EggBadge size={11} />}
     </span>
   );
 }

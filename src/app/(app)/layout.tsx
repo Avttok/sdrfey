@@ -24,6 +24,7 @@ import { tagIconKey } from "@/config/tag-icons";
 import { TagIconProvider } from "@/components/tag-chip";
 import { eq, isNotNull } from "drizzle-orm";
 import { requireUser } from "@/modules/auth/guard";
+import { eggHolders } from "@/modules/achievements/stats";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -31,7 +32,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const gold = await goldStatus(user, settings).catch(() => ({ reached: false, label: "", done: 0, qty: 0 }));
   const groupNav = settings.nav_group === 1;
   const av = await db.select({ id: users.id, name: users.name, avatar: users.avatar }).from(users).where(isNotNull(users.avatar));
-  const avatars = { byId: Object.fromEntries(av.map((a) => [a.id, a.avatar!])), byName: Object.fromEntries(av.map((a) => [a.name, a.avatar!])) };
+  const avatars = { byId: Object.fromEntries(av.map((a) => [a.id, a.avatar!])), byName: Object.fromEntries(av.map((a) => [a.name, a.avatar!])), eggs: await eggHolders().catch(() => [] as number[]), me: user.id };
   const tagRows = await db.select({ label: tags.label, key: tags.key, group: tags.groupKey, icon: tags.icon }).from(tags);
   const tagIcons = Object.fromEntries(tagRows.map((t) => [t.label.toUpperCase(), tagIconKey(t.icon, t.key, t.group)]));
   const vocall = parseVocall(await settingValue(VOCALL_KEY));

@@ -421,3 +421,10 @@ html[data-copy-guard="on"] input, html[data-copy-guard="on"] textarea, html[data
 .script-ans:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 24px -12px var(--c); }
 .script-ans:active:not(:disabled) { transform: scale(.98); }
 @media (prefers-reduced-motion: reduce) { .script-pop, .script-ring, .script-bounce, .script-shake { animation: none; } .script-ans { transition: none; } }
+
+/* Ovo de Ouro: brilho e balanço leve */
+.egg-gold { filter: drop-shadow(0 0 6px rgb(251 191 36 / .85)) drop-shadow(0 2px 3px rgb(0 0 0 / .35)); animation: egg-wobble 3.2s ease-in-out infinite; transform-origin: 50% 90%; }
+@keyframes egg-wobble { 0%, 100% { transform: rotate(0) } 20% { transform: rotate(-7deg) } 40% { transform: rotate(6deg) } 60% { transform: rotate(-3deg) } 80% { transform: rotate(0) } }
+.egg-halo { position: absolute; inset: -6px; border-radius: 9999px; background: conic-gradient(from 0deg, #fbbf24, #fff7c2, #d97706, #fbbf24); filter: blur(6px); opacity: .75; animation: egg-spin 6s linear infinite; }
+@keyframes egg-spin { to { transform: rotate(360deg) } }
+@media (prefers-reduced-motion: reduce) { .egg-gold, .egg-halo { animation: none } }

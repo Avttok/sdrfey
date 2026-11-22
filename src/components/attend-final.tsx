@@ -8,9 +8,9 @@ import { TAG_ICONS } from "@/config/tag-icons";
 import { inputCls } from "@/components/ui";
 
 /** Cartão de tag: ligado fica colorido e levantado, desligado fica pontilhado e apagado. */
-export function FlashTag({ label, color, on, onClick, icon }: { label: string; color: string; on: boolean; onClick: () => void; icon?: string | null }) {
+export function FlashTag({ label, color, on, onClick, icon, Comp, hint }: { label: string; color: string; on: boolean; onClick: () => void; icon?: string | null; /** Ícone próprio (em vez do ícone da tag). */ Comp?: typeof Check; /** Frase pequena sob o nome. */ hint?: string }) {
   const map = useContext(TagIcons);
-  const Icon = TAG_ICONS[icon ?? map[label.toUpperCase()] ?? ""];
+  const Icon = Comp ?? TAG_ICONS[icon ?? map[label.toUpperCase()] ?? ""];
   return (
     <button type="button" role="switch" aria-checked={on} onClick={onClick} data-on={on}
       className="ft group relative flex min-h-24 flex-col items-start justify-between gap-2 overflow-hidden rounded-2xl border-2 p-3 text-left transition-all duration-300 hover:-translate-y-0.5 active:scale-[.97]"
@@ -19,7 +19,7 @@ export function FlashTag({ label, color, on, onClick, icon }: { label: string; c
         <span className="ft-ico grid size-9 place-items-center rounded-xl transition-all duration-300">{Icon ? <Icon size={18} aria-hidden /> : <Check size={18} aria-hidden />}</span>
         <span className="ft-pill rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">{on ? "Ligado" : "Desligado"}</span>
       </span>
-      <span className="text-sm font-bold uppercase leading-tight tracking-wide">{label}</span>
+      <span><span className="block text-sm font-bold uppercase leading-tight tracking-wide">{label}</span>{hint && <span className="mt-0.5 block text-[11px] font-normal normal-case leading-snug text-muted">{hint}</span>}</span>
       {on && <span aria-hidden className="ft-check absolute -right-1 -top-1 grid size-6 place-items-center rounded-bl-xl text-white" style={{ background: color }}><Check size={14} /></span>}
     </button>
   );
@@ -123,10 +123,7 @@ export function VisitFields({ code, setCode, date, dateInput, link, setLink, isP
         {link && !okLink && <span className="mt-1 block text-xs text-danger">O link precisa começar com https://</span>}
       </label>
       {setPublic && (
-        <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-sunk/60 p-3 text-sm sm:col-span-3">
-          <input type="checkbox" checked={!!isPublic} onChange={(e) => setPublic(e.target.checked)} className="mt-0.5" />
-          <span><span className="flex items-center gap-1.5 font-semibold"><Globe size={14} aria-hidden /> Visita pública</span><span className="text-xs text-muted">Ligada: todos os usuários, de qualquer cargo, veem esta visita na janela de Visitas. Desligada: só você, a equipe de gestão e quem negocia o mesmo lead.</span></span>
-        </label>
+        <div className="sm:col-span-3"><div className="w-full sm:w-72"><FlashTag label="Visita pública" color="#0ea5e9" on={!!isPublic} onClick={() => setPublic(!isPublic)} Comp={Globe} hint="Ligada: todos veem na janela de Visitas. Desligada: só você, a gestão e quem pegar o lead." /></div></div>
       )}
     </div>
   );

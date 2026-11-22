@@ -35,7 +35,8 @@ export async function achievementStats(uid: number): Promise<Stats> {
       (select count(distinct lead_id) from sold)::int as clients,
       (select count(*) from sold where is_reactivation)::int as reactivated,
       (select count(*) from seller_shuffles where user_id = ${uid} and not is_test and outcome in ('deal', 'no_answer', 'no_interest', 'skipped'))::int as shuffled,
-      (select count(*) from seller_shuffles where user_id = ${uid} and not is_test and outcome = 'deal')::int as shuffle_deals`);
+      (select count(*) from seller_shuffles where user_id = ${uid} and not is_test and outcome = 'deal')::int as shuffle_deals,
+      (select count(*) from coin_ledger where user_id = ${uid} and ref = 'egg:done')::int as egg`);
   return Object.fromEntries(Object.entries(r ?? {}).map(([k, v]) => [k, Number(v ?? 0)]));
 }
 
@@ -48,6 +49,15 @@ export async function achievementsOf(uid: number, roles: readonly string[]): Pro
     const m = manual.get(a.key);
     const value = stats[a.stat] ?? 0;
     return { ...a, value, manual: m === undefined ? null : m ? ("granted" as const) : ("blocked" as const), earned: m ?? value >= a.goal };
-  });
+  }).filter((a) => !a.hidden || a.earned);
   return { stats, list };
+}
+
+/** Quem tem o Ovo de Ouro (achou o segredo, ou o Adm deu na mão e não bloqueou). Mostrado no perfil. */
+export async function eggHolders(): Promise<number[]> {
+  const rows = await db.execute<{ id: number }>(sql`
+    select u.id from users u
+    where (exists (select 1 from coin_ledger c where c.user_id = u.id and c.ref = 'egg:done') or exists (select 1 from achievement_overrides o where o.user_id = u.id and o.key = 'egg' and o.granted))
+      and not exists (select 1 from achievement_overrides o where o.user_id = u.id and o.key = 'egg' and not o.granted)`);
+  return rows.map((r) => Number(r.id));
 }

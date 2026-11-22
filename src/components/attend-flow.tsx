@@ -349,7 +349,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
                 <p className="text-xs text-muted">“Copiar e abrir e-mail” copia o corpo formatado (negrito, cores e imagens) e abre o e-mail com destinatário e assunto prontos: é só colar com Ctrl+V.</p>
               </>
             )}
-            <UsedToggle on={used.has("email")} onClick={() => toggle(used, "email", setUsed)} label="Email Enviado" />
+            <UsedToggle on={used.has("email")} onClick={() => toggle(used, "email", setUsed)} label="E-mail enviado" Icon={Mail} color="#0ea5e9" />
           </section>
         )}
 
@@ -365,7 +365,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
               ))}
               {goodPhones.length === 0 && <li className="text-sm text-muted">Sem telefone válido.</li>}
             </ul>
-            <UsedToggle on={used.has("whatsapp")} onClick={() => toggle(used, "whatsapp", setUsed)} label="WhatsApp Enviado" />
+            <UsedToggle on={used.has("whatsapp")} onClick={() => toggle(used, "whatsapp", setUsed)} label="WhatsApp enviado" Icon={MessageCircle} color="#22c55e" />
           </section>
         )}
 
@@ -379,7 +379,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
             </ul>
             <ProductHints recos={recos} />
             {scripts.length > 0 && <details className="group rounded-2xl border border-line bg-sunk/40 p-3" open><summary className="cursor-pointer text-sm font-semibold">Roteiro da ligação: leia, fale e toque no que o lead respondeu</summary><div className="mt-3"><ScriptPicker scripts={scripts} goal={sales ? "vendas" : "sdr"} vars={{ empresa: vars.empresa, contato: vars.contato, cidade: vars.cidade, meunome: vars.meu_nome }} compact /></div></details>}
-            <UsedToggle on={used.has("ligacao")} onClick={() => toggle(used, "ligacao", setUsed)} label="Ligação feita" />
+            <UsedToggle on={used.has("ligacao")} onClick={() => toggle(used, "ligacao", setUsed)} label="Ligação feita" Icon={Phone} color="#8b5cf6" />
           </section>
         )}
 
@@ -413,11 +413,11 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
       </div>
 
       <div className="sticky bottom-3 z-40 flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-panel/90 p-3 shadow-lg backdrop-blur">
+        <button type="button" className={`${btnPrimary} !bg-grad-danger !text-white`} disabled={pending} onClick={() => run(() => releaseThis())}><Square size={15} aria-hidden /> Parar</button>
+        <button type="button" className={btnGhost} disabled={pending} title="Esconde este lead só de você por 24 h e não conta na meta" onClick={() => ask({ title: "Pular este lead?", body: "Ele fica escondido só de você por 24 h e não conta na meta. Você recebe o próximo.", label: "Sim, pular", tone: "warn", icon: SkipForward, onConfirm: seek })}><SkipForward size={16} aria-hidden /> Pular lead</button>
+        <span className="flex-1" />
         {step > 0 && <button type="button" className={btnGhost} onClick={() => go(prevStep(step))}><ChevronLeft size={16} aria-hidden /> Voltar</button>}
         {step < STEPS.length - 1 && <button type="button" className={btnPrimary} onClick={() => go(nextStep(step))}>Avançar <ChevronRight size={16} aria-hidden /></button>}
-        <span className="flex-1" />
-        <button type="button" className={btnGhost} disabled={pending} title="Esconde este lead só de você por 24 h e não conta na meta" onClick={() => ask({ title: "Pular este lead?", body: "Ele fica escondido só de você por 24 h e não conta na meta. Você recebe o próximo.", label: "Sim, pular", tone: "warn", icon: SkipForward, onConfirm: seek })}><SkipForward size={16} aria-hidden /> Pular</button>
-        <button type="button" className={`${btnPrimary} !bg-grad-danger !text-white`} disabled={pending} onClick={() => run(() => releaseThis())}><Square size={15} aria-hidden /> Parar atendimento</button>
       </div>
       {dialog}
     </div>
@@ -427,13 +427,9 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return <div><p className="mb-1.5 text-sm font-medium">{title}</p><div className="flex flex-wrap gap-2">{children}</div></div>;
 }
-function UsedToggle({ on, onClick, label }: { on: boolean; onClick: () => void; label: string }) {
-  return (
-    <label className="mt-6 flex w-fit cursor-pointer items-center gap-2.5 rounded-lg border border-line bg-sunk px-3.5 py-2.5 text-sm font-medium">
-      <input type="checkbox" checked={on} onChange={onClick} className="size-5 cursor-pointer" />
-      {label}
-    </label>
-  );
+/** "Feito?": o mesmo cartão das tags (ligado colorido, desligado pontilhado), para o Shuffler inteiro falar a mesma língua. */
+function UsedToggle({ on, onClick, label, Icon, color }: { on: boolean; onClick: () => void; label: string; Icon: typeof Mail; color: string }) {
+  return <div className="mt-6 w-full sm:w-64"><FlashTag label={label} color={color} on={on} onClick={onClick} Comp={Icon} /></div>;
 }
 
 function Info({ label, children, wide }: { label: string; children: React.ReactNode; wide?: boolean }) {

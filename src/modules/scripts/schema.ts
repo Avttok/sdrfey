@@ -10,7 +10,7 @@ export const nodeSchema = z.object({
   say: text(1500),
   tip: text(400).optional(),
   mood: z.enum(MOOD_KEYS as [string, ...string[]]).optional(),
-  options: z.array(z.object({ label: text(120).min(1, "Toda resposta precisa de um texto."), to: z.string().trim().max(24).nullable(), kind: z.enum(["ok", "objecao", "neutro"]) })).max(10),
+  options: z.array(z.object({ label: text(120).min(1, "Toda resposta precisa de um texto."), to: z.string().trim().max(24).nullable(), kind: z.enum(["ok", "objecao", "neutro"]), note: text(160).optional() })).max(10),
   outcome: z.enum(["visita", "cotacao", "retorno", "venda", "encerrar"]).optional(),
 });
 
@@ -18,7 +18,7 @@ export const scriptInput = z.object({
   id: z.number().int().optional(),
   title: text(80).min(2, "Dê um nome ao script."),
   segment: z.string().refine((s) => s in SEGMENTS, "Escolha o tipo de estabelecimento."),
-  goal: z.enum(["sdr", "vendas", "retorno"]),
+  goal: z.enum(["sdr", "vendas", "retorno", "fidelizar"]),
   summary: text(300).nullish(),
   startId: z.string(),
   nodes: z.array(nodeSchema).min(1, "O script precisa de pelo menos um passo.").max(60, "No máximo 60 passos."),

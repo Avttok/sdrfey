@@ -1,8 +1,8 @@
 /** Scripts de ligação: tipos e listas usados pelo editor, pelo player e pelo servidor (sem banco, o navegador também usa). */
 export type ScriptKind = "ok" | "objecao" | "neutro";
-export type ScriptOption = { label: string; /** id do próximo passo; vazio = termina aqui. */ to: string | null; kind: ScriptKind };
+export type ScriptOption = { label: string; /** id do próximo passo; vazio = termina aqui. */ to: string | null; kind: ScriptKind; /** Anotação que esta resposta gera para a observação do lead (ex.: "Contato: decisor de compra"). */ note?: string };
 /** O "papel" do passo na conversa: define ícone e cor no jogo. */
-export type ScriptMood = "abertura" | "ponte" | "pergunta" | "proposta" | "objecao" | "fechamento" | "apoio";
+export type ScriptMood = "abertura" | "ponte" | "confirma" | "pergunta" | "proposta" | "objecao" | "fideliza" | "fechamento" | "apoio";
 export type ScriptNode = {
   id: string;
   /** fala = o usuário fala; fim = encerra com um resultado. */
@@ -21,22 +21,38 @@ export type ScriptNode = {
 };
 export type ScriptDoc = { id: number; title: string; segment: string; goal: ScriptGoal; summary: string | null; nodes: ScriptNode[]; startId: string; global: boolean; mine: boolean; active: boolean };
 
-export type ScriptGoal = "sdr" | "vendas" | "retorno";
+export type ScriptGoal = "sdr" | "vendas" | "retorno" | "fidelizar";
 export const GOALS: Record<ScriptGoal, { label: string; hint: string }> = {
   sdr: { label: "Prospecção (Operador SDR)", hint: "Despertar interesse e marcar visita" },
   vendas: { label: "Venda (Vendedor SDR)", hint: "Cotar e fechar com leads inativos ou repassados" },
   retorno: { label: "Retorno de cotação", hint: "Ligar para quem recebeu cotação" },
+  fidelizar: { label: "Fidelização (Televendas)", hint: "Manter o cliente comprando e tirar dúvidas" },
 };
 
 export const SEGMENTS: Record<string, string> = {
   geral: "Geral",
+  distribuidor_fixadores: "Distribuidor de fixadores",
+  distribuidor_industrial: "Distribuidor industrial",
+  parafusos: "Loja de parafusos",
+  ferragens: "Loja de ferragens",
+  material_construcao: "Material de construção",
+  ferramentas: "Loja de ferramentas",
+  autopecas: "Autopeças (varejo)",
+  autopecas_atacado: "Autopeças (atacado)",
   posto_molas: "Posto de molas",
   auto_center: "Auto center",
-  parafusos: "Loja de parafusos",
-  ferramentas: "Loja de ferramentas",
+  oficina_pesados: "Oficina de caminhões e ônibus",
   concessionaria: "Concessionária",
-  industria: "Indústria",
+  transportadora_frota: "Transportadora e frotas",
   implementos: "Implementos rodoviários",
+  carrocerias: "Carrocerias e ônibus",
+  maquinas_agricolas: "Máquinas e implementos agrícolas",
+  industria: "Indústria (manutenção)",
+  metalurgica: "Metalúrgica e usinagem",
+  serralheria: "Serralheria e estruturas",
+  moveis: "Indústria de móveis",
+  eletro_energia: "Energia e eletromecânica",
+  construcao_pesada: "Construção e mineração",
 };
 
 export const OUTCOMES: Record<NonNullable<ScriptNode["outcome"]>, { label: string; hint: string }> = {
@@ -57,35 +73,52 @@ export function spokenCompany(raw: string): string {
   return n;
 }
 
+const GENERIC = new Set(["comercial", "comercio", "comércio", "distribuidora", "distribuidor", "industria", "indústria", "industrial", "auto", "autopecas", "autopeças", "mecanica", "mecânica", "posto", "casa", "loja", "centro", "grupo", "irmaos", "irmãos", "metalurgica", "metalúrgica", "transportes", "transportadora", "materiais", "ferragens", "ferragem", "parafusos", "fixadores", "produtos", "servicos", "serviços", "pecas", "peças", "maquinas", "máquinas", "ferramentas", "implementos", "rodoviarios", "rodoviários", "e", "de", "da", "do", "dos", "das"]);
+
+/** Nome para falar ao telefone: só o primeiro nome da empresa ("J R Mecânica" → "J R"; "Auto Peças Silva" → "Silva"). */
+export function shortCompany(raw: string): string {
+  const t = spokenCompany(raw).split(/\s+/).filter(Boolean);
+  while (t.length > 1 && /^(a|o|as|os)$/i.test(t[0])) t.shift();
+  if (!t.length) return raw.trim();
+  const initials: string[] = [];
+  for (const w of t) { if (/^[A-Za-zÀ-ú]\.?$/.test(w) && initials.length < 3) initials.push(w.replace(".", "")); else break; }
+  if (initials.length >= 2) return initials.join(" ");
+  return t.find((w) => !GENERIC.has(w.toLowerCase())) ?? t[0];
+}
+
 /**
- * Troca {empresa}, {contato}… pelos dados do lead. Quando falta o nome do contato no começo de uma frase,
+ * Troca {empresa} (só o primeiro nome), {empresa_completa}, {contato}… pelos dados do lead. Quando falta o nome do contato no começo de uma frase,
  * a frase simplesmente começa sem ele ("João, vou direto" → "Vou direto"); no meio da frase vira "o responsável".
  * Toda frase sai com a primeira letra maiúscula.
  */
 export function fillScript(text: string, v: { empresa?: string | null; contato?: string | null; cidade?: string | null; meunome?: string | null }): string {
-  const get = (k: "empresa" | "contato" | "cidade" | "meunome") => {
-    const raw = (v[k] ?? "").trim();
+  const get = (k: "empresa" | "contato" | "cidade" | "meunome" | "empresa_completa") => {
+    const raw = ((k === "empresa_completa" ? v.empresa : v[k]) ?? "").trim();
     if (!raw) return "";
-    if (k === "empresa") return spokenCompany(raw);
+    if (k === "empresa") return shortCompany(raw);
+    if (k === "empresa_completa") return spokenCompany(raw);
     if (k === "contato") return raw.split(/\s+/)[0].replace(/^./, (c) => c.toUpperCase()).replace(/(?<=.)./g, (c) => c.toLowerCase());
     return raw;
   };
-  const alt: Record<string, string> = { empresa: "sua empresa", contato: "o responsável", cidade: "a sua cidade", meunome: "eu" };
+  const alt: Record<string, string> = { empresa_completa: "a empresa", empresa: "sua empresa", contato: "o responsável", cidade: "a sua cidade", meunome: "eu" };
   let out = text;
   if (!get("contato")) out = out.replace(/(^|[.!?]\s+|\n)\{contato\}[,!]?\s*/g, "$1").replace(/,\s*\{contato\}(?=[,.!?])/g, "");
   if (!get("empresa")) out = out.replace(/\b(da|na|pela|a|à|para a)\s+\{empresa\}/gi, "$1 empresa");
   if (!get("meunome")) out = out.replace(/Aqui é \{meunome\}, da Fey/g, "Aqui é da Fey");
-  out = out.replace(/\{(empresa|contato|cidade|meunome)\}/g, (_, k: string) => get(k as "empresa") || alt[k]);
+  out = out.replace(/\{(empresa_completa|empresa|contato|cidade|meunome)\}/g, (_, k: string) => get(k as "empresa") || alt[k]);
   return out.replace(/(^|[.!?]\s+|\n)([a-zà-ú])/g, (_, a: string, b: string) => a + b.toUpperCase());
 }
 
-export const MOOD_KEYS: ScriptMood[] = ["abertura", "ponte", "pergunta", "proposta", "objecao", "fechamento", "apoio"];
+export const MOOD_KEYS: ScriptMood[] = ["abertura", "ponte", "confirma", "pergunta", "proposta", "objecao", "fideliza", "fechamento", "apoio"];
 
 /** Papel do passo: o que o Adm/usuário escolheu ou, na falta, o que o código e o nome sugerem. */
 export function moodOf(n: Pick<ScriptNode, "id" | "type" | "title" | "mood">): ScriptMood {
   if (n.mood) return n.mood;
   if (n.type === "fim") return "fechamento";
   const k = `${n.id} ${n.title}`.toLowerCase();
+  if (/^conf_/.test(n.id)) return "confirma";
+  if (/^fid_/.test(n.id)) return "fideliza";
+  if (/^enr_/.test(n.id)) return "pergunta";
   if (/^obj|obje|caro|pre[cç]o|fornecedor|sem tempo|sem interesse|pessoa errada/.test(k)) return "objecao";
   if (/abertura|in[ií]cio/.test(k)) return "abertura";
   if (/recep|secret|assunto|quem|chegar|ponte/.test(k)) return "ponte";

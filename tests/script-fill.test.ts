@@ -4,7 +4,7 @@ import { fillScript, spokenCompany } from "@/config/scripts";
 describe("fillScript", () => {
   const full = { empresa: "A BUCHA PARAFUSOS LTDA", contato: "CARLOS SILVA", meunome: "Ruan" };
   it("usa o primeiro nome do contato e o nome falado da empresa", () => {
-    expect(fillScript("{contato}, vou direto: a {empresa} compra?", full)).toBe("Carlos, vou direto: a A Bucha Parafusos compra?");
+    expect(fillScript("{contato}, vou direto: a {empresa} compra?", full)).toBe("Carlos, vou direto: a Bucha compra?");
   });
   it("sem contato a frase começa sem ele e com maiúscula", () => {
     expect(fillScript("{contato}, vou direto: a {empresa} compra?", { empresa: "Alfa" })).toBe("Vou direto: a Alfa compra?");

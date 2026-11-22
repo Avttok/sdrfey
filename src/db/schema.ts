@@ -461,7 +461,7 @@ export const scripts = pgTable("scripts", {
   seedKey: text("seed_key").unique(),
   title: text("title").notNull(),
   segment: text("segment").notNull().default("geral"),
-  goal: text("goal").$type<"sdr" | "vendas" | "retorno">().notNull().default("sdr"),
+  goal: text("goal").$type<"sdr" | "vendas" | "retorno" | "fidelizar">().notNull().default("sdr"),
   summary: text("summary"),
   nodes: jsonb("nodes").$type<unknown>().notNull(),
   startId: text("start_id").notNull(),

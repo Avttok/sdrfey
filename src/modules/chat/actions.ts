@@ -83,7 +83,7 @@ export async function toggleReactionAction(messageId: number, emoji: string): Pr
   return { ok: true };
 }
 
-export type ChatProfile = { avatar: string | null; banner: string | null; id: number; name: string; username: string; roles: Role[]; sent: number; lastLoginAt: string | null; active: boolean; isAdminView: boolean; /** conquistas liberadas (só chaves; o ícone vem do catálogo) */ badges: { key: string; name: string }[]; badgeTotal: number; style: Record<string, string>; theme: { hex: string; hex2: string | null; on: string } };
+export type ChatProfile = { avatar: string | null; banner: string | null; id: number; name: string; username: string; roles: Role[]; sent: number; lastLoginAt: string | null; active: boolean; isAdminView: boolean; /** conquistas liberadas (só chaves; o ícone vem do catálogo) */ badges: { key: string; name: string }[]; badgeTotal: number; /** tem o Ovo de Ouro */ egg: boolean; style: Record<string, string>; theme: { hex: string; hex2: string | null; on: string } };
 
 /** Perfil de quem escreveu. Todos veem nome, @usuário e cargos; o Adm vê também situação e último acesso. */
 export async function chatProfileAction(userId: number): Promise<R<{ profile: ChatProfile }>> {
@@ -98,7 +98,7 @@ export async function chatProfileAction(userId: number): Promise<R<{ profile: Ch
   const got = list.filter((a) => a.earned).sort((a, b) => b.goal - a.goal || a.key.localeCompare(b.key));
   const [st] = await db.select().from(chatStyles).where(eq(chatStyles.userId, u.id));
   const ac = resolveAccent(u.accent, u.roles as Role[]);
-  return { ok: true, profile: { theme: { hex: ac.hex, hex2: ac.hex2, on: ac.onAccent }, badges: got.map((a) => ({ key: a.key, name: a.name })), badgeTotal: list.length, style: st?.equipped ?? {}, avatar: u.avatar ?? null, banner: u.banner ?? null, id: u.id, name: u.name, username: u.username, roles: publicRoles(u.roles as Role[], admin), sent: n, active: u.active, lastLoginAt: admin ? (await lastAccessOf(u.id, u.lastLoginAt))?.toISOString() ?? null : null, isAdminView: admin } };
+  return { ok: true, profile: { theme: { hex: ac.hex, hex2: ac.hex2, on: ac.onAccent }, badges: got.map((a) => ({ key: a.key, name: a.name })), badgeTotal: list.length, egg: got.some((a) => a.key === "egg"), style: st?.equipped ?? {}, avatar: u.avatar ?? null, banner: u.banner ?? null, id: u.id, name: u.name, username: u.username, roles: publicRoles(u.roles as Role[], admin), sent: n, active: u.active, lastLoginAt: admin ? (await lastAccessOf(u.id, u.lastLoginAt))?.toISOString() ?? null : null, isAdminView: admin } };
 }
 
 /** Só o Adm: apaga todas as mensagens de um grupo, ou todas as de uma pessoa (em um grupo ou em todos). */

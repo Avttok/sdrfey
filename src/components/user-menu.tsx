@@ -17,6 +17,8 @@ import { CHOOSABLE_ACCENTS, QUICK_ACCENTS, swatchBg } from "@/config/theme";
 import { logoutAction } from "@/modules/auth/actions";
 import { setAccentAction } from "@/modules/users/actions";
 import { myActivityAction } from "@/modules/users/presence";
+import { useMyEgg } from "@/components/person-bubble";
+import { EggBadge } from "@/components/egg-badge";
 import { badgesSummaryAction } from "@/modules/achievements/actions";
 import { ACHIEVEMENT_BY_KEY } from "@/config/achievements";
 import { SubmitButton } from "./submit-button";
@@ -65,6 +67,7 @@ export function UserMenu({ banner, avatar, name, username, hex, onHex, accentKey
     document.addEventListener("keydown", key);
     return () => { document.removeEventListener("mousedown", click); document.removeEventListener("keydown", key); };
   }, [open]);
+  const egg = useMyEgg();
   const initials = name.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
   const sorted = ROLES.filter((r) => roles.includes(r));
   const h = new Date().getHours();
@@ -72,11 +75,12 @@ export function UserMenu({ banner, avatar, name, username, hex, onHex, accentKey
   const avatarEl = (size: string) => (
     <span className={`flex shrink-0 items-center justify-center rounded-full font-bold shadow-sm ring-2 ring-white/40 ${size}`} style={{ backgroundImage: `linear-gradient(135deg, color-mix(in oklab, ${hex} 78%, white), ${hex} 50%, color-mix(in oklab, ${hex} 78%, black))`, color: onHex }}><AvatarGlyph avatar={avatar} initials={initials} /></span>
   );
+  const withEgg = (el: React.ReactNode) => (egg ? <span className="relative inline-flex">{el}<EggBadge size={17} className="absolute -bottom-1.5 -right-1.5" /></span> : el);
   return (
     <div ref={box} className="relative">
       <button type="button" onClick={() => setOpen(!open)} aria-haspopup="menu" aria-expanded={open} aria-label={`Menu de ${name}`} title={collapsed ? name : undefined}
         className={side ? `flex w-full items-center rounded-xl py-2 text-left transition hover:bg-sunk ${collapsed ? "justify-center px-0" : "gap-3 px-2"}` : "rounded-full transition hover:scale-105 aria-expanded:ring-2 aria-expanded:ring-accent aria-expanded:ring-offset-2 aria-expanded:ring-offset-panel"}>
-        {avatarEl(side ? "size-10 text-sm" : "size-10 text-sm")}
+        {withEgg(avatarEl("size-10 text-sm"))}
         {side && !collapsed && <span className="flex min-w-0 flex-1 flex-wrap gap-1">{sorted.map((r) => <RoleBadge key={r} role={r} />)}</span>}
       </button>
       {open && mounted && createPortal(
@@ -85,7 +89,9 @@ export function UserMenu({ banner, avatar, name, username, hex, onHex, accentKey
             <BannerRain avatar={avatar} roles={roles} count={20} /><span aria-hidden className="aurora-blob a" /><span aria-hidden className="aurora-blob b" /><span aria-hidden className="aurora-blob c" />
             <div className="relative flex items-center gap-4">
               <span className="avatar-ring relative grid size-[4.75rem] shrink-0 place-items-center rounded-full p-[3px]">
+                {egg && <span aria-hidden className="egg-halo" />}
                 <span className="grid size-full place-items-center rounded-full bg-black/30 text-2xl font-bold backdrop-blur-sm"><AvatarGlyph avatar={avatar} initials={initials} size={34} /></span>
+                {egg && <EggBadge size={30} className="absolute -left-2 -top-2 z-10" />}
                 <span aria-hidden title="Online" className="absolute bottom-0.5 right-0.5 size-4 rounded-full border-2 border-white bg-ok shadow"><span className="absolute inset-0 animate-ping rounded-full bg-ok/70" /></span>
               </span>
               <div className="min-w-0">

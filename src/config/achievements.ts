@@ -1,4 +1,4 @@
-import { Award, BadgeCheck, Bird, Cake, CalendarCheck, CalendarDays, Coins, Crown, FileText, Flag, Flame, Gem, Handshake, Headset, Heart, Mail, Medal, MessageCircle, Moon, Phone, PhoneCall, Rabbit, Receipt, Repeat, Rocket, Shuffle, Sparkles, Star, Sunrise, Swords, Target, Trophy, TrendingUp, Users, Wallet, Zap, type LucideIcon } from "lucide-react";
+import { Award, BadgeCheck, Bird, Cake, CalendarCheck, CalendarDays, Coins, Crown, Egg, FileText, Flag, Flame, Gem, Handshake, Headset, Heart, Mail, Medal, MessageCircle, Moon, Phone, PhoneCall, Rabbit, Receipt, Repeat, Rocket, Shuffle, Sparkles, Star, Sunrise, Swords, Target, Trophy, TrendingUp, Users, Wallet, Zap, type LucideIcon } from "lucide-react";
 
 /**
  * Catálogo das conquistas. Cada uma olha uma estatística (`stat`) e é ganha ao chegar na `meta`.
@@ -6,7 +6,7 @@ import { Award, BadgeCheck, Bird, Cake, CalendarCheck, CalendarDays, Coins, Crow
  * `group` decide para quem aparece: SDR (atendimento), Vendas (vendedores) ou Geral (todos).
  */
 export type AchievementGroup = "SDR" | "Vendas" | "Geral";
-export type Achievement = { key: string; name: string; desc: string; stat: string; goal: number; icon: LucideIcon; color: string; unit: string; group: AchievementGroup };
+export type Achievement = { key: string; name: string; desc: string; stat: string; goal: number; icon: LucideIcon; color: string; unit: string; group: AchievementGroup; /** secreta: só aparece (e só conta no total) para quem já a desbloqueou */ hidden?: boolean };
 
 const A = (group: AchievementGroup, key: string, name: string, desc: string, stat: string, goal: number, icon: LucideIcon, color: string, unit: string): Achievement => ({ group, key, name, desc, stat, goal, icon, color, unit });
 
@@ -61,7 +61,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   A("Vendas", "big_100k", "Baleia", "Uma venda de R$ 100.000 ou mais.", "biggest_reais", 100_000, TrendingUp, "#A855F7", "na maior venda"),
   A("Vendas", "client_5", "Bem relacionado", "Faturou para 5 clientes diferentes.", "clients", 5, Users, "#2DD4BF", "clientes"),
   A("Vendas", "client_25", "Conhecido na praça", "Faturou para 25 clientes diferentes.", "clients", 25, Heart, "#F472B6", "clientes"),
-  A("Vendas", "react_1", "De volta ao jogo", "Reativou um cliente que voltou a comprar.", "reactivated", 1, Repeat, "#60A5FA", "reativados"),
+  A("Vendas", "react_1", "De volta à ativa", "Reativou um cliente que voltou a comprar.", "reactivated", 1, Repeat, "#60A5FA", "reativados"),
   A("Vendas", "react_10", "Ressuscitador", "10 clientes reativados.", "reactivated", 10, Sparkles, "#F59E0B", "reativados"),
   A("Vendas", "shuf_1", "Bora shufflar", "Trabalhou o primeiro lead inativo.", "shuffled", 1, Shuffle, "#34D399", "inativos"),
   A("Vendas", "shuf_50", "Garimpeiro", "50 leads inativos trabalhados.", "shuffled", 50, Shuffle, "#2DD4BF", "inativos"),
@@ -76,6 +76,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   A("Geral", "acc_180", "Meio ano", "Seis meses de SDR Fey.", "days_account", 180, BadgeCheck, "#818CF8", "dias"),
   A("Geral", "acc_365", "Aniversário", "Um ano de SDR Fey. Parabéns!", "days_account", 365, Cake, "#F472B6", "dias"),
   A("Geral", "acc_730", "Raiz", "Dois anos de SDR Fey.", "days_account", 730, Bird, "#FACC15", "dias"),
+  { ...A("Geral", "egg", "Ovo de Ouro", "Você encontrou o segredo escondido no sistema. Poucos chegam aqui!", "egg", 1, Egg, "#FBBF24", "segredo"), hidden: true },
 ];
 
 export const ACHIEVEMENT_BY_KEY = new Map(ACHIEVEMENTS.map((a) => [a.key, a]));
