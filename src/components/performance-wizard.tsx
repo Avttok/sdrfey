@@ -38,6 +38,8 @@ export function PerformanceWizard({ kind, sections, people, team }: { kind: Kind
   useBusyWhile(pending);
   const [sheet, setSheet] = useState("");
 
+  const fmtD = (v: string) => v.split("-").reverse().join("/");
+  const days = from && to && from <= to ? Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1 : 0;
   const toggle = <T,>(l: T[], v: T) => (l.includes(v) ? l.filter((x) => x !== v) : [...l, v]);
   const validOf: Record<string, boolean> = { periodo: !!(from && to && from <= to), conteudo: sel.length > 0, pessoas: who.length > 0, previa: ready && !pending, baixar: true };
   const valid = STEPS.map((s) => validOf[s.id]);
@@ -62,14 +64,18 @@ export function PerformanceWizard({ kind, sections, people, team }: { kind: Kind
         })}
       </ol>
 
+      <div className={cur_ === "periodo" || cur_ === "conteudo" || cur_ === "pessoas" ? "grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_21rem]" : ""}>
       <section key={step} className="fx-rise min-h-[26rem] rounded-3xl border border-line bg-panel p-5 shadow-xl sm:p-8">
         {cur_ === "periodo" && (
           <div className="space-y-5">
             <div><h2 className="display text-2xl">Qual período?</h2><p className="text-sm text-muted">Escolha um atalho ou defina as datas.</p></div>
-            <div className="stagger flex flex-wrap gap-2">
-              {PRESETS.map((p) => <button key={p.id} type="button" onClick={() => { setPreset(p.id); setRange(p.range()); }} className={`rounded-full border px-4 py-2 text-sm font-semibold transition hover:-translate-y-0.5 ${preset === p.id ? "border-transparent bg-grad text-on-accent shadow-md" : "border-line bg-bg hover:border-accent/60"}`}>{p.label}</button>)}
+            <div className="stagger grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+              {PRESETS.map((p) => { const [f, t] = p.range(); const on = preset === p.id; return (
+                <button key={p.id} type="button" aria-pressed={on} onClick={() => { setPreset(p.id); setRange([f, t]); }} className={`flex flex-col items-start gap-0.5 rounded-2xl border p-3.5 text-left transition hover:-translate-y-0.5 ${on ? "border-transparent bg-grad text-on-accent shadow-lg" : "border-line bg-bg hover:border-accent/60"}`}>
+                  <span className="font-semibold">{p.label}</span><span className={`figure text-xs ${on ? "opacity-90" : "text-muted"}`}>{fmtD(f)}{f === t ? "" : ` – ${fmtD(t)}`}</span>
+                </button>); })}
             </div>
-            <div className="grid max-w-xl grid-cols-2 gap-3">
+            <div className="grid max-w-2xl grid-cols-2 gap-3">
               <label className="text-sm font-semibold">De<input type="date" value={from} onChange={(e) => { setPreset("custom"); setRange([e.target.value, to]); }} className="mt-1 w-full rounded-xl border border-line bg-bg px-3 py-2.5 font-normal" /></label>
               <label className="text-sm font-semibold">Até<input type="date" value={to} onChange={(e) => { setPreset("custom"); setRange([from, e.target.value]); }} className="mt-1 w-full rounded-xl border border-line bg-bg px-3 py-2.5 font-normal" /></label>
             </div>
@@ -86,6 +92,7 @@ export function PerformanceWizard({ kind, sections, people, team }: { kind: Kind
                   <span><span className="block font-semibold">{s.label}</span><span className="text-xs text-muted">{s.hint}</span></span>
                 </button>); })}
             </div>
+            <div className="flex gap-3 text-sm"><button type="button" className="font-semibold text-accent" onClick={() => setSel(sections.filter((x) => x.id !== "pessoas" || team).map((x) => x.id))}>Marcar todos</button><button type="button" className="font-semibold text-muted" onClick={() => setSel([])}>Limpar</button><span className="text-muted">{sel.length} de {sections.filter((x) => x.id !== "pessoas" || team).length} abas</span></div>
             <div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-semibold">Agrupar a evolução por:</span>
               {[["dia", "Dia"], ["semana", "Semana"], ["mes", "Mês"]].map(([id, l]) => <button key={id} type="button" onClick={() => setGroup(id)} className={`rounded-full border px-3.5 py-1.5 font-semibold transition ${group === id ? "border-transparent bg-grad text-on-accent" : "border-line"}`}>{l}</button>)}
             </div>
@@ -94,7 +101,7 @@ export function PerformanceWizard({ kind, sections, people, team }: { kind: Kind
         {cur_ === "pessoas" && (
           <div className="space-y-4">
             <div><h2 className="display text-2xl">De quem?</h2><p className="text-sm text-muted">{team ? "Marque as pessoas que entram nos números." : "Você vê somente os seus números."}</p></div>
-            <div className="stagger flex flex-wrap gap-2">
+            <div className="stagger grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
               {people.map((p) => { const on = who.includes(p.id); return <button key={p.id} type="button" disabled={!team} onClick={() => setWho(toggle(who, p.id))} aria-pressed={on} className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${on ? "border-transparent bg-grad text-on-accent shadow-md" : "border-line bg-bg"}`}>{on && <Check size={14} aria-hidden />}{p.name}</button>; })}
             </div>
             {team && <div className="flex gap-3 text-sm"><button type="button" className="font-semibold text-accent" onClick={() => setWho(people.map((p) => p.id))}>Todos</button><button type="button" className="font-semibold text-muted" onClick={() => setWho([])}>Nenhum</button></div>}
@@ -132,6 +139,18 @@ export function PerformanceWizard({ kind, sections, people, team }: { kind: Kind
           </div>
         )}
       </section>
+      {(cur_ === "periodo" || cur_ === "conteudo" || cur_ === "pessoas") && (
+        <aside aria-label="Resumo do relatório" className="fx-rise space-y-3 rounded-3xl border border-line bg-grad-soft p-5 shadow-lg lg:sticky lg:top-4">
+          <h3 className="display text-lg">Seu relatório</h3>
+          <dl className="space-y-2.5 text-sm">
+            <div className="rounded-xl bg-panel/80 p-3"><dt className="text-xs text-muted">Período</dt><dd className="figure font-semibold">{fmtD(from)} a {fmtD(to)}</dd><dd className="text-xs text-muted">{days ? `${days} dia${days === 1 ? "" : "s"}` : "datas inválidas"}</dd></div>
+            <div className="rounded-xl bg-panel/80 p-3"><dt className="text-xs text-muted">Abas ({sel.length})</dt><dd className="mt-1 flex flex-wrap gap-1.5">{sel.length ? sel.map((id) => <span key={id} className="rounded-full border border-line bg-panel px-2.5 py-0.5 text-xs font-medium">{sections.find((x) => x.id === id)?.label ?? id}</span>) : <span className="text-xs text-muted">Nenhuma aba marcada</span>}</dd><dd className="mt-1.5 text-xs text-muted">Evolução por {group === "dia" ? "dia" : group === "semana" ? "semana" : "mês"}</dd></div>
+            <div className="rounded-xl bg-panel/80 p-3"><dt className="text-xs text-muted">Pessoas</dt><dd className="font-semibold">{team ? `${who.length} de ${people.length}` : "Somente você"}</dd></div>
+          </dl>
+          <p className="text-xs text-muted">Depois você confere uma prévia e baixa em Excel (.xlsx) ou CSV.</p>
+        </aside>
+      )}
+      </div>
 
       <div className="flex justify-between">
         <button type="button" disabled={step === 0} onClick={() => go(step - 1)} className="inline-flex items-center gap-1.5 rounded-2xl border border-line px-5 py-2.5 font-semibold transition hover:border-accent/60 disabled:opacity-40"><ChevronLeft size={18} aria-hidden /> Voltar</button>

@@ -1,14 +1,14 @@
 "use client";
 
 import { Calculator, Clock, FileUp, Pencil, Plus, Search, Trash2, Truck, X } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { estimateFreight, FREIGHT_MODES, type CarrierRow, type FreightMode } from "@/config/carriers";
 import { UFS } from "@/config/lists";
 import { useConfirm } from "@/components/confirm-dialog";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { useRun } from "@/components/use-run";
-import { applyCarrierImportAction, deleteCarrierAction, previewCarrierImportAction, saveCarrierAction, type CarrierPreview } from "@/modules/carriers/actions";
-import { CARRIER_SAMPLE_CSV } from "@/modules/carriers/parse";
+import { deleteCarrierAction, saveCarrierAction } from "@/modules/carriers/actions";
 import { parseMoneyToCents, fmtBRL } from "@/config/deals";
 
 const MODE_STYLE: Record<FreightMode, string> = { CIF: "bg-ok/15 text-ok", FOB: "bg-accent/15 text-accent", RED: "bg-warn/20 text-ink" };
@@ -39,38 +39,11 @@ function Editor({ d, setD, onClose }: { d: Draft; setD: (d: Draft) => void; onCl
   );
 }
 
-function Importer({ onClose }: { onClose: () => void }) {
-  const [file, setFile] = useState<File | null>(null);
-  const [pv, setPv] = useState<CarrierPreview | null>(null);
-  const [busy, setBusy] = useState(false);
-  const { run, pending } = useRun();
-  const fd = (f: File) => { const x = new FormData(); x.set("file", f); return x; };
-  return (
-    <div className={`${panelCls} space-y-3 p-4`}>
-      <div className="flex items-center gap-2"><FileUp size={18} aria-hidden className="text-accent" /><h3 className="flex-1 font-semibold">Importar transportadoras (CSV)</h3><button type="button" aria-label="Fechar" className={btnGhost} onClick={onClose}><X size={15} /></button></div>
-      <p className="text-sm text-muted">Colunas: <b>UF</b>, <b>Tipo</b> (CIF/FOB/RED), <b>Transportadora</b> e, se tiver, % Capital, % Interior, Dias Capital, Dias Interior, Frete mínimo, Contato, Obs. Quem já existe (mesmo estado, tipo e nome) é atualizado.</p>
-      <a className="text-sm text-accent underline" download="modelo-transportadoras.csv" href={`data:text/csv;charset=utf-8,${encodeURIComponent("﻿" + CARRIER_SAMPLE_CSV)}`}>Baixar planilha modelo</a>
-      <input type="file" accept=".csv,text/csv" className={inputCls} onChange={async (e) => { const f = e.target.files?.[0] ?? null; setFile(f); setPv(null); if (f) { setBusy(true); setPv(await previewCarrierImportAction(fd(f)).catch(() => ({ ok: false as const, message: "Não consegui ler o arquivo." }))); setBusy(false); } }} />
-      {busy && <p className="text-sm text-muted">Conferindo o arquivo…</p>}
-      {pv && !pv.ok && <p className="rounded-xl bg-danger/10 px-3 py-2 text-sm text-danger">{pv.message}</p>}
-      {pv?.ok && (
-        <div className="space-y-2 text-sm">
-          <p><b>{pv.total}</b> transportadoras no arquivo: <b>{pv.fresh}</b> novas e <b>{pv.existing}</b> já existem (serão atualizadas).</p>
-          <ul className="grid gap-1 sm:grid-cols-2">{pv.sample.map((s, i) => <li key={i} className="rounded-xl border border-line bg-sunk/50 px-3 py-1.5">{s.uf} · {s.mode} · <b>{s.name}</b> · {pct(s.capitalPct)} / {pct(s.interiorPct)}</li>)}</ul>
-          {pv.warnings.map((w, i) => <p key={i} className="text-xs text-warn">{w}</p>)}
-          <button type="button" className={btnPrimary} disabled={pending || !file} onClick={() => run(() => applyCarrierImportAction(fd(file!)), undefined, onClose)}>Importar agora</button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function CarriersView({ rows, canEdit }: { rows: CarrierRow[]; canEdit: boolean }) {
   const [uf, setUf] = useState<string>("");
   const [mode, setMode] = useState<FreightMode | "">("");
   const [q, setQ] = useState("");
   const [edit, setEdit] = useState<Draft | null>(null);
-  const [imp, setImp] = useState(false);
   const [calcValue, setCalcValue] = useState("");
   const [region, setRegion] = useState<"capital" | "interior">("interior");
   const { run, pending } = useRun();
@@ -88,11 +61,10 @@ export function CarriersView({ rows, canEdit }: { rows: CarrierRow[]; canEdit: b
         <label className="relative min-w-48 flex-1"><Search size={15} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" /><input aria-label="Buscar transportadora" className={`${inputCls} pl-9`} placeholder="Buscar transportadora" value={q} onChange={(e) => setQ(e.target.value)} /></label>
         <select aria-label="Estado" className={`${inputCls} !w-auto`} value={uf} onChange={(e) => setUf(e.target.value)}><option value="">Todos os estados</option>{ufsWith.map((u) => <option key={u}>{u}</option>)}</select>
         {(["CIF", "FOB", "RED"] as const).map((m) => <button key={m} type="button" aria-pressed={mode === m} onClick={() => setMode(mode === m ? "" : m)} className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${mode === m ? MODE_STYLE[m] + " ring-2 ring-current" : "bg-sunk text-muted"}`}>{m}</button>)}
-        {canEdit && <><button type="button" className={btnPrimary} onClick={() => { setImp(false); setEdit(blank(uf || "SP")); }}><Plus size={15} aria-hidden /> Nova</button><button type="button" className={btnGhost} onClick={() => { setEdit(null); setImp(!imp); }}><FileUp size={15} aria-hidden /> Importar CSV</button></>}
+        {canEdit && <><button type="button" className={btnPrimary} onClick={() => { setEdit(blank(uf || "SP")); }}><Plus size={15} aria-hidden /> Nova</button><Link href="/transportadoras/importar" className={btnGhost}><FileUp size={15} aria-hidden /> Importar planilha</Link></>}
       </div>
 
       {edit && <Editor d={edit} setD={setEdit} onClose={() => setEdit(null)} />}
-      {imp && <Importer onClose={() => setImp(false)} />}
 
       <section className={`${panelCls} space-y-2 p-4`}>
         <h2 className="flex items-center gap-2 text-sm font-semibold"><Calculator size={16} aria-hidden className="text-accent" /> Frete estimado (escolha um estado acima)</h2>
@@ -112,7 +84,7 @@ export function CarriersView({ rows, canEdit }: { rows: CarrierRow[]; canEdit: b
             {list.map((r) => (
               <li key={r.id} className={`${panelCls} lift space-y-1.5 p-3 ${r.active ? "" : "opacity-60"}`}>
                 <div className="flex items-center gap-2"><span className={`rounded-full px-2 py-0.5 text-xs font-bold ${MODE_STYLE[r.mode]}`}>{r.mode}</span><b className="min-w-0 flex-1 truncate">{r.name}</b>
-                  {canEdit && <><button type="button" aria-label="Editar" className={btnGhost} onClick={() => { setImp(false); setEdit(toDraft(r)); }}><Pencil size={14} /></button><button type="button" aria-label="Excluir" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => ask({ title: "Excluir transportadora?", body: `${r.name} (${r.uf} · ${r.mode}) será excluída.`, label: "Sim, excluir", icon: Trash2, onConfirm: () => run(() => deleteCarrierAction(r.id)) })}><Trash2 size={14} /></button></>}</div>
+                  {canEdit && <><button type="button" aria-label="Editar" className={btnGhost} onClick={() => { setEdit(toDraft(r)); }}><Pencil size={14} /></button><button type="button" aria-label="Excluir" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => ask({ title: "Excluir transportadora?", body: `${r.name} (${r.uf} · ${r.mode}) será excluída.`, label: "Sim, excluir", icon: Trash2, onConfirm: () => run(() => deleteCarrierAction(r.id)) })}><Trash2 size={14} /></button></>}</div>
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-sm">
                   <dt className="text-muted">Capital</dt><dd className="figure text-right">{pct(r.capitalPct)} <Clock size={11} aria-hidden className="mx-0.5 inline text-muted" /> {days(r.capitalDays)}</dd>
                   <dt className="text-muted">Interior</dt><dd className="figure text-right">{pct(r.interiorPct)} <Clock size={11} aria-hidden className="mx-0.5 inline text-muted" /> {days(r.interiorDays)}</dd>
@@ -124,7 +96,7 @@ export function CarriersView({ rows, canEdit }: { rows: CarrierRow[]; canEdit: b
           </ul>
         </section>
       ))}
-      {rows.length === 0 && <p className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-muted">Nenhuma transportadora cadastrada ainda.{canEdit ? " Use “Nova” ou “Importar CSV”." : ""}</p>}
+      {rows.length === 0 && <p className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-muted">Nenhuma transportadora cadastrada ainda.{canEdit ? " Use “Nova” ou “Importar planilha”." : ""}</p>}
       {dialog}
     </div>
   );

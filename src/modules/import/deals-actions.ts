@@ -6,7 +6,6 @@ import { getSettings } from "@/modules/settings/get";
 import { db, importBatches, users } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
 import { decodeCsv, parseCsv } from "./csv";
-import { readXlsxSheets } from "./sheets";
 import { enrichPendingDeals } from "@/modules/enrich/batch";
 import { applyDealImport, applyDealMatches, planDealImport, type DupPolicy, SKIP_LABEL, type Plan, type SkipReason } from "./deals-apply";
 import { attachPdfs, type PdfMatch } from "./deals-pdf";
@@ -16,28 +15,6 @@ import { commonChecks, DEAL_LABELS, inspectFile, type FileInsight } from "./insi
 export type DealImportPreview =
   | { ok: false; message: string }
   | { ok: true; insight: FileInsight; fileName: string; report: DealImportReport; willCreate: number; newLeads: number; existingLeads: number; byStage: Record<string, number>; skipped: { reason: string; count: number; samples: string[] }[]; skippedTotal: number; inPortfolio: Plan["inPortfolio"]; matches: number; pdfs: PdfMatch[] };
-export type SheetsResult = { ok: true; sheets: { name: string; rows: number; cols: number; csv: string }[] } | { ok: false; message: string };
-/** Abre a planilha enviada: .xlsx devolve uma entrada por aba; .csv devolve uma só. Nada é gravado. */
-export async function readSheetsAction(formData: FormData): Promise<SheetsResult> {
-  await requirePerm("tab.negociacoes");
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) return { ok: false, message: "Escolha um arquivo." };
-  const cfg = await getSettings();
-  if (file.size > cfg.import_max_mb * 1024 * 1024) return { ok: false, message: `Arquivo grande demais (máximo ${cfg.import_max_mb} MB).` };
-  try {
-    if (/\.xlsx$/i.test(file.name)) {
-      const sheets = await readXlsxSheets(await file.arrayBuffer(), cfg.import_max_rows);
-      if (!sheets.length) return { ok: false, message: "Não encontrei dados em nenhuma aba." };
-      return { ok: true, sheets };
-    }
-    if (/\.xls$/i.test(file.name)) return { ok: false, message: "Arquivo .xls antigo: salve como .xlsx ou .csv e envie de novo." };
-    const { headers, rows } = parseCsv(decodeCsv(Buffer.from(await file.arrayBuffer())));
-    return { ok: true, sheets: [{ name: "CSV", rows: rows.length, cols: headers.length, csv: "" }] };
-  } catch {
-    return { ok: false, message: "Não consegui abrir o arquivo." };
-  }
-}
-
 const policyOf = (fd: FormData): DupPolicy => { const v = String(fd.get("dupPolicy") ?? ""); return v === "fill" || v === "overwrite" ? v : "skip"; };
 
 export type DealImportResult = { ok: boolean; message: string; details?: string[] };

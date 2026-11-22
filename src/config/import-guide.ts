@@ -75,3 +75,16 @@ export const REP_GUIDE: GuideCol[] = [
   { col: "NOME REP", required: true, what: "Nome do representante.", alias: ["REPRESENTANTE", "NOME"] },
   { col: "ATIVO", what: "Se o representante está ativo. Vazio = ativo.", values: ["SIM", "NAO", "N", "0", "FALSE", "INATIVO"] },
 ];
+
+export const CARRIER_GUIDE: GuideCol[] = [
+  { col: "UF", required: true, what: "Estado a que a tabela de frete se refere.", alias: ["ESTADO"], format: "SC, SP, PR…" },
+  { col: "TIPO", required: true, what: "Modalidade do frete.", alias: ["FRETE", "MODALIDADE"], values: ["CIF", "FOB", "RED"] },
+  { col: "TRANSPORTADORA", required: true, what: "Nome da transportadora. Estado + tipo + nome identificam a linha: se já existir, ela é atualizada.", alias: ["NOME", "EMPRESA"] },
+  { col: "% CAPITAL", what: "Percentual do frete para a capital.", alias: ["CAPITAL", "FRETE CAPITAL"], format: "3,5 ou 3,5%" },
+  { col: "% INTERIOR", what: "Percentual do frete para o interior.", alias: ["INTERIOR", "FRETE INTERIOR"], format: "5,2 ou 5,2%" },
+  { col: "DIAS CAPITAL", what: "Prazo de entrega na capital, em dias.", alias: ["PRAZO CAPITAL"], format: "número de 0 a 365" },
+  { col: "DIAS INTERIOR", what: "Prazo de entrega no interior, em dias.", alias: ["PRAZO INTERIOR"], format: "número de 0 a 365" },
+  { col: "FRETE MÍNIMO", what: "Valor mínimo do frete.", alias: ["MINIMO", "MIN"], format: "80,00" },
+  { col: "CONTATO", what: "Nome ou telefone da transportadora.", alias: ["TELEFONE", "FONE"] },
+  { col: "OBS", what: "Texto livre, como dia de coleta.", alias: ["OBSERVACAO", "OBSERVACOES"] },
+];

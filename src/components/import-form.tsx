@@ -1,11 +1,12 @@
 "use client";
 
-import { AlertTriangle, Check, CircleHelp, CheckCircle2, FileSpreadsheet, Layers, ListChecks, MapPin, PackageCheck, PlusCircle, Sparkles, Upload, Users, X } from "lucide-react";
-import { useRef, useState, useTransition } from "react";
+import { AlertTriangle, Check, CircleHelp, FileSpreadsheet, Layers, ListChecks, MapPin, PackageCheck, PlusCircle, Sparkles, Upload, Users } from "lucide-react";
+import { useState, useTransition } from "react";
 import { Spinner } from "@/components/spinner";
 import { useBusyWhile, useToast } from "@/components/toast";
 import { btnGhost, btnPrimary, panelCls } from "@/components/ui";
 import { LEAD_GUIDE, REP_GUIDE } from "@/config/import-guide";
+import { ImportFilePicker } from "@/components/import-file-picker";
 import { ImportEditor } from "@/components/import-editor";
 import { needsMapping } from "@/modules/import/fields";
 import { ImportExample } from "@/components/import-example";
@@ -60,13 +61,11 @@ export function ImportForm() {
   const [prev, setPrev] = useState<ImportPreview | null>(null);
   const [details, setDetails] = useState<string[]>([]);
   const [ack, setAck] = useState(false);
-  const [drag, setDrag] = useState(false);
   const [pending, start] = useTransition();
   useBusyWhile(pending);
-  const input = useRef<HTMLInputElement>(null);
   const fd = (f: File | null = file) => { const d = new FormData(); d.set("kind", kind); d.set("leadKind", leadKind); d.set("mode", mode); if (f) d.set("file", f); return d; };
-  const pickFile = (f: File | null | undefined) => { setFile(f ?? null); setPrev(null); setDetails([]); };
-  const reset = () => { setPrev(null); setFile(null); if (input.current) input.current.value = ""; };
+  const pickFile = (f: File | null, auto?: boolean) => { setFile(f); setPrev(null); setDetails([]); if (f && auto) check(f); };
+  const reset = () => { setPrev(null); setFile(null); };
   const current = KINDS.find((k) => k.key === kind)!;
 
   const check = (f?: File, m: typeof mode = mode) => start(async () => { const d = fd(f); d.set("mode", m); const r = await previewImportAction(d); setAck(false); setPrev(r); if (!r.ok) toast("bad", r.message); });
@@ -108,30 +107,8 @@ export function ImportForm() {
       </section>
 
       <section className={`${panelCls} p-5`}>
-        <StepTitle n={2} done={!!prev?.ok}>Escolha o arquivo CSV</StepTitle>
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDrag(false); }}
-          onDrop={(e) => { e.preventDefault(); setDrag(false); pickFile(e.dataTransfer.files?.[0]); }}
-          className={`flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center transition-colors ${drag ? "border-accent bg-sunk [&_*]:pointer-events-none" : "border-line"}`}>
-          {file ? (
-            <>
-              <FileSpreadsheet size={36} className="text-accent" aria-hidden />
-              <p className="font-semibold">{file.name}</p>
-              <p className="text-sm text-muted">{(file.size / 1024).toLocaleString("pt-BR", { maximumFractionDigits: 0 })} KB</p>
-              <div className="flex flex-wrap justify-center gap-2">
-                <button type="button" className={btnPrimary} disabled={pending} onClick={() => check()}>{pending && !prev ? <Spinner size={16} /> : <CheckCircle2 size={16} aria-hidden />} Conferir arquivo</button>
-                <button type="button" className={btnGhost} disabled={pending} onClick={reset}><X size={15} aria-hidden /> Trocar arquivo</button>
-              </div>
-            </>
-          ) : (
-            <>
-              <Upload size={36} className="text-muted" aria-hidden />
-              <p className="font-medium">Arraste o CSV para cá</p>
-              <button type="button" className={btnGhost} onClick={() => input.current?.click()}>Escolher arquivo</button>
-            </>
-          )}
-          <input ref={input} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => pickFile(e.target.files?.[0])} />
-        </div>
+        <StepTitle n={2} done={!!prev?.ok}>Escolha o arquivo (CSV ou Excel .xlsx)</StepTitle>
+        <ImportFilePicker file={file} checking={pending} busy={pending} hasResult={!!prev} noun={kind === "leads" ? "leads" : "representantes"} onPick={pickFile} onCheck={() => check()} onReset={reset} />
       </section>
 
       {prev && !prev.ok && file && needsMapping(prev.message) && (

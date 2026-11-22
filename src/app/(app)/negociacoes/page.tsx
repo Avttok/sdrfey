@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BellRing, FileSpreadsheet, FileText, Handshake, UserPlus } from "lucide-react";
+import { BellRing, FileSpreadsheet, FileText, Handshake, Trophy, UserPlus, Wallet } from "lucide-react";
 import { NewDeal } from "@/components/deals/new-deal";
 import { DealBoard } from "@/components/deals/deal-board";
 import { PageHead } from "@/components/page-head";
@@ -11,18 +11,50 @@ import { db, paymentTerms } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
 import { PendingEnrich } from "@/components/deals/pending-enrich";
 import { pendingDealImports } from "@/modules/enrich/batch";
+import { withExtras } from "@/modules/deals/extras";
 import { listDeals, onePerClient } from "@/modules/deals/queries";
 
 export const metadata: Metadata = { title: "Negociações" };
 export const dynamic = "force-dynamic";
 
-/** Janela do vendedor: leads repassados pelos SDRs, com avisos do que precisa de atenção agora. */
+const pct = (x: number) => `${Math.round(x * 100)}%`;
+
+function Ring({ value, color }: { value: number; color: string }) {
+  const v = Math.max(0, Math.min(100, value)); const r = 22; const c = 2 * Math.PI * r;
+  return (
+    <svg viewBox="0 0 56 56" className="size-20 shrink-0 -rotate-90" aria-hidden>
+      <circle cx="28" cy="28" r={r} fill="none" stroke="var(--sunk)" strokeWidth="6" />
+      <circle cx="28" cy="28" r={r} fill="none" stroke={color} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(v / 100) * c} ${c}`} className="transition-[stroke-dasharray] duration-1000" />
+    </svg>
+  );
+}
+function Kpi({ I, t, v, s, hot, hex = "#378ADD", i = 0 }: { I: typeof Wallet; t: string; v: string; s: string; hot?: boolean; hex?: string; i?: number }) {
+  const c = hot ? "var(--danger)" : hex;
+  return (
+    <div style={{ "--i": i } as React.CSSProperties} className={`${panelCls} card-in lift relative overflow-hidden p-4 hover:shadow-lg ${hot ? "border-danger/50" : ""}`}>
+      <span aria-hidden className="pointer-events-none absolute -right-6 -top-6 size-24 rounded-full opacity-[.13]" style={{ background: c }} />
+      <div className="relative flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted">{t}</p>
+          <p className="figure mt-2 text-3xl font-extrabold leading-none" style={hot ? { color: c } : undefined}>{v}</p>
+          <p className="mt-2 truncate text-xs text-muted">{s}</p>
+        </div>
+        <span className="grid size-11 shrink-0 place-items-center rounded-2xl text-white shadow-sm" style={{ background: c }}><I size={20} aria-hidden /></span>
+      </div>
+    </div>
+  );
+}
+
+/** Janela do vendedor: leads repassados pelos SDRs, com avisos do que precisa de atenção agora e filtros avançados. */
 export default async function DealsPage() {
   const me = await requirePerm("tab.negociacoes");
   const team = !!me.permissions["deals.team"];
   const canClaim = me.roles.includes("seller") || team;
-  const [all, waiting] = await Promise.all([listDeals(me.id, team), pendingDealImports()]);
-  const deals = onePerClient(all);
+  const [all, waiting, terms] = await Promise.all([
+    listDeals(me.id, team), pendingDealImports(),
+    canClaim ? db.select({ n: paymentTerms.name }).from(paymentTerms).where(eq(paymentTerms.active, true)).orderBy(asc(paymentTerms.name)) : Promise.resolve([]),
+  ]);
+  const deals = await withExtras(onePerClient(all));
   const open = deals.filter((d) => d.stage !== "ganho" && d.stage !== "perdido");
   const mine = open.filter((d) => d.sellerId === me.id);
   const attention = open.filter((d) => d.alerts.length && (team || d.sellerId === me.id || !d.sellerId));
@@ -30,41 +62,58 @@ export default async function DealsPage() {
   const quotes = open.filter((d) => d.stage === "cotacao");
   const quotesValue = quotes.reduce((a, d) => a + (d.mainCents ?? 0), 0);
   const openValue = open.reduce((a, d) => a + (d.mainCents ?? 0), 0);
+  const month = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" }).format(new Date());
+  const billed = deals.filter((d) => d.stage === "ganho" && (d.closedOn ?? d.closedAt ?? "").slice(0, 7) === month && (team || d.sellerId === me.id));
+  const billedValue = billed.reduce((a, d) => a + (d.mainCents ?? 0), 0);
+  const healthy = open.length ? 1 - open.filter((d) => d.alerts.length).length / open.length : 1;
   const funnel = BOARD_COLUMNS.filter((c) => c.key !== "ganho").map((c) => { const l = open.filter((d) => c.stages.includes(d.stage)); return { key: c.key, label: STAGE_META[c.key].label, color: STAGE_META[c.key].color, n: l.length, cents: l.reduce((a, d) => a + (d.mainCents ?? 0), 0) }; });
-  const stats = [
-    { I: Handshake, t: "Em andamento", v: String(team ? open.length : mine.length), s: team ? "abertas" : "suas abertas" },
-    { I: UserPlus, t: "Sem vendedor", v: String(pool.length), s: pool.length ? "esperando vendedor" : "nenhuma", hot: pool.length > 0 },
-    { I: BellRing, t: "Precisam de atenção", v: String(attention.length), s: "com aviso", hot: attention.length > 0 },
-    { I: FileText, t: "Cotações abertas", v: String(quotes.length), s: quotesValue ? fmtBRL(quotesValue) : "nenhuma cotação" },
-  ];
+  const opts = {
+    sellers: [...new Map(deals.filter((d) => d.sellerId).map((d) => [d.sellerId!, d.sellerName ?? "?"])).entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+    sdrs: [...new Map(deals.filter((d) => d.sdrId).map((d) => [d.sdrId!, d.sdrName ?? "?"])).entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+    ufs: [...new Set(deals.map((d) => d.uf).filter((u): u is string => !!u))].sort(),
+  };
   return (
     <div className="space-y-5">
-      <PageHead icon={Handshake} title="Negociações">
+      <PageHead icon={Handshake} title="Negociações" subtitle="Tudo o que o SDR repassou, com avisos do que precisa de você agora.">
         {canClaim && <Link href="/negociacoes/importar" className={btnGhost}><FileSpreadsheet size={16} aria-hidden /> Importar planilha</Link>}
-        {canClaim && <NewDeal terms={(await db.select({ n: paymentTerms.name }).from(paymentTerms).where(eq(paymentTerms.active, true)).orderBy(asc(paymentTerms.name))).map((t) => t.n)} />}
+        {canClaim && <NewDeal terms={terms.map((t) => t.n)} />}
       </PageHead>
       {waiting > 0 && canClaim && <PendingEnrich n={waiting} />}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {stats.map(({ I, t, v, s, hot }, i) => (
-          <div key={t} style={{ "--i": i } as React.CSSProperties} className={`${panelCls} stat-glow lift card-in p-4 ${hot ? "border-danger/50" : ""}`}>
-            <div className="flex items-center justify-between"><p className="text-xs font-medium text-muted">{t}</p><span className={`grid size-8 place-items-center rounded-lg ${hot ? "bg-danger/15 text-danger" : "bg-grad-soft text-accent"}`}><I size={15} aria-hidden /></span></div>
-            <p className="figure mt-2 text-3xl font-bold leading-none">{v}</p>
-            <p className="mt-1.5 truncate text-xs text-muted">{s}</p>
+
+      <section className="grid gap-3 lg:grid-cols-3" aria-label="Resumo das negociações">
+        <div className="aurora relative overflow-hidden rounded-3xl bg-grad p-5 text-on-accent shadow-lg lg:col-span-2">
+          <span aria-hidden className="aurora-blob a" /><span aria-hidden className="aurora-blob b" />
+          <div className="relative grid gap-4 sm:grid-cols-2">
+            <div><p className="text-xs font-bold uppercase tracking-widest opacity-80">Em negociação agora</p><p className="figure mt-1 text-4xl font-extrabold leading-none sm:text-5xl">{fmtBRL(openValue)}</p><p className="mt-2 text-sm opacity-90">{open.length} {open.length === 1 ? "negociação aberta" : "negociações abertas"}{team ? "" : ` · ${mine.length} suas`}</p></div>
+            <div className="sm:border-l sm:border-white/25 sm:pl-5"><p className="text-xs font-bold uppercase tracking-widest opacity-80">Faturado neste mês</p><p className="figure mt-1 text-3xl font-extrabold leading-none sm:text-4xl">{fmtBRL(billedValue)}</p><p className="mt-2 text-sm opacity-90">{billed.length} {billed.length === 1 ? "venda faturada" : "vendas faturadas"}</p></div>
           </div>
-        ))}
+        </div>
+        <div className={`${panelCls} card-in flex items-center gap-4 p-5`}>
+          <div className="relative grid place-items-center"><Ring value={healthy * 100} color={healthy >= 0.8 ? "var(--ok)" : healthy >= 0.5 ? "var(--warn)" : "var(--danger)"} /><span className="figure absolute text-sm font-extrabold">{pct(healthy)}</span></div>
+          <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-muted">Em dia</p><p className="mt-1 text-sm leading-snug">{attention.length ? <><b>{attention.length}</b> {attention.length === 1 ? "negociação pede" : "negociações pedem"} atenção agora.</> : "Nenhum aviso pendente. Tudo em dia."}</p></div>
+        </div>
+      </section>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi i={0} I={Handshake} t="Em andamento" v={String(team ? open.length : mine.length)} s={team ? "abertas na equipe" : "suas abertas"} hex="#3b82f6" />
+        <Kpi i={1} I={UserPlus} t="Sem vendedor" v={String(pool.length)} s={pool.length ? "esperando vendedor" : "nenhuma esperando"} hot={pool.length > 0} />
+        <Kpi i={2} I={BellRing} t="Precisam de atenção" v={String(attention.length)} s="com aviso" hot={attention.length > 0} />
+        <Kpi i={3} I={FileText} t="Cotações abertas" v={String(quotes.length)} s={quotesValue ? fmtBRL(quotesValue) : "nenhuma cotação"} hex="#f59e0b" />
       </div>
+
       {funnel.some((f) => f.n > 0) && (
-        <section aria-label="Funil das negociações abertas" className={`${panelCls} card-in p-4`} style={{ "--i": 4 } as React.CSSProperties}>
-          <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-2"><p className="text-sm font-semibold">Funil em aberto</p><p className="figure text-xs text-muted">{open.length} negociações{openValue ? ` · ${fmtBRL(openValue)}` : ""}</p></div>
-          <div className="flex h-3 overflow-hidden rounded-full bg-sunk">
+        <section aria-label="Funil das negociações abertas" className={`${panelCls} card-in relative overflow-hidden p-5`} style={{ "--i": 4 } as React.CSSProperties}>
+          <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-grad opacity-80" />
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2"><h2 className="flex items-center gap-2 text-[15px] font-bold"><Trophy size={16} className="text-accent" aria-hidden /> Funil em aberto</h2><p className="figure text-xs text-muted">{open.length} negociações{openValue ? ` · ${fmtBRL(openValue)}` : ""}</p></div>
+          <div className="flex h-3.5 overflow-hidden rounded-full bg-sunk">
             {funnel.filter((f) => f.n > 0).map((f) => <span key={f.key} title={`${f.label}: ${f.n}`} className="h-full transition-all first:rounded-l-full last:rounded-r-full" style={{ width: `${(f.n / open.length) * 100}%`, background: f.color }} />)}
           </div>
-          <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-muted">
-            {funnel.map((f) => <li key={f.key} className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2 rounded-full" style={{ background: f.color }} />{f.label} <b className="figure text-ink">{f.n}</b>{f.cents ? <span className="figure">· {fmtBRL(f.cents)}</span> : null}</li>)}
+          <ul className="mt-3 grid gap-2 sm:grid-cols-3">
+            {funnel.map((f) => <li key={f.key} className="rounded-xl bg-sunk/60 px-3 py-2"><p className="inline-flex items-center gap-1.5 text-xs font-medium text-muted"><span aria-hidden className="size-2 rounded-full" style={{ background: f.color }} />{f.label}</p><p className="figure text-lg font-bold leading-tight">{f.n}{f.cents ? <span className="ml-2 text-xs font-medium text-muted">{fmtBRL(f.cents)}</span> : null}</p></li>)}
           </ul>
         </section>
       )}
-      <DealBoard deals={deals} meId={me.id} canClaim={canClaim} team={team} />
+      <DealBoard deals={deals} meId={me.id} canClaim={canClaim} team={team} opts={opts} />
     </div>
   );
 }

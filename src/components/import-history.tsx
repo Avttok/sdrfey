@@ -7,7 +7,7 @@ import { useRun } from "@/components/use-run";
 import { fmtDateTime } from "@/lib/format";
 import { undoImportBatchAction, type BatchRow } from "@/modules/import/history";
 
-const KIND: Record<string, string> = { leads: "Leads novos", inativos: "Leads inativos", reps: "Representantes", deals: "Negociações" };
+const KIND: Record<string, string> = { leads: "Leads novos", inativos: "Leads inativos", reps: "Representantes", deals: "Negociações", carriers: "Transportadoras" };
 
 export function ImportHistory({ rows }: { rows: BatchRow[] }) {
   const { run, pending } = useRun();

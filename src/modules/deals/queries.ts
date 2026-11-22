@@ -57,8 +57,8 @@ const sdr = alias(users, "sdr");
 
 /** Negociações visíveis para a pessoa: as dela e as do grupo (sem dono); com “deals.team”, todas. */
 /** Um cartão por cliente: a negociação aberta (a mais recente) ou, sem aberta, a última encerrada. O resto do histórico fica dentro da janela do cliente. */
-export function onePerClient(rows: DealRow[]): DealRow[] {
-  const by = new Map<number, DealRow[]>();
+export function onePerClient<T extends DealRow>(rows: T[]): T[] {
+  const by = new Map<number, T[]>();
   for (const r of rows) by.set(r.leadId, [...(by.get(r.leadId) ?? []), r]);
   const isOpen = (d: DealRow) => d.stage !== "ganho" && d.stage !== "perdido";
   return [...by.values()].map((g) => {

@@ -792,7 +792,7 @@ export const chatMentions = pgTable(
 /** Histórico de importações de CSV (leads, representantes e negociações). Só os lotes de leads podem ser desfeitos. */
 export const importBatches = pgTable("import_batches", {
   id: serial("id").primaryKey(),
-  kind: text("kind").$type<"leads" | "inativos" | "reps" | "deals">().notNull(),
+  kind: text("kind").$type<"leads" | "inativos" | "reps" | "deals" | "carriers">().notNull(),
   fileName: text("file_name").notNull(),
   userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
   total: integer("total").notNull().default(0),

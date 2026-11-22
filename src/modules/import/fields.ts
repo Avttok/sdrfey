@@ -1,9 +1,10 @@
 import { LEAD_COLUMNS, REP_COLUMNS } from "./columns";
+import { CARRIER_COLUMNS } from "@/modules/carriers/parse";
 import { DEAL_COLUMNS } from "./deals-parse";
 import { headerKey } from "./normalize";
 
 /** Arquivo sem banco, usado pelo navegador: dá nome, explicação e sugestão a cada coluna da planilha. */
-export type ImportKind = "leads" | "reps" | "deals";
+export type ImportKind = "leads" | "reps" | "deals" | "carriers";
 export type FieldInfo = { key: string; label: string; hint: string; /** Nome de coluna que o sistema entende. */ header: string; aliases: readonly string[]; required?: boolean };
 
 const mk = (aliases: Record<string, readonly string[]>, info: Record<string, [label: string, hint: string, header: string]>, required: string[]): FieldInfo[] =>
@@ -71,7 +72,20 @@ const DEALS = mk(DEAL_COLUMNS, {
   note: ["Observações", "Texto livre", "OBSERVACAO"],
 }, ["cnpj"]);
 
-export const FIELDS: Record<ImportKind, FieldInfo[]> = { leads: LEADS, reps: REPS, deals: DEALS };
+const CARRIERS = mk(CARRIER_COLUMNS, {
+  uf: ["UF", "Estado a que a tabela de frete se refere", "UF"],
+  mode: ["Tipo de frete", "CIF, FOB ou RED (redespacho)", "Tipo"],
+  name: ["Transportadora", "Nome da transportadora", "Transportadora"],
+  capitalPct: ["% Capital", "Percentual do frete para a capital", "% Capital"],
+  interiorPct: ["% Interior", "Percentual do frete para o interior", "% Interior"],
+  capitalDays: ["Dias Capital", "Prazo de entrega na capital, em dias", "Dias Capital"],
+  interiorDays: ["Dias Interior", "Prazo de entrega no interior, em dias", "Dias Interior"],
+  minCents: ["Frete mínimo", "Valor mínimo do frete, em reais", "Frete mínimo"],
+  contact: ["Contato", "Nome ou telefone da transportadora", "Contato"],
+  note: ["Observação", "Texto livre (ex.: coleta às terças)", "Obs"],
+}, ["uf", "mode", "name"]);
+
+export const FIELDS: Record<ImportKind, FieldInfo[]> = { leads: LEADS, reps: REPS, deals: DEALS, carriers: CARRIERS };
 
 /** Qual campo o nome desta coluna já significa (ou null se o sistema não reconhece). */
 export function fieldOfHeader(kind: ImportKind, header: string): FieldInfo | null {
@@ -104,6 +118,7 @@ const SNIFF_TO_FIELD: Record<ImportKind, Partial<Record<Sniff, string>>> = {
   leads: { cnpj: "cnpj", email: "email", phone: "phone", sap: "sapCode", date: "updatedAt", money: "capital" },
   reps: { cnpj: "cnpj", sap: "sapCode", uf: "uf" },
   deals: { cnpj: "cnpj", email: "email", phone: "phone", sap: "sapCode", date: "quoteDate", money: "quoteValue", uf: "uf" },
+  carriers: { uf: "uf", money: "minCents", phone: "contact" },
 };
 
 /** Pistas pelo nome do título quando o conteúdo não basta (ex.: "Razão", "Mail", "Fone"). */
@@ -117,6 +132,10 @@ const HEADER_HINTS: [RegExp, Partial<Record<ImportKind, string>>][] = [
   [/cidade|municipio/, { reps: "city", deals: "city" }],
   [/cota/, { deals: "quoteNumber" }],
   [/pedido/, { deals: "orderNumber" }],
+  [/transport|nomedatransp|empresa/, { carriers: "name" }],
+  [/frete|tipo|modal|cif|fob/, { carriers: "mode" }],
+  [/estado/, { carriers: "uf" }],
+  [/obs|anota/, { carriers: "note" }],
 ];
 
 export function suggestField(kind: ImportKind, values: string[], header = ""): FieldInfo | null {

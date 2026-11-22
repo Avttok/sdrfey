@@ -2,8 +2,7 @@
 
 import { ImportEditor } from "@/components/import-editor";
 import { needsMapping } from "@/modules/import/fields";
-import Papa from "papaparse";
-import { AlertTriangle, CheckCircle2, CircleHelp, FileSpreadsheet, FileText, Layers, Upload, X } from "lucide-react";
+import { AlertTriangle, CircleHelp, FileText, Upload } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { Spinner } from "@/components/spinner";
@@ -16,7 +15,8 @@ import { DEAL_GUIDE } from "@/config/import-guide";
 import { ImportExample } from "@/components/import-example";
 import { DEAL_TEMPLATE_HEADERS, DEAL_TEMPLATE_ROWS } from "@/modules/import/deals-parse";
 import { hasBlocker, ImportInsight, needsAck } from "@/components/import-insight";
-import { applyDealImportAction, previewDealImportAction, readSheetsAction, type DealImportPreview } from "@/modules/import/deals-actions";
+import { ImportFilePicker } from "@/components/import-file-picker";
+import { applyDealImportAction, previewDealImportAction, type DealImportPreview } from "@/modules/import/deals-actions";
 
 const nf = new Intl.NumberFormat("pt-BR");
 function Stat({ label, value, tone }: { label: string; value: number; tone?: "ok" | "warn" | "bad" }) {
@@ -33,47 +33,17 @@ export function DealImportForm({ sellers, terms = [] }: { sellers: { id: number;
   const [seller, setSeller] = useState(sellers?.[0]?.id ?? 0);
   const [prev, setPrev] = useState<DealImportPreview | null>(null);
   const [details, setDetails] = useState<string[]>([]);
-  const [drag, setDrag] = useState(false);
   const [ask, setAsk] = useState(false);
   const [ack, setAck] = useState(false);
   const [view, setView] = useState<{ id: number; name: string } | null>(null);
   const [pending, start] = useTransition();
   useBusyWhile(pending);
-  const input = useRef<HTMLInputElement>(null);
   const pdfInput = useRef<HTMLInputElement>(null);
   const [pdfs, setPdfs] = useState<File[]>([]);
   const [policy, setPolicy] = useState<"skip" | "fill" | "overwrite">("skip");
-  const [book, setBook] = useState<{ name: string; sheets: { name: string; rows: number; cols: number; csv: string }[]; pick: Set<number> } | null>(null);
   const fd = (f: File | null = file, p: File[] = pdfs) => { const d = new FormData(); if (f) d.set("file", f); if (sellers) d.set("sellerId", String(seller)); for (const x of p) d.append("pdf", x); d.set("dupPolicy", policy); return d; };
-  const pick = (f: File | null | undefined) => {
-    setPrev(null); setDetails([]); setBook(null);
-    if (f && /\.xlsx?$/i.test(f.name)) {
-      setFile(null);
-      start(async () => {
-        const body = new FormData(); body.set("file", f);
-        const r = await readSheetsAction(body);
-        if (!r.ok) return toast("bad", r.message);
-        setBook({ name: f.name, sheets: r.sheets, pick: new Set(r.sheets.map((_, i) => i)) });
-      });
-      return;
-    }
-    setFile(f ?? null);
-  };
-  /** Junta as abas marcadas num só CSV (colunas de abas diferentes são unidas pelo nome do cabeçalho). */
-  const useSheets = () => {
-    if (!book) return;
-    const chosen = book.sheets.filter((_, i) => book.pick.has(i));
-    const heads: string[] = []; const all: Record<string, string>[] = [];
-    for (const sh of chosen) {
-      const p = Papa.parse<Record<string, string>>(sh.csv, { header: true, skipEmptyLines: true });
-      for (const h of p.meta.fields ?? []) if (!heads.includes(h)) heads.push(h);
-      all.push(...p.data);
-    }
-    const csv = Papa.unparse({ fields: heads, data: all.map((r) => heads.map((h) => r[h] ?? "")) });
-    const f = new File([csv], book.name.replace(/\.xlsx?$/i, "") + (chosen.length === 1 ? ` (${chosen[0].name})` : " (abas juntas)") + ".csv", { type: "text/csv" });
-    setBook(null); setFile(f); check(f);
-  };
-  const reset = () => { setPrev(null); setFile(null); setBook(null); setPdfs([]); setPolicy("skip"); if (input.current) input.current.value = ""; };
+  const pickFile = (f: File | null, auto?: boolean) => { setPrev(null); setDetails([]); setFile(f); if (f && auto) check(f); };
+  const reset = () => { setPrev(null); setFile(null); setPdfs([]); setPolicy("skip"); };
   const check = (f?: File, p?: File[]) => start(async () => { const r = await previewDealImportAction(fd(f ?? file, p ?? pdfs)); setAck(false); setPrev(r); if (!r.ok) toast("bad", r.message); });
   const apply = () => start(async () => { const r = await applyDealImportAction(fd()); toast(r.ok ? "ok" : "bad", r.message); setDetails(r.details ?? []); if (r.ok) reset(); });
 
@@ -90,44 +60,8 @@ export function DealImportForm({ sellers, terms = [] }: { sellers: { id: number;
 
       <section className={`${panelCls} p-5`}>
         <Step n={2} done={!!prev?.ok}>Escolha o arquivo (CSV ou Excel .xlsx)</Step>
-        <div onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDrag(false); }}
-          onDrop={(e) => { e.preventDefault(); setDrag(false); pick(e.dataTransfer.files?.[0]); }}
-          className={`flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center transition-colors ${drag ? "border-accent bg-sunk [&_*]:pointer-events-none" : "border-line"}`}>
-          {file ? (
-            <>
-              <FileSpreadsheet size={36} className="text-accent" aria-hidden />
-              <p className="font-semibold">{file.name}</p>
-              <div className="flex flex-wrap justify-center gap-2">
-                <button type="button" className={btnPrimary} disabled={pending} onClick={() => check()}>{pending && !prev ? <Spinner size={16} /> : <CheckCircle2 size={16} aria-hidden />} {pending && !prev ? "Conferindo…" : "Conferir arquivo"}</button>
-                <button type="button" className={btnGhost} disabled={pending} onClick={reset}><X size={15} aria-hidden /> Trocar arquivo</button>
-              </div>
-            </>
-          ) : (
-            <>
-              <Upload size={36} className="text-muted" aria-hidden />
-              <p className="font-medium">Arraste o CSV ou o Excel para cá</p>
-              <button type="button" className={btnGhost} onClick={() => input.current?.click()}>Escolher arquivo</button>
-            </>
-          )}
-          <input ref={input} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
-        </div>
+        <ImportFilePicker file={file} checking={pending} busy={pending} hasResult={!!prev} noun="negociações" onPick={pickFile} onCheck={() => check()} onReset={reset} />
       </section>
-
-      {book && (
-        <section className={`${panelCls} space-y-3 p-5`}>
-          <h2 className="flex items-center gap-2 text-lg font-semibold"><Layers size={18} aria-hidden /> Abas de {book.name}</h2>
-          <p className="text-sm text-muted">Marque as abas que têm negociações. Elas serão juntadas num só arquivo, que você ainda pode editar antes de importar.</p>
-          <ul className="grid gap-2 sm:grid-cols-2">
-            {book.sheets.map((sh, i) => (
-              <li key={sh.name + i}><label className="flex cursor-pointer items-center gap-3 rounded-xl border border-line bg-panel px-3 py-2.5 text-sm">
-                <input type="checkbox" checked={book.pick.has(i)} onChange={() => { const n = new Set(book.pick); if (n.has(i)) n.delete(i); else n.add(i); setBook({ ...book, pick: n }); }} />
-                <span className="min-w-0 flex-1"><b className="block truncate">{sh.name}</b><span className="text-xs text-muted">{nf.format(sh.rows)} linha(s) · {sh.cols} coluna(s)</span></span>
-              </label></li>
-            ))}
-          </ul>
-          <div className="flex gap-2"><button type="button" className={btnPrimary} disabled={book.pick.size === 0 || pending} onClick={useSheets}>Usar {book.pick.size} {book.pick.size === 1 ? "aba" : "abas"} e conferir</button><button type="button" className={btnGhost} onClick={reset}>Cancelar</button></div>
-        </section>
-      )}
 
       {prev && !prev.ok && file && needsMapping(prev.message) && (
         <section className={`${panelCls} space-y-4 border-warn/60 p-5`}>

@@ -19,10 +19,11 @@ import { useRouter } from "next/navigation";
 import { ColorPicker } from "./color-picker";
 import type { DealRow } from "@/modules/deals/queries";
 import { AlertChip, StageChip } from "./deal-ui";
-import { AndamentosTimeline, VisitsPanel } from "./commercial-panels";
+import { AndamentosTimeline } from "./commercial-panels";
 import type { CommEvent, CommVisit } from "@/modules/deals/lead-commercial";
 import type { ClientHistory } from "@/modules/deals/history";
-import { ClientHistoryView } from "./client-history";
+import { DealKpis, DealRecords, type DealPerson } from "./deal-extras";
+import type { ScriptRunView } from "@/modules/scripts/runs-query";
 
 type Ev = { id: number; kind: string; note: string | null; valueCents: number | null; at: string; by: string | null };
 const STEPS = ["novo", "contato", "cotacao", "ganho"] as const;
@@ -35,7 +36,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 }
 const brl = (c: number | null) => (c == null ? "" : (c / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
-export function DealPanel({ deal, events, quotes, tags, terms, extraPct, icmsPct = null, icmsRatePct = null, canDelete, phones, meId, team, canClaim, sellers, visits, clientEvents, history }: { clientEvents: CommEvent[]; history: ClientHistory | null; visits: CommVisit[]; deal: DealRow; events: Ev[]; quotes: QuoteView[]; tags: { group: string; label: string; color: string }[]; terms: string[]; extraPct: number; icmsPct?: number | null; icmsRatePct?: number | null; canDelete: boolean; phones: { value: string; label: string | null }[]; meId: number; team: boolean; canClaim: boolean; sellers: { id: number; name: string }[] }) {
+export function DealPanel({ deal, events, quotes, tags, terms, extraPct, icmsPct = null, icmsRatePct = null, canDelete, phones, meId, team, canClaim, sellers, visits, clientEvents, history, runs, people }: { runs: ScriptRunView[]; people: DealPerson[]; clientEvents: CommEvent[]; history: ClientHistory | null; visits: CommVisit[]; deal: DealRow; events: Ev[]; quotes: QuoteView[]; tags: { group: string; label: string; color: string }[]; terms: string[]; extraPct: number; icmsPct?: number | null; icmsRatePct?: number | null; canDelete: boolean; phones: { value: string; label: string | null }[]; meId: number; team: boolean; canClaim: boolean; sellers: { id: number; name: string }[] }) {
   const { run, pending } = useRun();
   const closed = deal.stage === "ganho" || deal.stage === "perdido";
   const mine = deal.sellerId === meId || team;
@@ -119,6 +120,8 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, icmsPct
             {deal.nextActionAt && !closed ? <span>Próximo passo: <b className="text-ink">{fmtDateTime(deal.nextActionAt).slice(0, 10)}{deal.nextActionNote ? ` · ${deal.nextActionNote}` : ""}</b></span> : null}
           </div>
         </section>
+
+        <DealKpis deal={deal} quotes={quotes.length} runs={runs.length} events={clientEvents.length || events.length} visits={visits.length} />
 
         {!deal.sellerId && !closed && (
           <div className={`${panelCls} flex flex-wrap items-center justify-between gap-3 border-accent/50 p-4`}>
@@ -269,15 +272,7 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, icmsPct
         )}
       </div>
 
-      <div className="grid gap-4">
-        <VisitsPanel visits={visits} />
-        {history && (
-          <SectionCard icon={History} title="Histórico completo do cliente">
-            <p className="mb-3 text-xs text-muted">Todas as negociações, cotações, faturamentos, andamentos e atendimentos deste cliente ficam aqui, numa janela só.</p>
-            <ClientHistoryView h={history} maxH="max-h-72" />
-          </SectionCard>
-        )}
-      </div>
+      <DealRecords deal={deal} runs={runs} history={history} visits={visits} people={people} />
 
       <ConfirmDialog open={confirm !== null} tone="danger" icon={confirm === "return" ? Undo2 : Trash2} title={confirm === "delete" ? "Apagar esta negociação?" : confirm === "return" ? "Devolver ao SDR?" : "Resetar esta negociação?"} confirmLabel={confirm === "delete" ? "Sim, apagar" : confirm === "return" ? "Sim, devolver" : "Sim, resetar"} busy={pending} onCancel={() => setConfirm(null)} onConfirm={() => { const c = confirm; setConfirm(null); if (c === "delete") run(() => deleteDealAction(deal.id), undefined, () => router.push("/negociacoes")); else if (c === "return") run(() => returnDealToSdrAction(deal.id, returnWhy), undefined, () => router.push("/negociacoes"), "Devolvendo…"); else run(() => resetDealAction(deal.id)); }}>
         {confirm === "delete" ? "A negociação, as cotações e o histórico serão apagados. Um registro completo fica guardado na auditoria do admin." : confirm === "return" ? (
