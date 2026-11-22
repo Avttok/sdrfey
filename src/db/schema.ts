@@ -417,6 +417,20 @@ export const presence = pgTable("presence", {
   leadId: integer("lead_id"),
 });
 
+/** Fotos comprimidas da tela de quem está sendo observado no Ao vivo: no máximo 10 por pessoa, até 5 minutos. */
+export const liveSnaps = pgTable("live_snaps", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  image: text("image").notNull(),
+  path: text("path"),
+  createdAt: now(),
+}, (t) => [index("live_snaps_user_idx").on(t.userId, t.id)]);
+/** Quem o Adm está olhando agora (a licença vale poucos segundos e é renovada enquanto a janela estiver aberta). */
+export const liveWatch = pgTable("live_watch", {
+  userId: integer("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  until: timestamp("until", { withTimezone: true }).notNull(),
+});
+
 /** Modelos de e-mail gerenciados pelo Adm. Variáveis: {meu_nome} {empresa} {contato|fallback} {cidade} {representante}. */
 export const emailTemplates = pgTable("email_templates", {
   id: serial("id").primaryKey(),

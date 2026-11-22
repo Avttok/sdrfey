@@ -1,5 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { Radio } from "lucide-react";
+import { LiveView } from "@/components/admin/live-view";
 import { DisconnectButton, LiveToolbar } from "@/components/admin/live-actions";
 import { LiveRefresh } from "@/components/admin/live-refresh";
 import { ActivityIcon } from "@/components/activity-icon";
@@ -43,6 +44,7 @@ export default async function Page() {
                   <span className="truncate">{r.online ? (r.activity ?? "Online") : (r.last ? `Offline · visto ${fmtDateTime(r.last)}` : "Nunca acessou")}</span>
                 </p>
               </div>
+              {r.uid !== me.id && r.online && <LiveView uid={r.uid} name={r.name} />}
               {r.uid !== me.id && <DisconnectButton id={r.uid} name={r.name} />}
             </li>
           );

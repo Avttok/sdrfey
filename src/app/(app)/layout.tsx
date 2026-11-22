@@ -10,6 +10,7 @@ import { GoldMode } from "@/components/gold-mode";
 import { goldStatus } from "@/modules/goals/gold";
 import { AnnouncementHost } from "@/components/announcement-host";
 import { BottomFade } from "@/components/bottom-fade";
+import { LiveSnap } from "@/components/live-snap";
 import { EggKnock } from "@/components/egg-knock";
 import { CopyGuard } from "@/components/copy-guard";
 import { SwRegister } from "@/components/sw-register";
@@ -49,6 +50,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <AnnouncementHost />
       <BottomFade />
       <SwRegister />
+      <LiveSnap />
       {settings.copy_guard === 1 && !user.isAdmin && <CopyGuard />}
       <Suspense fallback={null}><ChatMount user={user} /></Suspense>
       </AvatarProvider>

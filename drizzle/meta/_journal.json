@@ -323,6 +323,13 @@
       "when": 1795356411755,
       "tag": "0045_nomenclatura_produtos",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1795356815285,
+      "tag": "0046_live_snaps",
+      "breakpoints": true
     }
   ]
 }
