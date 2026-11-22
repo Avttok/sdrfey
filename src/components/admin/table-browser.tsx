@@ -27,7 +27,7 @@ export function TableBrowser({ table, onClose, onChanged }: { table: string; onC
     toast(r.ok ? "ok" : "bad", r.message); if (r.ok) { await load(page, q); onChanged(); } } });
   const empty = async () => { setBusy(true); const r = await emptyTableAction(table, word); setBusy(false); toast(r.ok ? "ok" : "bad", r.message); if (r.ok) { setEmptyOpen(false); setWord(""); await load(0, q); onChanged(); } };
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label={`Registros de ${table}`} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-md p-3 sm:p-6" role="dialog" aria-modal="true" aria-label={`Registros de ${table}`} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className={`${panelCls} !bg-panel flex max-h-[94vh] w-full max-w-[min(96vw,100rem)] flex-col overflow-hidden shadow-2xl`}>
         <header className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-4">
           <div className="min-w-0 flex-1"><h2 className="display text-xl">{table}</h2><p className="text-xs text-muted">{ok ? `${ok.total.toLocaleString("pt-BR")} registro(s)${q ? " na busca" : ""}` : "Carregando…"}</p></div>

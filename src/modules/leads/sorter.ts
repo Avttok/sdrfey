@@ -94,7 +94,7 @@ export async function attendLead(userId: number, leadId: number): Promise<void> 
   const [inDeal] = await db.execute<{ x: number }>(sql`select 1 as x from deals where lead_id = ${leadId} limit 1`);
   if (inDeal) throw new UserError("Este cliente já está com os vendedores e não volta para o Shuffler.");
   const [inactive] = await db.execute<{ x: number }>(sql`select 1 as x from leads where id = ${leadId} and kind = 'inativo'`);
-  if (inactive) throw new UserError("Lead inativo: quem trabalha é o vendedor, no Shuffler de vendas.");
+  if (inactive) throw new UserError("Lead inativo: quem trabalha é o vendedor, no Shuffler Vendas.");
   const rows = await db.execute<{ id: number; is_test: boolean }>(sql`
     update leads set locked_by = ${userId}, locked_at = now(), last_served_at = now(),
                      times_served = times_served + case when locked_by = ${userId} then 0 else 1 end

@@ -53,7 +53,7 @@ function InfoDialog({ messageId, onClose }: { messageId: number; onClose: () => 
   }, [messageId]);
   const Icon = info ? KIND_META[info.kind].Icon : Building2;
   return (
-    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label="Item compartilhado" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/40 backdrop-blur-md p-4" role="dialog" aria-modal="true" aria-label="Item compartilhado" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="max-h-[88vh] w-full max-w-xl space-y-4 overflow-y-auto rounded-2xl border border-line bg-panel p-5 shadow-2xl">
         <div className="flex items-start gap-3">
           <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-grad-soft text-accent"><Icon size={20} aria-hidden /></span>

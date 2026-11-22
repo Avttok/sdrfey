@@ -15,8 +15,8 @@ export const QUICK_SLOT_ID = "quick-slot";
 export type QuickKey = "new-deal" | "shuffle" | "shuffle-sales" | "leads" | "visits" | "admin";
 const META: Record<QuickKey, { label: string; icon: LucideIcon; tone?: "main" }> = {
   "new-deal": { label: "Nova negociação", icon: Plus, tone: "main" },
-  shuffle: { label: "Shuffler rápido (SDR)", icon: Shuffle, tone: "main" },
-  "shuffle-sales": { label: "Shuffler de vendas", icon: BadgeDollarSign, tone: "main" },
+  shuffle: { label: "Shuffler Prospecção", icon: Shuffle, tone: "main" },
+  "shuffle-sales": { label: "Shuffler Vendas", icon: BadgeDollarSign, tone: "main" },
   leads: { label: "Buscar lead", icon: Users },
   visits: { label: "Visitas", icon: CalendarCheck },
   admin: { label: "Painel Adm", icon: ShieldCheck },

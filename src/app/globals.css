@@ -479,3 +479,6 @@ html[data-copy-guard="on"] input, html[data-copy-guard="on"] textarea, html[data
 .gold-twinkle { position: absolute; width: 5px; height: 5px; background: #fff7c2; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); animation: gold-tw 2.4s ease-in-out infinite; opacity: 0; }
 @keyframes gold-tw { 0%, 100% { opacity: 0; transform: scale(.3) rotate(0); } 50% { opacity: 1; transform: scale(1.3) rotate(45deg); } }
 @media (prefers-reduced-motion: reduce) { .hunt-egg, .gold-foot, .gold-twinkle, .hunt-ring, .hunt-shard { animation: none; } .hunt-egg { transform: translate(-50%, 0); } .gold-foot { transform: translate(-50%, 0); } }
+
+/* Painéis flutuantes (janelas, menus e listas) sempre desfocam o que está atrás: nada de ler o fundo através deles. */
+[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"] { -webkit-backdrop-filter: blur(28px) saturate(1.4); backdrop-filter: blur(28px) saturate(1.4); }

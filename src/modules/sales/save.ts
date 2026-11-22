@@ -59,6 +59,6 @@ export async function saveSalesWork(userId: number, shuffleId: number, input: Sa
     if (final === "sdr") await logAudit(tx, { userId, leadId: lead.id, entity: "lead", action: "devolveu lead inativo à fila dos SDR", field: "Tipo", oldValue: "Inativo", newValue: "Prospecção" });
 
     await tx.update(sellerShuffles).set({ outcome: final === "visit" ? "deal" : final === "sdr" ? "to_sdr" : "saved", dealId, doneAt: new Date(), note }).where(eq(sellerShuffles.id, shuffleId));
-    await logAudit(tx, { userId, leadId: lead.id, entity: "lead", action: "trabalhou lead inativo", field: "Shuffler de vendas", newValue: final, meta: { meios: input.channels } });
+    await logAudit(tx, { userId, leadId: lead.id, entity: "lead", action: "trabalhou lead inativo", field: "Shuffler Vendas", newValue: final, meta: { meios: input.channels } });
   });
 }

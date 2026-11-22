@@ -98,7 +98,7 @@ export function ImportForm() {
         </div>
         {kind === "leads" && (
           <div role="radiogroup" aria-label="Tipo dos leads" className="mt-3 inline-flex rounded-xl border border-line bg-sunk/50 p-1">
-            {([["prospect", "Novos (Shuffler do SDR)"], ["inativo", "Inativos (Shuffler de vendas)"]] as const).map(([k, l]) => (
+            {([["prospect", "Novos (Shuffler Prospecção)"], ["inativo", "Inativos (Shuffler Vendas)"]] as const).map(([k, l]) => (
               <button key={k} type="button" role="radio" aria-checked={leadKind === k} onClick={() => setLeadKind(k)} className={`min-h-9 rounded-lg px-4 text-sm font-medium transition ${leadKind === k ? "bg-grad text-on-accent shadow-sm" : "text-muted hover:text-ink"}`}>{l}</button>
             ))}
           </div>

@@ -18,7 +18,7 @@ import { listScriptsFor } from "@/modules/scripts/list";
 import { guessSegment } from "@/config/scripts";
 import { getActiveTemplates, getLeadView, getTagCatalog } from "@/modules/leads/view";
 
-export const metadata: Metadata = { title: "Shuffler" };
+export const metadata: Metadata = { title: "Shuffler Prospecção" };
 export const dynamic = "force-dynamic";
 
 export default async function AttendPage() {

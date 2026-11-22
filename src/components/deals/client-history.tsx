@@ -17,7 +17,7 @@ function Block({ icon: I, title, count, children }: { icon: typeof Receipt; titl
 }
 const Empty = ({ t }: { t: string }) => <p className="rounded-lg border border-dashed border-line px-3 py-2 text-xs text-muted">{t}</p>;
 
-/** Tudo que o sistema sabe de um cliente, em blocos. Usado no Shuffler de vendas e no aviso de cliente que já está na carteira. */
+/** Tudo que o sistema sabe de um cliente, em blocos. Usado no Shuffler Vendas e no aviso de cliente que já está na carteira. */
 export function ClientHistoryView({ h, maxH = "max-h-60" }: { h: ClientHistory; maxH?: string }) {
   const { commercial: c, totals: t } = h;
   const won = c.deals.filter((d) => d.stage === "ganho");
@@ -64,7 +64,7 @@ export function ClientHistoryView({ h, maxH = "max-h-60" }: { h: ClientHistory; 
       </Block>
 
       {h.shuffles.length > 0 && (
-        <Block icon={Shuffle} title="Shuffler de vendas" count={h.shuffles.length}>
+        <Block icon={Shuffle} title="Shuffler Vendas" count={h.shuffles.length}>
           <ul className="space-y-1 text-sm">{h.shuffles.map((s, i) => <li key={i}><b>{OUTCOME[s.outcome ?? ""] ?? "Em aberto"}</b> <span className="text-xs text-muted">{fmtDateTime(s.at)}{s.by ? ` · ${s.by}` : ""}</span>{s.note && <span className="block text-xs text-muted">{s.note}</span>}</li>)}</ul>
         </Block>
       )}

@@ -11,14 +11,14 @@ export const GROUP_ICONS: Record<string, LucideIcon> = { Mais: LayoutGrid, Siste
 
 export const NAV: NavItem[] = [
   { href: "/painel", label: "Dashboard", icon: Gauge, perm: "tab.painel" },
-  { href: "/atender", label: "Shuffler", icon: Play, perm: "tab.comecar", group: "SDR" },
+  { href: "/atender", label: "Shuffler Prospecção", icon: Play, perm: "tab.comecar", group: "SDR" },
   { href: "/lista-flow", label: "Lista Flow", icon: Filter, perm: "tab.lista_flow", group: "SDR" },
   { href: "/visitas", label: "Visitas", icon: CalendarCheck, perm: "tab.visitas", group: "SDR" },
   { href: "/metas", label: "Metas", icon: Target, perm: "tab.metas", group: "SDR" },
   { href: "/historico", label: "Histórico", icon: History, perm: "tab.historico", group: "SDR" },
   { href: "/desempenho", label: "Desempenho", icon: FileSpreadsheet, perm: "tab.desempenho", group: "SDR" },
   { href: "/negociacoes", label: "Negociações", icon: Handshake, perm: "tab.negociacoes", group: "Vendas" },
-  { href: "/shuffler-vendas", label: "Shuffler", icon: Play, perm: "tab.shuffler_vendas", group: "Vendas" },
+  { href: "/shuffler-vendas", label: "Shuffler Vendas", icon: Play, perm: "tab.shuffler_vendas", group: "Vendas" },
   { href: "/lista-flow-vendas", label: "Lista Flow", icon: Filter, perm: "tab.lista_flow_vendas", group: "Vendas" },
   { href: "/metas-vendas", label: "Metas", icon: Target, perm: "tab.metas_vendas", group: "Vendas" },
   { href: "/historico-vendas", label: "Histórico", icon: History, perm: "tab.historico_vendas", group: "Vendas" },

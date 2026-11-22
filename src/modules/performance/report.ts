@@ -176,7 +176,7 @@ export async function buildReport(p: ReportParams, personNames: Record<number, s
     ["Tempo até o 1º contato", s.firstContactMinutes == null ? "—" : `${Math.round(s.firstContactMinutes)} min`, ""],
     ["Ciclo de venda", s.cycleDays == null ? "—" : `${s.cycleDays.toFixed(1).replace(".", ",")} dias`, "da entrada ao faturamento"],
     ["Visitas (aguardando/confirmadas/realizadas)", `${s.visits.pending}/${s.visits.confirmed}/${s.visits.done}`, ""],
-    ["Shuffler de vendas", s.shuffler.worked, `${s.shuffler.saved + s.shuffler.visit + s.shuffler.deal} aproveitados · ${s.shuffler.toSdr} devolvidos ao SDR`],
+    ["Shuffler Vendas", s.shuffler.worked, `${s.shuffler.saved + s.shuffler.visit + s.shuffler.deal} aproveitados · ${s.shuffler.toSdr} devolvidos ao SDR`],
   ];
   summary.push({ label: "Vendas fechadas", value: String(s.won), hint: `R$ ${brl(s.wonValue).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` }, { label: "Conversão", value: s.conversion == null ? "—" : `${Math.round(s.conversion * 100)}%` }, { label: "Ticket médio", value: s.ticket ? `R$ ${brl(s.ticket).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—" }, { label: "Cotações enviadas", value: String(s.quotesSent) }, { label: "Contatos", value: String(s.contacts) }, { label: "Em andamento", value: String(s.open) });
   if (want.has("resumo")) sheets.push({ id: "resumo", name: "Resumo", cols: [{ header: "Indicador", key: "k", width: 40 }, { header: "Valor", key: "v", width: 20 }, { header: "Observação", key: "o", width: 46 }], rows: vbase.map(([k, v, o]) => ({ k, v, o: o ?? "" })) });

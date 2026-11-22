@@ -16,7 +16,7 @@ import { getActiveTemplates, getLeadView, getTagCatalog } from "@/modules/leads/
 import { startSalesShuffleAction } from "@/modules/sales/actions";
 import { inactiveStock, openShuffle } from "@/modules/sales/shuffler";
 
-export const metadata: Metadata = { title: "Shuffler de vendas" };
+export const metadata: Metadata = { title: "Shuffler Vendas" };
 export const dynamic = "force-dynamic";
 
 export default async function SalesShufflePage() {

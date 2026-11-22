@@ -10,7 +10,7 @@ const NONE: GoldStatus = { reached: false, label: "", done: 0, qty: 0 };
 
 /**
  * O dia está dourado quando a pessoa bateu TODAS as metas ligadas dela (as do Adm, globais ou individuais).
- * Vendedor: vale o que ele trabalha no Shuffler de vendas. Uma consulta por meta ligada, em paralelo.
+ * Vendedor: vale o que ele trabalha no Shuffler Vendas. Uma consulta por meta ligada, em paralelo.
  */
 export async function goldStatus(me: CurrentUser, settings: Awaited<ReturnType<typeof getSettings>>): Promise<GoldStatus> {
   const goals = effectiveGoals(me, settings);

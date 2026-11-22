@@ -13,7 +13,7 @@ export type ClientHistory = {
   totals: { billedCents: number; billedCount: number; quotes: number; lost: number; deals: number };
 };
 
-/** Tudo que o sistema sabe de um cliente: negociações, cotações, faturamentos, andamentos, visitas, atendimentos do SDR e passagens no Shuffler de vendas. */
+/** Tudo que o sistema sabe de um cliente: negociações, cotações, faturamentos, andamentos, visitas, atendimentos do SDR e passagens no Shuffler Vendas. */
 export async function getClientHistory(leadId: number): Promise<ClientHistory | null> {
   const [l] = await db.select().from(leads).where(eq(leads.id, leadId));
   if (!l) return null;

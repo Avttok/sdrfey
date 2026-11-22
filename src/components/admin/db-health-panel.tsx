@@ -92,7 +92,7 @@ export function DbHealthPanel() {
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                         <Stat label="Usuários online" value={`${data.system.usersOnline} de ${data.system.usersActive}`} />
                         <Stat label="Atendidos hoje (SDR)" value={N.format(data.system.attendedToday)} />
-                        <Stat label="Shuffler de vendas hoje" value={N.format(data.system.shufflesToday)} />
+                        <Stat label="Shuffler Vendas hoje" value={N.format(data.system.shufflesToday)} />
                         <Stat label="Leads inativos" value={N.format(data.system.inactiveLeads)} />
                         <Stat label="Negociações abertas" value={N.format(data.system.dealsOpen)} />
                         <Stat label="Faturadas" value={N.format(data.system.dealsBilled)} hint={`${N.format(data.system.dealsLost)} perdidas`} />

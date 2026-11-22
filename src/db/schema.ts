@@ -178,7 +178,7 @@ export const leads = pgTable(
     source: text("source"),
     /** Lote de importação que criou o lead (permite desfazer o lote). */
     importBatchId: integer("import_batch_id"),
-    /** 'prospect' = lead novo (Shuffler do SDR). 'inativo' = já cadastrado na Fey (EOX/Salesforce), trabalhado pelos vendedores no Shuffler de vendas. */
+    /** 'prospect' = lead novo (Shuffler Prospecção). 'inativo' = já cadastrado na Fey (EOX/Salesforce), trabalhado pelos vendedores no Shuffler Vendas. */
     kind: text("kind").$type<"prospect" | "inativo">().notNull().default("prospect"),
     createdAt: now(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -721,7 +721,7 @@ export const chatReactions = pgTable(
   (t) => [primaryKey({ columns: [t.messageId, t.userId, t.emoji] }), index("chat_reactions_user_idx").on(t.userId)],
 );
 
-/** Passagens do vendedor pelo Shuffler de vendas (leads inativos). Separado do atendimento do SDR para não misturar métricas. */
+/** Passagens do vendedor pelo Shuffler Vendas (leads inativos). Separado do atendimento do SDR para não misturar métricas. */
 export const sellerShuffles = pgTable(
   "seller_shuffles",
   {

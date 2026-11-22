@@ -9,7 +9,7 @@ export type PermissionDef = { key: string; label: string; group: "Abas" | "Paine
 
 export const PERMISSIONS: PermissionDef[] = [
   { key: "tab.painel", label: "Aba Dashboard", group: "Abas", defaults: ["user", "manager", "seller"] },
-  { key: "tab.comecar", label: "Aba Shuffler", group: "Abas", defaults: ["user", "manager"] },
+  { key: "tab.comecar", label: "Aba SDR: Shuffler Prospecção", group: "Abas", defaults: ["user", "manager"] },
   { key: "tab.leads", label: "Aba Leads", group: "Abas", defaults: ["user", "manager", "seller"] },
   { key: "tab.historico", label: "Aba SDR: Histórico (atendimentos)", group: "Abas", defaults: ["user", "manager"] },
   { key: "tab.historico_vendas", label: "Aba Vendas: Histórico (negociações)", group: "Abas", defaults: ["seller", "manager"] },
@@ -25,7 +25,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "tab.transportadoras", label: "Aba Transportadoras (consultar)", group: "Abas", defaults: ["seller", "manager"] },
   { key: "tab.email", label: "Aba Opções: E-mail (modelos pessoais)", group: "Abas", defaults: ["user", "seller", "manager"] },
   { key: "tab.scripts", label: "Aba Opções: Scripts de ligação", group: "Abas", defaults: ["user", "seller", "manager"] },
-  { key: "tab.shuffler_vendas", label: "Aba Vendas: Shuffler (leads inativos)", group: "Abas", defaults: ["seller", "manager"] },
+  { key: "tab.shuffler_vendas", label: "Aba Vendas: Shuffler Vendas (leads inativos)", group: "Abas", defaults: ["seller", "manager"] },
 
   { key: "panel.equipe", label: "Ver números da equipe toda (sem isso, só os próprios)", group: "Painel", defaults: ["manager"] },
   { key: "panel.kpi.contatos", label: "Indicador: Contatos", group: "Painel", defaults: ["user", "manager"] },

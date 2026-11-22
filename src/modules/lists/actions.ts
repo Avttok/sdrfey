@@ -64,7 +64,7 @@ export async function deleteListAction(kindRaw: unknown, id: number): Promise<Ac
   return { ok: true, message: "Lista excluída." };
 }
 
-/** Botão "Sortear da lista" do Shuffler SDR. */
+/** Botão "Sortear da lista" do Shuffler Prospecção. */
 export async function startSdrListAction() {
   const me = await requirePerm("tab.comecar");
   const l = await activeList(me.id, "sdr");
@@ -73,7 +73,7 @@ export async function startSdrListAction() {
   redirect("/atender");
 }
 
-/** Botão "Sortear da lista" do Shuffler de Vendas. */
+/** Botão "Sortear da lista" do Shuffler Vendas. */
 export async function startSalesListAction() {
   const me = await requirePerm("tab.shuffler_vendas");
   const l = await activeList(me.id, "vendas");

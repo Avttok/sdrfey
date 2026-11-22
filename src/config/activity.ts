@@ -7,8 +7,8 @@ export type Detail = { kind: "lead" | "deal"; id: number };
 export type ActKind = "attend" | "deal" | "lead" | "visit" | "goal" | "history" | "dash" | "import" | "export" | "admin" | "users" | "log" | "trash" | "test" | "account" | "rep" | "away" | "online";
 
 const ROUTES: { re: RegExp; label: string; kind: ActKind; detail?: (m: RegExpMatchArray) => Detail; withName?: string }[] = [
-  { re: /^\/atender/, label: "No Shuffler", kind: "attend" },
-  { re: /^\/shuffler-vendas/, label: "No Shuffler de vendas", kind: "attend" },
+  { re: /^\/atender/, label: "No Shuffler Prospecção", kind: "attend" },
+  { re: /^\/shuffler-vendas/, label: "No Shuffler Vendas", kind: "attend" },
   { re: /^\/negociacoes\/importar/, label: "Importando cotações", kind: "import" },
   { re: /^\/negociacoes\/(\d+)/, label: "Negociando", kind: "deal", detail: (m) => ({ kind: "deal", id: Number(m[1]) }), withName: "Negociando" },
   { re: /^\/negociacoes/, label: "Na carteira de vendas", kind: "deal" },

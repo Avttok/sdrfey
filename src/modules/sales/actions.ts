@@ -33,7 +33,7 @@ export async function finishSalesShuffleAction(id: number, outcome: "no_answer" 
     .where(and(eq(sellerShuffles.id, id), eq(sellerShuffles.userId, me.id), sql`${sellerShuffles.outcome} is null`)).returning({ leadId: sellerShuffles.leadId });
   if (!s) return fail("Este lead não está mais com você.");
   await db.update(leads).set({ lockedBy: null, lockedAt: null }).where(and(eq(leads.id, s.leadId), eq(leads.lockedBy, me.id)));
-  await logAudit(db, { userId: me.id, leadId: s.leadId, entity: "lead", action: "trabalhou lead inativo", field: "Shuffler de vendas", newValue: p.data.outcome, meta: { nota: p.data.note || null } });
+  await logAudit(db, { userId: me.id, leadId: s.leadId, entity: "lead", action: "trabalhou lead inativo", field: "Shuffler Vendas", newValue: p.data.outcome, meta: { nota: p.data.note || null } });
   revalidatePath("/shuffler-vendas");
   return { ok: true };
 }
@@ -52,7 +52,7 @@ export async function openDealFromShuffleAction(id: number, note: string): Promi
   const text = note.trim().slice(0, 2000) || null;
   const dealId = await db.transaction(async (tx) => {
     const [d] = await tx.insert(deals).values({ leadId: lead.id, sdrId: null, sellerId: me.id, stage: "contato", claimedAt: new Date(), lastContactAt: new Date(), handoffNote: text, isTest: lead.isTest }).returning({ id: deals.id });
-    await tx.insert(dealEvents).values({ dealId: d.id, userId: me.id, kind: "criado", note: text ?? "Aberta pelo Shuffler de vendas" });
+    await tx.insert(dealEvents).values({ dealId: d.id, userId: me.id, kind: "criado", note: text ?? "Aberta pelo Shuffler Vendas" });
     await tx.update(sellerShuffles).set({ outcome: "deal", dealId: d.id, doneAt: new Date(), note: text }).where(eq(sellerShuffles.id, id));
     await tx.update(leads).set({ lockedBy: null, lockedAt: null }).where(and(eq(leads.id, lead.id), eq(leads.lockedBy, me.id)));
     await logAudit(tx, { userId: me.id, leadId: lead.id, entity: "deal", action: "abriu negociação", field: "Negociação", newValue: "lead inativo", meta: { negociacao: d.id } });

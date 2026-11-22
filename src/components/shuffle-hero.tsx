@@ -7,7 +7,7 @@ import type { Role } from "@/config/roles";
 import { SubmitButton } from "@/components/submit-button";
 
 /** Tela inicial do Shuffler: fundo vivo, cartas flutuando, título, conteúdo centralizado e botão grande. */
-export function ShuffleHero({ action, children, avatar, roles, empty, list, title = "Shuffler SDR" }: { /** Lista do Lista Flow ativa: mostra o botão extra. */ list?: { action: () => void | Promise<void>; name: string; count: number; href: string }; /** Nome exibido no topo da tela inicial. */ title?: string; action: () => void | Promise<void>; children: React.ReactNode; avatar?: string | null; roles: readonly Role[]; /** Sem lead para sortear: troca a tela por um aviso. */ empty?: { hint: string } }) {
+export function ShuffleHero({ action, children, avatar, roles, empty, list, title = "Shuffler Prospecção" }: { /** Lista do Lista Flow ativa: mostra o botão extra. */ list?: { action: () => void | Promise<void>; name: string; count: number; href: string }; /** Nome exibido no topo da tela inicial. */ title?: string; action: () => void | Promise<void>; children: React.ReactNode; avatar?: string | null; roles: readonly Role[]; /** Sem lead para sortear: troca a tela por um aviso. */ empty?: { hint: string } }) {
   return (
     <>
       <div aria-hidden className="spawn-fade pointer-events-none fixed inset-0 -z-10" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 26%, var(--bg)) 0%, color-mix(in srgb, var(--accent) 7%, var(--bg)) 48%, color-mix(in srgb, var(--accent) 20%, var(--bg)) 100%)" }}>

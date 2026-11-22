@@ -72,7 +72,7 @@ export function SalesDashboard({ s, showRanking }: { s: SalesStats; showRanking:
         <Kpi i={6} hex="#E24B4A" I={TrendingDown} t="Valor perdido" v={fmtBRL(s.lostValue)} s={`${nf.format(s.lost)} ${s.lost === 1 ? "perdida" : "perdidas"} no período`} />
         <Kpi i={7} hex="#BA7517" I={Hourglass} t="Ciclo de venda" v={s.cycleDays == null ? "—" : `${s.cycleDays.toFixed(1).replace(".", ",")} d`} s="da entrada ao faturamento" />
         <Kpi i={8} hex="#ec4899" I={CalendarCheck} t="Visitas" v={nf.format(s.visits.pending + s.visits.confirmed + s.visits.done)} s={`${nf.format(s.visits.done)} realizadas · ${nf.format(s.visits.confirmed)} confirmadas · ${nf.format(s.visits.pending)} aguardando`} />
-        <Kpi i={9} hex="#a855f7" I={Shuffle} t="Shuffler de vendas" v={nf.format(s.shuffler.worked)} s={`${nf.format(s.shuffler.saved + s.shuffler.visit + s.shuffler.deal)} aproveitados · ${nf.format(s.shuffler.toSdr)} devolvidos ao SDR`} />
+        <Kpi i={9} hex="#a855f7" I={Shuffle} t="Shuffler Vendas" v={nf.format(s.shuffler.worked)} s={`${nf.format(s.shuffler.saved + s.shuffler.visit + s.shuffler.deal)} aproveitados · ${nf.format(s.shuffler.toSdr)} devolvidos ao SDR`} />
         <Kpi i={10} I={BellRing} t="Avisos" v={nf.format(s.alerts.length)} s={s.alerts.length ? "precisam de atenção" : "tudo em dia"} hot={s.alerts.length > 0} hex="#1D9E75" />
       </div>
       <div className="panel-grid">
@@ -155,7 +155,7 @@ function ShufflerBlock({ s, showRanking }: { s: SalesStats; showRanking: boolean
   ];
   const max = Math.max(1, ...rows.map((r) => r.n));
   return (
-    <Block icon={Shuffle} title="Shuffler de vendas">
+    <Block icon={Shuffle} title="Shuffler Vendas">
       {h.worked === 0 ? <p className="text-sm text-muted">Nenhum lead sorteado no período. Há {nf.format(h.pool)} leads inativos disponíveis no estoque.</p> : (
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
