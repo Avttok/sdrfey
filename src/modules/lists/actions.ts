@@ -5,12 +5,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db, leadLists } from "@/db";
-import { cleanListFilters, type ListFilters } from "@/config/lists";
+import { LIST_MAX_LEADS, LIST_MAX_PER_USER, cleanListFilters, type ListFilters } from "@/config/lists";
 import { requirePerm } from "@/modules/auth/guard";
 import type { ActionResult } from "@/modules/leads/actions";
 import { claimNext } from "@/modules/leads/sorter";
 import { claimInactive } from "@/modules/sales/shuffler";
-import { activeList, countList, sampleList, type ListKind } from "./queries";
+import { activeList, countList, listsUsed, sampleList, type ListKind } from "./queries";
 
 const fail = (message: string): ActionResult => ({ ok: false, message });
 const permOf = (k: ListKind) => (k === "sdr" ? "tab.lista_flow" : "tab.lista_flow_vendas");
@@ -36,6 +36,8 @@ export async function saveListAction(input: { id?: number; kind: ListKind; name:
   const filters = cleanListFilters(input.filters);
   const count = await countList(kind, filters, me.id);
   if (input.activate && count === 0) return fail("Esta lista está vazia agora; ajuste os filtros antes de ativá-la.");
+  if (count > LIST_MAX_LEADS) return fail(`Esta lista tem ${count.toLocaleString("pt-BR")} leads e o limite é ${LIST_MAX_LEADS} por lista. Acrescente filtros (cidade, tipo de empresa…) até ficar com ${LIST_MAX_LEADS} ou menos.`);
+  if (!p.data.id && (await listsUsed(me.id)) >= LIST_MAX_PER_USER) return fail(`Você já tem ${LIST_MAX_PER_USER} listas, que é o limite. Exclua ou zere uma delas para abrir espaço.`);
   await db.transaction(async (tx) => {
     if (input.activate) await tx.update(leadLists).set({ active: false }).where(and(eq(leadLists.ownerId, me.id), eq(leadLists.kind, kind)));
     if (p.data.id) await tx.update(leadLists).set({ name: p.data.name, filters, ...(input.activate ? { active: true } : {}) }).where(and(eq(leadLists.id, p.data.id), eq(leadLists.ownerId, me.id)));
@@ -48,6 +50,12 @@ export async function saveListAction(input: { id?: number; kind: ListKind; name:
 export async function setActiveListAction(kindRaw: unknown, id: number | null): Promise<ActionResult> {
   const kind = kindOf(kindRaw);
   const me = await requirePerm(permOf(kind));
+  if (id) {
+    const [l] = await db.select().from(leadLists).where(and(eq(leadLists.id, id), eq(leadLists.ownerId, me.id), eq(leadLists.kind, kind))).limit(1);
+    if (!l) return fail("Lista não encontrada.");
+    const n = await countList(kind, cleanListFilters(l.filters), me.id);
+    if (n > LIST_MAX_LEADS) return fail(`Esta lista passou de ${LIST_MAX_LEADS} leads (hoje ${n.toLocaleString("pt-BR")}). Edite os filtros para reduzir antes de ativar.`);
+  }
   await db.transaction(async (tx) => {
     await tx.update(leadLists).set({ active: false }).where(and(eq(leadLists.ownerId, me.id), eq(leadLists.kind, kind)));
     if (id) await tx.update(leadLists).set({ active: true }).where(and(eq(leadLists.id, id), eq(leadLists.ownerId, me.id), eq(leadLists.kind, kind)));

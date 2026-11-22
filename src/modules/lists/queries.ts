@@ -28,6 +28,12 @@ export async function sampleList(kind: ListKind, f: ListFilters, userId: number)
     order by random() limit 6`);
 }
 
+/** Quantas listas a pessoa já tem (Prospecção + Vendas). */
+export async function listsUsed(userId: number): Promise<number> {
+  const [r] = await db.select({ n: sql<number>`count(*)::int` }).from(leadLists).where(eq(leadLists.ownerId, userId));
+  return r?.n ?? 0;
+}
+
 export async function myLists(userId: number, kind: ListKind): Promise<ListRow[]> {
   const rows = await db.select().from(leadLists).where(and(eq(leadLists.ownerId, userId), eq(leadLists.kind, kind))).orderBy(desc(leadLists.active), desc(leadLists.id));
   return Promise.all(rows.map(async (r) => { const filters = cleanListFilters(r.filters); return { id: r.id, name: r.name, kind, filters, active: r.active, count: await countList(kind, filters, userId) }; }));

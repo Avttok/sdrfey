@@ -13,6 +13,9 @@ export type ListFilters = {
   enriched: "any" | "yes" | "no";
   untouched: boolean;
 };
+/** Limites do Lista Flow: no máximo 100 contatos por lista e 3 listas por pessoa (somando Prospecção e Vendas). */
+export const LIST_MAX_LEADS = 100;
+export const LIST_MAX_PER_USER = 3;
 export const EMPTY_FILTERS: ListFilters = { ufs: [], city: "", segments: [], words: "", tags: [], phone: true, email: false, person: false, enriched: "any", untouched: false };
 
 export const SEGMENT_WORDS: Record<string, { label: string; words: string[] }> = {

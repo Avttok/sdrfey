@@ -4,7 +4,7 @@ import { Anchor, Building2, Car, Check, ChevronDown, Cog, Factory, Filter, Hamme
 import { useEffect, useRef, useState } from "react";
 import { FlashTag } from "@/components/attend-final";
 import { HScroll } from "@/components/h-scroll";
-import { describeFilters, EMPTY_FILTERS, SEGMENT_WORDS, UFS, type ListFilters } from "@/config/lists";
+import { describeFilters, EMPTY_FILTERS, LIST_MAX_LEADS, LIST_MAX_PER_USER, SEGMENT_WORDS, UFS, type ListFilters } from "@/config/lists";
 import { useConfirm } from "@/components/confirm-dialog";
 import { btnGhost, btnPrimary, inputCls } from "@/components/ui";
 import { useRun } from "@/components/use-run";
@@ -57,7 +57,7 @@ function Block({ n, icon: I, title, hint, badge, children, open: o = true }: { n
   );
 }
 
-export function ListFlow({ kind, lists, tagGroups }: { kind: ListKind; lists: ListRow[]; tagGroups: TagGroup[] }) {
+export function ListFlow({ kind, lists, tagGroups, used }: { kind: ListKind; lists: ListRow[]; tagGroups: TagGroup[]; /** listas da pessoa nas duas áreas */ used: number }) {
   const [f, setF] = useState<ListFilters>(EMPTY_FILTERS);
   const [editId, setEditId] = useState<number | undefined>();
   const [name, setName] = useState("");
@@ -84,6 +84,8 @@ export function ListFlow({ kind, lists, tagGroups }: { kind: ListKind; lists: Li
   const summary = describeFilters(f);
   const set = <K extends keyof ListFilters>(k: K, v: ListFilters[K]) => setF({ ...f, [k]: v });
   const tagChips = tagGroups.flatMap((g) => g.tags.map((t) => ({ v: `${g.key}:${t.key}`, label: t.label })));
+  const over = (pv?.count ?? 0) > LIST_MAX_LEADS;
+  const full = !editId && used >= LIST_MAX_PER_USER;
   const quality = [f.phone, f.email, f.person, f.untouched].filter(Boolean).length;
 
   return (
@@ -210,9 +212,12 @@ export function ListFlow({ kind, lists, tagGroups }: { kind: ListKind; lists: Li
           </ul>
           {(pv?.sample.length ?? 0) > 0 && <p className="text-[11px] text-muted">Exemplos sorteados. A cada abertura aparecem outros.</p>}
           <label className="block text-sm font-medium">Nome da lista<input className={inputCls} value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Postos de molas de SP" /></label>
+          {over && <p role="alert" className="rounded-xl border border-warn/50 bg-warn/10 px-3 py-2 text-xs">Esta lista tem mais de {LIST_MAX_LEADS} leads, que é o limite. Acrescente filtros (cidade, tipo de empresa…) até ficar com {LIST_MAX_LEADS} ou menos.</p>}
+          {full && <p role="alert" className="rounded-xl border border-warn/50 bg-warn/10 px-3 py-2 text-xs">Você já usa {used} de {LIST_MAX_PER_USER} listas. Exclua uma em “Minhas listas” para abrir espaço.</p>}
+          <p className="text-[11px] text-muted">Limites: até {LIST_MAX_LEADS} leads por lista e {LIST_MAX_PER_USER} listas por pessoa ({used} em uso).</p>
           <div className="grid gap-2">
-            <button type="button" className={btnPrimary} disabled={pending || !pv || pv.count === 0} onClick={() => save(true)}><Play size={15} aria-hidden /> Salvar e ativar no Shuffler</button>
-            <button type="button" className={btnGhost} disabled={pending} onClick={() => save(false)}><Plus size={15} aria-hidden /> Só salvar</button>
+            <button type="button" className={btnPrimary} disabled={pending || full || over || !pv || pv.count === 0} onClick={() => save(true)}><Play size={15} aria-hidden /> Salvar e ativar no Shuffler</button>
+            <button type="button" className={btnGhost} disabled={pending || full || over} onClick={() => save(false)}><Plus size={15} aria-hidden /> Só salvar</button>
           </div>
         </aside>
       </div>
