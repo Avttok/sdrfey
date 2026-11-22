@@ -2,7 +2,7 @@
 
 import Papa from "papaparse";
 import { Check, ChevronLeft, ChevronRight, CircleHelp, EyeOff, Pencil, RotateCcw, Search, Sparkles, Trash2, TriangleAlert, Wand2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { btnGhost, btnPrimary, inputCls } from "@/components/ui";
 import { decodeCsv, parseCsv } from "@/modules/import/csv";
@@ -22,6 +22,8 @@ export function ImportEditor({ file, kind, busy, onApply }: { file: File; kind: 
   const [page, setPage] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [err, setErr] = useState("");
+  const scroller = useRef<HTMLDivElement>(null);
+  const go = (dx: number) => scroller.current?.scrollBy({ left: dx, behavior: "smooth" });
 
   useEffect(() => {
     let alive = true;
@@ -130,7 +132,10 @@ export function ImportEditor({ file, kind, busy, onApply }: { file: File; kind: 
             {!orig && !err && <p className="p-6 text-sm text-muted">Abrindo…</p>}
             {orig && (
               <>
-                <div className="min-h-0 flex-1 overflow-auto">
+                <div className="relative flex min-h-0 flex-1 flex-col">
+                <button type="button" aria-label="Rolar para a esquerda" onClick={() => go(-480)} className="absolute left-2 top-1/2 z-20 grid size-10 -translate-y-1/2 place-items-center rounded-full border border-line bg-panel/95 shadow-lg hover:bg-sunk"><ChevronLeft size={20} aria-hidden /></button>
+                <button type="button" aria-label="Rolar para a direita" onClick={() => go(480)} className="absolute right-4 top-1/2 z-20 grid size-10 -translate-y-1/2 place-items-center rounded-full border border-line bg-panel/95 shadow-lg hover:bg-sunk"><ChevronRight size={20} aria-hidden /></button>
+                <div ref={scroller} className="min-h-0 w-full min-w-0 flex-1 overflow-x-scroll overflow-y-auto">
                   <table className="w-full min-w-max text-sm">
                     <thead className="sticky top-0 z-10 bg-sunk">
                       <tr><th className="w-10 p-1.5" />
@@ -166,6 +171,7 @@ export function ImportEditor({ file, kind, busy, onApply }: { file: File; kind: 
                       {view.length === 0 && <tr><td colSpan={headers.length + 1} className="p-6 text-center text-muted">Nenhuma linha.</td></tr>}
                     </tbody>
                   </table>
+                </div>
                 </div>
                 <footer className="flex flex-wrap items-center justify-center gap-3 border-t border-line px-4 py-2.5 text-sm">
                   <button type="button" className={btnGhost} disabled={cur === 0} onClick={() => setPage(cur - 1)} aria-label="Página anterior"><ChevronLeft size={15} aria-hidden /></button>

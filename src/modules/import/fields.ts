@@ -11,7 +11,7 @@ const mk = (aliases: Record<string, readonly string[]>, info: Record<string, [la
 
 const LEADS = mk(LEAD_COLUMNS, {
   cnpj: ["CNPJ", "Identifica a empresa (com ou sem pontos)", "CNPJ"],
-  company: ["Nome da empresa", "Razão social do lead", "EMPRESA"],
+  company: ["Razão Social", "Nome da empresa como na Receita", "EMPRESA"],
   sapCode: ["Código SAP", "Código do cliente no SAP", "COD SAP"],
   contact: ["Nome do contato", "Pessoa que atende", "CONTATO"],
   phone: ["Telefone", "Pode ter vários, separados por vírgula", "TELEFONE"],
@@ -47,7 +47,7 @@ const REPS = mk(REP_COLUMNS, {
 
 const DEALS = mk(DEAL_COLUMNS, {
   cnpj: ["CNPJ do cliente", "Identifica o cliente", "CNPJ"],
-  company: ["Nome do cliente", "Razão social", "EMPRESA"],
+  company: ["Razão Social", "Nome da empresa como na Receita", "EMPRESA"],
   contact: ["Nome do contato", "Pessoa que atende", "CONTATO"],
   phone: ["Telefone", "Pode ter vários", "TELEFONE"],
   email: ["E-mail", "Um e-mail válido", "EMAIL"],

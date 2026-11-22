@@ -8,7 +8,8 @@ import { db, importBatches } from "@/db";
 import { requireAdmin } from "@/modules/auth/guard";
 import { LEAD_COLUMNS, REP_COLUMNS } from "./columns";
 import { commonChecks, inspectFile, LEAD_LABELS, REP_LABELS, type FileInsight } from "./insight";
-import { decodeCsv, parseCsv } from "./csv";
+import { decodeCsv, mergeRepeatedColumns, parseCsv } from "./csv";
+import { fieldOfHeader } from "./fields";
 import { headerKey } from "./normalize";
 import { applyLeadDrafts, countEnrichable, type ImportMode } from "./leads-apply";
 import { parseLeadRows, type ImportReport } from "./leads-parse";
@@ -31,7 +32,8 @@ async function readFile(formData: FormData) {
   const maxMb = (await getSettings()).import_max_mb;
   if (file.size > maxMb * 1024 * 1024) return { error: `Arquivo grande demais (máximo ${maxMb} MB).` } as const;
   try {
-    const { headers, rows } = parseCsv(decodeCsv(Buffer.from(await file.arrayBuffer())));
+    const parsed = parseCsv(decodeCsv(Buffer.from(await file.arrayBuffer())));
+    const { headers, rows } = mergeRepeatedColumns(parsed, (h) => { const f = fieldOfHeader(kind === "reps" ? "reps" : "leads", h); return f && ["phone", "email", "contact"].includes(f.key) ? f.key : null; });
     return { error: undefined, kind, headers, rows, name: file.name, size: file.size } as const;
   } catch {
     return { error: "Não consegui ler o arquivo. Confira se é um CSV." } as const;

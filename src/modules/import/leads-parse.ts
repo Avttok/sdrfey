@@ -21,6 +21,8 @@ export type LeadDraft = {
   roleTitle: string | null;
   phones: string[];
   email: string | null;
+  /** Todos os e-mails encontrados (inclui o principal); colunas repetidas são juntadas. */
+  emails?: string[];
   notes: string | null;
   legacyVisit: string | null;
   /** Nome escrito na coluna de responsável (resolvido para usuário na hora de gravar). */
@@ -138,6 +140,7 @@ export function parseLeadRows(
     const { phones, fixed } = splitPhones(get(row, "phone"));
     if (fixed) fix("celularesComNoveDigitoCorrigidos", fixed);
     const email = normalizeEmail(get(row, "email"));
+    const emails = [...new Set(String(get(row, "email") ?? "").split(/[;,\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x)))];
 
     /* tags */
     const tags: TagRef[] = [];
@@ -207,6 +210,7 @@ export function parseLeadRows(
       roleTitle: get(row, "role"),
       phones,
       email,
+      emails,
       notes,
       legacyVisit: get(row, "visit"),
       ownerName,

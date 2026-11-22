@@ -137,7 +137,7 @@ export async function applyLeadDrafts(
         const leadId = idByCnpj.get(d.cnpj)!;
         return [
           ...d.phones.map((value) => ({ leadId, kind: "phone" as const, value, origin: "import" as const })),
-          ...(d.email ? [{ leadId, kind: "email" as const, value: d.email, origin: "import" as const }] : []),
+          ...(d.emails?.length ? d.emails : d.email ? [d.email] : []).map((value) => ({ leadId, kind: "email" as const, value, origin: "import" as const })),
         ];
       });
       for (const rows of chunk(channels, 2000)) await tx.insert(leadChannels).values(rows).onConflictDoNothing();
@@ -195,7 +195,7 @@ async function enrichExisting(tx: Parameters<Parameters<Db["transaction"]>[0]>[0
       const newPhones = d.phones.filter((p) => !l.phones.includes(p));
       if (newPhones.length) { fill.phones = [...l.phones, ...newPhones]; added.push(`${newPhones.length} telefone(s)`); }
       for (const ph of newPhones) await tx.insert(leadChannels).values({ leadId: l.id, kind: "phone", value: ph, origin: "import" }).onConflictDoNothing();
-      if (d.email) await tx.insert(leadChannels).values({ leadId: l.id, kind: "email", value: d.email, origin: "import" }).onConflictDoNothing();
+      for (const em of d.emails?.length ? d.emails : d.email ? [d.email] : []) await tx.insert(leadChannels).values({ leadId: l.id, kind: "email", value: em, origin: "import" }).onConflictDoNothing();
       if (d.contactName && !personKeys.has(`${l.id}|${norm(d.contactName)}`)) { await tx.insert(leadPeople).values({ leadId: l.id, name: d.contactName, roleTitle: d.roleTitle }); personKeys.add(`${l.id}|${norm(d.contactName)}`); if (!added.includes("Contato")) added.push("Pessoa de contato"); }
       const links = d.tags.flatMap((t) => { const id = tagId.get(`${t.group}:${t.key}`); return id && !tagKeys.has(`${l.id}|${id}`) ? [{ leadId: l.id, tagId: id, source: "import" as const, appliedBy: opts.importedBy }] : []; });
       if (links.length) { await tx.insert(leadTags).values(links); added.push(`${links.length} tag(s)`); }
