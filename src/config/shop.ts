@@ -119,7 +119,7 @@ export const SHOP: ShopItem[] = [
 ];
 /** Prêmios do easter egg: um por categoria, não se compram. */
 export const EGG_SECRET_ITEMS: ShopItem[] = [
-  { key: "font_egg", cat: "font", name: "Ovo de Ouro", price: 0, secret: true, css: { fontFamily: "'Brush Script MT', 'Segoe Script', cursive", fontSize: "1.15em", fontWeight: "700" } },
+  { key: "font_egg", cat: "font", name: "Douraovo", price: 0, secret: true, css: { fontFamily: "'Brush Script MT', 'Segoe Script', cursive", fontSize: "1.15em", fontWeight: "700" } },
   { key: "color_egg", cat: "color", name: "Casca Prismática", price: 0, secret: true, css: { backgroundImage: "linear-gradient(90deg,#fde68a,#f9a8d4,#a5b4fc,#6ee7b7,#fde68a)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", color: "transparent" } },
   { key: "fx_egg", cat: "effect", name: "Choco Cósmico", price: 0, secret: true, cls: "fx-egg", css: {} },
   { key: "bubble_egg", cat: "bubble", name: "Casca de Ovo", price: 0, secret: true, css: { background: "linear-gradient(135deg,#fffbeb,#fde68a 60%,#fbbf24)", color: "#451a03", borderColor: "#f59e0b", boxShadow: "0 0 0 1px #f59e0b, 0 0 18px #fbbf2466" } },

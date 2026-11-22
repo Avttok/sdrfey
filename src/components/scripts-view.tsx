@@ -58,7 +58,7 @@ export function ScriptsView({ scripts, isAdmin, myName }: { scripts: ScriptDoc[]
                 </p>
               </div>
               <div className="mt-auto flex flex-wrap gap-1.5 px-4 pb-4">
-                <button type="button" className={btnPrimary} onClick={() => setMode({ t: "play", s })}><Play size={14} aria-hidden /> Jogar / treinar</button>
+                <button type="button" className={btnPrimary} onClick={() => setMode({ t: "play", s })}><Play size={14} aria-hidden /> Treinar</button>
                 {canEdit(s) && <button type="button" className={btnGhost} onClick={() => setMode({ t: "edit", s })}><Pencil size={14} aria-hidden /> Editar</button>}
                 <button type="button" className={btnGhost} disabled={pending} onClick={() => run(() => duplicateScriptAction(s.id))}><Copy size={14} aria-hidden /> Copiar para mim</button>
                 {canEdit(s) && <button type="button" aria-label="Excluir script" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => ask({ title: "Excluir este script?", body: `"${s.title}" será excluído.`, label: "Sim, excluir", icon: Trash2, onConfirm: () => run(() => deleteScriptAction(s.id)) })}><Trash2 size={14} /></button>}

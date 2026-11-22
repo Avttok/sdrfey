@@ -52,7 +52,7 @@ export function ScriptEditor({ initial, isAdmin, onClose }: { initial: ScriptDoc
               <span className="grid size-7 place-items-center rounded-lg bg-grad-soft text-xs font-bold text-accent">{i + 1}</span>
               <input aria-label="Nome do passo" className={`${inputCls} !w-auto min-w-0 flex-1`} value={n.title} maxLength={60} onChange={(e) => setNode(i, { title: e.target.value })} />
               <select aria-label="Tipo do passo" className={`${inputCls} !w-auto`} value={n.type} onChange={(e) => setNode(i, e.target.value === "fim" ? { type: "fim", options: [], outcome: n.outcome ?? "encerrar" } : { type: "fala", outcome: undefined })}><option value="fala">Fala (com respostas)</option><option value="fim">Fim (resultado)</option></select>
-              <select aria-label="Papel do passo" title="Define o ícone e a cor deste passo no jogo" className={`${inputCls} !w-auto`} value={moodOf(n)} onChange={(e) => setNode(i, { mood: e.target.value as ScriptNode["mood"] })}>{MOOD_KEYS.map((k) => <option key={k} value={k}>{MOODS[k].label}</option>)}</select>
+              <select aria-label="Papel do passo" title="Define o ícone e a cor deste passo na ligação" className={`${inputCls} !w-auto`} value={moodOf(n)} onChange={(e) => setNode(i, { mood: e.target.value as ScriptNode["mood"] })}>{MOOD_KEYS.map((k) => <option key={k} value={k}>{MOODS[k].label}</option>)}</select>
               <button type="button" aria-label="Subir" className={btnGhost} onClick={() => move(i, -1)}><ArrowUp size={15} /></button>
               <button type="button" aria-label="Descer" className={btnGhost} onClick={() => move(i, 1)}><ArrowDown size={15} /></button>
               <button type="button" aria-label="Excluir passo" className={`${btnGhost} text-danger`} disabled={d.nodes.length <= 1} onClick={() => remove(i)}><Trash2 size={15} /></button>
@@ -69,6 +69,7 @@ export function ScriptEditor({ initial, isAdmin, onClose }: { initial: ScriptDoc
                     <input aria-label="Resposta" className={`${inputCls} !w-auto min-w-0 flex-1`} value={o.label} maxLength={120} onChange={(e) => setNode(i, { options: n.options.map((x, j) => (j === k ? { ...x, label: e.target.value } : x)) })} />
                     <select aria-label="Tipo da resposta" className={`${inputCls} !w-auto`} value={o.kind} onChange={(e) => setNode(i, { options: n.options.map((x, j) => (j === k ? { ...x, kind: e.target.value as typeof o.kind } : x)) })}><option value="ok">Bom sinal</option><option value="objecao">Objeção</option><option value="neutro">Neutro</option></select>
                     <select aria-label="Vai para" className={`${inputCls} !w-auto`} value={o.to ?? ""} onChange={(e) => setNode(i, { options: n.options.map((x, j) => (j === k ? { ...x, to: e.target.value || null } : x)) })}><option value="">→ escolha o passo</option>{d.nodes.filter((m) => m.id !== n.id).map((m) => <option key={m.id} value={m.id}>→ {m.title || m.id}</option>)}</select>
+                    <input aria-label="Anotação automática" title="Texto que vai para a observação do atendimento quando esta resposta é escolhida" placeholder="Anotar na observação (opcional)" className={`${inputCls} !w-full sm:!w-56`} value={o.note ?? ""} maxLength={160} onChange={(e) => setNode(i, { options: n.options.map((x, j) => (j === k ? { ...x, note: e.target.value || undefined } : x)) })} />
                     <button type="button" aria-label="Remover resposta" className={`${btnGhost} text-danger`} onClick={() => setNode(i, { options: n.options.filter((_, j) => j !== k) })}><X size={14} /></button>
                   </div>
                 ))}
@@ -82,7 +83,7 @@ export function ScriptEditor({ initial, isAdmin, onClose }: { initial: ScriptDoc
 
       <div className="flex flex-wrap gap-2">
         <button type="button" className={btnPrimary} disabled={pending} onClick={save}><Save size={15} aria-hidden /> Salvar script</button>
-        <button type="button" className={btnGhost} onClick={() => setTest(!test)}>{test ? "Fechar teste" : "Testar como jogar"}</button>
+        <button type="button" className={btnGhost} onClick={() => setTest(!test)}>{test ? "Fechar teste" : "Testar o roteiro"}</button>
         <button type="button" className={btnGhost} onClick={onClose}>Cancelar</button>
       </div>
       {test && <div className={`${panelCls} p-4`}><ScriptPlayer script={d} vars={{ empresa: "Auto Peças Modelo", contato: "Carlos", cidade: "Campinas", meunome: "Você" }} /></div>}

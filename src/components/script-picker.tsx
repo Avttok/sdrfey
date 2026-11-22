@@ -6,8 +6,8 @@ import { GOALS, SEGMENTS, type ScriptDoc, type ScriptGoal } from "@/config/scrip
 import { ScriptPlayer, type ScriptVars } from "./script-player";
 import { GOAL_THEME, SEGMENT_ICON, tint } from "./script-theme";
 
-/** Escolha da fase (prospecção, venda, retorno) e do tipo de cliente, em botões com ícone; depois roda o jogo. Shuffler e página Scripts. */
-export function ScriptPicker({ scripts, vars, goal, segmentHint, compact }: { scripts: ScriptDoc[]; vars: ScriptVars; goal?: ScriptGoal; segmentHint?: string | null; compact?: boolean }) {
+/** Escolha da fase (prospecção, venda, retorno) e do tipo de cliente, em botões com ícone; depois roda o roteiro. Shuffler e página Scripts. */
+export function ScriptPicker({ scripts, vars, goal, segmentHint, compact, onNote }: { scripts: ScriptDoc[]; vars: ScriptVars; goal?: ScriptGoal; segmentHint?: string | null; compact?: boolean; onNote?: (note: string) => void }) {
   const [g, setG] = useState<ScriptGoal>(goal ?? "sdr");
   const list = useMemo(() => scripts.filter((s) => s.goal === g), [scripts, g]);
   const [id, setId] = useState<number | null>(null);
@@ -35,7 +35,7 @@ export function ScriptPicker({ scripts, vars, goal, segmentHint, compact }: { sc
           );
         })}
       </div>
-      {current ? <ScriptPlayer script={current} vars={vars} /> : <p className="text-sm text-muted">Sem script para esta fase.</p>}
+      {current ? <ScriptPlayer script={current} vars={vars} onNote={onNote} /> : <p className="text-sm text-muted">Sem script para esta fase.</p>}
     </div>
   );
 }

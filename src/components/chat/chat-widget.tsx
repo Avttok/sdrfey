@@ -147,11 +147,9 @@ function ProfileDialog({ userId, hex, isAdmin, onClose, onPurged }: { userId: nu
         </div>
         <div className="-mt-14 px-5 pb-5">
           <div className="sh-rise relative mx-auto grid size-28 place-items-center" style={{ "--d": ".05s" } as React.CSSProperties}>
-            {p?.egg && <span aria-hidden className="egg-halo" />}
             <span aria-hidden className="pf-ring absolute inset-0 rounded-full" />
             <span aria-hidden className="absolute inset-[4px] rounded-full bg-panel" />
             <span className="pf-avatar relative flex size-[5.5rem] items-center justify-center rounded-full bg-grad text-[1.9rem] font-bold leading-none tracking-tight text-on-accent shadow-lg"><span className="block translate-y-px">{p ? <AvatarGlyph avatar={p.avatar} initials={initials(p.name)} size={40} /> : "…"}</span></span>
-            {p?.egg && <EggBadge size={44} className="absolute -right-3 -top-1 z-10" />}
           </div>
           <div className="sh-rise mt-3 text-center" style={{ "--d": ".12s" } as React.CSSProperties}>
             <h2 className={`display break-words text-2xl ${sty.nameCls}`} style={p ? sty.name : undefined}>{p?.name ?? "Carregando…"}</h2>
@@ -160,7 +158,8 @@ function ProfileDialog({ userId, hex, isAdmin, onClose, onPurged }: { userId: nu
           {err && <p className="mt-3 text-sm text-danger">{err}</p>}
           {p && (
             <div className="mt-4 space-y-4">
-              <div className="sh-rise flex flex-wrap justify-center gap-1.5" style={{ "--d": ".18s" } as React.CSSProperties}>{p.egg && <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/60 bg-amber-400/15 px-2.5 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-300"><EggBadge size={12} /> Ovo de Ouro</span>}{p.roles.map((r) => <RoleBadge key={r} role={r} />)}</div>
+              <div className="sh-rise flex flex-wrap justify-center gap-1.5" style={{ "--d": ".18s" } as React.CSSProperties}>{p.roles.map((r) => <RoleBadge key={r} role={r} />)}</div>
+              {p.egg && <div className="sh-rise egg-card flex items-center gap-3 rounded-2xl border border-amber-400/60 px-4 py-3" style={{ "--d": ".2s" } as React.CSSProperties}><EggBadge size={40} /><div className="min-w-0"><p className="text-sm font-extrabold">Douraovo</p><p className="text-xs text-muted">Encontrou o segredo escondido no sistema.</p></div></div>}
               <dl className="grid grid-cols-2 gap-2 text-sm">
                 {[["Mensagens", String(p.sent)], ["Conquistas", `${p.badges.length}/${p.badgeTotal}`], ...(p.isAdminView ? [["Conta", p.active ? "Ativa" : "Bloqueada"], ["Último acesso", p.lastLoginAt ? dtFmt.format(new Date(p.lastLoginAt)) : "nunca"]] : [])].map(([t, v], i) => (
                   <div key={t} className="sh-rise rounded-2xl bg-sunk px-3 py-2.5" style={{ "--d": `${0.22 + i * 0.06}s` } as React.CSSProperties}><dt className="text-[11px] text-muted">{t}</dt><dd className="figure text-base font-bold">{/^\d+$/.test(v) ? <CountUp to={Number(v)} /> : v}</dd></div>

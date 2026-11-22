@@ -1,6 +1,6 @@
 "use client";
 
-import { Timer, UserRound, Flag, Ban, Building2, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Send, Plus, RotateCcw, History, SkipForward, Square, TriangleAlert, Trash2, X } from "lucide-react";
+import { Timer, UserRound, Flag, Ban, Building2, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Send, Plus, RotateCcw, History, SkipForward, ScrollText, Square, TriangleAlert, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ConfirmDialog, useConfirm } from "@/components/confirm-dialog";
@@ -169,7 +169,13 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
   };
 
   const tpl = templates.find((t) => t.id === tplId);
-  const vars = { meu_nome: myName.split(" ")[0], empresa: lead.tradeName ?? lead.company, cidade: lead.city, representante: lead.rep?.repName, contato: lead.people[0]?.name?.split(" ")[0] };
+  /** Telefone em uso na ligação: se ele tem um contato indexado, o roteiro fala com essa pessoa. */
+  const [callId, setCallId] = useState<number | null>(null);
+  const callPhone = goodPhones.find((p) => p.id === callId) ?? null;
+  const callPerson = (callPhone?.personId ? lead.people.find((x) => x.id === callPhone.personId) : null) ?? lead.people[0] ?? null;
+  const vars = { meu_nome: myName.split(" ")[0], empresa: lead.tradeName ?? lead.company, cidade: lead.city, representante: lead.rep?.repName, contato: callPerson?.name?.split(" ")[0] };
+  /** Respostas do roteiro que trazem anotação entram na observação, sem repetir. */
+  const addNote = (t: string) => setNote((c) => (c.includes(t) ? c : `${c ? `${c.replace(/\s+$/, "")}\n` : ""}• ${t}`));
   const mail = tpl && (emailTo || goodEmails[0]?.value) ? mailtoLink(emailTo || goodEmails[0].value, renderTemplate(tpl.subject, vars), renderTemplate(tpl.body, vars)) : null;
 
   /** Copia o corpo formatado e abre o e-mail já com destinatário e assunto; só falta colar (Ctrl+V). */
@@ -311,7 +317,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
           </div>
         )}
 
-        {step > 0 && step !== 4 && (
+        {step > 0 && step !== 4 && step !== 3 && (
           <div className="mb-5 grid gap-x-6 gap-y-3 rounded-xl bg-sunk p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <Info label="Empresa"><b>{lead.tradeName ?? lead.company}</b></Info>
             <Info label="CNPJ"><CopyVal text={lead.cnpj}>{fmtCnpj(lead.cnpj)}</CopyVal></Info>
@@ -370,15 +376,48 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
         )}
 
         {step === 3 && (
-          <section className="space-y-3">
+          <section className="space-y-4">
             <StepTitle i={3} />
-            <p className="text-sm text-muted">Toque em “Ligar” para copiar o número já pronto e cole no VocallPhone (Ctrl+V).</p>
-            <ul className="space-y-1.5">
-              {goodPhones.map((p) => <li key={p.id} className="lift flex items-center gap-3 rounded-2xl border border-line bg-sunk/60 px-4 py-3"><span aria-hidden className="grid size-10 place-items-center rounded-xl bg-accent/15 text-accent"><Phone size={18} /></span><span className="figure flex-1 text-lg">{fmtPhone(p.value)}</span><button type="button" className={btnPrimary} onClick={() => { void callNumber(p.value, lead.tradeName ?? lead.company, toast, vocall); setUsed(new Set(used).add("ligacao")); }}><Phone size={15} aria-hidden /> Ligar</button><button type="button" className={btnGhost} onClick={() => { void copy(p.value, toast); setUsed(new Set(used).add("ligacao")); }}><Copy size={15} aria-hidden /> Copiar</button></li>)}
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {goodPhones.map((p) => {
+                const who = p.personId ? lead.people.find((x) => x.id === p.personId) : null;
+                const on = callPhone?.id === p.id;
+                return (
+                  <li key={p.id} className={`lift flex items-center gap-3 rounded-2xl border-2 px-3 py-2.5 transition ${on ? "border-accent bg-accent/10" : "border-line bg-sunk/60"}`}>
+                    <span aria-hidden className={`grid size-10 shrink-0 place-items-center rounded-xl ${on ? "bg-accent text-on-accent" : "bg-accent/15 text-accent"}`}><Phone size={18} /></span>
+                    <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setCallId(on ? null : p.id)} title="Usar este número no roteiro" aria-pressed={on}>
+                      <span className="figure block text-lg leading-tight">{fmtPhone(p.value)}</span>
+                      <span className="block truncate text-xs text-muted">{who ? <><UserRound size={11} aria-hidden className="mr-0.5 inline" />{who.name}{who.roleTitle ? ` · ${who.roleTitle}` : ""}</> : "Sem contato indexado"}</span>
+                    </button>
+                    <button type="button" className={btnPrimary} onClick={() => { setCallId(p.id); void callNumber(p.value, lead.tradeName ?? lead.company, toast, vocall); setUsed(new Set(used).add("ligacao")); }}><Phone size={15} aria-hidden /> Ligar</button>
+                    <button type="button" className={btnGhost} aria-label="Copiar número" onClick={() => { void copy(p.value, toast); setUsed(new Set(used).add("ligacao")); }}><Copy size={15} aria-hidden /> Copiar</button>
+                  </li>
+                );
+              })}
               {goodPhones.length === 0 && <li className="text-sm text-muted">Sem telefone válido.</li>}
             </ul>
-            <ProductHints recos={recos} />
-            {scripts.length > 0 && <details className="group rounded-2xl border border-line bg-sunk/40 p-3" open><summary className="cursor-pointer text-sm font-semibold">Roteiro da ligação: leia, fale e toque no que o lead respondeu</summary><div className="mt-3"><ScriptPicker scripts={scripts} goal={sales ? "vendas" : "sdr"} vars={{ empresa: vars.empresa, contato: vars.contato, cidade: vars.cidade, meunome: vars.meu_nome }} compact /></div></details>}
+
+            {/* O roteiro é a estrela da etapa: ficha do lead e fala, juntos, na altura dos olhos */}
+            <div className="overflow-hidden rounded-3xl border-2 border-accent/40 bg-panel shadow-md">
+              <div className="bg-grad px-4 py-3 text-on-accent">
+                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider opacity-90"><ScrollText size={14} aria-hidden /> Roteiro da ligação</p>
+                <p className="mt-0.5 text-sm opacity-95">Leia a fala, escute e toque no que o lead respondeu.</p>
+              </div>
+              <div className="space-y-3 p-3 sm:p-4">
+                <div className="grid gap-x-5 gap-y-2 rounded-2xl bg-sunk p-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                  <Info label="Empresa"><b>{lead.tradeName ?? lead.company}</b>{lead.tradeName && lead.company !== lead.tradeName && <span className="block truncate text-[11px] text-muted">{lead.company}</span>}</Info>
+                  <Info label="CNPJ"><CopyVal text={lead.cnpj}>{fmtCnpj(lead.cnpj)}</CopyVal></Info>
+                  <Info label="Cidade">{lead.city ? `${lead.city}/${lead.uf}` : <span className="text-warn">Sem informação</span>}</Info>
+                  <Info label="Situação">{lead.registrationStatus ? <b className={lead.registrationStatus.toUpperCase() === "ATIVA" ? "text-ok" : "text-danger"}>{lead.registrationStatus.toUpperCase()}</b> : <span className="text-warn">Sem informação</span>}</Info>
+                  <Info label="Sócios" wide>{lead.info?.partners.length ? <ul className="flex flex-wrap gap-x-3 gap-y-0.5">{lead.info.partners.map((q, i) => <li key={i}><b>{q.name}</b>{cleanRole(q.role) ? <span className="text-muted"> · {cleanRole(q.role)}</span> : null}</li>)}</ul> : <span className="text-warn">Sem informação</span>}</Info>
+                  <Info label="Atividade" wide>{lead.info?.activity ? `${lead.info.cnae ? `${lead.info.cnae} - ` : ""}${lead.info.activity}` : <span className="text-warn">Sem informação</span>}</Info>
+                </div>
+                <ProductHints recos={recos} />
+                {scripts.length > 0
+                  ? <ScriptPicker scripts={scripts} goal={sales ? "vendas" : "sdr"} vars={{ empresa: vars.empresa, contato: vars.contato, contatoCompleto: callPerson?.name ?? null, cidade: vars.cidade, meunome: vars.meu_nome }} onNote={addNote} />
+                  : <p className="text-sm text-muted">Ainda não há roteiros. O Adm pode criar em Scripts.</p>}
+              </div>
+            </div>
             <UsedToggle on={used.has("ligacao")} onClick={() => toggle(used, "ligacao", setUsed)} label="Ligação feita" Icon={Phone} color="#8b5cf6" />
           </section>
         )}

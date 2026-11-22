@@ -1,7 +1,7 @@
 /** Scripts de ligação: tipos e listas usados pelo editor, pelo player e pelo servidor (sem banco, o navegador também usa). */
 export type ScriptKind = "ok" | "objecao" | "neutro";
 export type ScriptOption = { label: string; /** id do próximo passo; vazio = termina aqui. */ to: string | null; kind: ScriptKind; /** Anotação que esta resposta gera para a observação do lead (ex.: "Contato: decisor de compra"). */ note?: string };
-/** O "papel" do passo na conversa: define ícone e cor no jogo. */
+/** O "papel" do passo na conversa: define ícone e cor na ligação. */
 export type ScriptMood = "abertura" | "ponte" | "confirma" | "pergunta" | "proposta" | "objecao" | "fideliza" | "fechamento" | "apoio";
 export type ScriptNode = {
   id: string;

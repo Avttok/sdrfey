@@ -1,25 +1,25 @@
 "use client";
 
-import { ArrowLeft, Ear, Flame, Lightbulb, Mic, RotateCcw, ShieldAlert, ShieldCheck, Sparkles, ThumbsUp, ChevronRight, Trophy, Volume2 } from "lucide-react";
+import { ArrowLeft, Ear, Flame, Lightbulb, Mic, RotateCcw, ShieldAlert, NotebookPen, ShieldCheck, Sparkles, ThumbsUp, ChevronRight, Trophy, Volume2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fillScript, KIND_LABEL, moodOf, OUTCOMES, type ScriptDoc, type ScriptKind } from "@/config/scripts";
+import { fillScript, shortCompany, KIND_LABEL, moodOf, OUTCOMES, type ScriptDoc, type ScriptKind } from "@/config/scripts";
 import { btnGhost } from "@/components/ui";
 import { GOAL_THEME, MOODS, OUTCOME_ICON, SEGMENT_ICON, tint } from "./script-theme";
 
-export type ScriptVars = { empresa?: string | null; contato?: string | null; cidade?: string | null; meunome?: string | null };
+export type ScriptVars = { empresa?: string | null; /** nome da pessoa com quem se fala (contato do telefone), se houver */ contatoCompleto?: string | null; contato?: string | null; cidade?: string | null; meunome?: string | null };
 
 const KIND: Record<ScriptKind, { hex: string; Icon: typeof ThumbsUp; hint: string }> = {
   ok: { hex: "#22c55e", Icon: ThumbsUp, hint: "Bom sinal" },
   objecao: { hex: "#f97316", Icon: ShieldAlert, hint: "Objeção" },
-  neutro: { hex: "#64748b", Icon: ChevronRight, hint: "Segue o jogo" },
+  neutro: { hex: "#64748b", Icon: ChevronRight, hint: "Segue a conversa" },
 };
 const CONFETTI = ["#f59e0b", "#22c55e", "#0ea5e9", "#8b5cf6", "#f43f5e"];
 
 /**
- * O "jogo" da ligação. O balão mostra EXATAMENTE o que você diz ao lead (com o nome dele já no lugar);
+ * O roteiro da ligação. O balão mostra EXATAMENTE o que você diz ao lead (com o nome dele já no lugar);
  * a dica é só para você (não se fala). Depois toque no que o lead respondeu e o roteiro avança.
  */
-export function ScriptPlayer({ script, vars, onOutcome }: { script: ScriptDoc; vars: ScriptVars; onOutcome?: (o: NonNullable<ScriptDoc["nodes"][number]["outcome"]>) => void }) {
+export function ScriptPlayer({ script, vars, onOutcome, onNote }: { script: ScriptDoc; vars: ScriptVars; onOutcome?: (o: NonNullable<ScriptDoc["nodes"][number]["outcome"]>) => void; /** chamado com a anotação sugerida quando o operador escolhe uma resposta que tem nota */ onNote?: (note: string) => void }) {
   const by = useMemo(() => new Map(script.nodes.map((n) => [n.id, n])), [script]);
   const [trail, setTrail] = useState<{ id: string; kind?: ScriptKind }[]>([{ id: script.startId }]);
   useEffect(() => setTrail([{ id: script.startId }]), [script.id, script.startId]);
@@ -33,11 +33,14 @@ export function ScriptPlayer({ script, vars, onOutcome }: { script: ScriptDoc; v
   const goal = GOAL_THEME[script.goal];
   const Seg = SEGMENT_ICON[script.segment] ?? Sparkles;
 
+  const [noted, setNoted] = useState<string[]>([]);
+  useEffect(() => setNoted([]), [script.id, script.startId]);
   const pick = useCallback((i: number) => {
     const op = node.options[i];
     if (!op?.to || !by.has(op.to)) return;
+    if (op.note) { onNote?.(op.note); setNoted((l) => (l.includes(op.note!) ? l : [...l, op.note!])); }
     setTrail((t) => [...t, { id: op.to!, kind: op.kind }]);
-  }, [node, by]);
+  }, [node, by, onNote]);
 
   useEffect(() => {
     if (ended) return;
@@ -57,11 +60,21 @@ export function ScriptPlayer({ script, vars, onOutcome }: { script: ScriptDoc; v
 
   return (
     <div className="space-y-4">
-      {/* Missão + placar */}
+      {/* Quem é o lead: nome completo bem pequeno, nome falado em destaque */}
+      {vars.empresa && (
+        <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 px-1">
+          <div className="min-w-0 leading-tight">
+            {shortCompany(vars.empresa) !== vars.empresa.trim() && <p className="truncate text-[10px] uppercase tracking-wide text-muted">{vars.empresa}</p>}
+            <p className="truncate text-lg font-extrabold">{shortCompany(vars.empresa)}</p>
+          </div>
+          {vars.contatoCompleto && <p className="text-xs text-muted">Falando com <b className="text-ink">{vars.contatoCompleto}</b></p>}
+        </div>
+      )}
+      {/* Objetivo + placar */}
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border p-3" style={tint(goal.hex, 10, 35)}>
         <span className="grid size-11 shrink-0 place-items-center rounded-xl text-white shadow" style={{ background: goal.hex }}><goal.Icon size={22} aria-hidden /></span>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: goal.hex }}>Missão · {goal.short}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: goal.hex }}>Objetivo · {goal.short}</p>
           <p className="truncate text-sm font-semibold">{goal.mission}</p>
         </div>
         <div className="flex items-center gap-1.5 text-xs font-semibold">
@@ -72,13 +85,13 @@ export function ScriptPlayer({ script, vars, onOutcome }: { script: ScriptDoc; v
       </div>
 
       {/* Mapa do caminho (toque numa etapa para voltar a ela) */}
-      <div className="flex items-center gap-1 overflow-x-auto pb-1" aria-label="Caminho percorrido">
+      <div className="flex items-center gap-1 overflow-x-auto px-2 py-2.5" aria-label="Caminho percorrido">
         {trail.map((t, i) => {
           const n = by.get(t.id); const m = MOODS[n ? moodOf(n) : "apoio"]; const last = i === trail.length - 1;
           return (
             <div key={`${t.id}-${i}`} className="flex items-center gap-1">
               <button type="button" disabled={last} onClick={() => setTrail((x) => x.slice(0, i + 1))} title={`${m.label}: ${n?.title ?? t.id}`} aria-label={`Voltar para ${n?.title ?? t.id}`}
-                className={`grid size-8 shrink-0 place-items-center rounded-full border-2 transition ${last ? "script-ring scale-110 text-white" : "hover:scale-110"}`}
+                className={`grid size-8 shrink-0 place-items-center rounded-full border-2 transition ${last ? "script-ring text-white" : "hover:scale-110"}`}
                 style={last ? { background: m.hex, borderColor: m.hex, ["--ring" as string]: m.hex } : { ...tint(m.hex, 18, 55), color: m.hex }}><m.Icon size={15} aria-hidden /></button>
               {!last && <span aria-hidden className="h-0.5 w-4 shrink-0 rounded" style={{ background: `color-mix(in srgb, ${m.hex} 45%, transparent)` }} />}
             </div>
@@ -106,7 +119,7 @@ export function ScriptPlayer({ script, vars, onOutcome }: { script: ScriptDoc; v
               )}
               <span className={`grid size-16 place-items-center rounded-2xl text-white shadow-lg ${success ? "script-bounce" : ""}`} style={{ background: success ? "#22c55e" : "#64748b" }}><OutIcon size={30} aria-hidden /></span>
               <div>
-                <p className="text-xl font-extrabold">{success ? "Missão cumprida!" : "Conversa encerrada"}</p>
+                <p className="text-xl font-extrabold">{success ? "Objetivo alcançado!" : "Conversa encerrada"}</p>
                 <p className="text-sm font-semibold" style={{ color: success ? "#16a34a" : undefined }}>{node.outcome ? OUTCOMES[node.outcome].label : node.title}</p>
               </div>
               <p className="max-w-md whitespace-pre-line text-base">{fillScript(node.say, vars)}</p>
@@ -149,10 +162,13 @@ export function ScriptPlayer({ script, vars, onOutcome }: { script: ScriptDoc; v
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <button type="button" className={btnGhost} disabled={steps === 0} onClick={() => setTrail((t) => t.slice(0, -1))}><ArrowLeft size={15} aria-hidden /> Voltar um passo</button>
-        <button type="button" className={btnGhost} disabled={steps === 0} onClick={() => setTrail([{ id: script.startId }])}><RotateCcw size={15} aria-hidden /> {ended ? "Jogar de novo" : "Recomeçar"}</button>
-      </div>
+      {noted.length > 0 && <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted"><NotebookPen size={13} aria-hidden /> Anotado na observação: {noted.map((n) => <span key={n} className="rounded-full bg-sunk px-2 py-0.5 font-medium text-ink">{n}</span>)}</p>}
+      {steps > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className={btnGhost} onClick={() => setTrail((t) => t.slice(0, -1))}><ArrowLeft size={15} aria-hidden /> Voltar um passo</button>
+          <button type="button" className={btnGhost} onClick={() => setTrail([{ id: script.startId }])}><RotateCcw size={15} aria-hidden /> Recomeçar</button>
+        </div>
+      )}
     </div>
   );
 }

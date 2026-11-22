@@ -75,12 +75,11 @@ export function UserMenu({ banner, avatar, name, username, hex, onHex, accentKey
   const avatarEl = (size: string) => (
     <span className={`flex shrink-0 items-center justify-center rounded-full font-bold shadow-sm ring-2 ring-white/40 ${size}`} style={{ backgroundImage: `linear-gradient(135deg, color-mix(in oklab, ${hex} 78%, white), ${hex} 50%, color-mix(in oklab, ${hex} 78%, black))`, color: onHex }}><AvatarGlyph avatar={avatar} initials={initials} /></span>
   );
-  const withEgg = (el: React.ReactNode) => (egg ? <span className="relative inline-flex">{el}<EggBadge size={17} className="absolute -bottom-1.5 -right-1.5" /></span> : el);
   return (
     <div ref={box} className="relative">
       <button type="button" onClick={() => setOpen(!open)} aria-haspopup="menu" aria-expanded={open} aria-label={`Menu de ${name}`} title={collapsed ? name : undefined}
         className={side ? `flex w-full items-center rounded-xl py-2 text-left transition hover:bg-sunk ${collapsed ? "justify-center px-0" : "gap-3 px-2"}` : "rounded-full transition hover:scale-105 aria-expanded:ring-2 aria-expanded:ring-accent aria-expanded:ring-offset-2 aria-expanded:ring-offset-panel"}>
-        {withEgg(avatarEl("size-10 text-sm"))}
+        {avatarEl("size-10 text-sm")}
         {side && !collapsed && <span className="flex min-w-0 flex-1 flex-wrap gap-1">{sorted.map((r) => <RoleBadge key={r} role={r} />)}</span>}
       </button>
       {open && mounted && createPortal(
@@ -89,9 +88,7 @@ export function UserMenu({ banner, avatar, name, username, hex, onHex, accentKey
             <BannerRain avatar={avatar} roles={roles} count={20} /><span aria-hidden className="aurora-blob a" /><span aria-hidden className="aurora-blob b" /><span aria-hidden className="aurora-blob c" />
             <div className="relative flex items-center gap-4">
               <span className="avatar-ring relative grid size-[4.75rem] shrink-0 place-items-center rounded-full p-[3px]">
-                {egg && <span aria-hidden className="egg-halo" />}
                 <span className="grid size-full place-items-center rounded-full bg-black/30 text-2xl font-bold backdrop-blur-sm"><AvatarGlyph avatar={avatar} initials={initials} size={34} /></span>
-                {egg && <EggBadge size={30} className="absolute -left-2 -top-2 z-10" />}
                 <span aria-hidden title="Online" className="absolute bottom-0.5 right-0.5 size-4 rounded-full border-2 border-white bg-ok shadow"><span className="absolute inset-0 animate-ping rounded-full bg-ok/70" /></span>
               </span>
               <div className="min-w-0">
@@ -112,6 +109,7 @@ export function UserMenu({ banner, avatar, name, username, hex, onHex, accentKey
             </Link>
             <ThemeTile />
           </div>
+          {egg && <Link role="menuitem" href="/conquistas" onClick={() => setOpen(false)} className="egg-card mx-3 mb-3 flex items-center gap-3 rounded-2xl border border-amber-400/60 px-3 py-2.5"><EggBadge size={34} /><span className="text-sm font-bold">Douraovo<span className="block text-xs font-normal text-muted">Você achou o segredo!</span></span></Link>}
           <Link role="menuitem" href="/conquistas" onClick={() => setOpen(false)} className="menu-tile group mx-3 mb-3 flex items-center gap-3 rounded-2xl bg-sunk p-3 transition hover:-translate-y-0.5 hover:shadow-md">
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-grad text-on-accent shadow-sm"><Trophy size={17} aria-hidden className="transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-110" /></span>
             <span className="min-w-0 flex-1 text-sm font-semibold">Conquistas<span className="block text-xs font-normal text-muted">{badges ? `${badges.earned} de ${badges.total}` : "Suas medalhas"}</span></span>
