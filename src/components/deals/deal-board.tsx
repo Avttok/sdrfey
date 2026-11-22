@@ -1,9 +1,9 @@
 "use client";
 
 import { FilterBar } from "@/components/filter-bar";
-import { FileText, MapPin, Phone, Search, UserPlus } from "lucide-react";
+import { FileText, LayoutGrid, MapPin, Phone, Rows3, Search, Columns3, UserPlus } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRun } from "@/components/use-run";
 import { btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { BOARD_COLUMNS, fmtBRL, STAGE_META } from "@/config/deals";
@@ -11,8 +11,11 @@ import { fmtPhone } from "@/lib/format";
 import { claimDealAction } from "@/modules/deals/actions";
 import type { DealRow } from "@/modules/deals/queries";
 import { AlertChip, StageChip } from "./deal-ui";
+import { DealSheet } from "./deal-sheet";
 
 type Filter = "todas" | "minhas" | "grupo" | "avisos" | "fechadas";
+type View = "quadro" | "blocos" | "planilha";
+const VIEWS: [View, string, typeof Columns3][] = [["quadro", "Quadro", Columns3], ["blocos", "Blocos", LayoutGrid], ["planilha", "Planilha", Rows3]];
 
 function Card({ d, meId, canClaim, i = 0 }: { d: DealRow; meId: number; canClaim: boolean; i?: number }) {
   const { run, pending } = useRun();
@@ -52,6 +55,9 @@ function Card({ d, meId, canClaim, i = 0 }: { d: DealRow; meId: number; canClaim
 export function DealBoard({ deals, meId, canClaim, team }: { deals: DealRow[]; meId: number; canClaim: boolean; team: boolean }) {
   const [filter, setFilter] = useState<Filter>("todas");
   const [q, setQ] = useState("");
+  const [view, setView] = useState<View>("quadro");
+  useEffect(() => { try { const v = localStorage.getItem("neg-view"); if (v === "blocos" || v === "planilha") setView(v); } catch { /* sem armazenamento: fica no quadro */ } }, []);
+  const pick = (v: View) => { setView(v); try { localStorage.setItem("neg-view", v); } catch { /* ignora */ } };
   const norm = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const needle = norm(q.trim());
   const digits = q.replace(/\D/g, "");
@@ -69,6 +75,9 @@ export function DealBoard({ deals, meId, canClaim, team }: { deals: DealRow[]; m
   const chips: [Filter, string][] = [["todas", team ? "Todas abertas" : "Abertas"], ["minhas", "Minhas"], ["grupo", "Sem vendedor"], ["avisos", "Com aviso"], ["fechadas", "Encerradas"]];
   return (
     <div className="space-y-4">
+      <div role="group" aria-label="Forma de ver as negociações" className="flex w-fit gap-1 rounded-full border border-line bg-sunk/60 p-1">
+        {VIEWS.map(([k, label, Icon]) => <button key={k} type="button" aria-pressed={view === k} onClick={() => pick(k)} className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition ${view === k ? "bg-grad text-white shadow" : "text-muted hover:text-ink"}`}><Icon size={15} aria-hidden />{label}</button>)}
+      </div>
       <FilterBar id="negociacoes" defaultOpen active={(needle ? 1 : 0) + (filter !== "todas" ? 1 : 0)} onClear={() => { setQ(""); setFilter("todas"); }}
         search={<><Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" aria-hidden />
         <input type="search" aria-label="Buscar negociação" placeholder="Buscar por empresa, contato, cidade, vendedor, CNPJ ou nº da cotação" className={`${inputCls} !pl-10`} value={q} onChange={(e) => setQ(e.target.value)} /></>}>
@@ -80,7 +89,11 @@ export function DealBoard({ deals, meId, canClaim, team }: { deals: DealRow[]; m
         ))}
       </div>
       </FilterBar>
-      {filter === "fechadas" || filter === "avisos" || filter === "grupo" ? (
+      {view === "planilha" ? <DealSheet deals={filter === "todas" ? [...shown, ...billedShown] : shown} meId={meId} canClaim={canClaim} />
+      : view === "blocos" ? (
+        (filter === "todas" ? [...shown, ...billedShown] : shown).length ? <ul className="grid items-stretch gap-3 [grid-template-columns:repeat(auto-fill,minmax(17rem,1fr))]">{(filter === "todas" ? [...shown, ...billedShown] : shown).map((d, i) => <Card key={d.id} d={d} i={i} meId={meId} canClaim={canClaim} />)}</ul> : <Empty text={needle ? "Nenhuma negociação com essa busca." : "Nenhuma negociação nesta visão."} />
+      )
+      : filter === "fechadas" || filter === "avisos" || filter === "grupo" ? (
         shown.length ? <ul className="grid items-stretch gap-3 [grid-template-columns:repeat(auto-fill,minmax(17rem,1fr))]">{shown.map((d, i) => <Card key={d.id} d={d} i={i} meId={meId} canClaim={canClaim} />)}</ul> : <Empty text={needle ? "Nenhuma negociação com essa busca." : filter === "grupo" ? "Nenhuma negociação esperando vendedor." : filter === "avisos" ? "Tudo em dia: nenhum aviso." : "Nenhuma negociação encerrada ainda."} />
       ) : shown.length === 0 && billedShown.length === 0 ? <Empty text={needle ? "Nenhuma negociação com essa busca." : "Nenhuma negociação aberta."} /> : (
         <div className="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(14.5rem,1fr))]">
