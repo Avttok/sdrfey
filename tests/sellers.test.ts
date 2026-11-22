@@ -16,10 +16,10 @@ describe("cargo vendedor", () => {
     expect(isSellerOnly(["seller"])).toBe(true);
     expect(isSellerOnly(["seller", "manager"])).toBe(false);
   });
-  it("vendedor só vê Dashboard, Leads, Histórico, Metas, Negociações e Shuffler de vendas", () => {
+  it("vendedor só vê as abas de Vendas, Leads, Dashboard e Opções", () => {
     const p = resolvePermissions(["seller"]);
     const tabs = Object.entries(p).filter(([k, v]) => k.startsWith("tab.") && v).map(([k]) => k).sort();
-    expect(tabs).toEqual(["tab.desempenho_vendas", "tab.historico", "tab.leads", "tab.metas", "tab.negociacoes", "tab.painel", "tab.shuffler_vendas"]);
+    expect(tabs).toEqual(["tab.desempenho_vendas", "tab.email", "tab.historico_vendas", "tab.leads", "tab.metas_vendas", "tab.negociacoes", "tab.painel", "tab.scripts", "tab.shuffler_vendas"]);
     expect(p["tab.comecar"]).toBe(false);
     expect(p["tab.visitas"]).toBe(false);
     expect(p["deals.team"]).toBe(false);
