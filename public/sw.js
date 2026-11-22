@@ -1,5 +1,5 @@
 /* Guarda só arquivos estáticos (JS/CSS/fontes/imagens com nome versionado). Páginas e dados NUNCA entram aqui. */
-const CACHE = "sdrfey-static-v1";
+const CACHE = "sdrfey-static-v2";
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener("fetch", (e) => {

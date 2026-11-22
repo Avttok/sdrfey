@@ -10,6 +10,7 @@ import { fontCss } from "@/config/fonts";
 import { resolveAccent } from "@/config/theme";
 import { getCurrentUser } from "@/modules/auth/guard";
 import { LogoCfgProvider } from "@/components/logo-morph";
+import { BootSplash } from "@/components/boot-splash";
 import { getSettings } from "@/modules/settings/get";
 
 export const metadata: Metadata = {
@@ -36,7 +37,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body><LogoCfgProvider cfg={{ anim: cfg.logo_anim, pace: cfg.logo_pace, text: cfg.logo_text }}>{children}</LogoCfgProvider></body>
+      <body><LogoCfgProvider cfg={{ anim: cfg.logo_anim, pace: cfg.logo_pace, text: cfg.logo_text }}><BootSplash />{children}</LogoCfgProvider></body>
     </html>
   );
 }

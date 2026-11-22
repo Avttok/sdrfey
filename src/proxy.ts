@@ -7,7 +7,7 @@ export async function proxy(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const session = token ? await readToken(token) : null;
 
-  if (!session && pathname !== "/login") {
+  if (!session && pathname !== "/login" && pathname !== "/api/precache") {
     return NextResponse.redirect(new URL("/login", req.url));
   }
   // /login com cookie válido NÃO é redirecionado aqui: o cookie pode ser de um usuário bloqueado,

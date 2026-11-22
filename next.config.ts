@@ -13,7 +13,15 @@ const securityHeaders = [
 ];
 
 const config: NextConfig = {
-  async headers() { return [{ source: "/:path*", headers: securityHeaders }]; },
+  // a lista de arquivos da tela de carregamento lê .next/static em tempo de execução
+  outputFileTracingIncludes: { "/api/precache": ["./.next/static/**/*", "./.next/BUILD_ID"] },
+  async headers() {
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // o service worker nunca fica preso em cache: atualizações chegam na próxima abertura
+      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }, { key: "Service-Worker-Allowed", value: "/" }] },
+    ];
+  },
   poweredByHeader: false,
   // endereço antigo do primeiro acesso
   async redirects() { return [{ source: "/trocar-senha", destination: "/primeiro-acesso", permanent: false }]; },
