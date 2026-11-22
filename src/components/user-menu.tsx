@@ -20,6 +20,7 @@ import { myActivityAction } from "@/modules/users/presence";
 import { badgesSummaryAction } from "@/modules/achievements/actions";
 import { ACHIEVEMENT_BY_KEY } from "@/config/achievements";
 import { SubmitButton } from "./submit-button";
+import { GoldFxToggle } from "./gold-fx-toggle";
 
 /** Foto (iniciais) da pessoa e as tags de cargo. Ao clicar abre o menu da conta. */
 export function UserMenu({ banner, avatar, name, username, hex, onHex, accentKey, roles, side = false, collapsed = false }: { banner?: string | null; avatar?: string | null; accentKey?: string; name: string; username: string; hex: string; onHex: string; roles: Role[]; side?: boolean; collapsed?: boolean }) {
@@ -110,6 +111,7 @@ export function UserMenu({ banner, avatar, name, username, hex, onHex, accentKey
             <span className="min-w-0 flex-1 text-sm font-semibold">Conquistas<span className="block text-xs font-normal text-muted">{badges ? `${badges.earned} de ${badges.total}` : "Suas medalhas"}</span></span>
             <span className="flex -space-x-1.5">{(badges?.top ?? []).slice(0, 4).map((b) => { const a = ACHIEVEMENT_BY_KEY.get(b.key); if (!a) return null; const I = a.icon; return <span key={b.key} title={b.name} className="grid size-7 place-items-center rounded-full border-2 border-sunk text-white" style={{ background: a.color }}><I size={13} aria-hidden /></span>; })}</span>
           </Link>
+          <GoldFxToggle />
           <form action={setAccentAction} className="px-4 pb-3">
             <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold"><Palette size={14} aria-hidden /> Cor do tema<span className="ml-auto text-xs font-normal text-muted">{CHOOSABLE_ACCENTS.find((a) => a.key === accentKey)?.label ?? "Padrão"}</span></p>
             <div className="grid grid-cols-7 gap-2">

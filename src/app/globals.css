@@ -368,3 +368,11 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 @keyframes bell-ring { 0%, 100% { transform: rotate(0); } 15% { transform: rotate(18deg); } 30% { transform: rotate(-16deg); } 45% { transform: rotate(12deg); } 60% { transform: rotate(-8deg); } 75% { transform: rotate(4deg); } }
 .bell-ring { transform-origin: 50% 12%; animation: bell-ring 1s ease-in-out 2; }
 @media (prefers-reduced-motion: reduce) { .bell-ring { animation: none; } }
+
+/* ── Meta do dia batida: tudo dourado ── */
+html[data-gold="on"] { --accent: #d9a406 !important; --accent-2: #f5c542 !important; --on-accent: #2b2000 !important; }
+html[data-gold="on"] header, html[data-gold="on"] aside { box-shadow: 0 2px 22px rgb(245 197 66 / 0.35); }
+.gold-ribbon { background-image: linear-gradient(90deg, #b8860b, #f5c542 30%, #fff1a8 50%, #f5c542 70%, #b8860b); background-size: 200% 100%; animation: gold-flow 2.4s linear infinite; }
+@keyframes gold-fall { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 85% { opacity: 1; } 100% { transform: translate(var(--w), 112vh) rotate(var(--r)); opacity: 0; } }
+.gold-fall { animation-name: gold-fall; animation-timing-function: cubic-bezier(.25, .6, .4, 1); animation-fill-mode: both; }
+@media (prefers-reduced-motion: reduce) { .gold-fall, .gold-ribbon { animation: none !important; } .gold-fall { display: none; } }

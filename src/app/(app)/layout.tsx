@@ -6,6 +6,8 @@ import { AppHeader, SideBarFor } from "@/components/app-header";
 import { navBadges } from "@/modules/deals/queries";
 import { getSettings } from "@/modules/settings/get";
 import { AdminViewSwitch } from "@/components/admin-view-switch";
+import { GoldMode } from "@/components/gold-mode";
+import { goldStatus } from "@/modules/goals/gold";
 import { AnnouncementHost } from "@/components/announcement-host";
 import { BottomFade } from "@/components/bottom-fade";
 import { SwRegister } from "@/components/sw-register";
@@ -20,6 +22,7 @@ import { requireUser } from "@/modules/auth/guard";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   const [settings, badges] = await Promise.all([getSettings(), navBadges(user).catch(() => ({}))]);
+  const gold = await goldStatus(user, settings).catch(() => ({ reached: false, label: "", done: 0, qty: 0 }));
   const groupNav = settings.nav_group === 1;
   const av = await db.select({ id: users.id, name: users.name, avatar: users.avatar }).from(users).where(isNotNull(users.avatar));
   const avatars = { byId: Object.fromEntries(av.map((a) => [a.id, a.avatar!])), byName: Object.fromEntries(av.map((a) => [a.name, a.avatar!])) };
@@ -40,6 +43,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <footer className="relative z-40 px-4 pb-6 text-center text-xs text-muted"><span className="relative inline-block px-4 py-1.5"><span aria-hidden className="glow-pulse absolute inset-0 rounded-full bg-accent/50 blur-lg" /><span className="relative font-medium">Made by Ruan Carlos</span></span></footer>
         </div>
       </div>
+      <GoldMode reached={gold.reached} label={gold.label} userId={user.id} />
       <AnnouncementHost />
       <BottomFade />
       <SwRegister />
