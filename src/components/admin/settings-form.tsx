@@ -1,13 +1,14 @@
 "use client";
 
-import { Clock, Database, LayoutDashboard, ShieldCheck, MessageCircle, PanelTop, Shuffle } from "lucide-react";
+import { Clock, Database, Sparkles, LayoutDashboard, ShieldCheck, MessageCircle, PanelTop, Shuffle } from "lucide-react";
 import { useState } from "react";
+import { MorphMark } from "@/components/logo-morph";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { saveSettingsAction } from "@/modules/admin/config";
 import type { SettingKey } from "@/modules/settings/get";
 
-type Field = { key: SettingKey; label: string; hint: string; unit?: string; kind?: "number" | "toggle" | "period"; min?: number };
+type Field = { key: SettingKey; label: string; hint: string; unit?: string; kind?: "number" | "toggle" | "period" | "choice"; min?: number; options?: [number, string][] };
 
 const GROUPS: { title: string; sub: string; icon: typeof Clock; fields: Field[] }[] = [
   { title: "Regras do sorteio", sub: "Quando um lead volta ou some do sorteio", icon: Shuffle, fields: [
@@ -35,6 +36,11 @@ const GROUPS: { title: string; sub: string; icon: typeof Clock; fields: Field[] 
     { key: "import_max_mb", label: "Tamanho máximo de planilha", hint: "CSV ou XLSX de importação.", unit: "MB", min: 1 },
     { key: "import_max_rows", label: "Linhas que acendem o aviso de arquivo grande", hint: "Só avisa, não bloqueia.", unit: "linhas", min: 100 },
     { key: "pdf_max_mb", label: "Tamanho máximo de PDF", hint: "Cotações e pedidos.", unit: "MB", min: 1 },
+  ] },
+  { title: "Identidade visual", sub: "Logo animada no sistema inteiro", icon: Sparkles, fields: [
+    { key: "logo_anim", label: "Animação da logo", hint: "Como a marca alterna entre FEY e SDR no cabeçalho, no menu e no login.", kind: "choice", options: [[1, "Morph (peças se transformam)"], [2, "Onda (peças em onda)"], [0, "Desligada (marca FEY + SDR)"]] },
+    { key: "logo_pace", label: "Ritmo", hint: "Velocidade da troca e tempo que cada logo fica à vista.", kind: "choice", options: [[0, "Calmo"], [1, "Normal"], [2, "Ágil"]] },
+    { key: "logo_text", label: "Mostrar o texto “SDR” ao lado", hint: "Com a animação ligada o SDR já aparece na própria marca; ligue para repetir o nome em texto.", kind: "toggle" },
   ] },
   { title: "Menu", sub: "Como as abas aparecem", icon: PanelTop, fields: [
     { key: "nav_group", label: "Abas em menus agrupados", hint: "Pessoas, Info, SDR, Gestão. Desligado, aparecem todas soltas.", kind: "toggle" },
@@ -74,6 +80,8 @@ export function SettingsForm({ initial }: { initial: Record<SettingKey, number> 
                   <label htmlFor={`p-${f.key}`} className="min-w-52 flex-1 text-sm"><span className="block font-medium">{f.label}</span><span className="mt-0.5 block text-xs text-muted">{f.hint}</span></label>
                   {f.kind === "toggle" ? (
                     <button type="button" id={`p-${f.key}`} role="switch" aria-checked={v[f.key] === 1} aria-label={f.label} onClick={() => set(f.key, v[f.key] === 1 ? 0 : 1)} className={`relative h-7 w-12 shrink-0 rounded-full transition ${v[f.key] === 1 ? "bg-grad" : "border border-line bg-sunk"}`}><span className={`absolute top-0.5 size-6 rounded-full bg-white shadow transition-all ${v[f.key] === 1 ? "left-[1.45rem]" : "left-0.5"}`} /></button>
+                  ) : f.kind === "choice" ? (
+                    <select id={`p-${f.key}`} className={`${inputCls} !w-64`} value={v[f.key]} onChange={(e) => set(f.key, Number(e.target.value))}>{f.options!.map(([n, l]) => <option key={n} value={n}>{l}</option>)}</select>
                   ) : f.kind === "period" ? (
                     <select id={`p-${f.key}`} className={`${inputCls} !w-36`} value={v[f.key]} onChange={(e) => set(f.key, Number(e.target.value))}><option value={1}>Hoje</option><option value={7}>7 dias</option><option value={30}>30 dias</option></select>
                   ) : (
@@ -82,6 +90,7 @@ export function SettingsForm({ initial }: { initial: Record<SettingKey, number> 
                 </li>
               ))}
             </ul>
+            {g.title === "Identidade visual" && <div className="flex items-center gap-4 border-t border-line bg-sunk/40 px-4 py-4"><MorphMark size={72} anim={v.logo_anim} pace={v.logo_pace} /><p className="text-xs text-muted">Prévia: é assim que a logo aparece para a equipe.</p></div>}
           </section>
         ))}
       </div>

@@ -24,6 +24,10 @@ export const SETTING_DEFAULTS = {
   dash_default_days: 1,
   /** 1 = contas com mais de um cargo veem as abas em grupos (SDR, Vendas, Gestor, Adm). */
   nav_group: 1,
+  /** Logo animada: 0 = parada (marca FEY + SDR), 1 = morph, 2 = onda. Ritmo: 0 calmo, 1 normal, 2 ágil. Texto “SDR” ao lado: 1 = mostra. */
+  logo_anim: 1,
+  logo_pace: 1,
+  logo_text: 0,
   /** 1 = chat interno ligado para todos (botão flutuante). */
   chat_on: 1,
   /** 1 = consulta automática de CNPJ em segundo plano ligada (os shufflers não consultam sozinhos). */

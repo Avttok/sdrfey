@@ -9,6 +9,8 @@ import "./globals.css";
 import { fontCss } from "@/config/fonts";
 import { resolveAccent } from "@/config/theme";
 import { getCurrentUser } from "@/modules/auth/guard";
+import { LogoCfgProvider } from "@/components/logo-morph";
+import { getSettings } from "@/modules/settings/get";
 
 export const metadata: Metadata = {
   title: { default: "SDR", template: "SDR - %s" },
@@ -22,6 +24,7 @@ const themeScript = `try{var t=localStorage.getItem('theme');var d=t==='dark';do
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
+  const cfg = await getSettings();
   const accent = resolveAccent(user?.accent, user?.roles ?? ["user"]);
 
   return (
@@ -33,7 +36,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body>{children}</body>
+      <body><LogoCfgProvider cfg={{ anim: cfg.logo_anim, pace: cfg.logo_pace, text: cfg.logo_text }}>{children}</LogoCfgProvider></body>
     </html>
   );
 }

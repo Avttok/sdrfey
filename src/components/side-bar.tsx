@@ -7,7 +7,8 @@ import { useState } from "react";
 import type { Role } from "@/config/roles";
 import { setNavCollapsedAction } from "@/modules/users/actions";
 import type { NavCustom } from "@/config/nav-icons";
-import { FeyMark, Logo } from "./logo";
+import { Logo } from "./logo";
+import { MorphMark } from "./logo-morph";
 import { NavLinks } from "./nav-links";
 import { UserMenu } from "./user-menu";
 import { NotificationBell } from "./notification-bell";
@@ -20,7 +21,7 @@ export function SideBar({ hrefs, name, username, hex, onHex, accentKey, roles, a
   return (
     <aside className={`sticky top-0 hidden h-screen shrink-0 flex-col gap-5 border-r border-line bg-panel px-3 py-5 transition-[width] duration-200 lg:flex ${collapsed ? "w-[4.75rem]" : "w-64"}`}>
       <div className={`flex items-center ${collapsed ? "flex-col gap-3" : "justify-between px-3"}`}>
-        {collapsed ? <Link href="/painel" aria-label="SDR FEY, ir para o início" className="grid size-10 place-items-center rounded-xl"><FeyMark animated size={30} /></Link> : <Link href="/painel" aria-label="SDR FEY, ir para o início" className="flex items-center"><Logo /></Link>}
+        {collapsed ? <Link href="/painel" aria-label="SDR FEY, ir para o início" className="grid size-10 place-items-center rounded-xl"><MorphMark size={30} /></Link> : <Link href="/painel" aria-label="SDR FEY, ir para o início" className="flex items-center"><Logo /></Link>}
         <button type="button" onClick={toggle} aria-label={collapsed ? "Expandir barra" : "Minimizar barra"} title={collapsed ? "Expandir barra" : "Minimizar barra"} className="grid size-8 place-items-center rounded-lg text-muted transition hover:bg-sunk hover:text-ink"><Icon size={18} aria-hidden /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden"><NavLinks hrefs={hrefs} vertical collapsed={collapsed} badges={badges} grouped={grouped} custom={custom} tree={tree} /></div>
