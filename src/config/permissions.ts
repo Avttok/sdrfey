@@ -22,6 +22,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "tab.negociacoes", label: "Aba Vendas: Negociações", group: "Abas", defaults: ["seller", "manager"] },
   { key: "tab.lista_flow", label: "Aba SDR: Lista Flow", group: "Abas", defaults: ["user", "manager"] },
   { key: "tab.lista_flow_vendas", label: "Aba Vendas: Lista Flow", group: "Abas", defaults: ["seller", "manager"] },
+  { key: "tab.transportadoras", label: "Aba Transportadoras (consultar)", group: "Abas", defaults: ["seller", "manager"] },
   { key: "tab.email", label: "Aba Opções: E-mail (modelos pessoais)", group: "Abas", defaults: ["user", "seller", "manager"] },
   { key: "tab.scripts", label: "Aba Opções: Scripts de ligação", group: "Abas", defaults: ["user", "seller", "manager"] },
   { key: "tab.shuffler_vendas", label: "Aba Vendas: Shuffler (leads inativos)", group: "Abas", defaults: ["seller", "manager"] },
@@ -57,6 +58,7 @@ export const PERMISSIONS: PermissionDef[] = [
 
   { key: "panel.vendas", label: "Bloco Vendas da equipe (dashboard)", group: "Painel", defaults: ["manager"] },
 
+  { key: "carriers.edit", label: "Cadastrar, editar e importar transportadoras", group: "Funções", defaults: ["manager"] },
   { key: "deals.team", label: "Ver e atender as negociações de toda a equipe (sem isso, só as próprias e as sem dono)", group: "Funções", defaults: ["manager"] },
   { key: "deals.delete", label: "Apagar e resetar negociações (tudo fica no Registro do Adm)", group: "Funções", defaults: ["manager"] },
   { key: "tab.desempenho", label: "Aba SDR: Desempenho (exportar planilhas)", group: "Abas", defaults: ["user", "manager"] },

@@ -767,3 +767,26 @@ export const leadLists = pgTable("lead_lists", {
   active: boolean("active").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Transportadoras: por estado e tipo de frete (CIF/FOB/RED), com % de frete e prazo na capital e no interior. */
+export const carriers = pgTable(
+  "carriers",
+  {
+    id: serial("id").primaryKey(),
+    uf: text("uf").notNull(),
+    mode: text("mode").notNull(), // CIF | FOB | RED
+    name: text("name").notNull(),
+    capitalPct: doublePrecision("capital_pct"),
+    interiorPct: doublePrecision("interior_pct"),
+    capitalDays: integer("capital_days"),
+    interiorDays: integer("interior_days"),
+    /** Frete mínimo por pedido (centavos), se a transportadora cobra. */
+    minCents: integer("min_cents"),
+    contact: text("contact"),
+    note: text("note"),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("carriers_uf_mode_name").on(t.uf, t.mode, t.name)],
+);

@@ -295,6 +295,13 @@
       "when": 1795355906984,
       "tag": "0041_icms_por_cotacao",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1795356008563,
+      "tag": "0042_transportadoras",
+      "breakpoints": true
     }
   ]
 }

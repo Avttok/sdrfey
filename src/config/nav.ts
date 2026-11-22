@@ -1,4 +1,4 @@
-import { Gauge, Headset, Info, ShieldHalf, Contact, History, Play, CalendarCheck, ScrollText, ShieldCheck, Target, UserRound, Users, MapPin, Handshake, FileSpreadsheet, Filter, Mail, ScrollText as ScriptIcon, Settings2, type LucideIcon } from "lucide-react";
+import { Gauge, Headset, Info, ShieldHalf, Contact, History, Play, CalendarCheck, ScrollText, ShieldCheck, Target, UserRound, Users, MapPin, Handshake, FileSpreadsheet, Filter, Mail, Truck, ScrollText as ScriptIcon, Settings2, type LucideIcon } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: string; adminOnly?: boolean; /** Menu a que pertence. Menu com um item só aparece como link solto; sem grupo = link solto. */ group?: string };
 
@@ -20,6 +20,7 @@ export const NAV: NavItem[] = [
   { href: "/historico", label: "Histórico", icon: History, perm: "tab.historico", group: "SDR" },
   { href: "/desempenho", label: "Desempenho", icon: FileSpreadsheet, perm: "tab.desempenho", group: "SDR" },
   { href: "/negociacoes", label: "Negociações", icon: Handshake, perm: "tab.negociacoes", group: "Vendas" },
+  { href: "/transportadoras", label: "Transportadoras", icon: Truck, perm: "tab.transportadoras", group: "Vendas" },
   { href: "/shuffler-vendas", label: "Shuffler", icon: Play, perm: "tab.shuffler_vendas", group: "Vendas" },
   { href: "/lista-flow-vendas", label: "Lista Flow", icon: Filter, perm: "tab.lista_flow_vendas", group: "Vendas" },
   { href: "/metas-vendas", label: "Metas", icon: Target, perm: "tab.metas_vendas", group: "Vendas" },
