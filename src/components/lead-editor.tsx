@@ -6,6 +6,7 @@ import { BrandLink } from "@/components/brand-icons";
 import { ArrowLeft, Ban, CalendarCheck, Copy, ExternalLink, Handshake, Link2, MapPin, Pencil, Phone, Plus, Tag, Trash2, RotateCcw, UnlockKeyhole, Users } from "lucide-react";
 import Link from "next/link";
 import { SectionCard } from "@/components/section-card";
+import { FlashTag, TagDeck } from "@/components/attend-final";
 import { useState } from "react";
 import { ConfirmDialog, useConfirm } from "@/components/confirm-dialog";
 import { AttendButton } from "@/components/attend-button";
@@ -99,12 +100,7 @@ export function LeadEditor({ kpis, records, afterLeft, afterRight, lead, catalog
         {canEdit && <button type="button" className={btnPrimary} disabled={pending} onClick={() => run(() => updateLeadAction(lead.id, { company: f.company, tradeName: f.tradeName || null, city: f.city || null, uf: f.uf || null, ownerId: f.ownerId, notes: f.notes || null }))}>Salvar dados</button>}
       </SectionCard>
 
-      <SectionCard icon={Tag} title="Tags">
-        {catalog.filter((g) => g.tags.length).map((g) => (
-          <div key={g.key}><p className="mb-1.5 text-sm font-medium">{g.name}</p>
-            <div className="flex flex-wrap gap-1.5">{g.tags.map((t) => <TagChip key={t.key} label={t.label} color={t.color} on={on.has(`${g.key}:${t.key}`)} onClick={canEdit && !sellerView ? () => toggleTag(g.key, t.key, g.exclusive) : undefined} />)}</div></div>
-        ))}
-      </SectionCard>
+
       {afterLeft}
       </div>
       <div className="space-y-5">
@@ -159,6 +155,17 @@ export function LeadEditor({ kpis, records, afterLeft, afterRight, lead, catalog
       {afterRight}
       </div>
       </div>
+      <SectionCard icon={Tag} title="Tags">
+        {!(canEdit && !sellerView) && <p className="text-xs text-muted">Somente leitura: quem atende o lead ou a gestão altera as tags.</p>}
+        {catalog.filter((g) => g.tags.length).map((g) => {
+          const n = g.tags.filter((t) => on.has(`${g.key}:${t.key}`)).length;
+          return (
+            <TagDeck key={g.key} title={g.name} hint={g.exclusive ? "escolha 1" : "marque o que se aplica"} count={n} total={g.tags.length}>
+              {g.tags.map((t) => <FlashTag key={t.key} label={t.label} color={t.color} on={on.has(`${g.key}:${t.key}`)} disabled={!(canEdit && !sellerView) || pending} onClick={() => toggleTag(g.key, t.key, g.exclusive)} />)}
+            </TagDeck>
+          );
+        })}
+      </SectionCard>
       {records}
     </div>
   );

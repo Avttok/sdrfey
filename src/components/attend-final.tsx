@@ -9,12 +9,12 @@ import { TAG_ICONS } from "@/config/tag-icons";
 import { inputCls } from "@/components/ui";
 
 /** Cartão de tag: ligado fica colorido e levantado, desligado fica pontilhado e apagado. */
-export function FlashTag({ label, color, on, onClick, icon, Comp, hint }: { label: string; color: string; on: boolean; onClick: () => void; icon?: string | null; /** Ícone próprio (em vez do ícone da tag). */ Comp?: typeof Check; /** Frase pequena sob o nome. */ hint?: string }) {
+export function FlashTag({ label, color, on, onClick, icon, Comp, hint, disabled }: { label: string; color: string; on: boolean; onClick: () => void; icon?: string | null; /** Ícone próprio (em vez do ícone da tag). */ Comp?: typeof Check; /** Frase pequena sob o nome. */ hint?: string; /** Só mostra: não deixa mudar. */ disabled?: boolean }) {
   const map = useContext(TagIcons);
   const Icon = Comp ?? TAG_ICONS[icon ?? map[label.toUpperCase()] ?? ""];
   return (
-    <button type="button" role="switch" aria-checked={on} onClick={onClick} data-on={on}
-      className="ft group relative grid h-full min-h-28 grid-rows-[auto_1fr] items-start gap-2 overflow-hidden rounded-2xl border-2 p-3 text-left transition-all duration-300 hover:-translate-y-0.5 active:scale-[.97]"
+    <button type="button" role="switch" aria-checked={on} onClick={onClick} data-on={on} disabled={disabled}
+      className={`ft group relative grid h-full min-h-28 grid-rows-[auto_1fr] items-start gap-2 overflow-hidden rounded-2xl border-2 p-3 text-left transition-all duration-300 hover:-translate-y-0.5 active:scale-[.97] ${disabled ? "cursor-default hover:!translate-y-0" : ""}`}
       style={{ "--cor": color } as React.CSSProperties}>
       <span className="flex w-full items-center justify-between gap-2">
         <span className="ft-ico grid size-9 shrink-0 place-items-center rounded-xl transition-all duration-300">{Icon ? <Icon size={18} aria-hidden /> : <Check size={18} aria-hidden />}</span>
@@ -35,7 +35,7 @@ export function TagDeck({ title, hint, icon: I, children, count, total }: { titl
         {hint && <span className="text-xs text-muted">{hint}</span>}
         <span className="figure ml-auto rounded-full bg-sunk px-2 py-0.5 text-xs font-semibold text-muted">{count}/{total}</span>
       </div>
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">{children}</div>
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">{children}</div>
     </section>
   );
 }
