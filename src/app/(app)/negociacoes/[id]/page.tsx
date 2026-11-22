@@ -28,7 +28,7 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="space-y-4">
       <Link href="/negociacoes" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink"><ArrowLeft size={15} aria-hidden /> Negociações</Link>
-      <DealPanel deal={row} events={extra.events} quotes={extra.quotes} tags={extra.tags} terms={extra.terms} extraPct={extra.extraPct} icmsPct={extra.icmsPct} canDelete={!!me.permissions["deals.delete"]} phones={extra.phones} meId={me.id} team={team} canClaim={me.roles.includes("seller") || team} sellers={sellers} visits={commercial.visits} clientEvents={commercial.events} history={history} />
+      <DealPanel deal={row} events={extra.events} quotes={extra.quotes} tags={extra.tags} terms={extra.terms} extraPct={extra.extraPct} icmsPct={extra.icmsPct} icmsRatePct={extra.icmsRatePct} canDelete={!!me.permissions["deals.delete"]} phones={extra.phones} meId={me.id} team={team} canClaim={me.roles.includes("seller") || team} sellers={sellers} visits={commercial.visits} clientEvents={commercial.events} history={history} />
     </div>
   );
 }

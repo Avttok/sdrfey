@@ -17,7 +17,7 @@ import { parsePctInput } from "@/modules/quotes/icms";
 import { fmtQty, isCento, unitsOf } from "@/modules/quotes/units";
 
 export type QuoteView = {
-  id: number; number: string | null; quoteDate: string | null; totalCents: number | null; productsCents: number | null; ipiCents: number | null; icmsCents: number | null; netCents: number | null; freightCents: number | null; weightKg: number | null; icmsPct?: number | null;
+  id: number; number: string | null; quoteDate: string | null; totalCents: number | null; productsCents: number | null; ipiCents: number | null; icmsCents: number | null; netCents: number | null; freightCents: number | null; weightKg: number | null; icmsPct?: number | null; icmsRatePct?: number | null;
   freight: "CIF" | "FOB" | "RED" | null; paymentTerms: string | null; validityDays: number | null; note: string | null; link: string | null; outcome?: "faturado" | "perdido" | null; createdAt: string;
   items: (QuoteItem & { id: number })[];
 };
@@ -46,7 +46,7 @@ export function QuoteValues({ q }: { q: Pick<QuoteView, "totalCents" | "products
 }
 
 /** Formulário de cotação (nova ou edição): dados, itens editáveis e leitura de PDF. */
-export function QuoteEditor({ dealId, quote, terms, extraPct, icmsPct = null, onClose, onTerm, leadCnpj }: { dealId: number; quote?: QuoteView; terms: string[]; extraPct: number; /** Regra do Adm para a UF do cliente (null = vale o ICMS do PDF). */ icmsPct?: number | null; onClose: () => void; onTerm: (t: string) => void; leadCnpj: string }) {
+export function QuoteEditor({ dealId, quote, terms, extraPct, icmsPct = null, icmsRatePct = null, onClose, onTerm, leadCnpj }: { dealId: number; quote?: QuoteView; terms: string[]; extraPct: number; /** Regra do Adm para a UF do cliente (null = vale o ICMS do PDF). */ icmsPct?: number | null; icmsRatePct?: number | null; onClose: () => void; onTerm: (t: string) => void; leadCnpj: string }) {
   const { run, pending } = useRun();
   const toast = useToast();
   const [f, setF] = useState({
@@ -150,6 +150,7 @@ export function QuoteEditor({ dealId, quote, terms, extraPct, icmsPct = null, on
               {ipiSum > 0 && <><dt>+ IPI</dt><dd className="figure text-right">{brl(ipiSum)}</dd></>}
               {freightC > 0 && <><dt>+ Frete</dt><dd className="figure text-right">{brl(freightC)}</dd></>}
               {items.length > 0 && <><dt>− ICMS{icmsEff != null ? ` (${String(icmsEff).replace(".", ",")}%)` : " (do PDF)"}</dt><dd className="figure text-right">{brl(icmsSum)}</dd></>}
+              {items.length > 0 && icmsRatePct != null && icmsEff !== icmsRatePct && (() => { const alt = Math.round((productsSum + freightC - Math.round(productsSum * icmsRatePct / 100)) * (1 - extraPct / 100)); return <><dt className="font-medium text-ink">Comparar: pela taxa da UF ({String(icmsRatePct).replace(".", ",")}%)</dt><dd className="figure text-right font-medium text-ink">{brl(alt)} sem impostos</dd></>; })()}
               {items.length > 0 && extraPct > 0 && <><dt>− PIS/COFINS ({String(extraPct).replace(".", ",")}%)</dt><dd className="figure text-right">sobre o restante</dd></>}
             </dl>
           </details>
@@ -172,7 +173,7 @@ export function QuoteEditor({ dealId, quote, terms, extraPct, icmsPct = null, on
 }
 
 /** Um card por cotação enviada. */
-export function QuoteCard({ dealId, q, terms, extraPct, icmsPct = null, onTerm, leadCnpj, editable, isLast }: { dealId: number; q: QuoteView; terms: string[]; extraPct: number; icmsPct?: number | null; onTerm: (t: string) => void; leadCnpj: string; editable: boolean; isLast: boolean }) {
+export function QuoteCard({ dealId, q, terms, extraPct, icmsPct = null, onTerm, leadCnpj, editable, isLast }: { dealId: number; q: QuoteView; terms: string[]; extraPct: number; icmsPct?: number | null; icmsRatePct?: number | null; onTerm: (t: string) => void; leadCnpj: string; editable: boolean; isLast: boolean }) {
   const { run, pending } = useRun();
   const [edit, setEdit] = useState(false);
   const [show, setShow] = useState(false);
