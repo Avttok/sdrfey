@@ -3,7 +3,7 @@
 import { useConfirm } from "@/components/confirm-dialog";
 import { ChevronDown, Mail, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { RichEditor } from "@/components/rich-editor";
+import { RichEditor, type ImgLimits } from "@/components/rich-editor";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { htmlToText, TEMPLATE_VARIABLES } from "@/modules/email/render";
@@ -12,7 +12,7 @@ import { deleteMyTemplateAction, saveMyTemplateAction } from "@/modules/email/my
 
 export type TplRow = { id?: number; name: string; subject: string; body: string; bodyHtml: string | null; active: boolean };
 
-function Card({ t, isNew, mine }: { t: TplRow; isNew?: boolean; mine?: boolean }) {
+function Card({ t, isNew, mine, img }: { t: TplRow; isNew?: boolean; mine?: boolean; img?: ImgLimits }) {
   const [f, setF] = useState(t);
   const [rk, setRk] = useState(0);
   const [open, setOpen] = useState(!!isNew);
@@ -32,7 +32,7 @@ function Card({ t, isNew, mine }: { t: TplRow; isNew?: boolean; mine?: boolean }
         <label className="text-sm">Assunto<input className={inputCls} value={f.subject} onChange={(e) => setF({ ...f, subject: e.target.value })} /></label>
       </div>
       <div className="text-sm"><p className="mb-1">Texto do e-mail</p>
-        <RichEditor key={rk} value={f.bodyHtml ?? f.body.split("\n").map((l) => `<div>${l.replace(/&/g, "&amp;").replace(/</g, "&lt;") || "<br>"}</div>`).join("")} onChange={(h) => setF((c) => ({ ...c, bodyHtml: h, body: htmlToText(h) }))} />
+        <RichEditor img={img} key={rk} value={f.bodyHtml ?? f.body.split("\n").map((l) => `<div>${l.replace(/&/g, "&amp;").replace(/</g, "&lt;") || "<br>"}</div>`).join("")} onChange={(h) => setF((c) => ({ ...c, bodyHtml: h, body: htmlToText(h) }))} />
         <p className="mt-1 text-xs text-muted">Negrito, fontes, cores, tamanhos e imagens valem ao usar “Copiar e-mail formatado” no atendimento. O botão “Abrir e-mail” usa só o texto (limite do e-mail pelo navegador).</p></div>
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} /> Ativo</label>
@@ -46,11 +46,11 @@ function Card({ t, isNew, mine }: { t: TplRow; isNew?: boolean; mine?: boolean }
   );
 }
 
-export function TemplatesAdmin({ rows, mine }: { rows: TplRow[]; mine?: boolean }) {
+export function TemplatesAdmin({ rows, mine, img }: { rows: TplRow[]; mine?: boolean; img?: ImgLimits }) {
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted">Variáveis: {TEMPLATE_VARIABLES.map((v) => `{${v}}`).join(" ")}. Com alternativa para quando faltar o dado: <code>{"{contato|tudo bem}"}</code>.</p>
-      <ul className="space-y-3">{rows.map((t) => <Card key={t.id} t={t} mine={mine} />)}<Card isNew mine={mine} t={{ name: "", subject: "", body: "", bodyHtml: "", active: true }} /></ul>
+      <ul className="space-y-3">{rows.map((t) => <Card key={t.id} t={t} mine={mine} img={img} />)}<Card isNew mine={mine} img={img} t={{ name: "", subject: "", body: "", bodyHtml: "", active: true }} /></ul>
     </div>
   );
 }

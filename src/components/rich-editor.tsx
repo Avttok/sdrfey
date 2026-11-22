@@ -9,11 +9,15 @@ import { sanitizeHtml, TEMPLATE_VARIABLES } from "@/modules/email/render";
 const FONTS = ["Arial", "Georgia", "Verdana", "Tahoma", "Trebuchet MS", "Times New Roman", "Courier New"];
 const SIZES: [string, string][] = [["1", "Pequeno"], ["3", "Normal"], ["4", "Médio"], ["5", "Grande"], ["6", "Muito grande"]];
 
-/** Reduz qualquer imagem (arquivo ou data URL) para no máximo 520 px de largura e ~120 KB. Fundo branco; JPEG leve. */
-async function shrinkSrc(src: string): Promise<string> {
+export type ImgLimits = { px: number; kb: number };
+const DEFAULT_IMG: ImgLimits = { px: 1200, kb: 600 };
+
+/** Reduz a imagem (arquivo ou data URL) à largura e ao peso máximos escolhidos pelo Adm, mantendo a maior qualidade possível. Fundo branco; JPEG. */
+async function shrinkSrc(src: string, lim: ImgLimits = DEFAULT_IMG): Promise<string> {
   const img = await new Promise<HTMLImageElement>((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src; });
-  let width = Math.min(520, img.width);
-  for (let quality = 0.82; ; quality -= 0.12) {
+  let width = Math.min(lim.px, img.width);
+  const maxLen = lim.kb * 1024 * 1.34; // data URL em base64 pesa ~1,34× o arquivo
+  for (let quality = 0.92; ; quality -= 0.1) {
     const k = width / img.width;
     const c = document.createElement("canvas");
     c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
@@ -21,16 +25,16 @@ async function shrinkSrc(src: string): Promise<string> {
     ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
     ctx.drawImage(img, 0, 0, c.width, c.height);
     const out = c.toDataURL("image/jpeg", Math.max(quality, 0.4));
-    if (out.length < 160_000 || (quality <= 0.4 && width <= 240)) return out;
-    if (quality <= 0.4) { width = Math.round(width * 0.75); quality = 0.94; }
+    if (out.length < maxLen || (quality <= 0.4 && width <= 240)) return out;
+    if (quality <= 0.4) { width = Math.round(width * 0.8); quality = 1; }
   }
 }
-async function shrink(file: File): Promise<string> {
+async function shrink(file: File, lim: ImgLimits): Promise<string> {
   const url = URL.createObjectURL(file);
-  try { return await shrinkSrc(url); } finally { URL.revokeObjectURL(url); }
+  try { return await shrinkSrc(url, lim); } finally { URL.revokeObjectURL(url); }
 }
 
-export function RichEditor({ value, onChange }: { value: string; onChange: (html: string) => void }) {
+export function RichEditor({ value, onChange, img = DEFAULT_IMG }: { value: string; onChange: (html: string) => void; /** Limites de largura (px) e peso (KB) das imagens, definidos em Parâmetros. */ img?: ImgLimits }) {
   const ref = useRef<HTMLDivElement>(null);
   const file = useRef<HTMLInputElement>(null);
   const toast = useToast();
@@ -40,16 +44,16 @@ export function RichEditor({ value, onChange }: { value: string; onChange: (html
   /** Colar ou soltar imagem: reduz antes de entrar no modelo (evita o erro de "muito grande"). */
   const addFiles = async (files: File[]) => {
     for (const f of files) {
-      try { ref.current?.focus(); document.execCommand("insertImage", false, await shrink(f)); } catch { toast("warn", "Não consegui ler essa imagem."); }
+      try { ref.current?.focus(); document.execCommand("insertImage", false, await shrink(f, img)); } catch { toast("warn", "Não consegui ler essa imagem."); }
     }
     emit();
   };
   /** Imagens que vieram embutidas num texto colado (copiadas de uma página, por exemplo) também são reduzidas. */
   const lighten = () => {
     const root = ref.current; if (!root) return;
-    root.querySelectorAll("img").forEach((img) => {
-      const src = img.getAttribute("src") ?? "";
-      if (src.startsWith("data:") && src.length > 160_000) void shrinkSrc(src).then((out) => { img.setAttribute("src", out); emit(); }).catch(() => {});
+    root.querySelectorAll("img").forEach((el) => {
+      const src = el.getAttribute("src") ?? "";
+      if (src.startsWith("data:") && src.length > img.kb * 1024 * 1.34) void shrinkSrc(src, img).then((out) => { el.setAttribute("src", out); emit(); }).catch(() => {});
     });
   };
   const cmd = (c: string, v?: string) => { ref.current?.focus(); document.execCommand(c, false, v); emit(); };
@@ -78,7 +82,7 @@ export function RichEditor({ value, onChange }: { value: string; onChange: (html
         </select>
         <input ref={file} type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden onChange={async (e) => {
           const f = e.target.files?.[0]; e.target.value = ""; if (!f) return;
-          try { const d = await shrink(f); if (d.length > 400_000) toast("warn", "Imagem pesada demais. Escolha uma menor."); else cmd("insertImage", d); } catch { toast("warn", "Não consegui ler essa imagem."); }
+          try { const d = await shrink(f, img); if (d.length > img.kb * 1024 * 1.5) toast("warn", "Imagem pesada demais. Escolha uma menor."); else cmd("insertImage", d); } catch { toast("warn", "Não consegui ler essa imagem."); }
         }} />
       </div>
       <div ref={ref} contentEditable suppressContentEditableWarning onInput={emit} onBlur={emit}

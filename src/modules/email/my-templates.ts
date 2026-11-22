@@ -1,5 +1,6 @@
 "use server";
 
+import { getSettings } from "@/modules/settings/get";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -10,7 +11,7 @@ import type { ActionResult } from "@/modules/leads/actions";
 import { sanitizeHtml } from "./render";
 
 const fail = (message: string): ActionResult => ({ ok: false, message });
-const schema = z.object({ id: z.number().int().optional(), name: z.string().trim().min(1, "Informe o nome do modelo.").max(80), subject: z.string().trim().min(1, "Informe o assunto.").max(200), body: z.string().trim().min(1, "Escreva o texto.").max(20_000), bodyHtml: z.string().max(900_000, "O modelo ficou grande demais (imagens pesadas). Use uma imagem menor.").nullish(), active: z.boolean() });
+const schema = z.object({ id: z.number().int().optional(), name: z.string().trim().min(1, "Informe o nome do modelo.").max(80), subject: z.string().trim().min(1, "Informe o assunto.").max(200), body: z.string().trim().min(1, "Escreva o texto.").max(20_000), bodyHtml: z.string().max(12_000_000, "O modelo ficou grande demais (imagens pesadas). Use uma imagem menor.").nullish(), active: z.boolean() });
 
 /** Modelo de e-mail pessoal: só aparece para quem criou. */
 export async function saveMyTemplateAction(input: unknown): Promise<ActionResult> {
@@ -18,6 +19,7 @@ export async function saveMyTemplateAction(input: unknown): Promise<ActionResult
   const p = schema.safeParse(input);
   if (!p.success) return fail(p.error.issues[0].message);
   const { id, bodyHtml, ...rest } = p.data;
+  if (bodyHtml && bodyHtml.length > (await getSettings()).email_html_kb * 1024) return { ok: false, message: "O modelo ficou grande demais (imagens pesadas). Use uma imagem menor." };
   const v = { ...rest, bodyHtml: bodyHtml ? sanitizeHtml(bodyHtml) : null };
   if (id) {
     const r = await db.update(emailTemplates).set(v).where(and(eq(emailTemplates.id, id), eq(emailTemplates.ownerId, me.id))).returning({ id: emailTemplates.id });

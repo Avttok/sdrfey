@@ -58,6 +58,10 @@ export const SETTING_DEFAULTS = {
   import_max_mb: 8,
   import_max_rows: 20000,
   pdf_max_mb: 5,
+  /** Imagens dos modelos de e-mail: largura máxima (px), peso máximo de cada imagem (KB) e peso máximo do modelo inteiro (KB). */
+  email_img_px: 1200,
+  email_img_kb: 600,
+  email_html_kb: 4000,
   /** 1 = bloqueia copiar, arrastar e clique direito fora de campos de texto (só para quem não é Adm). */
   copy_guard: 0,
   /** Fontes da consulta de CNPJ (1 = usa). Places precisa da chave GOOGLE_PLACES_API_KEY. */

@@ -36,6 +36,9 @@ const GROUPS: { title: string; sub: string; icon: typeof Clock; fields: Field[] 
     { key: "import_max_mb", label: "Tamanho máximo de planilha", hint: "CSV ou XLSX de importação.", unit: "MB", min: 1 },
     { key: "import_max_rows", label: "Linhas que acendem o aviso de arquivo grande", hint: "Só avisa, não bloqueia.", unit: "linhas", min: 100 },
     { key: "pdf_max_mb", label: "Tamanho máximo de PDF", hint: "Cotações e pedidos.", unit: "MB", min: 1 },
+    { key: "email_img_px", label: "Imagem de e-mail: largura máxima", hint: "Imagens maiores são reduzidas a essa largura (mais pixels = mais nítida).", unit: "px", min: 200 },
+    { key: "email_img_kb", label: "Imagem de e-mail: peso máximo de cada uma", hint: "A qualidade baixa só o necessário para caber.", unit: "KB", min: 50 },
+    { key: "email_html_kb", label: "Modelo de e-mail: peso máximo total", hint: "Texto + todas as imagens do modelo.", unit: "KB", min: 100 },
   ] },
   { title: "Identidade visual", sub: "Logo animada no sistema inteiro", icon: Sparkles, fields: [
     { key: "logo_anim", label: "Animação da logo", hint: "Como a marca alterna entre FEY e SDR no cabeçalho, no menu e no login.", kind: "choice", options: [[1, "Morph (peças se transformam)"], [2, "Onda (peças em onda)"], [0, "Desligada (marca FEY + SDR)"]] },
