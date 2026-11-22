@@ -15,13 +15,13 @@ export function DashHero({ name, h }: { name: string; h: Hero }) {
   const card = `${panelCls} sh-rise p-5`;
   return (
     <section className="grid gap-3 lg:grid-cols-[1.3fr_1fr_1fr]">
-      <div className={`${card} relative overflow-hidden`}>
-        <span aria-hidden className="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-accent/15 blur-2xl" />
-        <p className="flex items-center gap-2 text-sm text-muted"><Sun size={15} className="text-accent" aria-hidden /> {hi}</p>
-        <h2 className="display mt-1 text-3xl">{name.split(" ")[0]}</h2>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Link href="/conquistas" className="inline-flex items-center gap-2 rounded-full bg-grad px-3.5 py-1.5 text-sm font-bold text-on-accent shadow transition hover:brightness-110"><Coins size={15} aria-hidden /><span className="figure">{nf.format(h.coins)}</span> moedas</Link>
-          <Link href="/conquistas" className="inline-flex items-center gap-2 rounded-full border border-line bg-sunk px-3.5 py-1.5 text-sm font-semibold transition hover:border-accent/50"><Medal size={15} className="text-accent" aria-hidden /><span className="figure">{h.earned}/{h.total}</span> conquistas</Link>
+      <div className="aurora sh-rise relative overflow-hidden rounded-3xl bg-grad p-5 text-on-accent shadow-lg">
+        <span aria-hidden className="aurora-blob a" /><span aria-hidden className="aurora-blob b" />
+        <p className="relative flex items-center gap-2 text-sm opacity-90"><Sun size={15} aria-hidden /> {hi}</p>
+        <h2 className="display relative mt-1 text-4xl">{name.split(" ")[0]}</h2>
+        <div className="relative mt-4 flex flex-wrap gap-2">
+          <Link href="/conquistas" className="inline-flex items-center gap-2 rounded-full bg-white/25 px-3.5 py-1.5 text-sm font-bold backdrop-blur transition hover:bg-white/35"><Coins size={15} aria-hidden /><span className="figure">{nf.format(h.coins)}</span> moedas</Link>
+          <Link href="/conquistas" className="inline-flex items-center gap-2 rounded-full bg-black/15 px-3.5 py-1.5 text-sm font-semibold backdrop-blur transition hover:bg-black/25"><Medal size={15} aria-hidden /><span className="figure">{h.earned}/{h.total}</span> conquistas</Link>
         </div>
       </div>
 
@@ -29,7 +29,7 @@ export function DashHero({ name, h }: { name: string; h: Hero }) {
         {h.isSdr && pct !== null ? (
           <>
             <p className="text-sm font-semibold text-muted">Atendidos hoje</p>
-            <p className="figure mt-1 text-4xl font-bold leading-none">{h.attended}<span className="text-lg font-medium text-muted"> / {h.attendedGoal}</span></p>
+            <p className="figure mt-1 text-5xl font-extrabold leading-none">{h.attended}<span className="text-lg font-medium text-muted"> / {h.attendedGoal}</span></p>
             <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-sunk"><div className={`h-full rounded-full ${pct >= 100 ? "bg-ok" : "bg-grad"}`} style={{ width: `${pct}%`, transition: "width 1s" }} /></div>
             <p className="mt-2 text-xs text-muted">{pct >= 100 ? "Meta do dia batida!" : `faltam ${h.attendedGoal - h.attended}`}</p>
           </>
