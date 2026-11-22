@@ -85,9 +85,16 @@ async function enrichCore(leadId: number, userId: number | null): Promise<Enrich
     const [rw2, b2] = await Promise.all([rwRes.final ? rwRes : getJson(rwUrl), bRes.final ? bRes : getJson(bUrl)]);
     rwRes = rw2; bRes = b2;
   }
-  const rw = rwRes.data, whyW = rwRes.why, rb = bRes.data, whyB = bRes.why;
+  const rw = rwRes.data, whyW = rwRes.why, whyB = bRes.why;
+  let rb = bRes.data;
   const b = parseReceitaWs(rw);
-  const a = parseBrasilApi(rb);
+  let a = parseBrasilApi(rb);
+  /* Reserva: a Minha Receita usa o mesmo formato da BrasilAPI e atende quando as duas fontes caem. */
+  if (!a && !b) {
+    const m = await getJson(`https://minhareceita.org/${lead.cnpj}`);
+    const pm = parseBrasilApi(m.data);
+    if (pm) { a = pm; rb = m.data; }
+  }
   const info = mergeInfo(a, b);
   const result: EnrichResult = {
     state: info ? "ok" : "unavailable",
