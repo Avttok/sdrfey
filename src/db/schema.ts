@@ -821,3 +821,15 @@ export const notifications = pgTable(
   },
   (t) => [index("notifications_user_idx").on(t.userId, t.readAt, t.createdAt)],
 );
+
+/** Nomenclatura dos produtos: sigla → significado (NYL = Nylon, AC = Aço Carbono…). O Adm edita; siglas novas aparecem para ele definir. */
+export const productTerms = pgTable("product_terms", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(), // sempre maiúsculo
+  meaning: text("meaning").notNull(),
+  /** Grupo da classificação: Material, Rosca, Cabeça, Acabamento, Tipo… */
+  category: text("category").notNull().default("Outros"),
+  note: text("note"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

@@ -11,6 +11,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   ] },
   { id: "vendas", title: "Vendas", hue: "#10b981", items: [
     { href: "/admin/vendas", label: "Condições e produtos", hint: "Pagamento e catálogo", icon: Handshake },
+    { href: "/admin/nomenclatura", label: "Nomenclatura de produtos", hint: "Siglas, classificação e sugestões", icon: Tags },
     { href: "/admin/negociacoes-apagadas", label: "Apagadas", hint: "Negociações apagadas/resetadas", icon: Archive },
   ] },
   { id: "conteudo", title: "Conteúdo e dados", hue: "#f59e0b", items: [

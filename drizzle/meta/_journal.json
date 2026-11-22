@@ -316,6 +316,13 @@
       "when": 1795356266290,
       "tag": "0044_notificacoes",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1795356411755,
+      "tag": "0045_nomenclatura_produtos",
+      "breakpoints": true
     }
   ]
 }

@@ -13,6 +13,7 @@ import { getSettings } from "@/modules/settings/get";
 import { effectiveGoals } from "@/modules/settings/goals";
 import { startSdrListAction } from "@/modules/lists/actions";
 import { activeList } from "@/modules/lists/queries";
+import { recosForLead } from "@/modules/recommendations/data";
 import { listScripts } from "@/modules/scripts/list";
 import { getActiveTemplates, getLeadView, getTagCatalog } from "@/modules/leads/view";
 
@@ -66,5 +67,5 @@ export default async function AttendPage() {
   }
 
   const previous = prev ? { by: prev.name ?? "Outra pessoa", at: new Date(prev.at).toISOString(), channels: prev.channels ?? [], note: prev.note } : null;
-  return <AttendFlow scripts={await listScripts(me.id)} autoEnrichOn={(await getSettings()).auto_enrich === 1} lead={lead} catalog={catalog!} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={previous} doneToday={done?.n ?? 0} scheduledToday={sched?.n ?? 0} goals={goals} sellers={sellers} queue={{ on: settings.seller_queue_on === 1, nextId: await peekNextSeller() }} />;
+  return <AttendFlow recos={await recosForLead(lead.id).catch(() => [])} scripts={await listScripts(me.id)} autoEnrichOn={(await getSettings()).auto_enrich === 1} lead={lead} catalog={catalog!} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={previous} doneToday={done?.n ?? 0} scheduledToday={sched?.n ?? 0} goals={goals} sellers={sellers} queue={{ on: settings.seller_queue_on === 1, nextId: await peekNextSeller() }} />;
 }

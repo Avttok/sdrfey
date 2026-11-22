@@ -7,6 +7,8 @@ import { ConfirmDialog, useConfirm } from "@/components/confirm-dialog";
 import { DateInput } from "@/components/date-input";
 import { GoalBar } from "@/components/goal-bar";
 import { CopyVal } from "@/components/copy-val";
+import { ProductHints } from "@/components/product-hints";
+import type { Reco } from "@/modules/recommendations/data";
 import { ScriptPicker } from "@/components/script-picker";
 import type { ScriptDoc } from "@/config/scripts";
 import { LeadInfoPanel } from "@/components/lead-info-panel";
@@ -55,7 +57,7 @@ const copy = async (text: string, toast: ReturnType<typeof useToast>) => {
   }
 };
 
-export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myName, showMap, previous, doneToday, scheduledToday, goals, sellers, sales, queue, scripts = [] }: { /** Scripts de ligação que a pessoa pode usar (do time e dela). */ scripts?: ScriptDoc[]; /** Fila de distribuição aos vendedores: ligada? e quem é o próximo. */ queue?: { on: boolean; nextId: number | null }; /** Consulta automática de CNPJ ligada pelo Adm: o shuffler não consulta sozinho. */ autoEnrichOn?: boolean; /** Modo vendedor (lead inativo): mesmo fluxo, destinos diferentes no fim. */ sales?: { shuffleId: number }; sellers: { id: number; name: string }[]; lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; previous: PreviousAttendance | null; doneToday: number; scheduledToday: number; goals: Goals }) {
+export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myName, showMap, previous, doneToday, scheduledToday, goals, sellers, sales, queue, scripts = [], recos = [] }: { /** Produtos para oferecer, por tipo de cliente. */ recos?: Reco[]; /** Scripts de ligação que a pessoa pode usar (do time e dela). */ scripts?: ScriptDoc[]; /** Fila de distribuição aos vendedores: ligada? e quem é o próximo. */ queue?: { on: boolean; nextId: number | null }; /** Consulta automática de CNPJ ligada pelo Adm: o shuffler não consulta sozinho. */ autoEnrichOn?: boolean; /** Modo vendedor (lead inativo): mesmo fluxo, destinos diferentes no fim. */ sales?: { shuffleId: number }; sellers: { id: number; name: string }[]; lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; previous: PreviousAttendance | null; doneToday: number; scheduledToday: number; goals: Goals }) {
   const toast = useToast();
   const [pending, start] = useTransition();
   const openedAt = useRef(Date.now());
@@ -263,6 +265,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
         {step === 0 && (
           <div className="space-y-6">
             <LeadInfoPanel lead={lead} wide showMap={showMap} autoSearch={!autoEnrichOn} />
+            <ProductHints recos={recos} />
             <div className="grid gap-6 border-t border-line pt-5 lg:grid-cols-2">
             <section className="space-y-3">
               <h2 className="display text-xl">Contatos</h2>
@@ -358,6 +361,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
               {goodPhones.map((p) => <li key={p.id} className="lift flex items-center gap-3 rounded-2xl border border-line bg-sunk/60 px-4 py-3"><span aria-hidden className="grid size-10 place-items-center rounded-xl bg-accent/15 text-accent"><Phone size={18} /></span><span className="figure flex-1 text-lg">{fmtPhone(p.value)}</span><button type="button" className={btnGhost} onClick={() => { void copy(p.value, toast); setUsed(new Set(used).add("ligacao")); }}><Copy size={15} aria-hidden /> Copiar</button></li>)}
               {goodPhones.length === 0 && <li className="text-sm text-muted">Sem telefone válido.</li>}
             </ul>
+            <ProductHints recos={recos} />
             {scripts.length > 0 && <details className="group rounded-2xl border border-line bg-sunk/40 p-3" open><summary className="cursor-pointer text-sm font-semibold">Script da ligação (toque nas respostas do lead)</summary><div className="mt-3"><ScriptPicker scripts={scripts} goal={sales ? "vendas" : "sdr"} vars={{ empresa: vars.empresa, contato: vars.contato, cidade: vars.cidade, meunome: vars.meu_nome }} compact /></div></details>}
             <UsedToggle on={used.has("ligacao")} onClick={() => toggle(used, "ligacao", setUsed)} label="Ligação feita" />
           </section>
