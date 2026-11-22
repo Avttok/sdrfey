@@ -33,7 +33,7 @@ export function LiveView({ uid, name }: { uid: number; name: string }) {
       <button type="button" className={`${btnGhost} !px-2.5`} title={`Ver a tela de ${name}`} onClick={() => setOpen(true)}><Eye size={15} aria-hidden /> Ver tela</button>
       {open && (
         <div className="fixed inset-0 z-[70] grid place-items-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-label={`Tela de ${name}`} onClick={() => setOpen(false)}>
-          <div className={`${panelCls} flex max-h-[90vh] w-full max-w-5xl flex-col gap-3 p-4`} onClick={(e) => e.stopPropagation()}>
+          <div className={`${panelCls} !bg-panel/85 backdrop-blur-3xl backdrop-saturate-150 flex max-h-[90vh] w-full max-w-5xl flex-col gap-3 p-4`} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between gap-3">
               <p className="font-semibold">{name}{snap.path && <span className="ml-2 text-xs font-normal text-muted">{snap.path}</span>}</p>
               <button type="button" className={`${btnGhost} !px-2`} onClick={() => setOpen(false)} aria-label="Fechar"><X size={16} aria-hidden /></button>

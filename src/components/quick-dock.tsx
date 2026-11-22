@@ -65,8 +65,8 @@ export function QuickDock({ items, hasChat }: { items: QuickKey[]; hasChat: bool
       {/* espaço do "Centralizar" (portal do roteiro): fica colado no botão do chat */}
       <div id={QUICK_SLOT_ID} className="pointer-events-auto order-first flex flex-col items-end gap-2.5 empty:hidden" />
       {visible.length > 0 && (
-        <button type="button" onClick={toggle} aria-expanded={open} aria-label={open ? "Recolher atalhos" : "Mostrar atalhos"} title={open ? "Recolher atalhos" : "Atalhos rápidos"} className="pointer-events-auto grid size-7 place-items-center rounded-full border border-line bg-panel text-muted shadow-md transition hover:text-accent">
-          {open ? <ChevronDown size={14} aria-hidden /> : <Zap size={13} aria-hidden />}
+        <button type="button" onClick={toggle} aria-expanded={open} aria-label={open ? "Recolher atalhos" : "Mostrar atalhos"} title={open ? "Recolher atalhos" : "Atalhos rápidos"} className={`${btn} pointer-events-auto size-12 border-transparent bg-grad text-on-accent ${open ? "" : "ring-4 ring-accent/25"}`}>
+          {open ? <ChevronDown size={20} aria-hidden /> : <Zap size={22} className="fill-current" aria-hidden />}
         </button>
       )}
     </div>

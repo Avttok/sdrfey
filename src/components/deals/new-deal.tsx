@@ -106,8 +106,8 @@ export function NewDeal({ terms }: { terms: string[] }) {
   const found = look?.ok && look.found ? look : null;
   const blocked = !!found?.openDeal || !!found?.leftPortfolio;
   const panel = (
-    <div className="fixed inset-0 z-[60] overflow-y-auto bg-black/45 p-4" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
-    <section role="dialog" aria-modal="true" style={{ backgroundImage: "none" }} className={`${panelCls} mx-auto my-6 w-full max-w-3xl space-y-4 p-5 shadow-2xl sm:p-6`} aria-label="Nova negociação">
+    <div className="fixed inset-0 z-[60] overflow-y-auto bg-black/50 p-4 backdrop-blur-md" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
+    <section role="dialog" aria-modal="true" style={{ backgroundImage: "none" }} className={`${panelCls} !bg-panel/85 mx-auto my-6 w-full max-w-3xl space-y-4 p-5 shadow-2xl backdrop-blur-3xl backdrop-saturate-150 sm:p-6`} aria-label="Nova negociação">
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="display min-w-40 flex-1 text-xl">Nova negociação</h2>
         <div role="radiogroup" aria-label="O PDF é de" className="inline-flex rounded-xl border border-line bg-sunk p-0.5 text-xs font-medium">
