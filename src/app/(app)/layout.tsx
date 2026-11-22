@@ -10,6 +10,7 @@ import { GoldMode } from "@/components/gold-mode";
 import { goldStatus } from "@/modules/goals/gold";
 import { AnnouncementHost } from "@/components/announcement-host";
 import { BottomFade } from "@/components/bottom-fade";
+import { EnrichDock } from "@/components/enrich-dock";
 import { LiveSnap } from "@/components/live-snap";
 import { EggKnock } from "@/components/egg-knock";
 import { CopyGuard } from "@/components/copy-guard";
@@ -51,6 +52,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <BottomFade />
       <SwRegister />
       <LiveSnap />
+      {user.isAdmin && <EnrichDock side={user.navLayout === "side"} />}
       {settings.copy_guard === 1 && !user.isAdmin && <CopyGuard />}
       <Suspense fallback={null}><ChatMount user={user} /></Suspense>
       </AvatarProvider>

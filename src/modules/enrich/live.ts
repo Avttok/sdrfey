@@ -73,3 +73,8 @@ export async function logPage(opts: { page: number; result: "all" | "ok" | "fail
   const rows = await db.execute(sql`${LOG_SELECT} ${where} order by g.id desc limit ${PAGE} offset ${(page - 1) * PAGE}`);
   return { rows: rows.map(toRow), total, pages };
 }
+
+/** As últimas consultas (para o painel lateral que acompanha em qualquer página). */
+export async function recentRows(n = 12): Promise<LogRow[]> {
+  return (await db.execute(sql`${LOG_SELECT} order by g.id desc limit ${Math.min(30, Math.max(1, n))}`)).map(toRow);
+}
