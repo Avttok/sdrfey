@@ -10,13 +10,13 @@ import { LEAD_COLUMNS, REP_COLUMNS } from "./columns";
 import { commonChecks, inspectFile, LEAD_LABELS, REP_LABELS, type FileInsight } from "./insight";
 import { decodeCsv, parseCsv } from "./csv";
 import { headerKey } from "./normalize";
-import { applyLeadDrafts } from "./leads-apply";
+import { applyLeadDrafts, countEnrichable } from "./leads-apply";
 import { parseLeadRows, type ImportReport } from "./leads-parse";
 import { applyRepDrafts, parseRepRows } from "./reps";
 
 export type ImportPreview =
   | { ok: false; message: string }
-  | { ok: true; kind: "leads"; fileName: string; report: ImportReport; insight: FileInsight; existing: number; fresh: number }
+  | { ok: true; kind: "leads"; fileName: string; report: ImportReport; insight: FileInsight; existing: number; fresh: number; enrich: number }
   | { ok: true; kind: "reps"; fileName: string; total: number; warnings: string[]; insight: FileInsight; existing: number; fresh: number };
 
 export type ImportResult = { ok: boolean; message: string; details?: string[] };
@@ -58,14 +58,18 @@ export async function previewImportAction(formData: FormData): Promise<ImportPre
     }
     const fresh = drafts.length - existing;
     if (looksLikeReps) checks.unshift({ level: "bad", text: "Este arquivo parece de REPRESENTANTES (tem COD SAP e NOME REP). Você escolheu importar Leads." });
-    if (drafts.length && existing === drafts.length) checks.unshift({ level: "warn", text: "Todos os CNPJs do arquivo já existem no sistema: nada novo vai entrar (os existentes nunca são sobrescritos)." });
-    else if (existing > 0) checks.push({ level: "info", text: `${existing.toLocaleString("pt-BR")} CNPJ(s) já existem e serão pulados; ${fresh.toLocaleString("pt-BR")} entram como novos.` });
+    const enrich = existing > 0 ? await countEnrichable(drafts) : 0;
+    const nf = (n: number) => n.toLocaleString("pt-BR");
+    if (drafts.length && existing === drafts.length) checks.unshift(enrich > 0
+      ? { level: "info", text: `Todos os CNPJs já existem: nenhum lead novo, mas ${nf(enrich)} vão receber informação nova da planilha (o que é igual ou vazio é ignorado).` }
+      : { level: "warn", text: "Todos os CNPJs já existem e a planilha não traz nenhuma informação nova: nada vai mudar." });
+    else if (existing > 0) checks.push({ level: "info", text: `${nf(existing)} CNPJ(s) já existem: ${nf(enrich)} recebem informação nova e o resto é ignorado; ${nf(fresh)} entram como novos.` });
     if (leadKind === "inativo" && existingProspects > 0) checks.push({ level: "warn", text: `Você escolheu "Inativos", mas ${existingProspects.toLocaleString("pt-BR")} desses CNPJs já são leads novos (do SDR) e continuarão como estão.` });
     if (leadKind === "prospect" && f.headers.some((h) => ["MEIO", "MEIODECONTATO", "QUALIFICADO", "SITUACAO"].includes(headerKey(h)))) checks.push({ level: "info", text: "O arquivo traz colunas de histórico (meio, qualificação ou situação). As tags serão criadas junto com os leads." });
     const phoneCol = base.columns.find((c) => c.field === "Telefone");
     if (phoneCol && drafts.length && drafts.filter((d) => d.phones.length === 0).length / drafts.length > 0.5) checks.push({ level: "warn", text: "Mais da metade dos leads válidos não tem telefone. Eles dependerão da consulta de CNPJ para ter contato." });
     if (!phoneCol) checks.push({ level: "warn", text: "O arquivo não tem coluna de telefone: os leads entram sem contato até a consulta de CNPJ." });
-    return { ok: true, kind: "leads", fileName: f.name, report, insight: { ...base, checks }, existing, fresh };
+    return { ok: true, kind: "leads", fileName: f.name, report, insight: { ...base, checks }, existing, fresh, enrich };
   }
   const { drafts, warnings } = parseRepRows(f.headers, f.rows);
   if (drafts.length === 0) return { ok: false, message: warnings[0] ?? "Nenhum representante encontrado no arquivo." };
@@ -103,7 +107,7 @@ export async function applyImportAction(formData: FormData): Promise<ImportResul
     await db.update(importBatches).set({ inserted: r.inserted, skipped: r.skippedExisting }).where(eq(importBatches.id, batch.id));
     revalidatePath("/leads");
     revalidatePath("/admin/importar");
-    return { ok: true, message: `${plural(r.inserted, kind === "inativo" ? "lead inativo importado" : "lead novo importado", kind === "inativo" ? "leads inativos importados" : "leads novos importados")}; ${r.skippedExisting} já ${r.skippedExisting === 1 ? "existia e foi mantido" : "existiam e foram mantidos"}${r.converted ? ` (${r.converted} passaram para inativo)` : ""}.`, details: [...r.unknownOwners.map((o) => `Responsável desconhecido ignorado: ${o}`), ...r.unknownTags.map((t) => `Tag desconhecida ignorada: ${t}`)] };
+    return { ok: true, message: `${plural(r.inserted, kind === "inativo" ? "lead inativo importado" : "lead novo importado", kind === "inativo" ? "leads inativos importados" : "leads novos importados")}; ${r.skippedExisting} já ${r.skippedExisting === 1 ? "existia" : "existiam"}${r.enriched ? ` (${r.enriched} ${r.enriched === 1 ? "recebeu informação nova" : "receberam informação nova"}; o resto foi mantido)` : " e foram mantidos"}${r.converted ? ` (${r.converted} passaram para inativo)` : ""}.`, details: [...r.unknownOwners.map((o) => `Responsável desconhecido ignorado: ${o}`), ...r.unknownTags.map((t) => `Tag desconhecida ignorada: ${t}`)] };
   }
   const { drafts } = parseRepRows(f.headers, f.rows);
   const r = await applyRepDrafts(drafts, { importedBy: me.id, sourceName: f.name });

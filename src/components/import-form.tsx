@@ -132,13 +132,13 @@ export function ImportForm() {
           {file && <ImportEditor file={file} busy={pending} onApply={(f) => { setFile(f); check(f); }} />}
           {prev.kind === "leads" ? (
             <>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
                 <Stat label="Linhas no arquivo" value={prev.report.total} />
                 <Stat label="Válidas" value={prev.report.valid} tone="ok" />
                 <Stat label="Repetidas no arquivo" value={prev.report.duplicatesInFile} tone={prev.report.duplicatesInFile ? "warn" : undefined} />
                 <Stat label="Rejeitadas" value={prev.report.rejected.length} tone={prev.report.rejected.length ? "bad" : undefined} />
                 <Stat label="Novos no sistema" value={prev.fresh} tone="ok" />
-                <Stat label="Já existem (pulados)" value={prev.existing} tone={prev.existing ? "warn" : undefined} />
+                <Stat label="Já existem" value={prev.existing} tone={prev.existing ? "warn" : undefined} /><Stat label="Recebem info nova" value={prev.enrich} tone={prev.enrich ? "ok" : undefined} />
               </div>
               {Object.keys(prev.report.fixes).length > 0 && <div className="rounded-lg bg-sunk p-3 text-sm"><p className="mb-1 font-medium">Correções automáticas</p>{Object.entries(prev.report.fixes).map(([k, v]) => <p key={k} className="text-muted">{k} ({nf.format(v as number)})</p>)}</div>}
               {prev.report.warnings.length > 0 && <div className="rounded-lg bg-sunk p-3 text-sm"><p className="mb-1 flex items-center gap-1.5 font-medium text-warn"><AlertTriangle size={15} aria-hidden /> Avisos</p>{prev.report.warnings.slice(0, 6).map((w) => <p key={w} className="text-muted">{w}</p>)}</div>}

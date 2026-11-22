@@ -12,6 +12,8 @@ export type ApplyResult = {
   unknownTags: string[];
   /** Importando como inativo: clientes que já existiam como lead novo e passaram para inativo. */
   converted: number;
+  /** Já cadastrados que receberam alguma informação nova da planilha. */
+  enriched: number;
 };
 
 const chunk = <T>(arr: T[], size: number): T[][] => {
@@ -21,8 +23,8 @@ const chunk = <T>(arr: T[], size: number): T[][] => {
 };
 
 /**
- * Grava os leads limpos no banco. Só entram CNPJs que ainda não existem:
- * nada do que já foi trabalhado é sobrescrito. Tudo acontece numa única transação.
+ * Grava os leads limpos no banco. Leads novos entram inteiros; os que já existem só recebem
+ * o que a planilha traz de novo (campo vazio preenchido, telefone/e-mail/contato/tag que faltavam). Nada é sobrescrito. Tudo acontece numa única transação.
  */
 export async function applyLeadDrafts(
   drafts: LeadDraft[],
@@ -30,7 +32,7 @@ export async function applyLeadDrafts(
   database: Db = db,
 ): Promise<ApplyResult> {
   return database.transaction(async (tx) => {
-    const result: ApplyResult = { inserted: 0, skippedExisting: 0, newTags: [], unknownOwners: [], unknownTags: [], converted: 0 };
+    const result: ApplyResult = { inserted: 0, skippedExisting: 0, newTags: [], unknownOwners: [], unknownTags: [], converted: 0, enriched: 0 };
     const kind = opts.kind ?? "prospect";
 
     /* 1. descobrir o que já existe */
@@ -51,6 +53,8 @@ export async function applyLeadDrafts(
         result.converted += done.length;
       }
     }
+    const old = drafts.filter((d) => existing.has(d.cnpj));
+    if (old.length) result.enriched = await enrichExisting(tx, old, opts);
     if (fresh.length === 0) return result;
 
     /* 2. garantir que todas as tags citadas existem (porte e capital nascem aqui) */
@@ -153,4 +157,63 @@ export async function applyLeadDrafts(
     result.unknownOwners = [...unknownOwners];
     return result;
   });
+}
+
+/** Para quem já está cadastrado: acrescenta só a informação nova e ignora o que é igual ou veio vazio. */
+async function enrichExisting(tx: Parameters<Parameters<Db["transaction"]>[0]>[0], drafts: LeadDraft[], opts: { importedBy: number | null; sourceName: string }): Promise<number> {
+  let touched = 0;
+  const tagRows = await tx.select().from(tags);
+  const tagId = new Map(tagRows.map((t) => [`${t.groupKey}:${t.key}`, t.id]));
+  for (const part of chunk(drafts, 300)) {
+    const rows = await tx.select().from(leads).where(inArray(leads.cnpj, part.map((d) => d.cnpj)));
+    const byCnpj = new Map(rows.map((r) => [r.cnpj, r]));
+    const ids = rows.map((r) => r.id);
+    const [people, have] = ids.length ? await Promise.all([
+      tx.select({ leadId: leadPeople.leadId, name: leadPeople.name }).from(leadPeople).where(inArray(leadPeople.leadId, ids)),
+      tx.select({ leadId: leadTags.leadId, tagId: leadTags.tagId }).from(leadTags).where(inArray(leadTags.leadId, ids)),
+    ]) : [[], []];
+    const norm = (x: string) => stripAccents(x).trim().toUpperCase();
+    const personKeys = new Set(people.map((p) => `${p.leadId}|${norm(p.name)}`));
+    const tagKeys = new Set(have.map((h) => `${h.leadId}|${h.tagId}`));
+    const audits: Parameters<typeof logAudit>[1] = [];
+    for (const d of part) {
+      const l = byCnpj.get(d.cnpj);
+      if (!l) continue;
+      const fill: Partial<typeof leads.$inferInsert> = {};
+      const added: string[] = [];
+      if (d.sapCode && !l.sapCode) { fill.sapCode = d.sapCode; added.push("Código SAP"); }
+      if (d.contactName && !l.contactName) { fill.contactName = d.contactName; added.push("Contato"); }
+      if (d.roleTitle && !l.roleTitle) { fill.roleTitle = d.roleTitle; added.push("Cargo"); }
+      if (d.email && !l.email) { fill.email = d.email; added.push("E-mail"); }
+      if (d.notes && !l.notes) { fill.notes = d.notes; added.push("Observações"); }
+      if (d.legacyVisit && !l.legacyVisit) { fill.legacyVisit = d.legacyVisit; added.push("Visita anterior"); }
+      if (l.company.startsWith("CNPJ ") && d.company && !d.company.startsWith("CNPJ ")) { fill.company = d.company; added.push("Nome da empresa"); }
+      const newPhones = d.phones.filter((p) => !l.phones.includes(p));
+      if (newPhones.length) { fill.phones = [...l.phones, ...newPhones]; added.push(`${newPhones.length} telefone(s)`); }
+      for (const ph of newPhones) await tx.insert(leadChannels).values({ leadId: l.id, kind: "phone", value: ph, origin: "import" }).onConflictDoNothing();
+      if (d.email) await tx.insert(leadChannels).values({ leadId: l.id, kind: "email", value: d.email, origin: "import" }).onConflictDoNothing();
+      if (d.contactName && !personKeys.has(`${l.id}|${norm(d.contactName)}`)) { await tx.insert(leadPeople).values({ leadId: l.id, name: d.contactName, roleTitle: d.roleTitle }); personKeys.add(`${l.id}|${norm(d.contactName)}`); if (!added.includes("Contato")) added.push("Pessoa de contato"); }
+      const links = d.tags.flatMap((t) => { const id = tagId.get(`${t.group}:${t.key}`); return id && !tagKeys.has(`${l.id}|${id}`) ? [{ leadId: l.id, tagId: id, source: "import" as const, appliedBy: opts.importedBy }] : []; });
+      if (links.length) { await tx.insert(leadTags).values(links); added.push(`${links.length} tag(s)`); }
+      if (!added.length) continue;
+      if (Object.keys(fill).length) await tx.update(leads).set({ ...fill, updatedAt: new Date() }).where(inArray(leads.id, [l.id]));
+      audits.push({ userId: opts.importedBy, leadId: l.id, entity: "lead" as const, action: "completado pela importação", field: added.join(", "), meta: { arquivo: opts.sourceName } });
+      touched++;
+    }
+    if (audits.length) await logAudit(tx, audits);
+  }
+  return touched;
+}
+
+/** Quantos já cadastrados receberiam informação nova (simulação: roda a mesma lógica e desfaz). */
+export async function countEnrichable(drafts: LeadDraft[]): Promise<number> {
+  let n = 0;
+  const cnpjs = new Set<string>();
+  for (const part of chunk(drafts.map((d) => d.cnpj), 5000)) (await db.select({ cnpj: leads.cnpj }).from(leads).where(inArray(leads.cnpj, part))).forEach((r) => cnpjs.add(r.cnpj));
+  const old = drafts.filter((d) => cnpjs.has(d.cnpj));
+  if (!old.length) return 0;
+  try {
+    await db.transaction(async (tx) => { n = await enrichExisting(tx, old, { importedBy: null, sourceName: "simulação" }); tx.rollback(); });
+  } catch { /* rollback intencional */ }
+  return n;
 }
