@@ -7,6 +7,7 @@ import { DateInput } from "@/components/date-input";
 import { TagChip } from "@/components/tag-chip";
 import { useBusyWhile } from "@/components/toast";
 import { FilterBar } from "@/components/filter-bar";
+import { FilterGroup, Pill, Tri3, type Tri } from "@/components/filter-ui";
 import { inputCls } from "@/components/ui";
 import type { TagCatalog } from "@/modules/leads/view";
 
@@ -76,16 +77,16 @@ export function LeadFilters({ catalog, people, ufs, sellerView }: { sellerView?:
             </div>
           </Section>
           <Section icon={Building2} title="Empresa e contato">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {!sellerView && field("Responsável", <select className={inputCls} value={sp.get("owner") ?? ""} onChange={(e) => set("owner", e.target.value)}><option value="">Todos</option><option value="-">Sem responsável</option>{people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>)}
-              {field("Estado", <select className={inputCls} value={sp.get("uf") ?? ""} onChange={(e) => set("uf", e.target.value)}><option value="">Todos</option>{ufs.map((u) => <option key={u}>{u}</option>)}</select>)}
-              {field("Cidade", <input className={inputCls} defaultValue={sp.get("city") ?? ""} onBlur={(e) => set("city", e.target.value.trim())} />)}
-              {field("Situação cadastral", <select className={inputCls} value={sp.get("status") ?? ""} onChange={(e) => set("status", e.target.value)}><option value="">Todas</option>{["ATIVA", "BAIXADA", "INAPTA", "SUSPENSA", "NULA"].map((s) => <option key={s}>{s}</option>)}</select>)}
-              {field("Telefone", <select className={inputCls} value={sp.get("phone") ?? ""} onChange={(e) => set("phone", e.target.value)}><option value="">Todos</option><option value="1">Tem telefone</option><option value="0">Sem telefone</option></select>)}
-              {field("E-mail", <select className={inputCls} value={sp.get("email") ?? ""} onChange={(e) => set("email", e.target.value)}><option value="">Todos</option><option value="1">Tem e-mail</option><option value="0">Sem e-mail</option></select>)}
-              {field("Alterado de", <DateInput label="Alterado de" value={sp.get("from") ?? ""} onChange={(v) => set("from", v)} />)}
-              {field("Alterado até", <DateInput label="Alterado até" value={sp.get("to") ?? ""} onChange={(v) => set("to", v)} />)}
-              {field("Código da visita", <input className={inputCls} placeholder="V-12345" defaultValue={sp.get("visit") ?? ""} onBlur={(e) => set("visit", e.target.value.trim())} />)}
+            <div className="grid gap-x-6 gap-y-5 md:grid-cols-2 xl:grid-cols-3">
+              <FilterGroup title="Situação cadastral" span="md:col-span-2 xl:col-span-2"><div className="flex flex-wrap gap-1.5">{["", "ATIVA", "BAIXADA", "INAPTA", "SUSPENSA", "NULA"].map((st) => <Pill key={st} on={(sp.get("status") ?? "") === st} onClick={() => set("status", st)}>{st ? st[0] + st.slice(1).toLowerCase() : "Todas"}</Pill>)}</div></FilterGroup>
+              {!sellerView && <FilterGroup title="Responsável"><select aria-label="Responsável" className={inputCls} value={sp.get("owner") ?? ""} onChange={(e) => set("owner", e.target.value)}><option value="">Todos</option><option value="-">Sem responsável</option>{people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></FilterGroup>}
+              <FilterGroup title="Onde fica"><div className="grid gap-2 sm:grid-cols-[7rem_1fr]">{field("Estado", <select className={inputCls} value={sp.get("uf") ?? ""} onChange={(e) => set("uf", e.target.value)}><option value="">Todos</option>{ufs.map((u) => <option key={u}>{u}</option>)}</select>)}{field("Cidade", <input className={inputCls} placeholder="Parte do nome" defaultValue={sp.get("city") ?? ""} onBlur={(e) => set("city", e.target.value.trim())} />)}</div></FilterGroup>
+              <FilterGroup title="Contatos" span="md:col-span-2 xl:col-span-1"><div className="space-y-2">
+                <Tri3 label="Telefone" v={({ "1": "sim", "0": "nao" } as Record<string, Tri>)[sp.get("phone") ?? ""] ?? ""} set={(t) => set("phone", t === "sim" ? "1" : t === "nao" ? "0" : "")} />
+                <Tri3 label="E-mail" v={({ "1": "sim", "0": "nao" } as Record<string, Tri>)[sp.get("email") ?? ""] ?? ""} set={(t) => set("email", t === "sim" ? "1" : t === "nao" ? "0" : "")} />
+              </div></FilterGroup>
+              <FilterGroup title="Alterado entre"><div className="grid grid-cols-2 gap-2"><DateInput label="Alterado de" value={sp.get("from") ?? ""} onChange={(v) => set("from", v)} /><DateInput label="Alterado até" value={sp.get("to") ?? ""} onChange={(v) => set("to", v)} /></div></FilterGroup>
+              <FilterGroup title="Código da visita"><input className={inputCls} placeholder="V-12345" defaultValue={sp.get("visit") ?? ""} onBlur={(e) => set("visit", e.target.value.trim())} /></FilterGroup>
             </div>
           </Section>
       </div>

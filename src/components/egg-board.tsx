@@ -65,7 +65,7 @@ export function EggBoard() {
     <div className="space-y-4">
       <header className="flex flex-wrap items-center gap-3">
         <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-grad-soft text-accent ring-1 ring-line"><Pin size={22} aria-hidden /></span>
-        <div className="min-w-0 flex-1"><h1 className="display text-3xl leading-tight">Estive aqui</h1><p className="text-sm text-muted">O mural de quem encontrou o Douradovo. Cada pessoa cola um post-it.</p></div>
+        <div className="min-w-[14rem] flex-1"><h1 className="display text-3xl leading-tight">Estive aqui</h1><p className="text-sm text-muted">O mural de quem encontrou o Douradovo. Cada pessoa cola um post-it.</p></div>
         <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-3 py-1 text-sm font-semibold text-accent"><Sparkles size={14} aria-hidden /> <span className="figure">{notes?.length ?? 0}</span> {(notes?.length ?? 0) === 1 ? "post-it" : "post-its"}</span>
         <Link href="/conquistas" className="rounded-xl border border-line px-3.5 py-2 text-sm font-medium transition hover:bg-sunk">Conquistas</Link>
       </header>

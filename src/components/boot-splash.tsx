@@ -20,6 +20,8 @@ export function BootSplash() {
   const [gone, setGone] = useState(false);
   const [late, setLate] = useState(false);
   const started = useRef(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []); // a chuva sorteia posições: só depois de montar, para não divergir do HTML do servidor
 
   useEffect(() => {
     if (started.current) return;
@@ -36,6 +38,7 @@ export function BootSplash() {
     const hard = setTimeout(finish, 25000);
     (async () => {
       try {
+        if (process.env.NODE_ENV !== "production") return finish(); // em desenvolvimento não há arquivos fixos para guardar
         if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") void navigator.serviceWorker.register("/sw.js").catch(() => {});
         if (!("caches" in window)) return finish();
         const cache = await caches.open(CACHE);
@@ -73,7 +76,7 @@ export function BootSplash() {
   return (
     <div id="boot" role="status" aria-live="polite" aria-label="Carregando sistema" className={`fixed inset-0 z-[200] grid place-items-center overflow-hidden bg-bg text-ink transition-opacity duration-500 ${leaving ? "pointer-events-none opacity-0" : "opacity-100"}`}>
       <noscript><style>{"#boot{display:none}"}</style></noscript>
-      <BannerRain roles={["seller", "user"]} count={34} field />
+      {mounted && <BannerRain roles={["seller", "user"]} count={34} field />}
       <div className="relative z-10 flex w-[min(22rem,86vw)] flex-col items-center gap-6 text-center">
         <span className="text-accent"><FeyMark animated size={120} color="currentColor" /></span>
         <div className="w-full space-y-2.5">

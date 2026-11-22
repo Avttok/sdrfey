@@ -19,6 +19,9 @@ export type LeadFilters = {
   visit?: string;
   /** Vendedor: só os leads com negociação dele ou ainda sem vendedor. */
   sellerScope?: number;
+  /** Atalho de situação: livres para sorteio, em atendimento agora ou com os vendedores. */
+  show?: "livres" | "atendimento" | "vendedores";
+  sort?: "nome" | "novos";
   page: number;
 };
 
@@ -32,6 +35,8 @@ export function parseFilters(sp: Record<string, string | string[] | undefined>):
   return {
     q: one("q"), tags: many("tag").filter((t) => /^[\w]+:[\w-]+$/.test(t)), owner: one("owner"), uf: one("uf")?.toUpperCase(), city: one("city"),
     phone: flag("phone"), email: flag("email"), status: one("status"), from: date("from"), to: date("to"), visit: one("visit"),
+    show: (["livres", "atendimento", "vendedores"] as const).find((x) => x === one("show")),
+    sort: (["nome", "novos"] as const).find((x) => x === one("sort")),
     page: Math.max(1, Number(one("page")) || 1),
   };
 }
@@ -53,6 +58,10 @@ function where(f: LeadFilters): SQL | undefined {
   for (const [g, keys] of byGroup) {
     c.push(sql`exists (select 1 from lead_tags lt join tags t on t.id = lt.tag_id where lt.lead_id = ${leads.id} and t.group_key = ${g} and t.key in (${sql.join(keys.map((k) => sql`${k}`), sql`, `)}))`);
   }
+  const openDeal = sql`exists (select 1 from deals d where d.lead_id = ${leads.id} and d.stage not in ('ganho','perdido'))`;
+  if (f.show === "livres") c.push(sql`${leads.lockedBy} is null and ${leads.ownerId} is null and not ${openDeal}`);
+  if (f.show === "atendimento") c.push(sql`${leads.lockedBy} is not null`);
+  if (f.show === "vendedores") c.push(openDeal);
   if (f.owner === "-") c.push(sql`${leads.ownerId} is null`);
   else if (f.owner && /^\d+$/.test(f.owner)) c.push(sql`${leads.ownerId} = ${Number(f.owner)}`);
   if (f.uf) c.push(sql`${leads.uf} = ${f.uf}`);
@@ -76,7 +85,7 @@ export async function listLeads(f: LeadFilters) {
                 from lead_tags lt join tags t on t.id = lt.tag_id join tag_groups g on g.key = t.group_key where lt.lead_id = leads.id and t.active), '[]'::json) as tags
     from leads left join users o on o.id = leads.owner_id left join users lk on lk.id = leads.locked_by left join lateral (select su.id, su.name, su.accent, su.roles from deals d join users su on su.id = d.seller_id where d.lead_id = leads.id order by d.created_at desc limit 1) ds on true
     where ${w ?? sql`true`}
-    order by
+    order by ${f.sort === "nome" ? sql`lower(leads.company) asc, leads.id` : f.sort === "novos" ? sql`leads.created_at desc, leads.id desc` : sql`1 = 1`},
       exists (select 1 from lead_tags lt join tags tg on tg.id = lt.tag_id where lt.lead_id = leads.id and tg.group_key = 'qualificacao' and tg.key = 'desqualificado'),
       (leads.enriched_at is null),
       (coalesce(leads.registration_status, '') not ilike 'ativ%'),

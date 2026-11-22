@@ -9,6 +9,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { Suspense } from "react";
 import { AttendButton } from "@/components/attend-button";
 import { LeadFilters } from "@/components/lead-filters";
+import { LeadToolbar } from "@/components/lead-toolbar";
 import { TagChip } from "@/components/tag-chip";
 import { panelCls } from "@/components/ui";
 import { db, leads, users } from "@/db";
@@ -72,6 +73,40 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
         <LeadFilters sellerView={sellerView} catalog={catalog} people={people} ufs={ufRows.map((r) => r.uf!).filter(Boolean)} />
       </Suspense>
 
+      <Suspense fallback={null}><LeadToolbar total={total} counts={stat ?? undefined} /></Suspense>
+
+      {sp.view === "lista" ? (
+        <ul className={`${panelCls} divide-y divide-line overflow-hidden`}>
+          <li aria-hidden className="hidden grid-cols-[2.5rem_minmax(0,2.2fr)_minmax(0,1.3fr)_minmax(0,1.6fr)_13rem] items-center gap-4 bg-sunk/60 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-muted lg:grid"><span /><span>Empresa</span><span>Local e situação</span><span>Contatos e responsáveis</span><span className="text-right">Ações</span></li>
+          {rows.map((l, i) => {
+            const name = l.trade_name ?? l.company;
+            const active = l.status?.toUpperCase() === "ATIVA";
+            const initials = name.split(/\s+/).filter((w) => w.length > 2).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || name[0];
+            return (
+              <li key={l.id} style={{ "--i": i % 12 } as React.CSSProperties} className="card-in grid items-center gap-x-4 gap-y-2 px-4 py-3 transition hover:bg-sunk/50 lg:grid-cols-[2.5rem_minmax(0,2.2fr)_minmax(0,1.3fr)_minmax(0,1.6fr)_13rem]">
+                <span aria-hidden className={`hidden size-10 place-items-center rounded-xl text-xs font-bold lg:grid ${l.status ? "bg-grad text-on-accent" : "bg-sunk text-muted"}`}>{initials}</span>
+                <div className="min-w-0"><Link href={`/leads/${l.id}`} className="block truncate font-semibold transition-colors hover:text-accent">{name}</Link><p className="figure truncate text-xs text-muted">{fmtCnpj(l.cnpj)}</p></div>
+                <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">{l.city && <span className="inline-flex items-center gap-1"><MapPin size={12} aria-hidden />{l.city}/{l.uf}</span>}{l.status && <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${active ? "bg-ok/15 text-ok" : "bg-danger/15 text-danger"}`}>{l.status.toUpperCase()}</span>}</p>
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-sunk px-2 py-0.5 font-medium"><Phone size={11} className="text-accent" aria-hidden /><span className="figure">{l.phones}</span></span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-sunk px-2 py-0.5 font-medium"><Mail size={11} className="text-accent" aria-hidden /><span className="figure">{l.emails}</span></span>
+                  {sellerView ? (l.deal_stage && <StageChip stage={l.deal_stage as DealStage} />) : <>
+                    {l.locked_by_name && <PersonBubble userId={l.locked_by_id} name={l.locked_by_name} hex={bubbleHex(l.locked_by_accent, l.locked_by_id ?? 0, l.locked_roles ?? undefined)} prefix="Atendendo" />}
+                    {l.owner_name && <PersonBubble userId={l.owner_id} name={l.owner_name} hex={bubbleHex(l.owner_accent, l.owner_id ?? 0, l.owner_roles ?? undefined)} />}
+                    {l.seller_name && <PersonBubble userId={l.seller_id} name={l.seller_name} hex={bubbleHex(l.seller_accent, l.seller_id ?? 0, l.seller_roles ?? undefined)} prefix="Vendas" />}
+                    {!l.owner_name && !l.locked_by_name && !l.seller_name && <span className="rounded-full border border-dashed border-line px-2 py-0.5 text-muted">Livre</span>}
+                  </>}
+                </div>
+                <div className="flex items-center justify-end gap-2">
+                  {!sellerView && (l.deal_id ? <span className="rounded-full bg-accent/12 px-2.5 py-1 text-xs font-semibold text-accent">Com os vendedores</span> : !l.locked_by_name && me.permissions["tab.comecar"] && <AttendButton leadId={l.id} compact />)}
+                  <Link href={`/leads/${l.id}`} className="rounded-full px-3 py-1 text-xs font-semibold text-accent transition hover:bg-accent/10">Abrir</Link>
+                </div>
+              </li>
+            );
+          })}
+          {rows.length === 0 && <li className="p-10 text-center text-muted">Nenhum lead com esses filtros.</li>}
+        </ul>
+      ) : (
       <ul className="grid gap-3 xl:grid-cols-2">
         {rows.map((l, i) => {
           const name = l.trade_name ?? l.company;
@@ -79,7 +114,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
           const initials = name.split(/\s+/).filter((w) => w.length > 2).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || name[0];
           const tone = l.status ? (active ? "var(--ok)" : "var(--danger)") : "var(--line)";
           return (
-            <li key={l.id} style={{ "--i": i % 12 } as React.CSSProperties} className={`${panelCls} card-in lift group flex flex-col gap-3 overflow-hidden p-4 pl-5`}>
+            <li key={l.id} style={{ "--i": i % 12 } as React.CSSProperties} className={`${panelCls} card-in lift group relative flex flex-col gap-3 overflow-hidden p-4 pl-5`}>
               <span aria-hidden className="absolute inset-y-0 left-0 w-1.5" style={{ background: tone }} />
               <div className="flex items-start gap-3">
                 <span aria-hidden className={`grid size-12 shrink-0 place-items-center rounded-2xl text-sm font-bold shadow-sm ${l.status ? "bg-grad text-on-accent" : "bg-sunk text-muted"}`}>{initials}</span>
@@ -116,6 +151,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
         })}
         {rows.length === 0 && <li className={`${panelCls} p-10 text-center text-muted xl:col-span-2`}>Nenhum lead com esses filtros.</li>}
       </ul>
+      )}
 
       {pages > 1 && (
         <Pagination page={filters.page} pages={pages} href={pageHref} total={total} label="leads" />

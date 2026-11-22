@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarCheck, Check, CheckCircle2, Clock, Globe, Users, Mail, MapPin, Pencil, Phone, Save, StickyNote, UserRound, UserRoundCheck, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { CalendarCheck, LayoutGrid, List, Check, CheckCircle2, Clock, Globe, Users, Mail, MapPin, Pencil, Phone, Save, StickyNote, UserRound, UserRoundCheck, X } from "lucide-react";
+import { useState } from "react";
 import { BrandLink, SalesforceIcon } from "@/components/brand-icons";
 import { PersonBubble } from "@/components/person-bubble";
 import { VisitCodeChip, VisitStatusChip } from "@/components/visit-row";
+import { Modal } from "@/components/modal";
+import { Pill, Segmented } from "@/components/filter-ui";
 import { DateInput } from "@/components/date-input";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
@@ -55,9 +57,23 @@ export function VisitCards({ list, openId }: { list: VisitCard[]; openId?: numbe
     setOpen(id);
     try { const u = new URL(location.href); id ? u.searchParams.set("v", String(id)) : u.searchParams.delete("v"); history.replaceState(null, "", u); } catch { /* sem URL */ }
   };
-  const groups = bucket(list);
+  const [st, setSt] = useState<"" | VisitCard["status"]>("");
+  const [view, setView] = useState<"grupos" | "lista">("grupos");
+  const statusOf = (c: VisitCard): VisitCard["status"] => (c.canceled ? "cancelada" : c.status);
+  const counts = { "": list.length, pendente: 0, confirmada: 0, realizada: 0, cancelada: 0 } as Record<string, number>;
+  for (const c of list) counts[statusOf(c)]++;
+  const shown = st ? list.filter((c) => statusOf(c) === st) : list;
+  const groups = view === "lista" ? [{ key: "all", title: "Todas as visitas", dot: "bg-accent", items: [...shown].sort((a, b) => (b.visitDate ?? "").localeCompare(a.visitDate ?? "")) }].filter((g) => g.items.length) : bucket(shown);
   return (
     <>
+      <div className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div role="group" aria-label="Andamento da visita" className="flex flex-wrap gap-1.5">
+          {([["", "Todas"], ["pendente", "Aguardando"], ["confirmada", "Confirmadas"], ["realizada", "Realizadas"], ["cancelada", "Canceladas"]] as const).map(([k, l]) => (counts[k] > 0 || k === "") && <Pill key={k} on={st === k} count={counts[k]} onClick={() => setSt(k)}>{l}</Pill>)}
+        </div>
+        <span className="flex-1" />
+        <Segmented label="Jeito de ver" value={view} onChange={setView} options={[["grupos", "Por data", <LayoutGrid key="g" size={14} aria-hidden />], ["lista", "Lista", <List key="l" size={14} aria-hidden />]] as const} />
+      </div>
+      {shown.length === 0 && <p className="rounded-2xl border border-dashed border-line p-8 text-center text-sm text-muted">Nenhuma visita com esse andamento.</p>}
       <div className="space-y-7">
         {groups.map((g) => (
           <section key={g.key} aria-label={g.title}>
@@ -126,15 +142,9 @@ const fmtPhone = (d: string) => (d.length === 11 ? d.replace(/^(\d{2})(\d{5})(\d
 
 /** Popup da visita: tudo sobre a visita e o cliente; quem pode, edita e confirma sem sair da tela. */
 function VisitDialog({ v, onClose }: { v: VisitCard; onClose: () => void }) {
-  const closeRef = useRef(onClose); closeRef.current = onClose;
   const [editing, setEditing] = useState(false);
   const [f, setF] = useState({ code: v.code, date: v.visitDate ?? "", link: v.link ?? "", note: v.note ?? "", pub: v.isPublic });
   const { run, pending } = useRun();
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => { if (e.key === "Escape" && !editing) closeRef.current(); };
-    document.addEventListener("keydown", key);
-    return () => document.removeEventListener("keydown", key);
-  }, [editing]);
   const status = v.canceled ? "cancelada" : v.status;
   const next = v.status === "pendente" ? "confirmada" : v.status === "confirmada" ? "realizada" : null;
   const d = v.visitDate ? dayDiff(v.visitDate) : null;
@@ -145,17 +155,18 @@ function VisitDialog({ v, onClose }: { v: VisitCard; onClose: () => void }) {
     { k: "Realizada", at: null, done: v.status === "realizada" },
   ];
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={`Visita ${v.code}`} onClick={(e) => { if (e.target === e.currentTarget && !editing) onClose(); }}>
-      <div className="max-h-[92vh] w-full max-w-3xl space-y-4 overflow-y-auto rounded-2xl border border-line bg-panel p-5 shadow-2xl sm:p-6">
-        <div className="flex items-start gap-3">
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="flex flex-wrap items-center gap-2"><VisitCodeChip code={v.code} /><VisitStatusChip status={status} />{when && <span className={`text-sm font-semibold ${when.cls}`}>{when.t}</span>}</div>
-            <h2 className="display break-words text-2xl">{v.company}</h2>
-            <p className="text-sm text-muted">{[v.city && v.uf ? `${v.city} / ${v.uf}` : v.city || v.uf, v.cnpj ? `CNPJ ${fmtCnpj(v.cnpj)}` : null].filter(Boolean).join(" · ")}</p>
-          </div>
-          <button type="button" aria-label="Fechar" className="rounded-lg p-1.5 hover:bg-sunk" onClick={onClose}><X size={18} /></button>
-        </div>
+    <Modal onClose={onClose} locked={editing} size="lg" label={`Visita ${v.code}`} title={v.company}
+      subtitle={[v.city && v.uf ? `${v.city} / ${v.uf}` : v.city || v.uf, v.cnpj ? `CNPJ ${fmtCnpj(v.cnpj)}` : null].filter(Boolean).join(" · ")}
+      badges={<><VisitCodeChip code={v.code} /><VisitStatusChip status={status} />{when && <span className={`text-sm font-semibold ${when.cls}`}>{when.t}</span>}</>}
+      footer={!editing ? <>
 
+        {next && <button type="button" className={btnPrimary} disabled={pending} onClick={() => run(() => setVisitStatusAction(v.leadId, v.id, next), undefined, onClose)}><CheckCircle2 size={16} aria-hidden /> {next === "confirmada" ? "Confirmar visita" : "Marcar como realizada"}</button>}
+        {v.status !== "pendente" && <button type="button" className={btnGhost} disabled={pending} onClick={() => run(() => setVisitStatusAction(v.leadId, v.id, "pendente"), undefined, onClose)}>Voltar para aguardando</button>}
+        <button type="button" className={btnGhost} onClick={() => setEditing(true)}><Pencil size={15} aria-hidden /> Editar visita</button>
+        <span className="flex-1" />
+        <Link href={`/leads/${v.leadId}`} className={v.canManage && !v.canceled ? btnGhost : btnPrimary}>Ir para o perfil do cliente</Link>
+      </> : undefined}>
+      <div className="space-y-4">
         {!v.canceled && (
           <ol className="grid grid-cols-3 gap-2 rounded-xl border border-line bg-sunk/40 p-3 text-center text-xs">
             {steps.map((st) => (
@@ -209,15 +220,7 @@ function VisitDialog({ v, onClose }: { v: VisitCard; onClose: () => void }) {
           </div>
         )}
 
-        {!editing && v.canManage && !v.canceled && (
-          <div className="flex flex-wrap gap-2 border-t border-line pt-4">
-            {next && <button type="button" className={btnPrimary} disabled={pending} onClick={() => run(() => setVisitStatusAction(v.leadId, v.id, next), undefined, onClose)}><CheckCircle2 size={16} aria-hidden /> {next === "confirmada" ? "Confirmar visita" : "Marcar como realizada"}</button>}
-            {v.status !== "pendente" && <button type="button" className={btnGhost} disabled={pending} onClick={() => run(() => setVisitStatusAction(v.leadId, v.id, "pendente"), undefined, onClose)}>Voltar para aguardando</button>}
-            <button type="button" className={btnGhost} onClick={() => setEditing(true)}><Pencil size={15} aria-hidden /> Editar visita</button>
-          </div>
-        )}
-        <Link href={`/leads/${v.leadId}`} className={`${editing ? btnGhost : btnPrimary} w-full`}>Ir para o perfil do cliente</Link>
       </div>
-    </div>
+    </Modal>
   );
 }
