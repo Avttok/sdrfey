@@ -88,3 +88,12 @@ export async function setMapModeAction(mode: "map" | "link"): Promise<{ ok: bool
   revalidatePath("/", "layout");
   return { ok: true, message: "Preferência salva." };
 }
+
+/** A própria pessoa escolhe onde fica a barra: no topo ou na lateral esquerda. A ordem dos itens é do Adm. */
+export async function setMyNavLayoutAction(layout: "top" | "side"): Promise<{ ok: boolean; message?: string }> {
+  const me = await requireUser();
+  const next = layout === "side" ? "side" : "top";
+  await db.update(users).set({ navLayout: next }).where(eq(users.id, me.id));
+  revalidatePath("/", "layout");
+  return { ok: true, message: next === "side" ? "Barra na lateral." : "Barra no topo." };
+}

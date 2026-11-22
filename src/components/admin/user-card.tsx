@@ -78,7 +78,7 @@ export function UserCard({ u, isMe }: { u: UserRow; isMe: boolean }) {
             </div>
             <details className="rounded-xl border border-line">
               <summary className="cursor-pointer select-none px-3.5 py-2.5 text-sm font-medium">Barra de navegação de {u.name.split(" ")[0]} (posição e ordem dos menus)</summary>
-              <div className="border-t border-line p-3.5"><NavPrefsForm userId={u.id} layout={u.navLayout} hrefs={u.navHrefs} /></div>
+              <div className="border-t border-line p-3.5"><NavPrefsForm layoutOnly userId={u.id} layout={u.navLayout} hrefs={u.navHrefs} /></div>
             </details>
             <details className="rounded-xl border border-line">
               <summary className="cursor-pointer select-none px-3.5 py-2.5 text-sm font-medium">Restaurar configurações ao padrão</summary>

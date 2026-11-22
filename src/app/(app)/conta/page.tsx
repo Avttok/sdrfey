@@ -3,6 +3,7 @@ import { AvatarPicker } from "@/components/avatar-picker";
 import type { Metadata } from "next";
 import { MapModePicker } from "@/components/map-mode-picker";
 import { FontPicker } from "@/components/font-picker";
+import { MyNavLayout } from "@/components/my-nav-layout";
 import { PageHead } from "@/components/page-head";
 import { Check, UserRound } from "lucide-react";
 import { DisplayNameForm } from "@/components/display-name-form";
@@ -39,6 +40,8 @@ export default async function AccountPage() {
 
           <div className="mb-6"><BannerPicker current={user.banner} /></div>
           <div className="mb-6"><AvatarPicker current={user.avatar} initials={user.name.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase()} /></div>
+
+          <div className="mb-6"><MyNavLayout current={user.navLayout} /></div>
 
           <p className="mb-2 text-sm font-medium">Cor do sistema</p>
           <form action={setAccentAction} className="flex flex-wrap gap-2.5">

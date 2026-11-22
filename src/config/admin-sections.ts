@@ -9,7 +9,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     { href: "/admin/usuarios", label: "Equipe e acessos", hint: "Contas, cargos e permissões", icon: Users },
     { href: "/admin/moedas", label: "Moedas e pontos", hint: "Saldos, bloqueios e ajustes", icon: Coins },
   ] },
-  { id: "vendas", title: "Vendas", hue: "#10b981", items: [
+  { id: "vendas", title: "Vendas (cargo Vendedor)", hue: "#10b981", items: [
     { href: "/admin/vendas", label: "Condições e produtos", hint: "Pagamento e catálogo", icon: Handshake },
     { href: "/admin/nomenclatura", label: "Nomenclatura de produtos", hint: "Siglas, classificação e sugestões", icon: Tags },
     { href: "/admin/negociacoes-apagadas", label: "Apagadas", hint: "Negociações apagadas/resetadas", icon: Archive },
@@ -25,7 +25,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   ] },
   { id: "sistema", title: "Sistema", hue: "#ec4899", items: [
     { href: "/admin/barra", label: "Barra de menus", hint: "Ordem do menu para todos", icon: PanelTop },
-    { href: "/admin/parametros", label: "Parâmetros", hint: "Regras do sorteio", icon: Settings2 },
+    { href: "/admin/parametros", label: "Parâmetros", hint: "SDR: sorteio · Vendas: avisos das negociações · Segurança", icon: Settings2 },
     { href: "/admin/banco", label: "Saúde do sistema", hint: "Banco, conexões e números", icon: Activity },
     { href: "/admin/ao-vivo", label: "Ao vivo", hint: "Quem está online", icon: Clock },
   ] },

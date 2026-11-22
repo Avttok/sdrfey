@@ -59,3 +59,14 @@ describe("avisos das negociações", () => {
     expect(dealAlerts({ ...base, stage: "ganho", createdAt: ago(200) }, now)).toEqual([]);
   });
 });
+
+describe("padrões por cargo", () => {
+  it("vendedor nunca herda permissões de SDR e SDR nunca herda as de Vendas", async () => {
+    const { PERMISSIONS, domainOf } = await import("@/config/permissions");
+    for (const p of PERMISSIONS) {
+      if (domainOf(p.key) === "SDR") expect(p.defaults, p.key).not.toContain("seller");
+      if (domainOf(p.key) === "Vendas") expect(p.defaults, p.key).not.toContain("user");
+      if (domainOf(p.key) === "Gestão") expect(p.defaults, p.key).not.toContain("seller");
+    }
+  });
+});

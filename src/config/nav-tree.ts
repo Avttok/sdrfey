@@ -40,7 +40,7 @@ export function cleanTree(input: unknown): NavTree | null {
 }
 
 /** Ponto de partida do editor: as pastas padrão do sistema (com os nomes/ícones atuais). */
-const GROUP_ICON_KEY: Record<string, string> = { Pessoas: "contact", Info: "info", SDR: "headset", Vendas: "handshake", "Opções": "settings", "Gestão": "shieldhalf" };
+const GROUP_ICON_KEY: Record<string, string> = { Mais: "layoutgrid", Sistema: "shield", Pessoas: "contact", Info: "info", SDR: "headset", Vendas: "handshake", "Opções": "settings", "Gestão": "shieldhalf" };
 
 export function defaultTree(order: string[], groupLabels: Record<string, string | undefined> = {}, groupIcons: Record<string, string | undefined> = {}): NavTree {
   const items = order.map((h) => NAV.find((n) => n.href === h)).filter((n): n is (typeof NAV)[number] => !!n && n.href !== "/conta");

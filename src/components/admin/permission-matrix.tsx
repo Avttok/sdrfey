@@ -4,7 +4,7 @@ import { Check, LayoutDashboard, MousePointerClick, PanelsTopLeft, Search, X } f
 import { useState } from "react";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, panelCls } from "@/components/ui";
-import { PERMISSIONS, type PermissionMap } from "@/config/permissions";
+import { DOMAINS, domainOf, PERMISSIONS, type PermissionDomain, type PermissionMap } from "@/config/permissions";
 import type { Role } from "@/config/roles";
 import { savePermissionMatrixAction } from "@/modules/admin/config";
 
@@ -31,14 +31,18 @@ export function PermissionMatrix({ users, roles: initialRoles, target: ext, onTa
   const target = ext ?? own;
   const setTarget = (t: Target) => { setOwnTarget(t); onTarget?.(t); };
   const [q, setQ] = useState("");
+  const [dom, setDom] = useState<PermissionDomain | "all">("all");
   const { run, pending } = useRun();
   const dirty = JSON.stringify(roles) !== JSON.stringify(initialRoles) || users.some((u) => JSON.stringify(per[u.id]) !== JSON.stringify(u.perms));
 
   const roleOn = (r: RoleKey, key: string) => { const def = PERMISSIONS.find((p) => p.key === key)!; return key in roles[r] ? !!roles[r][key] : def.defaults.includes(r); };
   const inherited = (u: MatrixUser, key: string) => u.roles.some((r) => r !== "admin" && roleOn(r as RoleKey, key));
   const setOwn = (id: number, key: string, v: boolean | null) => { const n = { ...(per[id] ?? {}) }; if (v === null) delete n[key]; else n[key] = v; setPer({ ...per, [id]: n }); };
+  /** No cargo, só aparece o que faz sentido para ele; na pessoa, tudo (ajuste individual). */
+  const visible = (key: string) => { if (target.kind !== "role") return true; const d = domainOf(key); return target.role === "manager" || !((target.role === "seller" && d === "SDR") || (target.role === "user" && d === "Vendas")); };
+  const matches = (p: { key: string; label: string }) => (!q.trim() || p.label.toLowerCase().includes(q.trim().toLowerCase())) && (dom === "all" || domainOf(p.key) === dom) && visible(p.key);
   const bulk = (group: string, v: boolean | null) => {
-    const keys = PERMISSIONS.filter((p) => p.group === group && (!q.trim() || p.label.toLowerCase().includes(q.trim().toLowerCase()))).map((p) => p.key);
+    const keys = PERMISSIONS.filter((p) => p.group === group && matches(p)).map((p) => p.key);
     if (target.kind === "role") { const r = target.role; const n = { ...roles[r] }; for (const k of keys) n[k] = v === null ? PERMISSIONS.find((p) => p.key === k)!.defaults.includes(r) : v; setRoles({ ...roles, [r]: n }); }
     else { const id = target.id; const n = { ...(per[id] ?? {}) }; for (const k of keys) { if (v === null) delete n[k]; else n[k] = v; } setPer({ ...per, [id]: n }); }
   };
@@ -73,6 +77,12 @@ export function PermissionMatrix({ users, roles: initialRoles, target: ext, onTa
         {person ? <>Editando <b className="text-ink">{person.name}</b>. “Padrão” segue o cargo; “Liberar” e “Bloquear” valem só para esta pessoa. O Adm sempre vê tudo.</> : <>Editando o padrão do cargo <b className="text-ink">{ROLE_LABEL[(target as { role: RoleKey }).role]}</b>. Vale para todos com esse cargo, exceto quem tem ajuste próprio.</>}
       </p>
 
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Categoria">
+        {[{ key: "all" as const, label: "Todas", hint: "" }, ...DOMAINS].map((d) => {
+          const n = PERMISSIONS.filter((p) => (d.key === "all" || domainOf(p.key) === d.key) && visible(p.key)).length;
+          return <button key={d.key} type="button" role="tab" aria-selected={dom === d.key} title={d.hint} onClick={() => setDom(d.key)} className={`rounded-xl border-2 px-3.5 py-1.5 text-sm font-semibold transition ${dom === d.key ? "border-accent bg-accent/10" : "border-line bg-panel hover:bg-sunk"}`}>{d.label} <span className="figure ml-1 text-xs text-muted">{n}</span></button>;
+        })}
+      </div>
       <label className="relative block">
         <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" aria-hidden />
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar uma permissão (ex.: Metas, Visitas, chat…)" aria-label="Buscar permissão" className="w-full rounded-xl border border-line bg-panel py-2.5 pl-9 pr-3 text-sm outline-none focus:border-accent" />
@@ -91,9 +101,9 @@ export function PermissionMatrix({ users, roles: initialRoles, target: ext, onTa
               </span>
             </header>
             <ul className="divide-y divide-line/60">
-              {PERMISSIONS.filter((p) => p.group === sec.group && (!q.trim() || p.label.toLowerCase().includes(q.trim().toLowerCase()))).map((p) => (
+              {PERMISSIONS.filter((p) => p.group === sec.group && (!q.trim() || p.label.toLowerCase().includes(q.trim().toLowerCase())) && (dom === "all" || domainOf(p.key) === dom) && visible(p.key)).map((p) => (
                 <li key={p.key} className="flex items-center gap-3 px-4 py-2.5 text-sm">
-                  <span className="min-w-0 flex-1">{p.label}</span>
+                  <span className="min-w-0 flex-1"><span className={`mr-2 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${domainOf(p.key) === "SDR" ? "bg-sky-500/15 text-sky-600" : domainOf(p.key) === "Vendas" ? "bg-emerald-500/15 text-emerald-600" : domainOf(p.key) === "Gestão" ? "bg-amber-500/15 text-amber-600" : "bg-sunk text-muted"}`}>{domainOf(p.key)}</span>{p.label}</span>
                   {target.kind === "role" ? (
                     (() => { const r = target.role; const on = roleOn(r, p.key); return (<>
                       <span className={`w-20 shrink-0 text-right text-xs font-semibold ${on ? "text-ok" : "text-muted"}`}>{on ? "Ligado" : "Desligado"}</span>

@@ -4,7 +4,7 @@ import { NAV } from "@/config/nav";
 /** Ícones que o Adm pode escolher para abas e pastas do menu. A chave é o que fica guardado. */
 export const NAV_ICONS: Record<string, LucideIcon> = {
   gauge: Gauge, users: Users, contact: Contact, map: MapPin, target: Target, history: History, play: Play, shuffle: Shuffle, calendar: CalendarCheck,
-  handshake: Handshake, settings: Settings2, mail: Mail, scroll: ScrollText, shield: ShieldCheck, shieldhalf: ShieldHalf, info: Info, headset: Headset, user: UserRound, phone: Phone,
+  layoutgrid: LayoutGrid, handshake: Handshake, settings: Settings2, mail: Mail, scroll: ScrollText, shield: ShieldCheck, shieldhalf: ShieldHalf, info: Info, headset: Headset, user: UserRound, phone: Phone,
   chart: BarChart3, bell: Bell, book: BookOpen, briefcase: Briefcase, building: Building2, compass: Compass, crown: Crown, flame: Flame, gift: Gift,
   grid: LayoutGrid, idea: Lightbulb, list: ListChecks, chat: MessageCircle, rocket: Rocket, sparkles: Sparkles, star: Star, trophy: Trophy, wallet: Wallet, zap: Zap, activity: Activity,
 };

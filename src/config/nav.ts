@@ -1,4 +1,4 @@
-import { Gauge, Headset, Info, ShieldHalf, Contact, History, Play, CalendarCheck, ScrollText, ShieldCheck, Target, UserRound, Users, MapPin, Handshake, FileSpreadsheet, Filter, Mail, Truck, ScrollText as ScriptIcon, Settings2, type LucideIcon } from "lucide-react";
+import { LayoutGrid, Gauge, Headset, Info, ShieldHalf, Contact, History, Play, CalendarCheck, ScrollText, ShieldCheck, Target, UserRound, Users, MapPin, Handshake, FileSpreadsheet, Filter, Mail, Truck, ScrollText as ScriptIcon, Settings2, type LucideIcon } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: string; adminOnly?: boolean; /** Menu a que pertence. Menu com um item só aparece como link solto; sem grupo = link solto. */ group?: string };
 
@@ -7,12 +7,10 @@ export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: st
  * `perm` liga o item a uma permissão (config/permissions.ts); sem `perm`, todos veem.
  */
 /** Ícone de cada menu (grupo) da barra. */
-export const GROUP_ICONS: Record<string, LucideIcon> = { Pessoas: Contact, Info: Info, SDR: Headset, Vendas: Handshake, "Opções": Settings2, "Gestão": ShieldHalf };
+export const GROUP_ICONS: Record<string, LucideIcon> = { Mais: LayoutGrid, Sistema: ShieldCheck, Pessoas: Contact, Info: Info, SDR: Headset, Vendas: Handshake, "Opções": Settings2, "Gestão": ShieldHalf };
 
 export const NAV: NavItem[] = [
   { href: "/painel", label: "Dashboard", icon: Gauge, perm: "tab.painel" },
-  { href: "/leads", label: "Leads", icon: Users, perm: "tab.leads", group: "Pessoas" },
-  { href: "/representantes", label: "Representantes", icon: MapPin, perm: "tab.representantes", group: "Pessoas" },
   { href: "/atender", label: "Shuffler", icon: Play, perm: "tab.comecar", group: "SDR" },
   { href: "/lista-flow", label: "Lista Flow", icon: Filter, perm: "tab.lista_flow", group: "SDR" },
   { href: "/visitas", label: "Visitas", icon: CalendarCheck, perm: "tab.visitas", group: "SDR" },
@@ -20,16 +18,18 @@ export const NAV: NavItem[] = [
   { href: "/historico", label: "Histórico", icon: History, perm: "tab.historico", group: "SDR" },
   { href: "/desempenho", label: "Desempenho", icon: FileSpreadsheet, perm: "tab.desempenho", group: "SDR" },
   { href: "/negociacoes", label: "Negociações", icon: Handshake, perm: "tab.negociacoes", group: "Vendas" },
-  { href: "/transportadoras", label: "Transportadoras", icon: Truck, perm: "tab.transportadoras", group: "Vendas" },
   { href: "/shuffler-vendas", label: "Shuffler", icon: Play, perm: "tab.shuffler_vendas", group: "Vendas" },
   { href: "/lista-flow-vendas", label: "Lista Flow", icon: Filter, perm: "tab.lista_flow_vendas", group: "Vendas" },
   { href: "/metas-vendas", label: "Metas", icon: Target, perm: "tab.metas_vendas", group: "Vendas" },
   { href: "/historico-vendas", label: "Histórico", icon: History, perm: "tab.historico_vendas", group: "Vendas" },
   { href: "/desempenho-vendas", label: "Desempenho", icon: FileSpreadsheet, perm: "tab.desempenho_vendas", group: "Vendas" },
-  { href: "/email", label: "E-mail", icon: Mail, perm: "tab.email", group: "Opções" },
-  { href: "/scripts", label: "Scripts", icon: ScriptIcon, perm: "tab.scripts", group: "Opções" },
-  { href: "/registro", label: "Registro", icon: ScrollText, perm: "tab.registro", group: "Gestão" },
-  { href: "/admin", label: "Adm", icon: ShieldCheck, adminOnly: true, group: "Gestão" },
+  { href: "/leads", label: "Leads", icon: Users, perm: "tab.leads", group: "Pessoas" },
+  { href: "/representantes", label: "Representantes", icon: MapPin, perm: "tab.representantes", group: "Pessoas" },
+  { href: "/transportadoras", label: "Transportadoras", icon: Truck, perm: "tab.transportadoras", group: "Pessoas" },
+  { href: "/email", label: "Modelos de E-mails", icon: Mail, perm: "tab.email", group: "Mais" },
+  { href: "/scripts", label: "Modelos de Scripts", icon: ScriptIcon, perm: "tab.scripts", group: "Mais" },
+  { href: "/registro", label: "Registro", icon: ScrollText, perm: "tab.registro", group: "Sistema" },
+  { href: "/admin", label: "Painel Administrador", icon: ShieldCheck, adminOnly: true, group: "Sistema" },
   { href: "/conta", label: "Minha conta", icon: UserRound },
 ];
 

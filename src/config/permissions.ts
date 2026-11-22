@@ -81,3 +81,21 @@ export type RoleOverrides = Partial<Record<Role, PermissionMap>>;
 
 /** Permissões que só existem para o Adm (nunca aparecem como opção para outros). */
 export const ADMIN_ONLY = ["Administração"] as const;
+
+/** A que público cada permissão pertence: serve para separar os interruptores por categoria de cargo. */
+export type PermissionDomain = "SDR" | "Vendas" | "Gestão" | "Geral";
+export const DOMAINS: { key: PermissionDomain; label: string; hint: string }[] = [
+  { key: "SDR", label: "SDR", hint: "Operador: prospecção e visitas" },
+  { key: "Vendas", label: "Vendas", hint: "Vendedor: negociações e cotações" },
+  { key: "Gestão", label: "Gestão", hint: "Equipe, números e edição" },
+  { key: "Geral", label: "Geral", hint: "Vale para todos os cargos" },
+];
+const SDR_KEYS = new Set(["tab.comecar", "tab.historico", "tab.visitas", "tab.metas", "tab.lista_flow", "tab.desempenho", "visits.team", "panel.agendamentos"]);
+const SALES_KEYS = new Set(["tab.negociacoes", "tab.transportadoras", "carriers.edit", "deals.team", "deals.delete", "panel.vendas"]);
+const GENERAL_KEYS = new Set(["tab.painel", "tab.leads", "tab.email", "tab.scripts", "chat.use"]);
+export function domainOf(key: string): PermissionDomain {
+  if (key.endsWith("_vendas") || SALES_KEYS.has(key)) return "Vendas";
+  if (SDR_KEYS.has(key) || key.startsWith("panel.kpi.")) return "SDR";
+  if (GENERAL_KEYS.has(key)) return "Geral";
+  return "Gestão";
+}

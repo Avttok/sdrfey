@@ -100,7 +100,8 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     banner: u.banner ?? null,
     profileDone: u.profileDone,
     navLayout: u.navLayout === "side" ? "side" : "top",
-    navOrder: u.navOrder?.length ? u.navOrder : (((await settingValue("nav_order")) as string[] | undefined) ?? []),
+    /* a ordem é só do Adm (global); a ordem pessoal antiga é ignorada */
+    navOrder: ((await settingValue("nav_order")) as string[] | undefined) ?? [],
     navCustom: mergeCustom(cleanCustom(await settingValue("nav_custom")), cleanCustom(await settingValue(`nav_custom_u${u.id}`))),
     navTree: cleanTree(await settingValue(`nav_tree_u${u.id}`)) ?? cleanTree(await settingValue("nav_tree")),
     navCollapsed: !!u.navCollapsed,

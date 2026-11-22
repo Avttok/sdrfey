@@ -23,7 +23,7 @@ export async function setUserNavAction(userId: number, input: { layout: "top" | 
   const order = [...new Set(input.order.filter((h) => known.has(h)))];
   const layout = input.layout === "side" ? "side" : "top";
   await db.transaction(async (tx) => {
-    await tx.update(users).set({ navLayout: layout, navOrder: order }).where(eq(users.id, userId));
+    await tx.update(users).set({ navLayout: layout, navOrder: [] }).where(eq(users.id, userId));
     await logAudit(tx, { userId: me.id, entity: "user", action: "alterou", field: "barra de navegação", oldValue: `${u.navLayout} · ${u.navOrder.join(",")}`, newValue: `${layout} · ${order.join(",")}`, meta: { usuario: u.name, pelaAdmin: true } });
   });
   revalidatePath("/", "layout");

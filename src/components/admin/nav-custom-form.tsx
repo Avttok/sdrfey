@@ -67,7 +67,7 @@ export function NavCustomForm({ scope, initial, base, tree: tree0, hadTree }: { 
     return (
       <li key={href} className="flex flex-wrap items-center gap-2 rounded-xl bg-sunk px-3 py-2">
         <IconPick value={own.icon ?? inh.icon} fallback={(inh.icon && NAV_ICONS[inh.icon]) || n.icon} onChange={(k) => setItem(href, { icon: k })} />
-        <input className={`${inputCls} !h-10 min-w-[8rem] flex-1`} maxLength={24} placeholder={inh.label ?? n.label} value={own.label ?? ""} onChange={(e) => setItem(href, { label: e.target.value })} aria-label={`Nome de ${n.label}`} />
+        <input className={`${inputCls} !h-10 min-w-[8rem] flex-1`} maxLength={24} placeholder={`${n.group ? `${n.group} · ` : ""}${inh.label ?? n.label}`} value={own.label ?? ""} onChange={(e) => setItem(href, { label: e.target.value })} aria-label={`Nome de ${n.label}`} />
         <select aria-label={`Pasta de ${n.label}`} value={current} onChange={(e) => moveTo(href, e.target.value)} className="h-10 rounded-lg border border-line bg-panel px-2 text-xs">
           <option value="">Solta (sem pasta)</option>
           {folders.map((f) => <option key={f.id} value={f.id}>Pasta: {f.label}</option>)}

@@ -8,7 +8,7 @@ import { NAV } from "@/config/nav";
 import { setGlobalNavAction, setUserNavAction } from "@/modules/admin/user-prefs";
 
 /** Posição da barra de navegação (topo ou lateral) e ordem dos itens. Só o Adm usa: as pessoas seguem o que o Adm define. */
-export function NavPrefsForm({ layout: initialLayout, hrefs, userId, global = false }: { layout: "top" | "side"; hrefs: string[]; /** Só o Adm: edita a barra de outra pessoa. */ userId?: number; /** Só o Adm: a ordem vale para todos. */ global?: boolean }) {
+export function NavPrefsForm({ layout: initialLayout, hrefs, userId, global = false, layoutOnly = false }: { /** Só a posição da barra: a ordem é definida pelo Adm para todos. */ layoutOnly?: boolean;  layout: "top" | "side"; hrefs: string[]; /** Só o Adm: edita a barra de outra pessoa. */ userId?: number; /** Só o Adm: a ordem vale para todos. */ global?: boolean }) {
   const [layout, setLayout] = useState(initialLayout);
   const [order, setOrder] = useState(hrefs);
   const { run, pending } = useRun();
@@ -26,7 +26,7 @@ export function NavPrefsForm({ layout: initialLayout, hrefs, userId, global = fa
         <p className="mb-2 text-sm font-medium">Posição da barra</p>
         <div className="grid gap-2 sm:grid-cols-2">{opt("top", PanelTop, "Horizontal no topo", "O estilo atual")}{opt("side", PanelLeft, "Vertical à esquerda", "Em telas pequenas volta para o topo")}</div>
       </div>}
-      <div>
+      {!layoutOnly && <div>
         <p className="mb-2 text-sm font-medium">Ordem dos menus</p>
         <ol className="space-y-1.5">
           {order.map((h, i) => {
@@ -42,7 +42,7 @@ export function NavPrefsForm({ layout: initialLayout, hrefs, userId, global = fa
             );
           })}
         </ol>
-      </div>
+      </div>}
       <div className="flex flex-wrap gap-2">
         <button type="button" className={btnPrimary} disabled={!dirty || pending} onClick={() => run(() => (global ? setGlobalNavAction({ order }) : setUserNavAction(userId ?? 0, { layout, order })))}>{global ? "Aplicar para todos" : "Salvar barra"}</button>
         <button type="button" className={btnGhost} disabled={pending} onClick={() => { setLayout("top"); setOrder(NAV.filter((n) => hrefs.includes(n.href)).map((n) => n.href)); }}>Restaurar padrão</button>
