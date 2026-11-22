@@ -45,3 +45,9 @@ export function LogoView({ size, tone, legacy }: { size: "md" | "lg"; tone: "bra
     </span>
   );
 }
+
+/** Marca em qualquer tela (shufflers etc.): animada FEY ⇄ SDR, ou a `legacy` se o Adm desligar a animação. */
+export function BrandMark({ size, color, legacy }: { size: number; color?: string; legacy: React.ReactNode }) {
+  const { anim } = useLogoCfg();
+  return anim ? <MorphMark size={size} color={color} /> : <>{legacy}</>;
+}

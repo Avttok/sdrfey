@@ -12,17 +12,16 @@ const K = BOX / 1197;
 export const FEY: Rect[] = ([[0, 90, 1248, 108], [0, 198, 108, 1089], [216, 306, 1032, 108], [216, 523, 108, 547], [324, 523, 383, 108], [324, 740, 383, 109], [324, 957, 383, 113], [815, 525, 108, 443], [815, 968, 324, 102], [1139, 525, 109, 654], [216, 1179, 1032, 108]] as const).map(([x, y, w, h]) => R(x, (y - 90) * K, w, h * K));
 
 /**
- * SDR: um S grande com o traço da FEY (104 de 1248) e, nos dois vãos, o D (em cima) e o R (embaixo),
- * com traço um pouco mais fino (64) para caberem com respiro.
+ * SDR: um S feito de dois colchetes que se encaixam (“[” em cima à esquerda, “]” embaixo à direita, unidos pela barra do meio),
+ * com o D grande no vão de cima e o R grande no vão de baixo. Grade de 13×13, tudo com o mesmo traço (96, perto dos 108 da FEY).
  */
-const ST = 104, POCKET = (BOX - 3 * ST) / 2, LT = 64, LH = 5 * LT, LX = (BOX - 7 * LT) / 2;
-const D0 = ST + (POCKET - LH) / 2, R0 = 2 * ST + POCKET + (POCKET - LH) / 2;
-const L = (ox: number, oy: number, a: number[][]) => a.map(([c, r, w, h]) => R(ox + c * LT, oy + r * LT, w * LT, h * LT));
-export const SDR: Rect[] = [
-  R(0, 0, BOX, ST), R(0, ST, ST, POCKET), R(0, ST + POCKET, BOX, ST), R(BOX - ST, 2 * ST + POCKET, ST, POCKET), R(0, BOX - ST, BOX, ST),
-  ...L(LX, D0, [[0, 0, 1, 5], [1, 0, 5, 1], [1, 4, 5, 1], [6, 1, 1, 3]]),
-  ...L(LX, R0, [[0, 0, 1, 5], [1, 0, 6, 1], [6, 1, 1, 1], [1, 2, 6, 1], [5, 3, 1, 1], [6, 4, 1, 1]]),
-];
+const G = BOX / 13;
+const g = (a: number[][]) => a.map(([c, r, w, h]) => R(c * G, r * G, w * G, h * G));
+export const SDR: Rect[] = g([
+  [0, 0, 5, 1], [0, 1, 1, 5], [0, 6, 13, 1], [12, 7, 1, 5], [8, 12, 4, 1],              // S: braço de cima, coluna, barra do meio, coluna, braço de baixo
+  [6, 0, 1, 5], [7, 0, 5, 1], [7, 4, 5, 1], [12, 1, 1, 3],                                // D
+  [0, 8, 1, 5], [1, 8, 6, 1], [6, 9, 1, 1], [1, 10, 6, 1], [5, 11, 1, 1], [6, 12, 1, 1], // R
+]);
 
 const SLOTS = 16;
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
