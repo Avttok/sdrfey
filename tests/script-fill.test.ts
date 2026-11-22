@@ -19,3 +19,9 @@ describe("fillScript", () => {
     expect(spokenCompany("Fey Fixadores")).toBe("Fey Fixadores");
   });
 });
+
+describe("fillScript sem contato", () => {
+  it("troca a saudação com vocativo por uma exclamação", () => {
+    expect(fillScript("Bom dia, {contato}? Aqui é {meunome}, da Fey.", { meunome: "Ruan" })).toBe("Bom dia! Aqui é Ruan, da Fey.");
+  });
+});
