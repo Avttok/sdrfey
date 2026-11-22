@@ -9,7 +9,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     { href: "/admin/usuarios", label: "Equipe e acessos", hint: "Contas, cargos e permissões", icon: Users },
     { href: "/admin/moedas", label: "Moedas e pontos", hint: "Saldos, bloqueios e ajustes", icon: Coins },
   ] },
-  { id: "vendas", title: "Vendas (cargo Vendedor)", hue: "#10b981", items: [
+  { id: "vendas", title: "Vendas", hue: "#10b981", items: [
     { href: "/admin/vendas", label: "Condições e produtos", hint: "Pagamento e catálogo", icon: Handshake },
     { href: "/admin/nomenclatura", label: "Nomenclatura de produtos", hint: "Siglas, classificação e sugestões", icon: Tags },
     { href: "/transportadoras", label: "Transportadoras", hint: "Tabela de fretes e importação", icon: Truck },

@@ -1,6 +1,6 @@
 "use client";
 
-import { EyeOff, Sparkles, Trophy } from "lucide-react";
+import { EyeOff, Trophy } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { goldFxOff, setGoldFxOff } from "@/lib/gold-fx";
 import { goalReachedAction } from "@/modules/goals/gold-actions";
@@ -70,7 +70,6 @@ export function GoldMode({ reached, label, userId }: { reached: boolean; label: 
           </div>
         </>
       )}
-      {off && <button type="button" onClick={() => setGoldFxOff(false)} className="fixed bottom-24 left-3 z-[60] inline-flex items-center gap-1.5 rounded-full border border-[#f5c542]/50 bg-panel px-3 py-1.5 text-xs text-muted shadow transition hover:text-ink"><Sparkles size={13} aria-hidden className="text-[#e0a800]" /> Mostrar efeitos dourados</button>}
     </>
   );
 }

@@ -3,7 +3,9 @@
 import { Activity, CheckCircle2, Clock, DatabaseZap, History as HistoryIcon, ListOrdered, Loader2, Pause, Play, RotateCcw, Sparkles, TriangleAlert, XCircle, Zap } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
-import { AGE_LISTS } from "@/modules/enrich/ages";
+import { ENRICH_GROUPS, ENRICH_LISTS, ENRICH_LIST_BY_KEY } from "@/config/enrich-lists";
+import { ENRICH_STATE, askEnrich, setEnrich } from "@/components/enrich-bridge";
+import { daemonStartAction, daemonStopAction, type DockData } from "@/modules/enrich/daemon-actions";
 import type { EnrichStats } from "@/modules/enrich/batch";
 import { enrichLiveAction, enrichLogAction, retryFailedEnrichAction, runEnrichBatchAction, setAutoEnrichAction } from "@/modules/enrich/admin";
 import type { Live, LogRow } from "@/modules/enrich/live";
@@ -65,13 +67,19 @@ export function EnrichAdmin({ initial, on: on0, cronReady, live: live0 }: { init
     return () => { alive = false; clearInterval(id); clearInterval(clock); };
   }, []);
   const [stats, setStats] = useState(initial);
-  const [scope, setScope] = useState(0);
+  const [scope, setScope] = useState("new");
+  /** Estado da consulta contínua: o mesmo do painel flutuante (que é quem roda o laço). */
+  const [dock, setDock] = useState<DockData | null>(null);
+  useEffect(() => {
+    const f = (e: Event) => setDock((e as CustomEvent<DockData>).detail);
+    window.addEventListener(ENRICH_STATE, f); askEnrich();
+    return () => window.removeEventListener(ENRICH_STATE, f);
+  }, []);
   const [on, setOn] = useState(on0);
     const [busy, setBusy] = useState(false);
-  const [loop, setLoop] = useState(false);
+  const loop = !!dock?.state.on;
   const [log, setLog] = useState("");
   const [pending, start] = useTransition();
-  const stop = useRef(false);
   const pct = live.stats.total ? Math.round((live.stats.done / live.stats.total) * 100) : 0;
 
   const once = async (size = 10) => {
@@ -83,12 +91,10 @@ export function EnrichAdmin({ initial, on: on0, cronReady, live: live0 }: { init
       return r;
     } catch { setLog("A conexão falhou neste lote. Tento de novo."); return null; } finally { setBusy(false); }
   };
-  const runLoop = async () => {
-    stop.current = false; setLoop(true);
-    while (!stop.current) { const r = await once(1); if (r && r.tried === 0) break; await new Promise((x) => setTimeout(x, 1500)); }
-    setLoop(false);
+  const toggleLoop = async () => {
+    setBusy(true);
+    try { const r = await (loop ? daemonStopAction() : daemonStartAction(scope)); setEnrich(r); setDock(r); setStats(r.stats); setLog(loop ? "Consulta contínua parada." : ""); } catch { setLog("Não consegui mudar o modo contínuo. Tente de novo."); } finally { setBusy(false); }
   };
-  useEffect(() => () => { stop.current = true; }, []);
 
   return (
     <div className="space-y-4">
@@ -121,16 +127,18 @@ export function EnrichAdmin({ initial, on: on0, cronReady, live: live0 }: { init
       <section className={`${panelCls} space-y-3 p-5`}>
         <h2 className="font-semibold">Consultar agora</h2>
         <label className="block max-w-md text-sm"><span className="mb-1 block text-muted">Qual lista de leads consultar</span>
-          <select className={inputCls} value={scope} disabled={busy || loop} onChange={(e) => setScope(Number(e.target.value))}>
-            <option value={0}>Ainda não consultados ({(stats.pending ?? 0).toLocaleString("pt-BR")})</option>
-            {AGE_LISTS.map((d) => <option key={d} value={d}>Já consultados há mais de {d} dias ({(stats.older?.[d] ?? 0).toLocaleString("pt-BR")})</option>)}
-          </select></label>
+          <select className={inputCls} value={loop ? dock!.state.scope : scope} disabled={busy || loop} onChange={(e) => setScope(e.target.value)}>
+            {ENRICH_GROUPS.map((g) => <optgroup key={g} label={g}>{ENRICH_LISTS.filter((l) => l.group === g).map((l) => <option key={l.key} value={l.key}>{l.label} ({(((dock?.stats ?? stats).lists ?? {})[l.key] ?? 0).toLocaleString("pt-BR")})</option>)}</optgroup>)}
+          </select>
+          <span className="mt-1 block text-xs text-muted">{ENRICH_LIST_BY_KEY.get(loop ? dock!.state.scope : scope)?.hint}</span></label>
         <div className="flex flex-wrap items-end gap-3">
                     <button type="button" className={btnPrimary} disabled={busy || loop} onClick={() => void once(10)}>{busy && !loop ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Zap size={16} aria-hidden />} Consultar um lote (10)</button>
-          {loop ? <button type="button" className={btnGhost} onClick={() => { stop.current = true; }}><Pause size={16} aria-hidden /> Parar contínuo</button> : <button type="button" className={btnGhost} disabled={busy} onClick={() => void runLoop()}><Play size={16} aria-hidden /> Modo contínuo (1 em 1)</button>}
+          {loop
+            ? <button type="button" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-danger/40 bg-danger/10 px-4 py-2 text-[15px] font-semibold text-danger transition hover:bg-danger/20" disabled={busy} onClick={() => void toggleLoop()}>{busy ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Pause size={16} aria-hidden />} Parar contínuo</button>
+            : <button type="button" className={btnGhost} disabled={busy} onClick={() => void toggleLoop()}><Play size={16} aria-hidden /> Modo contínuo (1 em 1)</button>}
           <button type="button" className={btnGhost} disabled={busy || loop || pending} onClick={() => start(async () => { await retryFailedEnrichAction(); const r = await runEnrichBatchAction(1); setStats(r.stats); })}><RotateCcw size={15} aria-hidden /> Tentar os sem resposta de novo</button>
         </div>
-        <div className="space-y-1 text-sm text-muted" aria-live="polite">{loop && <p className="flex items-center gap-1.5"><Loader2 size={13} className="shrink-0 animate-spin" aria-hidden /> Contínuo ativo: continua até acabar ou você parar. Não feche esta página.</p>}{log && <p>{log}</p>}</div>
+        <div className="space-y-1 text-sm text-muted" aria-live="polite">{loop && <p className="flex items-center gap-1.5"><Loader2 size={13} className="shrink-0 animate-spin" aria-hidden /> Contínuo ativo{dock?.state.byName && !dock.state.mine ? ` (iniciado por ${dock.state.byName})` : ""}: roda em qualquer página, também pelo painel flutuante, até acabar ou você parar.</p>}{log && <p>{log}</p>}</div>
       </section>
 
       <div role="tablist" aria-label="Visão" className="flex w-fit gap-1 rounded-xl border border-line bg-panel p-1 text-sm font-medium">

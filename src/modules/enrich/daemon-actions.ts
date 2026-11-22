@@ -1,21 +1,21 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db, presence, settings, users } from "@/db";
 import { DAEMON_KEY, DAEMON_OFFLINE_MIN, type DaemonState } from "@/config/enrich-daemon";
 import { logAudit } from "@/modules/audit/log";
 import { requireAdmin } from "@/modules/auth/guard";
-import { AGE_LISTS } from "./ages";
+import { ENRICH_LIST_BY_KEY, normList } from "@/config/enrich-lists";
 import { enrichBatch, enrichStats, type EnrichStats } from "./batch";
 import { recentRows, type LogRow } from "./live";
 
-type Stored = { on: boolean; by: number | null; scope: number; since: string | null; stoppedWhy?: string | null };
-export type DockData = { state: DaemonState; stats: EnrichStats; rows: LogRow[] };
+type Stored = { on: boolean; by: number | null; scope: string; since: string | null; stoppedWhy?: string | null };
+export type DockData = { state: DaemonState; stats: EnrichStats; rows: LogRow[]; /** ritmo dos últimos 10 min */ rate: { perMin: number; okPct: number | null; doneSince: number } };
 
 async function read(): Promise<Stored> {
   const [r] = await db.select({ v: settings.value }).from(settings).where(eq(settings.key, DAEMON_KEY));
   const v = (r?.v ?? {}) as Partial<Stored>;
-  return { on: !!v.on, by: typeof v.by === "number" ? v.by : null, scope: typeof v.scope === "number" ? v.scope : 0, since: v.since ?? null, stoppedWhy: v.stoppedWhy ?? null };
+  return { on: !!v.on, by: typeof v.by === "number" ? v.by : null, scope: normList(v.scope), since: v.since ?? null, stoppedWhy: v.stoppedWhy ?? null };
 }
 async function write(v: Stored, by: number) {
   await db.insert(settings).values({ key: DAEMON_KEY, value: v, updatedBy: by }).onConflictDoUpdate({ target: settings.key, set: { value: v, updatedAt: new Date(), updatedBy: by } });
@@ -42,15 +42,16 @@ async function toState(s: Stored, meId: number): Promise<DaemonState> {
 export async function dockAction(): Promise<DockData> {
   const me = await requireAdmin();
   const s = await enforceOffline(await read(), me.id);
-  const [state, stats, rows] = await Promise.all([toState(s, me.id), enrichStats(), recentRows(12)]);
-  return { state, stats, rows };
+  const [state, stats, rows, [rt]] = await Promise.all([toState(s, me.id), enrichStats(), recentRows(12), db.execute<{ n: number; ok: number; since: number }>(sql`
+    select count(*)::int as n, count(*) filter (where ok)::int as ok, (select count(*)::int from enrich_log where at >= ${s.since ?? "1970-01-01"}::timestamptz) as since from enrich_log where at > now() - interval '10 minutes'`)]);
+  return { state, stats, rows, rate: { perMin: Math.round(((rt?.n ?? 0) / 10) * 10) / 10, okPct: rt?.n ? Math.round(((rt.ok ?? 0) / rt.n) * 100) : null, doneSince: s.on ? rt?.since ?? 0 : 0 } };
 }
 
-export async function daemonStartAction(scope = 0): Promise<DockData> {
+export async function daemonStartAction(scope: number | string = "new"): Promise<DockData> {
   const me = await requireAdmin();
-  const sc = (AGE_LISTS as readonly number[]).includes(Number(scope)) ? Number(scope) : 0;
+  const sc = normList(scope);
   await write({ on: true, by: me.id, scope: sc, since: new Date().toISOString(), stoppedWhy: null }, me.id);
-  await logAudit(db, { userId: me.id, entity: "setting", action: "ligou a consulta contínua de CNPJ", field: "Consulta contínua", newValue: sc ? `consultados há mais de ${sc} dias` : "ainda não consultados" });
+  await logAudit(db, { userId: me.id, entity: "setting", action: "ligou a consulta contínua de CNPJ", field: "Consulta contínua", newValue: ENRICH_LIST_BY_KEY.get(sc)?.label ?? sc });
   return dockAction();
 }
 

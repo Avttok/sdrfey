@@ -59,7 +59,7 @@ export function ScriptPicker({ scripts, vars, goal, segmentHint, extra, onNote, 
           );
         })}
       </HScroll></div>}
-      {current && needs !== null ? <p className="rounded-xl bg-sunk px-3 py-6 text-center text-sm text-muted" role="status">{failed ? "Não consegui carregar este roteiro. Escolha outro ou tente de novo." : "Carregando o roteiro…"}</p> : current ? <ScriptPlayer script={current} vars={vars} extra={extra} onNote={onNote} onRun={onRun} /> : <p className="text-sm text-muted">Sem script para esta fase.</p>}
+      {current && needs !== null ? <p className="rounded-xl bg-sunk px-3 py-6 text-center text-sm text-muted" role="status">{failed ? "Não consegui carregar este roteiro. Escolha outro ou tente de novo." : "Carregando o roteiro…"}</p> : current ? <ScriptPlayer script={current} vars={vars} extra={extra} onNote={onNote} onRun={onRun} floatingCenter /> : <p className="text-sm text-muted">Sem script para esta fase.</p>}
     </div>
   );
 }

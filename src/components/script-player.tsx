@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeft, Crosshair, Ear, Flame, Lightbulb, Mic, RotateCcw, ShieldAlert, NotebookPen, ShieldCheck, Sparkles, ThumbsUp, ChevronRight, Trophy, Volume2 } from "lucide-react";
+import { createPortal } from "react-dom";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fillScript, shortCompany, KIND_LABEL, moodOf, OUTCOMES, type ScriptDoc, type ScriptKind } from "@/config/scripts";
 import { btnGhost } from "@/components/ui";
@@ -22,7 +23,7 @@ const CONFETTI = ["#f59e0b", "#22c55e", "#0ea5e9", "#8b5cf6", "#f43f5e"];
  * O roteiro da ligação. O balão mostra EXATAMENTE o que você diz ao lead (com o nome dele já no lugar);
  * a dica é só para você (não se fala). Depois toque no que o lead respondeu e o roteiro avança.
  */
-export function ScriptPlayer({ script, vars, extra, onOutcome, onNote, onRun }: { script: ScriptDoc; vars: ScriptVars; /** painel extra no passo atual (ex.: o campo do nome de quem fala); recebe `pick` para escolher uma resposta */ extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; onOutcome?: (o: NonNullable<ScriptDoc["nodes"][number]["outcome"]>) => void; /** chamado com a anotação sugerida quando o operador escolhe uma resposta que tem nota */ onNote?: (note: string) => void; /** chamado a cada resposta escolhida, com o retrato do andamento (para guardar no lead) */ onRun?: (run: ScriptRun) => void }) {
+export function ScriptPlayer({ script, vars, extra, onOutcome, onNote, onRun, floatingCenter = false }: { /** botão flutuante "Centralizar" acima do chat (só nas etapas dos shufflers) */ floatingCenter?: boolean; script: ScriptDoc; vars: ScriptVars; /** painel extra no passo atual (ex.: o campo do nome de quem fala); recebe `pick` para escolher uma resposta */ extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; onOutcome?: (o: NonNullable<ScriptDoc["nodes"][number]["outcome"]>) => void; /** chamado com a anotação sugerida quando o operador escolhe uma resposta que tem nota */ onNote?: (note: string) => void; /** chamado a cada resposta escolhida, com o retrato do andamento (para guardar no lead) */ onRun?: (run: ScriptRun) => void }) {
   const by = useMemo(() => new Map(script.nodes.map((n) => [n.id, n])), [script]);
   const [trail, setTrail] = useState<{ id: string; kind?: ScriptKind; via?: string }[]>([{ id: script.startId }]);
   useEffect(() => setTrail([{ id: script.startId }]), [script.id, script.startId]);
@@ -78,8 +79,16 @@ export function ScriptPlayer({ script, vars, extra, onOutcome, onNote, onRun }: 
   const success = ended && node.outcome && node.outcome !== "encerrar";
   const OutIcon = node.outcome ? OUTCOME_ICON[node.outcome] : Trophy;
 
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  useEffect(() => setHost(document.body), []);
   return (
     <div ref={root} className="space-y-4">
+      {floatingCenter && !ended && host && createPortal(
+        <button type="button" onClick={center} aria-label="Centralizar o roteiro na tela (atalho: C)" title="Leva o roteiro para o meio da tela (atalho: C)"
+          className="fixed bottom-[5.25rem] right-5 z-40 inline-flex h-12 items-center gap-2 rounded-full border border-line bg-panel pl-3.5 pr-4 text-sm font-semibold text-accent shadow-xl transition hover:scale-105 hover:border-accent active:scale-95">
+          <Crosshair size={20} aria-hidden /><span className="max-sm:sr-only">Centralizar</span>
+          {follow && <span aria-hidden className="absolute -right-0.5 -top-0.5 size-3 animate-pulse rounded-full bg-accent ring-2 ring-panel" title="Seguindo sozinho" />}
+        </button>, host)}
       {/* Quem é o lead: nome completo bem pequeno, nome falado em destaque */}
       {vars.empresa && (
         <div className="flex flex-wrap items-end justify-between lg:hidden gap-x-4 gap-y-1 px-1">
