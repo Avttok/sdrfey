@@ -103,6 +103,7 @@ export function fillScript(text: string, v: { empresa?: string | null; contato?:
   const alt: Record<string, string> = { empresa_completa: "a empresa", empresa: "sua empresa", contato: "o responsável", cidade: "a sua cidade", meunome: "eu" };
   let out = text;
   if (!get("contato")) out = out.replace(/,\s*\{contato\}\?\s+(?=[A-ZÀ-Ú])/g, "! ").replace(/(^|[.!?]\s+|\n)\{contato\}[,!]?\s*/g, "$1").replace(/,\s*\{contato\}(?=[,.!?])/g, "");
+  if (!get("cidade")) out = out.replace(/,?\s+de \{cidade\}/g, "");
   if (!get("empresa")) out = out.replace(/\b(da|na|pela|a|à|para a)\s+\{empresa\}/gi, "$1 empresa");
   if (!get("meunome")) out = out.replace(/Aqui é \{meunome\}, da Fey/g, "Aqui é da Fey");
   out = out.replace(/\{(empresa_completa|empresa|contato|cidade|meunome)\}/g, (_, k: string) => get(k as "empresa") || alt[k]);

@@ -4,11 +4,11 @@ import { FileText, Hand, Star, Wand2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GOALS, SEGMENTS, type ScriptDoc, type ScriptGoal } from "@/config/scripts";
 import { HScroll } from "./h-scroll";
-import { ScriptPlayer, type ScriptVars } from "./script-player";
+import { ScriptPlayer, type ScriptRun, type ScriptVars } from "./script-player";
 import { GOAL_THEME, SEGMENT_ICON, tint } from "./script-theme";
 
 /** Escolha da fase (prospecção, venda, retorno) e do tipo de cliente, em botões com ícone; depois roda o roteiro. Shuffler e página Scripts. */
-export function ScriptPicker({ scripts, vars, goal, segmentHint, onNote }: { scripts: ScriptDoc[]; vars: ScriptVars; goal?: ScriptGoal; segmentHint?: string | null; onNote?: (note: string) => void }) {
+export function ScriptPicker({ scripts, vars, goal, segmentHint, onNote, onRun }: { scripts: ScriptDoc[]; vars: ScriptVars; goal?: ScriptGoal; segmentHint?: string | null; onNote?: (note: string) => void; onRun?: (run: ScriptRun) => void }) {
   const [g, setG] = useState<ScriptGoal>(goal ?? "sdr");
   const list = useMemo(() => scripts.filter((s) => s.goal === g), [scripts, g]);
   const [id, setId] = useState<number | null>(null);
@@ -46,7 +46,7 @@ export function ScriptPicker({ scripts, vars, goal, segmentHint, onNote }: { scr
         const why = id !== null && list.some((s) => s.id === id) ? { t: "escolhido por você", Icon: Hand } : current.segment === segmentHint ? { t: "escolhido automaticamente pelo tipo de empresa", Icon: Wand2 } : current.segment === "geral" ? { t: "script geral (tipo de empresa não identificado)", Icon: Wand2 } : { t: "primeiro da lista", Icon: Wand2 };
         return <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-sunk px-3 py-2 text-sm" aria-live="polite"><FileText size={15} aria-hidden className="text-accent" /><span className="text-muted">Script em uso:</span><b>{current.title}</b><span className="inline-flex items-center gap-1 text-xs text-muted"><why.Icon size={12} aria-hidden /> {why.t}</span></p>;
       })()}
-      {current ? <ScriptPlayer script={current} vars={vars} onNote={onNote} /> : <p className="text-sm text-muted">Sem script para esta fase.</p>}
+      {current ? <ScriptPlayer script={current} vars={vars} onNote={onNote} onRun={onRun} /> : <p className="text-sm text-muted">Sem script para esta fase.</p>}
     </div>
   );
 }

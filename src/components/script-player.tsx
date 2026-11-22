@@ -7,6 +7,8 @@ import { btnGhost } from "@/components/ui";
 import { HScroll } from "./h-scroll";
 import { GOAL_THEME, MOODS, OUTCOME_ICON, SEGMENT_ICON, tint } from "./script-theme";
 
+/** Retrato do andamento do roteiro: o que foi dito, o que o lead respondeu, as anotações e como terminou. */
+export type ScriptRun = { runId: string; scriptId: number; scriptTitle: string; goal: string; segment: string; contactName: string | null; steps: { id: string; title: string; mood: string; say: string; answer: string | null; kind: ScriptKind | null }[]; notes: string[]; outcome: string | null; finished: boolean };
 export type ScriptVars = { empresa?: string | null; /** nome da pessoa com quem se fala (contato do telefone), se houver */ contatoCompleto?: string | null; contato?: string | null; cidade?: string | null; meunome?: string | null };
 
 const KIND: Record<ScriptKind, { hex: string; Icon: typeof ThumbsUp; hint: string }> = {
@@ -20,9 +22,9 @@ const CONFETTI = ["#f59e0b", "#22c55e", "#0ea5e9", "#8b5cf6", "#f43f5e"];
  * O roteiro da ligação. O balão mostra EXATAMENTE o que você diz ao lead (com o nome dele já no lugar);
  * a dica é só para você (não se fala). Depois toque no que o lead respondeu e o roteiro avança.
  */
-export function ScriptPlayer({ script, vars, onOutcome, onNote }: { script: ScriptDoc; vars: ScriptVars; onOutcome?: (o: NonNullable<ScriptDoc["nodes"][number]["outcome"]>) => void; /** chamado com a anotação sugerida quando o operador escolhe uma resposta que tem nota */ onNote?: (note: string) => void }) {
+export function ScriptPlayer({ script, vars, onOutcome, onNote, onRun }: { script: ScriptDoc; vars: ScriptVars; onOutcome?: (o: NonNullable<ScriptDoc["nodes"][number]["outcome"]>) => void; /** chamado com a anotação sugerida quando o operador escolhe uma resposta que tem nota */ onNote?: (note: string) => void; /** chamado a cada resposta escolhida, com o retrato do andamento (para guardar no lead) */ onRun?: (run: ScriptRun) => void }) {
   const by = useMemo(() => new Map(script.nodes.map((n) => [n.id, n])), [script]);
-  const [trail, setTrail] = useState<{ id: string; kind?: ScriptKind }[]>([{ id: script.startId }]);
+  const [trail, setTrail] = useState<{ id: string; kind?: ScriptKind; via?: string }[]>([{ id: script.startId }]);
   useEffect(() => setTrail([{ id: script.startId }]), [script.id, script.startId]);
   const node = by.get(trail[trail.length - 1].id) ?? script.nodes[0];
   const ended = node.type === "fim";
@@ -35,12 +37,21 @@ export function ScriptPlayer({ script, vars, onOutcome, onNote }: { script: Scri
   const Seg = SEGMENT_ICON[script.segment] ?? Sparkles;
 
   const [noted, setNoted] = useState<string[]>([]);
-  useEffect(() => setNoted([]), [script.id, script.startId]);
+  const [runId, setRunId] = useState(() => crypto.randomUUID());
+  useEffect(() => { setNoted([]); setRunId(crypto.randomUUID()); }, [script.id, script.startId]);
+  const restart = () => { setTrail([{ id: script.startId }]); setNoted([]); setRunId(crypto.randomUUID()); };
+  useEffect(() => {
+    if (!onRun || trail.length < 2) return;
+    const steps = trail.map((t, i) => { const n = by.get(t.id); return { id: t.id, title: n?.title ?? t.id, mood: n ? moodOf(n) : "apoio", say: n ? fillScript(n.say, vars) : "", answer: trail[i + 1]?.via ?? null, kind: trail[i + 1]?.kind ?? null }; });
+    const last = by.get(trail[trail.length - 1].id);
+    onRun({ runId, scriptId: script.id, scriptTitle: script.title, goal: script.goal, segment: script.segment, contactName: vars.contatoCompleto ?? null, steps, notes: noted, outcome: last?.type === "fim" ? last.outcome ?? null : null, finished: last?.type === "fim" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trail, noted, runId]);
   const pick = useCallback((i: number) => {
     const op = node.options[i];
     if (!op?.to || !by.has(op.to)) return;
     if (op.note) { onNote?.(op.note); setNoted((l) => (l.includes(op.note!) ? l : [...l, op.note!])); }
-    setTrail((t) => [...t, { id: op.to!, kind: op.kind }]);
+    setTrail((t) => [...t, { id: op.to!, kind: op.kind, via: op.label }]);
   }, [node, by, onNote]);
 
   useEffect(() => {
@@ -167,7 +178,7 @@ export function ScriptPlayer({ script, vars, onOutcome, onNote }: { script: Scri
       {steps > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" className={btnGhost} onClick={() => setTrail((t) => t.slice(0, -1))}><ArrowLeft size={15} aria-hidden /> Voltar um passo</button>
-          <button type="button" className={btnGhost} onClick={() => setTrail([{ id: script.startId }])}><RotateCcw size={15} aria-hidden /> Recomeçar</button>
+          <button type="button" className={btnGhost} onClick={restart}><RotateCcw size={15} aria-hidden /> Recomeçar</button>
         </div>
       )}
     </div>

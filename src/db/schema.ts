@@ -404,6 +404,32 @@ export const attendanceSessions = pgTable(
   (t) => [index("sessions_user_idx").on(t.userId, t.savedAt), index("sessions_saved_idx").on(t.savedAt), index("sessions_lead_idx").on(t.leadId)],
 );
 
+/** Andamento do roteiro numa ligação: o caminho percorrido, as respostas do lead e as anotações. Aparece no perfil do lead para todos. */
+export type CallScriptStep = { id: string; title: string; mood: string; say: string; answer: string | null; kind: "ok" | "objecao" | "neutro" | null };
+export const callScripts = pgTable(
+  "call_scripts",
+  {
+    id: serial("id").primaryKey(),
+    /** Gerado no navegador ao começar o roteiro: reenviar atualiza a mesma linha. */
+    runId: text("run_id").notNull(),
+    leadId: integer("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    scriptId: integer("script_id"),
+    scriptTitle: text("script_title").notNull(),
+    goal: text("goal").notNull(),
+    segment: text("segment").notNull(),
+    contactName: text("contact_name"),
+    steps: jsonb("steps").$type<CallScriptStep[]>().notNull(),
+    notes: jsonb("notes").$type<string[]>().notNull().default([]),
+    outcome: text("outcome"),
+    finished: boolean("finished").notNull().default(false),
+    isTest: boolean("is_test").notNull().default(false),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("call_scripts_run_uq").on(t.runId), index("call_scripts_lead_idx").on(t.leadId, t.startedAt)],
+);
+
 /** Lead pulado: some só para esse usuário até `until`. */
 export const leadSkips = pgTable(
   "lead_skips",

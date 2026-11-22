@@ -344,6 +344,13 @@
       "when": 1795366140631,
       "tag": "0048_vocall_user",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1795371780153,
+      "tag": "0049_call_scripts",
+      "breakpoints": true
     }
   ]
 }

@@ -12,6 +12,8 @@ import { requirePerm } from "@/modules/auth/guard";
 import { getLeadCommercial } from "@/modules/deals/lead-commercial";
 import { AndamentosPanel, SalesSummaryPanel, VisitsPanel } from "@/components/deals/commercial-panels";
 import { getLeadView, getTagCatalog } from "@/modules/leads/view";
+import { ScriptRunsPanel } from "@/components/script-runs-panel";
+import { getScriptRuns } from "@/modules/scripts/runs-query";
 
 export const metadata: Metadata = { title: "Lead" };
 export const dynamic = "force-dynamic";
@@ -45,9 +47,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   ]);
   const showCommercial = !!me.permissions["tab.negociacoes"] || me.roles.includes("manager") || me.roles.includes("admin");
   const comm = showCommercial ? await getLeadCommercial(id, sellerView ? (dealId ? [dealId] : []) : undefined) : null;
+  const scriptRuns = await getScriptRuns(id).catch(() => []);
   return (
     <div className="space-y-4">
       <LeadEditor afterLeft={comm ? <SalesSummaryPanel deals={comm.deals} quotes={comm.quotes} /> : null} afterRight={comm ? <>{sellerView && <VisitsPanel visits={comm.visits} />}<AndamentosPanel events={comm.events} showDeal title="Andamentos da negociação" /></> : null} dealSeller={dealSeller} sellerView={sellerView} dealId={dealId} meId={me.id} showMap={me.mapMode === "map"} lead={lead} catalog={catalog} owners={owners} canEdit={!!me.permissions["lead.edit"] || ownDeal} inDeal={!!anyDeal} canRelease={!!me.permissions["lead.release"]} lockedBy={locker[0] ? { name: locker[0].name, hex: bubbleHex(locker[0].accent, locker[0].id, locker[0].roles) } : null} />
+      <ScriptRunsPanel runs={scriptRuns} />
     </div>
   );
 }

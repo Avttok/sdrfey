@@ -11,6 +11,10 @@ import { useVocall } from "@/components/vocall-provider";
 import { ProductHints } from "@/components/product-hints";
 import type { Reco } from "@/modules/recommendations/data";
 import { ScriptPicker } from "@/components/script-picker";
+import { saveScriptRunAction } from "@/modules/scripts/runs";
+import type { ScriptRun } from "@/components/script-player";
+import { LiveContacts } from "@/components/live-contacts";
+import type { CapturedChannel, CapturedPerson } from "@/modules/leads/capture";
 import { guessSegment, type ScriptDoc } from "@/config/scripts";
 import { LeadInfoPanel } from "@/components/lead-info-panel";
 import { TagChip } from "@/components/tag-chip";
@@ -115,8 +119,14 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
   const inactive = !priorOpen && !!status && status !== "ATIVA" && statusAck !== lead.id;
   const seek = () => run(async () => { const r = await skipThis(); if (r.ok) await nextLead(); return r; });
 
-  const phones = lead.channels.filter((c) => c.kind === "phone");
-  const emails = lead.channels.filter((c) => c.kind === "email");
+  /** Contatos anotados durante a ligação (já salvos no lead; entram na hora na lista, sem recarregar). */
+  const [extraPeople, setExtraPeople] = useState<CapturedPerson[]>([]);
+  const [extraChannels, setExtraChannels] = useState<CapturedChannel[]>([]);
+  const [talkingId, setTalkingId] = useState<number | null>(null);
+  const allPeople = [...lead.people, ...extraPeople.filter((p) => !lead.people.some((x) => x.id === p.id))];
+  const allChannels = [...lead.channels, ...extraChannels.filter((c) => !lead.channels.some((x) => x.kind === c.kind && x.value === c.value))];
+  const phones = allChannels.filter((c) => c.kind === "phone");
+  const emails = allChannels.filter((c) => c.kind === "email");
   const goodPhones = phones.filter((p) => !p.wrong);
   const goodEmails = emails.filter((e) => !e.wrong);
   /** Etapas que fazem sentido para este lead: sem e-mail válido some "E-mail"; sem telefone válido somem "WhatsApp" e "Ligação". */
@@ -172,8 +182,14 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
   /** Telefone em uso na ligação: se ele tem um contato indexado, o roteiro fala com essa pessoa. */
   const [callId, setCallId] = useState<number | null>(null);
   const callPhone = goodPhones.find((p) => p.id === callId) ?? null;
-  const callPerson = (callPhone?.personId ? lead.people.find((x) => x.id === callPhone.personId) : null) ?? lead.people[0] ?? null;
+  const callPerson = (talkingId ? allPeople.find((x) => x.id === talkingId) : null) ?? (callPhone?.personId ? allPeople.find((x) => x.id === callPhone.personId) : null) ?? allPeople[0] ?? null;
   const vars = { meu_nome: myName.split(" ")[0], empresa: lead.tradeName ?? lead.company, cidade: lead.city, representante: lead.rep?.repName, contato: callPerson?.name?.split(" ")[0] };
+  /** Guarda o andamento do roteiro no lead (em segundo plano, com pausa curta para não salvar a cada toque). */
+  const runTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const keepRun = (r: ScriptRun) => {
+    if (runTimer.current) clearTimeout(runTimer.current);
+    runTimer.current = setTimeout(() => { void saveScriptRunAction(lead.id, r).catch(() => {}); }, r.finished ? 100 : 1200);
+  };
   /** Respostas do roteiro que trazem anotação entram na observação, sem repetir. */
   const addNote = (t: string) => setNote((c) => (c.includes(t) ? c : `${c ? `${c.replace(/\s+$/, "")}\n` : ""}• ${t}`));
   const mail = tpl && (emailTo || goodEmails[0]?.value) ? mailtoLink(emailTo || goodEmails[0].value, renderTemplate(tpl.subject, vars), renderTemplate(tpl.body, vars)) : null;
@@ -380,12 +396,12 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
             <StepTitle i={3} />
             <ul className="grid gap-2">
               {goodPhones.map((p) => {
-                const who = p.personId ? lead.people.find((x) => x.id === p.personId) : null;
+                const who = p.personId ? allPeople.find((x) => x.id === p.personId) : null;
                 const on = callPhone?.id === p.id;
                 return (
                   <li key={p.id} className={`lift flex items-center gap-3 rounded-2xl border-2 px-3 py-2.5 transition ${on ? "border-accent bg-accent/10" : "border-line bg-sunk/60"}`}>
                     <span aria-hidden className={`grid size-10 shrink-0 place-items-center rounded-xl ${on ? "bg-accent text-on-accent" : "bg-accent/15 text-accent"}`}><Phone size={18} /></span>
-                    <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setCallId(on ? null : p.id)} title="Usar este número no roteiro" aria-pressed={on}>
+                    <button type="button" className="min-w-0 flex-1 text-left" onClick={() => { setCallId(on ? null : p.id); if (!on && p.personId) setTalkingId(p.personId); }} title="Usar este número no roteiro" aria-pressed={on}>
                       <span className="figure block text-lg leading-tight">{fmtPhone(p.value)}</span>
                       <span className="block truncate text-xs text-muted">{who ? <><UserRound size={11} aria-hidden className="mr-0.5 inline" />{who.name}{who.roleTitle ? ` · ${who.roleTitle}` : ""}</> : "Sem contato indexado"}</span>
                     </button>
@@ -412,9 +428,10 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
                   <Info label="Sócios" wide>{lead.info?.partners.length ? <ul className="flex flex-wrap gap-x-3 gap-y-0.5">{lead.info.partners.map((q, i) => <li key={i}><b>{q.name}</b>{cleanRole(q.role) ? <span className="text-muted"> · {cleanRole(q.role)}</span> : null}</li>)}</ul> : <span className="text-warn">Sem informação</span>}</Info>
                   <Info label="Atividade" wide>{lead.info?.activity ? `${lead.info.cnae ? `${lead.info.cnae} - ` : ""}${lead.info.activity}` : <span className="text-warn">Sem informação</span>}</Info>
                 </div>
+                <LiveContacts leadId={lead.id} people={allPeople} channels={allChannels} talkingId={callPerson?.id ?? null} onTalking={setTalkingId} onSaved={(p, ch) => { setExtraPeople((l) => [...l.filter((x) => x.id !== p.id), p]); setExtraChannels((l) => [...l, ...ch]); }} />
                 <ProductHints recos={recos} />
                 {scripts.length > 0
-                  ? <ScriptPicker scripts={scripts} goal={sales ? "vendas" : "sdr"} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} vars={{ empresa: vars.empresa, contato: vars.contato, contatoCompleto: callPerson?.name ?? null, cidade: vars.cidade, meunome: vars.meu_nome }} onNote={addNote} />
+                  ? <ScriptPicker scripts={scripts} goal={sales ? "vendas" : "sdr"} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} vars={{ empresa: vars.empresa, contato: vars.contato, contatoCompleto: callPerson?.name ?? null, cidade: vars.cidade, meunome: vars.meu_nome }} onNote={addNote} onRun={keepRun} />
                   : <p className="text-sm text-muted">Ainda não há roteiros. O Adm pode criar em Scripts.</p>}
               </div>
             </div>

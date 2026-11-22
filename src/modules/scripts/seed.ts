@@ -4,7 +4,7 @@ import type { ScriptGoal, ScriptMood, ScriptNode, ScriptOption } from "@/config/
 import { GOALS, SEGMENTS } from "@/config/scripts";
 
 /** Muda quando os textos de fábrica são reescritos: os scripts do time que ninguém editou são atualizados. */
-const SEED_VERSION = 6;
+const SEED_VERSION = 7;
 
 type Tipo = "revenda" | "producao" | "servico";
 /** O que cada tipo de cliente compra da Fey (fixadores) e o aperto que passa. `dor` completa "não ficar na mão com ___". */
@@ -50,6 +50,7 @@ const fim = (id: string, title: string, say: string, outcome: NonNullable<Script
  *   pedir o próximo passo de novo depois de resolver, e o "não" repetido duas vezes é "não" de verdade.
  * - Sandler: contrato inicial ("se não servir, eu mesmo te falo"), funil de dor (um assunto, "me conta mais", impacto) e negativo reverso.
  * - Chris Voss: rotular a emoção ("parece que...") e perguntas calibradas ("como", "o que") em vez de defender.
+ * - BANT: orçamento (pedido mínimo), autoridade (quem decide), necessidade (problema e impacto) e prazo (próxima reposição).
  * - SPIN (Rackham): situação, problema, implicação e ganho, em versão leve: o nosso negócio é recorrente e transacional.
  * - Vender a reunião, não o produto: "você mesmo julga se faz sentido", duas opções de horário, cumprir o tempo prometido.
  * Tom: formal e limpo na abertura; vai ficando mais leve, humano e próximo conforme a conversa avança.
@@ -96,7 +97,8 @@ function enriquece(last: string, tipo: Tipo, kind: "sdr" | "vendas"): ScriptNode
     fala("enr_mix", "Quais produtos compra", "E o que vocês mais compram hoje? É um mix de vários itens ou mais uns específicos? Pergunto pra não te mandar nada que não sirva.", [o("Mix variado de itens", "enr_aplicacao", "ok", "Compra mix variado"), o("Poucos itens específicos", "enr_aplicacao", "ok", "Compra poucos itens específicos"), o("Só um item", "enr_aplicacao", "neutro", "Compra um item só"), o("Não soube dizer", "enr_aplicacao")], "Deixe falar. Anote os itens e como é o mix: isso vira a cotação do vendedor. “Me conta mais” é a melhor pergunta de continuação (Sandler)."),
     fala("enr_aplicacao", "Onde aplica", "Entendi! E onde isso entra no dia a dia de vocês? Pergunto porque a aplicação muda qual parafuso ou grampo faz mais sentido.", [...aplic, skip]),
     fala("enr_freq", "Frequência de compra", "E de quanto em quanto tempo vocês repõem isso? Toda semana, todo mês, ou só quando falta?", [o("Toda semana", "enr_func", "ok", "Compra toda semana"), o("Todo mês", "enr_func", "ok", "Compra todo mês"), o("A cada dois ou três meses", "enr_func", "neutro", "Compra a cada 2 ou 3 meses"), o("Só quando precisa", "enr_func", "neutro", "Compra só sob demanda")]),
-    fala("enr_func", "Tamanho da empresa", "Quantas pessoas vocês são aí, mais ou menos? Só pra eu ter noção do tamanho da casa.", [o("Até 5", last, "neutro", "Funcionários: até 5"), o("De 6 a 20", last, "ok", "Funcionários: 6 a 20"), o("De 21 a 100", last, "ok", "Funcionários: 21 a 100"), o("Mais de 100", last, "ok", "Funcionários: mais de 100"), o("Não soube dizer", last)], "Última pergunta antes da proposta. A Gong viu que 11 a 14 perguntas bem dirigidas funcionam melhor que um questionário completo."),
+    fala("enr_func", "Tamanho da empresa", "Quantas pessoas vocês são aí, mais ou menos? Só pra eu ter noção do tamanho da casa.", [o("Até 5", "enr_quando", "neutro", "Funcionários: até 5"), o("De 6 a 20", "enr_quando", "ok", "Funcionários: 6 a 20"), o("De 21 a 100", "enr_quando", "ok", "Funcionários: 21 a 100"), o("Mais de 100", "enr_quando", "ok", "Funcionários: mais de 100"), o("Não soube dizer", "enr_quando")], "Última pergunta antes da proposta. A Gong viu que 11 a 14 perguntas bem dirigidas funcionam melhor que um questionário completo."),
+    fala("enr_quando", "Quando precisa", "E a próxima reposição, quando vocês costumam precisar? Pra eu já deixar tudo pronto no tempo certo.", [o("Esta semana", last, "ok", "Próxima compra: esta semana"), o("Neste mês", last, "ok", "Próxima compra: neste mês"), o("Nos próximos meses", last, "neutro", "Próxima compra: nos próximos meses"), o("Sem previsão", last, "neutro", "Próxima compra: sem previsão")], "Prazo (o T do BANT): é ele quem diz quando precisa. Orçamento está no pedido mínimo, autoridade em quem decide, necessidade no problema e no impacto."),
   ];
 }
 
