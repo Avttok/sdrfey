@@ -8,7 +8,8 @@ import { logAudit } from "@/modules/audit/log";
 import { requireAdmin } from "@/modules/auth/guard";
 import type { ActionResult } from "@/modules/leads/actions";
 import { parseMoneyToCents } from "@/config/deals";
-import { getExtraTaxPct, normTerm } from "@/modules/quotes/db";
+import { getExtraTaxPct, getIcmsRule, normTerm } from "@/modules/quotes/db";
+import { cleanIcmsRule } from "@/modules/quotes/icms";
 
 const done = (message: string): ActionResult => { revalidatePath("/admin/vendas"); revalidatePath("/negociacoes"); return { ok: true, message }; };
 const bad = (message: string): ActionResult => ({ ok: false, message });
@@ -94,4 +95,15 @@ export async function saveExtraTaxAction(pct: number): Promise<ActionResult> {
   invalidateSettings();
   await logAudit(db, { userId: me.id, entity: "setting", action: "alterou imposto extra do valor sem impostos", field: "PIS/COFINS (%)", oldValue: String(old), newValue: String(pct) });
   return done("Percentual salvo. Vale para cotações novas ou editadas.");
+}
+
+/** Regra de ICMS das cotações: modo (valor do PDF ou percentual), padrão e percentual por UF. */
+export async function saveIcmsRuleAction(raw: unknown): Promise<ActionResult> {
+  const me = await requireAdmin();
+  const rule = cleanIcmsRule(raw);
+  const old = await getIcmsRule();
+  await db.insert(settings).values({ key: "icms_rule", value: rule, updatedBy: me.id }).onConflictDoUpdate({ target: settings.key, set: { value: rule, updatedAt: new Date(), updatedBy: me.id } });
+  invalidateSettings();
+  await logAudit(db, { userId: me.id, entity: "setting", action: "alterou regra de ICMS", field: "icms_rule", oldValue: JSON.stringify(old), newValue: JSON.stringify(rule) });
+  return done(rule.mode === "rate" ? "Regra salva: o ICMS passa a vir dos percentuais abaixo nas cotações novas ou editadas." : "Regra salva: o ICMS continua vindo do PDF/itens (os percentuais só valem se você digitar na cotação).");
 }

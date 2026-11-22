@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getSettings } from "@/modules/settings/get";
 import { fetchCnpjInfo } from "@/modules/enrich/enrich";
-import { getExtraTaxPct, normalizeItem, syncDealFromQuotes, totalsOf, upsertPaymentTerm, upsertProducts } from "@/modules/quotes/db";
+import { getExtraTaxPct, icmsPctFor, normalizeItem, syncDealFromQuotes, totalsOf, upsertPaymentTerm, upsertProducts, withIcmsPct } from "@/modules/quotes/db";
 import { leadChannels, dealEvents, dealQuoteItems, dealQuotes, deals, paymentTerms, interactions, leads, tags, users, visits, type DealStage } from "@/db";
 import { desc } from "drizzle-orm";
 import { TAG } from "@/config/tags";
@@ -422,8 +422,9 @@ export async function createDealManualAction(input: NewDealInput): Promise<Actio
       await tx.insert(dealEvents).values({ dealId: d.id, userId: me.id, kind: "criado", note: note ?? "Aberta pelo vendedor" });
       if (cents) await tx.insert(dealEvents).values({ dealId: d.id, userId: me.id, kind: "cotacao", valueCents: cents, note: dp.patch.quoteNumber ? `Cotação ${dp.patch.quoteNumber}` : null });
       if (cents || items.length) {
-        const list = items.map((i, n) => ({ ...normalizeItem(i), seq: (n + 1) * 10 }));
-        const t = list.length ? totalsOf(list, 0, await getExtraTaxPct()) : { productsCents: null, ipiCents: null, icmsCents: null, netCents: cents, totalCents: cents };
+        const icmsPct = await icmsPctFor(lead.uf ?? addr.uf);
+        const list = withIcmsPct(items.map((i, n) => ({ ...normalizeItem(i), seq: (n + 1) * 10 })), icmsPct);
+        const t = list.length ? totalsOf(list, 0, await getExtraTaxPct(), icmsPct) : { productsCents: null, ipiCents: null, icmsCents: null, netCents: cents, totalCents: cents };
         const term = await upsertPaymentTerm(tx, dp.patch.paymentTerms);
         const [q] = await tx.insert(dealQuotes).values({ dealId: d.id, createdBy: me.id, number: dp.patch.quoteNumber ?? null, quoteDate: dp.patch.quoteDate ?? null, totalCents: t.totalCents ?? cents, productsCents: t.productsCents, ipiCents: t.ipiCents, icmsCents: t.icmsCents, netCents: t.netCents, freight: dp.patch.freight ?? null, paymentTerms: term, weightKg: input.weightKg && input.weightKg > 0 && input.weightKg < 1e7 ? input.weightKg : null }).returning({ id: dealQuotes.id });
         if (list.length) { await tx.insert(dealQuoteItems).values(list.map((i) => ({ ...i, dealId: d.id, quoteId: q.id, quoteNumber: dp.patch.quoteNumber ?? null }))); await upsertProducts(tx, list); }

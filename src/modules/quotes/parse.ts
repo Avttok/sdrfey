@@ -37,7 +37,9 @@ const money = (s?: string) => {
   return Number.isFinite(n) ? Math.round(n * 100) : null;
 };
 const NUM = String.raw`(\d[\d.]*,\d{2})`;
-const ITEM_RE = new RegExp(String.raw`^(\d+)\s+(\d+)\s+(?:(.*?)\s+)?${NUM}\s+${NUM}\s+([A-Z]{2,4})\s+(.+?)\s+${NUM}\s+${NUM}\s+${NUM}\s+${NUM}$`);
+/** Quantidade: aceita 0,2 e 0,25 (a Fey vende em cento). */
+const QTY = String.raw`(\d[\d.]*,\d{1,4})`;
+const ITEM_RE = new RegExp(String.raw`^(\d+)\s+(\d+)\s+(?:(.*?)\s+)?${QTY}\s+${QTY}\s+([A-Z]{2,6})\s+(.+?)\s+${NUM}\s+${NUM}\s+${NUM}\s+${NUM}$`);
 const HEADER = /^(SEQ\b|C[óo]d\.|Produto$|Cliente$|OC\b|PADR[ÃA]O|Valores|ICMS|P[ÁA]GINA|\d+ DE \d+$)/i;
 const num = (s: string) => Number(s.replace(/\./g, "").replace(",", "."));
 

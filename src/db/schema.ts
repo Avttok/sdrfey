@@ -547,6 +547,8 @@ export const dealQuotes = pgTable(
     ipiCents: integer("ipi_cents"),
     /** ICMS embutido nos preços dos itens. */
     icmsCents: integer("icms_cents"),
+    /** ICMS % digitado nesta cotação (vence a regra do Adm). Vazio = vale a regra. */
+    icmsPct: doublePrecision("icms_pct"),
     /** Valor sem impostos: total − IPI − ICMS. É o que vale para o vendedor. */
     netCents: integer("net_cents"),
     freightCents: integer("freight_cents"),

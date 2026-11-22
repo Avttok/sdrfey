@@ -6,7 +6,9 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SectionCard } from "@/components/section-card";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls } from "@/components/ui";
-import { deletePaymentTermAction, deleteProductAction, savePaymentTermAction, saveProductAction, saveExtraTaxAction } from "@/modules/admin/sales";
+import { deletePaymentTermAction, deleteProductAction, savePaymentTermAction, saveProductAction, saveExtraTaxAction, saveIcmsRuleAction } from "@/modules/admin/sales";
+import { UFS } from "@/config/lists";
+import type { IcmsRule } from "@/modules/quotes/icms";
 
 export type TermRow = { id: number; name: string; active: boolean };
 export type ProductRow = { id: number; code: string; description: string; kind: string | null; unit: string | null; altCodes: string[] };
@@ -117,6 +119,31 @@ function ExtraTax({ pct }: { pct: number }) {
   );
 }
 
-export function SalesAdmin({ terms, products, extraTaxPct }: { terms: TermRow[]; products: ProductRow[]; extraTaxPct: number }) {
-  return <div className="space-y-5"><ExtraTax pct={extraTaxPct} /><Terms rows={terms} /><Products rows={products} /></div>;
+function IcmsCard({ rule }: { rule: IcmsRule }) {
+  const { run, pending } = useRun();
+  const [mode, setMode] = useState(rule.mode);
+  const [def, setDef] = useState(String(rule.defaultPct).replace(".", ","));
+  const [by, setBy] = useState<Record<string, string>>(Object.fromEntries(UFS.map((u) => [u, String(rule.byUf[u] ?? rule.defaultPct).replace(".", ",")])));
+  const num = (v: string) => Number(v.replace(",", "."));
+  return (
+    <SectionCard icon={Calculator} title="ICMS das cotações">
+      <p className="text-sm text-muted">O vendedor só vê o valor sem impostos (total − impostos). Aqui você decide de onde vem o ICMS desse cálculo. Dá para mudar numa cotação específica, no campo “ICMS %” da própria cotação.</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {([["pdf", "Usar o valor do PDF", "O ICMS vem como está nos itens da cotação (comportamento antigo). Os percentuais só valem se digitados na cotação."], ["rate", "Calcular por percentual", "O ICMS é calculado pelo percentual da UF do cliente (ou o padrão) sobre os produtos."]] as const).map(([k, t, d]) => (
+          <button key={k} type="button" aria-pressed={mode === k} onClick={() => setMode(k)} className={`lift rounded-2xl border p-3 text-left transition ${mode === k ? "border-accent bg-accent/10" : "border-line bg-sunk/50"}`}><b className="block text-sm">{t}</b><span className="text-xs text-muted">{d}</span></button>
+        ))}
+      </div>
+      <div className={mode === "rate" ? "space-y-3" : "space-y-3 opacity-60"}>
+        <label className="block text-sm"><span className="mb-1 block text-muted">Padrão (UF sem percentual) %</span><input className={`${inputCls} !w-28 text-right`} inputMode="decimal" value={def} onChange={(e) => setDef(e.target.value)} /></label>
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-9">
+          {UFS.map((u) => <label key={u} className="text-xs"><span className="mb-0.5 block font-semibold text-muted">{u}</span><input aria-label={`ICMS ${u}`} className={`${inputCls} text-right`} inputMode="decimal" value={by[u]} onChange={(e) => setBy({ ...by, [u]: e.target.value })} /></label>)}
+        </div>
+      </div>
+      <button type="button" className={btnPrimary} disabled={pending} onClick={() => run(() => saveIcmsRuleAction({ mode, defaultPct: num(def), byUf: Object.fromEntries(UFS.map((u) => [u, num(by[u])])) }))}><Check size={15} aria-hidden /> Salvar regra de ICMS</button>
+    </SectionCard>
+  );
+}
+
+export function SalesAdmin({ terms, products, extraTaxPct, icmsRule }: { terms: TermRow[]; products: ProductRow[]; extraTaxPct: number; icmsRule: IcmsRule }) {
+  return <div className="space-y-5"><IcmsCard rule={icmsRule} /><ExtraTax pct={extraTaxPct} /><Terms rows={terms} /><Products rows={products} /></div>;
 }

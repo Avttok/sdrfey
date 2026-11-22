@@ -3,6 +3,7 @@ import { dealQuotes, deals, db, paymentTerms, products, type Db } from "@/db";
 import { settingValue } from "@/modules/settings/get";
 import type { DbOrTx } from "@/modules/audit/log";
 import type { QuoteItem } from "./parse";
+import { cleanIcmsRule, pickIcmsPct, type IcmsRule } from "./icms";
 
 type Tx = DbOrTx | Db;
 
@@ -13,15 +14,25 @@ export async function getExtraTaxPct(): Promise<number> {
   return Number.isFinite(v) && v >= 0 && v < 100 ? v : DEFAULT_EXTRA_TAX_PCT;
 }
 
+export async function getIcmsRule(): Promise<IcmsRule> { return cleanIcmsRule(await settingValue("icms_rule")); }
+/** Percentual de ICMS que vale para esta cotação (null = usar o valor do PDF). */
+export async function icmsPctFor(uf: string | null | undefined, override?: number | null): Promise<number | null> { return pickIcmsPct(await getIcmsRule(), uf, override); }
+
 /** Totais de uma cotação a partir dos itens. O preço unitário já traz o ICMS; o IPI vem por fora.
  *  Sem impostos = (total − IPI − ICMS) menos o imposto extra (PIS/COFINS) sobre essa base. */
-export function totalsOf(items: QuoteItem[], freightCents: number, extraTaxPct = 0) {
+export function totalsOf(items: QuoteItem[], freightCents: number, extraTaxPct = 0, icmsPct: number | null = null) {
   const productsCents = items.reduce((a, i) => a + (i.totalCents ?? 0), 0);
   const ipiCents = items.reduce((a, i) => a + (i.ipiCents ?? 0), 0);
-  const icmsCents = items.reduce((a, i) => a + (i.icmsCents ?? 0), 0);
+  /* com percentual definido (regra do Adm ou digitado na cotação) o ICMS vem dele; sem, vale o que o PDF trouxe */
+  const icmsCents = icmsPct != null ? Math.round(productsCents * icmsPct / 100) : items.reduce((a, i) => a + (i.icmsCents ?? 0), 0);
   const totalCents = productsCents + ipiCents + freightCents;
   const netCents = Math.round((totalCents - ipiCents - icmsCents) * (1 - extraTaxPct / 100));
   return { productsCents, ipiCents, icmsCents, totalCents, netCents };
+}
+
+/** Reescreve o ICMS de cada item pelo percentual (quando há regra). */
+export function withIcmsPct(items: QuoteItem[], icmsPct: number | null): QuoteItem[] {
+  return icmsPct == null ? items : items.map((i) => ({ ...i, icmsCents: i.totalCents != null ? Math.round(i.totalCents * icmsPct / 100) : i.icmsCents }));
 }
 
 /** Recalcula o total do item (quantidade × preço unitário) e o IPI/ICMS proporcionais quando a quantidade mudou. */

@@ -2,7 +2,7 @@ import { eq, inArray, sql } from "drizzle-orm";
 import { db, dealEvents, dealQuoteItems, dealQuotes, deals, leadChannels, leads, users } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { leftPortfolio } from "@/modules/deals/portfolio";
-import { getExtraTaxPct, normalizeItem, normTerm, syncDealFromQuotes, totalsOf, upsertPaymentTerm, upsertProducts } from "@/modules/quotes/db";
+import { getExtraTaxPct, icmsPctFor, normalizeItem, normTerm, syncDealFromQuotes, totalsOf, upsertPaymentTerm, upsertProducts, withIcmsPct } from "@/modules/quotes/db";
 import type { DealDraft } from "./deals-parse";
 
 export type SkipReason = "aberta_propria" | "aberta_outro" | "fora_carteira" | "pedido_repetido" | "cotacao_repetida" | "perdida_repetida" | "venda_repetida";
@@ -111,8 +111,9 @@ export async function applyDealImport(plan: Plan, o: { sellerId: number; userId:
         if (d.quoteCents || d.quoteNumber) {
           const [qrow] = await tx.insert(dealQuotes).values({ dealId: deal.id, createdBy: o.userId, number: d.quoteNumber, quoteDate: d.quoteDate, totalCents: d.quoteCents ?? d.closedCents, netCents: d.netCents ?? d.quoteCents ?? d.closedCents, freight: d.freight, paymentTerms: term , weightKg: d.weightKg ?? null }).returning({ id: dealQuotes.id });
           if (d.items?.length) {
-            const list = d.items.map((it, n) => ({ ...normalizeItem(it), seq: (n + 1) * 10 }));
-            const t = totalsOf(list, 0, await getExtraTaxPct());
+            const icmsPct = await icmsPctFor(lead.uf);
+            const list = withIcmsPct(d.items.map((it, n) => ({ ...normalizeItem(it), seq: (n + 1) * 10 })), icmsPct);
+            const t = totalsOf(list, 0, await getExtraTaxPct(), icmsPct);
             await tx.update(dealQuotes).set({ productsCents: t.productsCents, ipiCents: t.ipiCents, icmsCents: t.icmsCents, netCents: t.netCents }).where(eq(dealQuotes.id, qrow.id));
             await tx.insert(dealQuoteItems).values(list.map((it) => ({ ...it, dealId: deal.id, quoteId: qrow.id, quoteNumber: d.quoteNumber })));
             await upsertProducts(tx, list);

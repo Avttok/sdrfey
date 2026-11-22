@@ -5,13 +5,14 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getSettings } from "@/modules/settings/get";
 import { ALERT_RULES, parseMoneyToCents } from "@/config/deals";
-import { dealEvents, dealQuoteItems, dealQuotes, deals, paymentTerms, products } from "@/db";
+import { dealEvents, dealQuoteItems, dealQuotes, deals, leads, paymentTerms, products } from "@/db";
 import { requireUser } from "@/modules/auth/guard";
 import { db } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { loadDeal } from "@/modules/deals/access";
 import type { ActionResult } from "@/modules/leads/actions";
-import { getExtraTaxPct, normalizeItem, normTerm, syncDealFromQuotes, totalsOf, upsertPaymentTerm, upsertProducts } from "./db";
+import { getExtraTaxPct, icmsPctFor, normalizeItem, normTerm, syncDealFromQuotes, totalsOf, upsertPaymentTerm, upsertProducts, withIcmsPct } from "./db";
+import { parsePctInput } from "./icms";
 
 const fail = (message: string): ActionResult => ({ ok: false, message });
 const refresh = (id: number) => { for (const p of ["/negociacoes", `/negociacoes/${id}`, "/painel", "/metas", "/metas-vendas", "/historico", "/historico-vendas"]) revalidatePath(p); };
@@ -31,6 +32,7 @@ export type QuoteInput = {
   /** Valor sem impostos informado pelo vendedor (vem corrigido do Salesforce). Vazio = calculado. */ netValue?: string;
   /** Link da cotação no Salesforce. */ link?: string;
   /** Peso total (kg), ex.: "423,94". Vazio = sem peso. */ weight?: string;
+  /** ICMS % desta cotação (vence a regra do Adm). Vazio = vale a regra. */ icmsPct?: string;
   items: z.infer<typeof itemSchema>[]; followupDays?: number;
 };
 
@@ -44,7 +46,11 @@ export async function saveQuoteAction(dealId: number, quoteId: number | null, in
   if (!items.success) return fail("Confira os itens: código, descrição e quantidade são obrigatórios.");
   const prev = quoteId ? await db.select().from(dealQuoteItems).where(eq(dealQuoteItems.quoteId, quoteId)) : [];
   const prevQty = new Map(prev.map((p) => [p.productCode, Number(p.qty)]));
-  const list = items.data.map((i, n) => ({ ...normalizeItem(i, prevQty.get(i.productCode)), seq: (n + 1) * 10 }));
+  const icmsOverride = parsePctInput(input.icmsPct);
+  if ((input.icmsPct ?? "").trim() && icmsOverride === null) return fail("ICMS inválido. Use um percentual entre 0 e 40 (ex.: 7 ou 12).");
+  const [leadRow] = await db.select({ uf: leads.uf }).from(leads).where(eq(leads.id, deal.leadId));
+  const icmsPct = await icmsPctFor(leadRow?.uf, icmsOverride);
+  const list = withIcmsPct(items.data.map((i, n) => ({ ...normalizeItem(i, prevQty.get(i.productCode)), seq: (n + 1) * 10 })), icmsPct);
   const number = input.number.trim().slice(0, 40) || null;
   const date = input.date.trim();
   if (date && !isoDate.safeParse(date).success) return fail("Data da cotação inválida.");
@@ -53,7 +59,7 @@ export async function saveQuoteAction(dealId: number, quoteId: number | null, in
   const freightCents = input.freightValue.trim() ? parseMoneyToCents(input.freightValue) : 0;
   if (freightCents === null) return fail("Frete negociado inválido.");
   let t = { productsCents: null as number | null, ipiCents: null as number | null, icmsCents: null as number | null, netCents: null as number | null, totalCents: null as number | null };
-  if (list.length) t = totalsOf(list, freightCents, await getExtraTaxPct());
+  if (list.length) t = totalsOf(list, freightCents, await getExtraTaxPct(), icmsPct);
   else {
     const v = parseMoneyToCents(input.totalValue);
     if (v === null || v <= 0) return fail("Informe o valor da cotação (ex.: 12.500,00) ou adicione os itens.");
@@ -79,7 +85,7 @@ export async function saveQuoteAction(dealId: number, quoteId: number | null, in
   const wRaw = (input.weight ?? "").trim();
   const weightKg = wRaw ? Number(wRaw.replace(/\./g, "").replace(",", ".")) : null;
   if (wRaw && (weightKg === null || !Number.isFinite(weightKg) || weightKg < 0 || weightKg > 1e7)) return fail("Peso inválido. Exemplo: 423,94.");
-  const values = { weightKg, number, quoteDate: date || null, totalCents: t.totalCents, productsCents: t.productsCents, ipiCents: t.ipiCents, icmsCents: t.icmsCents, netCents: t.netCents, freightCents: list.length ? freightCents : null, freight: (f || null) as "CIF" | "FOB" | "RED" | null, paymentTerms: term, validityDays: input.validityDays && input.validityDays > 0 ? Math.min(input.validityDays, 365) : null, note: input.note.trim().slice(0, 2000) || null, link: link.slice(0, 500) || null };
+  const values = { icmsPct: icmsOverride, weightKg, number, quoteDate: date || null, totalCents: t.totalCents, productsCents: t.productsCents, ipiCents: t.ipiCents, icmsCents: t.icmsCents, netCents: t.netCents, freightCents: list.length ? freightCents : null, freight: (f || null) as "CIF" | "FOB" | "RED" | null, paymentTerms: term, validityDays: input.validityDays && input.validityDays > 0 ? Math.min(input.validityDays, 365) : null, note: input.note.trim().slice(0, 2000) || null, link: link.slice(0, 500) || null };
   const id = await db.transaction(async (tx) => {
     let qid = quoteId;
     if (qid) {

@@ -288,6 +288,13 @@
       "when": 1795355688755,
       "tag": "0040_lead_lists",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1795355906984,
+      "tag": "0041_icms_por_cotacao",
+      "breakpoints": true
     }
   ]
 }
