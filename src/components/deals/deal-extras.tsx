@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, CalendarClock, FileText, History, MapPin, Mail, MessageSquareQuote, Phone, ScrollText, UserRound, Users } from "lucide-react";
+import { Building2, Target, Trophy, CalendarClock, FileText, History, MapPin, Mail, MessageSquareQuote, Phone, ScrollText, UserRound, Users } from "lucide-react";
 import { useState } from "react";
 import { SectionCard } from "@/components/section-card";
 import { ScriptRunsPanel } from "@/components/script-runs-panel";
@@ -108,5 +108,36 @@ export function DealRecords({ deal, runs, history, visits, people }: { deal: Dea
         {tab === "cliente" && <ClientData deal={deal} people={people} />}
       </div>
     </SectionCard>
+  );
+}
+
+export type DealGoal = { who: string; quoteReais: number; soldReais: number; quoteTarget: number; soldTarget: number; monthQuotes: number; monthSold: number; monthLabel: string };
+const reais = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const pctOf = (v: number, t: number) => (t > 0 ? (v / t) * 100 : 0);
+const fmtPct = (p: number) => `${p < 10 ? p.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) : Math.round(p).toLocaleString("pt-BR")}%`;
+
+function GoalCard({ icon: I, title, valueLine, share, month, target, monthLabel }: { icon: typeof Target; title: string; valueLine: string; share: number | null; month: number; target: number; monthLabel: string }) {
+  const done = pctOf(month, target);
+  return (
+    <div className="lift rounded-2xl border border-line bg-grad-soft p-4">
+      <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted"><I size={14} aria-hidden /> {title}</p>
+      <p className="mt-1 text-sm">{valueLine}</p>
+      {share != null && <p className="figure mt-1 text-3xl font-semibold text-accent">{fmtPct(share)}<span className="ml-1.5 text-sm font-normal text-muted">da meta do mês</span></p>}
+      <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-line/70" role="progressbar" aria-valuenow={Math.min(100, Math.round(done))} aria-valuemin={0} aria-valuemax={100} aria-label={`Meta de ${monthLabel}`}><span className="block h-full rounded-full bg-grad transition-all" style={{ width: `${Math.min(100, done)}%` }} /></div>
+      <p className="mt-1 text-xs text-muted">{monthLabel}: {reais(month)} de {reais(target)} ({fmtPct(done)})</p>
+    </div>
+  );
+}
+
+/** "Esta cotação vale X% da meta" e "Este faturamento vale X% da meta", com o andamento do mês de quem vende. */
+export function DealGoalStrip({ goal, stage }: { goal: DealGoal; stage: string }) {
+  const hasQ = goal.quoteTarget > 0, hasS = goal.soldTarget > 0;
+  if (!hasQ && !hasS) return null;
+  const won = stage === "ganho";
+  return (
+    <div className="grid gap-3 md:grid-cols-2" aria-label="Contribuição para a meta">
+      {hasQ && <GoalCard icon={Target} title="Cotações" valueLine={goal.quoteReais > 0 ? `Esta negociação tem ${reais(goal.quoteReais)} em cotação` : "Ainda sem cotação nesta negociação"} share={goal.quoteReais > 0 ? pctOf(goal.quoteReais, goal.quoteTarget) : null} month={goal.monthQuotes} target={goal.quoteTarget} monthLabel={goal.monthLabel} />}
+      {hasS && <GoalCard icon={Trophy} title="Faturamento" valueLine={won ? `Este faturamento: ${reais(goal.soldReais)}` : goal.quoteReais > 0 ? `Se faturar, vale ${reais(goal.quoteReais)}` : "Ainda sem valor para faturar"} share={won ? pctOf(goal.soldReais, goal.soldTarget) : goal.quoteReais > 0 ? pctOf(goal.quoteReais, goal.soldTarget) : null} month={goal.monthSold} target={goal.soldTarget} monthLabel={goal.monthLabel} />}
+    </div>
   );
 }

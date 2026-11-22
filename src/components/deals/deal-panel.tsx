@@ -22,7 +22,7 @@ import { AlertChip, StageChip } from "./deal-ui";
 import { AndamentosTimeline } from "./commercial-panels";
 import type { CommEvent, CommVisit } from "@/modules/deals/lead-commercial";
 import type { ClientHistory } from "@/modules/deals/history";
-import { DealKpis, DealRecords, type DealPerson } from "./deal-extras";
+import { DealGoalStrip, DealKpis, DealRecords, type DealGoal, type DealPerson } from "./deal-extras";
 import type { ScriptRunView } from "@/modules/scripts/runs-query";
 
 type Ev = { id: number; kind: string; note: string | null; valueCents: number | null; at: string; by: string | null };
@@ -36,7 +36,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 }
 const brl = (c: number | null) => (c == null ? "" : (c / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
-export function DealPanel({ deal, events, quotes, tags, terms, extraPct, icmsPct = null, icmsRatePct = null, canDelete, phones, meId, team, canClaim, sellers, visits, clientEvents, history, runs, people }: { runs: ScriptRunView[]; people: DealPerson[]; clientEvents: CommEvent[]; history: ClientHistory | null; visits: CommVisit[]; deal: DealRow; events: Ev[]; quotes: QuoteView[]; tags: { group: string; label: string; color: string }[]; terms: string[]; extraPct: number; icmsPct?: number | null; icmsRatePct?: number | null; canDelete: boolean; phones: { value: string; label: string | null }[]; meId: number; team: boolean; canClaim: boolean; sellers: { id: number; name: string }[] }) {
+export function DealPanel({ deal, events, quotes, tags, terms, extraPct, icmsPct = null, icmsRatePct = null, canDelete, phones, meId, team, canClaim, sellers, visits, clientEvents, history, runs, people, goal }: { goal: DealGoal; runs: ScriptRunView[]; people: DealPerson[]; clientEvents: CommEvent[]; history: ClientHistory | null; visits: CommVisit[]; deal: DealRow; events: Ev[]; quotes: QuoteView[]; tags: { group: string; label: string; color: string }[]; terms: string[]; extraPct: number; icmsPct?: number | null; icmsRatePct?: number | null; canDelete: boolean; phones: { value: string; label: string | null }[]; meId: number; team: boolean; canClaim: boolean; sellers: { id: number; name: string }[] }) {
   const { run, pending } = useRun();
   const closed = deal.stage === "ganho" || deal.stage === "perdido";
   const mine = deal.sellerId === meId || team;
@@ -121,6 +121,7 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, icmsPct
           </div>
         </section>
 
+        <DealGoalStrip goal={goal} stage={deal.stage} />
         <DealKpis deal={deal} quotes={quotes.length} runs={runs.length} events={clientEvents.length || events.length} visits={visits.length} />
 
         {!deal.sellerId && !closed && (

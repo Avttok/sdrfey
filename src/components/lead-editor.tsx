@@ -22,7 +22,7 @@ import { saveLeadLinksAction } from "@/modules/deals/actions";
 import { addPersonAction, addVisitAction, deleteVisitAction, changeTagAction, forceReleaseAction, removePersonAction, resetLeadFromPageAction, updateLeadAction } from "@/modules/leads/edit";
 import type { LeadView, TagCatalog } from "@/modules/leads/view";
 
-export function LeadEditor({ afterLeft, afterRight, lead, catalog, owners, canEdit, canRelease, lockedBy, showMap, meId, sellerView, dealId, inDeal, dealSeller }: { afterLeft?: React.ReactNode; afterRight?: React.ReactNode; dealSeller?: { name: string; hex: string } | null; inDeal?: boolean; sellerView?: boolean; dealId?: number | null; showMap: boolean; meId: number; lead: LeadView; catalog: TagCatalog; owners: { id: number; name: string }[]; canEdit: boolean; canRelease: boolean; lockedBy: { name: string; hex: string } | null }) {
+export function LeadEditor({ kpis, records, afterLeft, afterRight, lead, catalog, owners, canEdit, canRelease, lockedBy, showMap, meId, sellerView, dealId, inDeal, dealSeller }: { kpis?: React.ReactNode; records?: React.ReactNode; afterLeft?: React.ReactNode; afterRight?: React.ReactNode; dealSeller?: { name: string; hex: string } | null; inDeal?: boolean; sellerView?: boolean; dealId?: number | null; showMap: boolean; meId: number; lead: LeadView; catalog: TagCatalog; owners: { id: number; name: string }[]; canEdit: boolean; canRelease: boolean; lockedBy: { name: string; hex: string } | null }) {
   const toast = useToast();
   const active = lead.registrationStatus ? lead.registrationStatus.toUpperCase() === "ATIVA" : null;
   const name0 = lead.tradeName ?? lead.company;
@@ -79,6 +79,7 @@ export function LeadEditor({ afterLeft, afterRight, lead, catalog, owners, canEd
         </div>
       </header>
 
+      {kpis}
       {dialog}
       <ConfirmDialog open={confirmReset} tone="danger" icon={RotateCcw} busy={pending} title="Resetar este lead?" confirmLabel="Sim, resetar" cancelLabel="Cancelar" onCancel={() => setConfirmReset(false)}
         onConfirm={() => { setConfirmReset(false); run(() => resetLeadFromPageAction(lead.id)); }}>
@@ -158,6 +159,7 @@ export function LeadEditor({ afterLeft, afterRight, lead, catalog, owners, canEd
       {afterRight}
       </div>
       </div>
+      {records}
     </div>
   );
 }
