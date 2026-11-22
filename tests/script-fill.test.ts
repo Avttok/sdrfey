@@ -25,3 +25,16 @@ describe("fillScript sem contato", () => {
     expect(fillScript("Bom dia, {contato}? Aqui é {meunome}, da Fey.", { meunome: "Ruan" })).toBe("Bom dia! Aqui é Ruan, da Fey.");
   });
 });
+
+describe("nome de quem fala nas perguntas", () => {
+  const t = "Aí é a empresa, certo[[contato?, {contato}|]]?";
+  it("usa o nome quando se sabe e some quando não", () => {
+    expect(fillScript(t, { contato: "carlos" })).toBe("Aí é a empresa, certo, Carlos?");
+    expect(fillScript(t, {})).toBe("Aí é a empresa, certo?");
+  });
+  it("pergunta o nome quando não há, e confirma quando há", () => {
+    const n = "[[contato?Só pra confirmar: estou falando com {contato}, certo?|Com quem eu falo?]]";
+    expect(fillScript(n, {})).toBe("Com quem eu falo?");
+    expect(fillScript(n, { contato: "Ana Souza" })).toBe("Só pra confirmar: estou falando com Ana, certo?");
+  });
+});

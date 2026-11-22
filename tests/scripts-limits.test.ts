@@ -16,4 +16,15 @@ describe("scripts de fábrica: limites do editor", () => {
   it("sem termos de jogo nos textos", () => {
     for (const b of buildAll()) for (const n of b.nodes) expect(`${n.title} ${n.say} ${n.tip ?? ""}`, `${b.key}:${n.id}`).not.toMatch(/\bjog(o|ar)\b|\bmiss[aã]o\b/i);
   });
+  it("scripts de ligação a frio perguntam e usam o nome de quem fala", () => {
+    for (const b of buildAll()) {
+      const ids = new Set(b.nodes.map((n) => n.id));
+      if (!ids.has("secretaria")) continue; // retorno de cotação já conhece a pessoa
+      const nome = b.nodes.find((n) => n.id === "nome");
+      expect(nome, b.key).toBeTruthy();
+      expect(nome!.say).toContain("[[contato?");
+      const abertura = b.nodes.find((n) => n.id === "abertura")!;
+      expect(abertura.options.some((o) => o.to === "nome"), b.key).toBe(true);
+    }
+  });
 });
