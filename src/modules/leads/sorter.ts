@@ -73,8 +73,8 @@ export async function claimNext(userId: number, opts: { test?: boolean; list?: L
 }
 
 /** Existe algum lead que o sorteio poderia entregar agora a esta pessoa? (mesma regra do sorteio, sem reservar nada) */
-export async function hasAvailable(userId: number, opts: { test?: boolean } = {}): Promise<boolean> {
-  await releaseExpiredLocks();
+export async function hasAvailable(userId: number, opts: { test?: boolean; skipRelease?: boolean } = {}): Promise<boolean> {
+  if (!opts.skipRelease) await releaseExpiredLocks();
   const rows = await db.execute<{ x: number }>(sql`
     select 1 as x from leads l
     where l.locked_by is null and l.is_test = ${opts.test ?? false} and l.kind = 'prospect'

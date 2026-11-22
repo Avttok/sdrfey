@@ -4,7 +4,8 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, scripts } from "@/db";
 import { logAudit } from "@/modules/audit/log";
-import { requirePerm } from "@/modules/auth/guard";
+import { requirePerm, requireUser } from "@/modules/auth/guard";
+import { scriptById } from "./list";
 import type { ActionResult } from "@/modules/leads/actions";
 import type { ScriptNode } from "@/config/scripts";
 import { checkTree, scriptInput } from "./schema";
@@ -57,4 +58,10 @@ export async function duplicateScriptAction(id: number): Promise<ActionResult & 
   const [r] = await db.insert(scripts).values({ ownerId: me.id, title: `${cur.title} (cópia)`.slice(0, 80), segment: cur.segment, goal: cur.goal, summary: cur.summary, nodes: cur.nodes, startId: cur.startId }).returning({ id: scripts.id });
   refresh();
   return { ok: true, message: "Cópia criada na sua lista.", id: r.id };
+}
+
+/** Traz os passos de um script escolhido na ligação (a tela só recebe os do script em uso). */
+export async function loadScriptAction(id: number) {
+  const me = await requireUser();
+  return scriptById(me.id, id);
 }
