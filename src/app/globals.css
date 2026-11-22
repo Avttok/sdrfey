@@ -391,3 +391,7 @@ html[data-gold="on"] header, html[data-gold="on"] aside { box-shadow: 0 2px 22px
 @keyframes gold-fall { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 85% { opacity: 1; } 100% { transform: translate(var(--w), 112vh) rotate(var(--r)); opacity: 0; } }
 .gold-fall { animation-name: gold-fall; animation-timing-function: cubic-bezier(.25, .6, .4, 1); animation-fill-mode: both; }
 @media (prefers-reduced-motion: reduce) { .gold-fall, .gold-ribbon { animation: none !important; } .gold-fall { display: none; } }
+
+html[data-copy-guard="on"] body { -webkit-user-select: none; user-select: none; }
+html[data-copy-guard="on"] input, html[data-copy-guard="on"] textarea, html[data-copy-guard="on"] [contenteditable="true"] { -webkit-user-select: text; user-select: text; }
+@media print { html[data-copy-guard="on"] body { display: none; } }

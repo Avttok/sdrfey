@@ -52,6 +52,8 @@ export const SETTING_DEFAULTS = {
   import_max_mb: 8,
   import_max_rows: 20000,
   pdf_max_mb: 5,
+  /** 1 = bloqueia copiar, arrastar e clique direito fora de campos de texto (só para quem não é Adm). */
+  copy_guard: 0,
 } as const;
 export type SettingKey = keyof typeof SETTING_DEFAULTS;
 

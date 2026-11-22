@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, LayoutDashboard, MessageCircle, PanelTop, Shuffle } from "lucide-react";
+import { Clock, LayoutDashboard, ShieldCheck, MessageCircle, PanelTop, Shuffle } from "lucide-react";
 import { useState } from "react";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
@@ -41,6 +41,9 @@ const GROUPS: { title: string; sub: string; icon: typeof Clock; fields: Field[] 
   ] },
   { title: "Comunicação", sub: "Chat interno", icon: MessageCircle, fields: [
     { key: "chat_on", label: "Chat interno", hint: "Botão flutuante. Desligado, some para todos (as conversas ficam guardadas).", kind: "toggle" },
+  ] },
+  { title: "Segurança", sub: "Proteção dos dados", icon: ShieldCheck, fields: [
+    { key: "copy_guard", label: "Bloquear cópia de telas", hint: "Para quem não é Adm: impede selecionar, copiar, arrastar e clicar com o botão direito (campos de texto continuam normais).", kind: "toggle" },
   ] },
 ];
 
