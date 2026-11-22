@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { EGG_COLORS } from "@/config/egg";
 import { eggBeginAction, eggSolveAction, type EggStep } from "@/modules/easter/actions";
 
 /* Sons sintetizados: nada de arquivos de áudio para baixar. */
@@ -22,7 +23,6 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function EggGame({ done }: { done: boolean }) {
   const [cur, setCur] = useState<EggStep | null>(null);
-  const [digits, setDigits] = useState<number[]>([]);
   const [msg, setMsg] = useState("");
   const [won, setWon] = useState<number | null>(done ? 0 : null);
   const [busy, setBusy] = useState(false);
@@ -37,7 +37,6 @@ export function EggGame({ done }: { done: boolean }) {
     setMsg("");
     if (r.done) { win(); setWon(r.done.coins); return true; }
     tone(880, 160, "triangle"); setTimeout(() => tone(1175, 220, "triangle"), 140);
-    if (typeof r.digit === "number") setDigits((d) => [...d, r.digit!]);
     setCur(r.next ?? null);
     return true;
   };
@@ -57,7 +56,7 @@ export function EggGame({ done }: { done: boolean }) {
           <>
             <p className="egg-crack text-7xl">🥚</p>
             <h1 className="text-2xl font-bold">Você achou a porta.</h1>
-            <p className="text-white/70">Cinco provas separam você do tesouro. Ligue o som.</p>
+            <p className="text-white/70">Cinco provas separam você do tesouro, e elas mudam a cada vez. Ligue o som.</p>
             <button type="button" onClick={start} className="rounded-xl bg-amber-400 px-5 py-2.5 font-bold text-amber-950 transition hover:scale-105">Entrar</button>
             {msg && <p className="text-sm text-rose-300">{msg}</p>}
           </>
@@ -66,13 +65,15 @@ export function EggGame({ done }: { done: boolean }) {
             <div className="flex items-center justify-center gap-2" aria-label="Progresso">
               {[1, 2, 3, 4, 5].map((n) => <span key={n} className={`h-2.5 w-8 rounded-full transition ${n < cur.step ? "bg-emerald-400" : n === cur.step ? "bg-amber-300" : "bg-white/20"}`} />)}
             </div>
-            {digits.length > 0 && <p className="text-sm text-white/70">Anotado: <b className="tracking-[.3em] text-amber-300">{digits.join(" ")}</b></p>}
             <div key={cur.step} className="egg-rise">
-              {cur.step === 1 && <Simon pattern={cur.data as number[]} onDone={solve} />}
-              {cur.step === 2 && <Cipher text={cur.data as string} onDone={solve} />}
-              {cur.step === 3 && <Charge onDone={solve} />}
-              {cur.step === 4 && <Order nums={cur.data as number[]} onDone={solve} />}
-              {cur.step === 5 && <Vault onDone={solve} />}
+              {cur.kind === "simon" && <Simon pattern={cur.data as number[]} n={cur.step} onDone={solve} />}
+              {cur.kind === "cipher" && <Cipher {...(cur.data as { text: string; shift: number })} n={cur.step} onDone={solve} />}
+              {cur.kind === "hold" && <Charge ms={(cur.data as { ms: number }).ms} n={cur.step} onDone={solve} />}
+              {cur.kind === "order" && <Order {...(cur.data as { nums: number[]; dir: "asc" | "desc" })} n={cur.step} onDone={solve} />}
+              {cur.kind === "seq" && <Seq {...(cur.data as { shown: (number | null)[]; options: number[] })} n={cur.step} onDone={solve} />}
+              {cur.kind === "odd" && <Odd cells={(cur.data as { cells: string[] }).cells} n={cur.step} onDone={solve} />}
+              {cur.kind === "count" && <Count total={(cur.data as { n: number }).n} options={(cur.data as { options: number[] }).options} n={cur.step} onDone={solve} />}
+              {cur.kind === "color" && <Color {...(cur.data as { word: string; ink: string; options: string[] })} n={cur.step} onDone={solve} />}
             </div>
             {msg && <p className="text-sm text-rose-300" role="alert">{msg}</p>}
           </>
@@ -83,8 +84,10 @@ export function EggGame({ done }: { done: boolean }) {
 }
 
 type Done = (answer: unknown) => Promise<boolean | undefined>;
+const Title = ({ n, children }: { n: number; children: string }) => <h2 className="text-lg font-semibold">{n} · {children}</h2>;
+const tile = "rounded-2xl border-2 border-white/25 bg-white/10 font-bold transition hover:scale-110 disabled:opacity-30";
 
-function Simon({ pattern, onDone }: { pattern: number[]; onDone: Done }) {
+function Simon({ pattern, n, onDone }: { pattern: number[]; n: number; onDone: Done }) {
   const [lit, setLit] = useState(-1);
   const [phase, setPhase] = useState<"idle" | "show" | "play">("idle");
   const got = useRef<number[]>([]);
@@ -94,11 +97,11 @@ function Simon({ pattern, onDone }: { pattern: number[]; onDone: Done }) {
     if (phase !== "play") return;
     setLit(i); tone(NOTES[i], 200, "triangle"); setTimeout(() => setLit(-1), 200);
     got.current = [...got.current, i];
-    if (got.current.length === pattern.length) { setPhase("idle"); const ok = await onDone(got.current); if (ok === false) setPhase("idle"); }
+    if (got.current.length === pattern.length) { setPhase("idle"); await onDone(got.current); }
   };
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">1 · Repita a melodia</h2>
+      <Title n={n}>Repita a melodia</Title>
       <div className="mx-auto grid w-56 grid-cols-2 gap-3">
         {PADS.map((c, i) => <button key={i} type="button" aria-label={`Botão ${i + 1}`} onClick={() => press(i)} className={`h-24 rounded-2xl border-2 border-white/20 transition ${lit === i ? "egg-pad-on" : "opacity-60"}`} style={{ background: c, filter: lit === i ? "brightness(1.6)" : undefined }} />)}
       </div>
@@ -107,76 +110,115 @@ function Simon({ pattern, onDone }: { pattern: number[]; onDone: Done }) {
   );
 }
 
-function Cipher({ text, onDone }: { text: string; onDone: Done }) {
+function Cipher({ text, shift, n, onDone }: { text: string; shift: number; n: number; onDone: Done }) {
   const [v, setV] = useState("");
   return (
     <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); void onDone(v); }}>
-      <h2 className="text-lg font-semibold">2 · Decifre o nome</h2>
+      <Title n={n}>Decifre a palavra</Title>
       <p className="font-mono text-4xl tracking-[.4em] text-amber-300">{text}</p>
-      <p className="text-sm text-white/70">Quem assina o rodapé? As letras foram giradas 13 casas.</p>
+      <p className="text-sm text-white/70">Cada letra andou {shift} {shift === 1 ? "casa" : "casas"} para a frente no alfabeto. Volte {shift === 1 ? "uma" : shift}.</p>
+      <p className="font-mono text-[11px] tracking-[.18em] text-white/40" aria-hidden>ABCDEFGHIJKLMNOPQRSTUVWXYZ</p>
       <input value={v} onChange={(e) => setV(e.target.value)} maxLength={12} autoFocus className="w-40 rounded-lg border border-white/25 bg-white/10 px-3 py-2 text-center uppercase tracking-widest outline-none focus:border-amber-300" aria-label="Resposta" />
       <div><button className="rounded-xl bg-amber-400 px-4 py-2 font-bold text-amber-950">Revelar</button></div>
     </form>
   );
 }
 
-function Charge({ onDone }: { onDone: Done }) {
+function Charge({ ms, n, onDone }: { ms: number; n: number; onDone: Done }) {
   const [pct, setPct] = useState(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const t0 = useRef(0);
   const stop = async () => {
     if (timer.current) clearInterval(timer.current);
     timer.current = null;
-    if (Date.now() - t0.current >= 3300) { const ok = await onDone("held"); if (ok === false) setPct(0); } else setPct(0);
+    if (Date.now() - t0.current >= ms + 100) { const ok = await onDone("held"); if (ok === false) setPct(0); } else setPct(0);
   };
   const go = () => {
     t0.current = Date.now();
-    timer.current = setInterval(() => { const p = Math.min(100, ((Date.now() - t0.current) / 3300) * 100); setPct(p); tone(200 + p * 5, 60, "square", 0.03); }, 100);
+    timer.current = setInterval(() => { const p = Math.min(100, ((Date.now() - t0.current) / ms) * 100); setPct(p); tone(200 + p * 5, 60, "square", 0.03); }, 100);
   };
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">3 · Carregue a energia</h2>
+      <Title n={n}>Carregue a energia</Title>
       <p className="text-sm text-white/70">Segure o botão até encher. Soltou cedo, recomeça.</p>
       <button type="button" onPointerDown={go} onPointerUp={stop} onPointerLeave={() => timer.current && stop()} className="relative mx-auto grid h-28 w-28 select-none place-items-center rounded-full border-4 border-amber-300 text-4xl" style={{ background: `conic-gradient(#fbbf24 ${pct}%, rgba(255,255,255,.1) 0)` }} aria-label="Segurar"><span className="grid h-20 w-20 place-items-center rounded-full bg-slate-900">⚡</span></button>
     </div>
   );
 }
 
-function Order({ nums, onDone }: { nums: number[]; onDone: Done }) {
+function Order({ nums, dir, n, onDone }: { nums: number[]; dir: "asc" | "desc"; n: number; onDone: Done }) {
   const [picked, setPicked] = useState<number[]>([]);
-  const click = async (n: number) => {
-    if (picked.includes(n)) return;
-    const next = [...picked, n]; setPicked(next); tone(300 + next.length * 120, 140, "triangle");
+  const click = async (x: number) => {
+    if (picked.includes(x)) return;
+    const next = [...picked, x]; setPicked(next); tone(300 + next.length * 120, 140, "triangle");
     if (next.length === nums.length) { const ok = await onDone(next); if (ok === false) setPicked([]); }
   };
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">4 · Do menor para o maior</h2>
+      <Title n={n}>{dir === "asc" ? "Do menor para o maior" : "Do maior para o menor"}</Title>
       <div className="flex flex-wrap justify-center gap-3">
-        {nums.map((n) => <button key={n} type="button" onClick={() => click(n)} disabled={picked.includes(n)} className="h-16 w-16 rounded-2xl border-2 border-white/25 bg-white/10 text-xl font-bold transition hover:scale-110 disabled:opacity-30">{n}</button>)}
+        {nums.map((x) => <button key={x} type="button" onClick={() => click(x)} disabled={picked.includes(x)} className={`${tile} h-16 w-16 text-xl`}>{x}</button>)}
       </div>
       <button type="button" onClick={() => setPicked([])} className="text-xs text-white/60 underline">limpar</button>
     </div>
   );
 }
 
-function Vault({ onDone }: { onDone: Done }) {
-  const [d, setD] = useState([0, 0, 0, 0]);
-  const bump = (i: number, by: number) => { tone(420 + i * 40, 70, "square", 0.04); setD((x) => x.map((v, k) => (k === i ? (v + by + 10) % 10 : v))); };
+function Seq({ shown, options, n, onDone }: { shown: (number | null)[]; options: number[]; n: number; onDone: Done }) {
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">5 · O cofre</h2>
-      <p className="text-sm text-white/70">Digite os quatro números que você anotou, na ordem em que apareceram.</p>
-      <div className="flex justify-center gap-2">
-        {d.map((v, i) => (
-          <div key={i} className="flex flex-col items-center gap-1">
-            <button type="button" aria-label="Aumentar" onClick={() => bump(i, 1)} className="rounded-md bg-white/10 px-3 hover:bg-white/20">▲</button>
-            <span className="grid h-14 w-12 place-items-center rounded-lg border-2 border-amber-300 bg-slate-900 text-2xl font-bold tabular-nums">{v}</span>
-            <button type="button" aria-label="Diminuir" onClick={() => bump(i, -1)} className="rounded-md bg-white/10 px-3 hover:bg-white/20">▼</button>
-          </div>
-        ))}
+      <Title n={n}>Qual número falta?</Title>
+      <div className="flex flex-wrap justify-center gap-2 text-2xl font-bold tabular-nums">
+        {shown.map((v, i) => <span key={i} className={`grid h-14 w-14 place-items-center rounded-xl border-2 ${v === null ? "border-dashed border-amber-300 text-amber-300" : "border-white/20 bg-white/5"}`}>{v ?? "?"}</span>)}
       </div>
-      <button type="button" onClick={() => onDone(d)} className="rounded-xl bg-amber-400 px-5 py-2.5 font-bold text-amber-950">Abrir 🔓</button>
+      <div className="flex flex-wrap justify-center gap-3">
+        {options.map((o) => <button key={o} type="button" onClick={() => { tone(500 + o * 8, 120, "triangle"); void onDone(o); }} className={`${tile} h-14 w-14 text-xl`}>{o}</button>)}
+      </div>
+    </div>
+  );
+}
+
+function Odd({ cells, n, onDone }: { cells: string[]; n: number; onDone: Done }) {
+  return (
+    <div className="space-y-4">
+      <Title n={n}>Ache o diferente</Title>
+      <div className="mx-auto grid w-64 grid-cols-4 gap-2">
+        {cells.map((c, i) => <button key={i} type="button" aria-label={`Figura ${i + 1}`} onClick={() => { tone(440 + i * 15, 100, "triangle"); void onDone(i); }} className="grid h-14 w-14 place-items-center rounded-xl border border-white/20 bg-white/10 text-3xl transition hover:scale-110">{c}</button>)}
+      </div>
+    </div>
+  );
+}
+
+function Count({ total, options, n, onDone }: { total: number; options: number[]; n: number; onDone: Done }) {
+  const [phase, setPhase] = useState<"idle" | "show" | "ask">("idle");
+  const spots = useRef(Array.from({ length: total }, (_, i) => ({ x: 8 + ((i * 37 + Math.random() * 30) % 76), y: 10 + ((i * 53 + Math.random() * 30) % 68) })));
+  const play = async () => { setPhase("show"); for (let i = 0; i < total; i++) setTimeout(() => tone(520 + i * 60, 90, "triangle"), i * 220); await sleep(2600); setPhase("ask"); };
+  return (
+    <div className="space-y-4">
+      <Title n={n}>Conte as estrelas</Title>
+      <div className="relative mx-auto h-40 w-full max-w-xs overflow-hidden rounded-2xl border border-white/15 bg-white/5">
+        {phase === "show" && spots.current.map((p, i) => <span key={i} className="egg-rise absolute text-2xl" style={{ left: `${p.x}%`, top: `${p.y}%`, animationDelay: `${i * 0.22}s` }} aria-hidden>⭐</span>)}
+        {phase === "idle" && <button type="button" onClick={play} className="absolute inset-0 text-sm font-semibold hover:bg-white/10">▶ Mostrar</button>}
+        {phase === "ask" && <p className="absolute inset-0 grid place-items-center text-sm text-white/70">Quantas apareceram?</p>}
+      </div>
+      {phase === "ask" && (
+        <div className="flex flex-wrap justify-center gap-3">
+          {options.map((o) => <button key={o} type="button" onClick={async () => { const ok = await onDone(o); if (ok === false) setPhase("idle"); }} className={`${tile} h-14 w-14 text-xl`}>{o}</button>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Color({ word, ink, options, n, onDone }: { word: string; ink: string; options: string[]; n: number; onDone: Done }) {
+  return (
+    <div className="space-y-4">
+      <Title n={n}>Toque na cor da tinta</Title>
+      <p className="text-5xl font-black tracking-wide" style={{ color: ink }}>{word}</p>
+      <p className="text-sm text-white/70">Não vale ler a palavra: olhe a cor com que ela foi escrita.</p>
+      <div className="flex justify-center gap-3">
+        {options.map((k) => { const c = EGG_COLORS.find((x) => x.key === k)!; return <button key={k} type="button" aria-label={c.name} onClick={() => { tone(380 + options.indexOf(k) * 90, 140, "triangle"); void onDone(k); }} className="h-14 w-14 rounded-full border-2 border-white/30 transition hover:scale-110" style={{ background: c.hex }} />; })}
+      </div>
     </div>
   );
 }

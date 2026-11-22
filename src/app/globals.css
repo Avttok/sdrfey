@@ -460,3 +460,22 @@ html[data-copy-guard="on"] input, html[data-copy-guard="on"] textarea, html[data
 .quick-pop { animation: quick-pop 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.3) both; }
 .quick-pop:nth-child(2) { animation-delay: 0.04s; } .quick-pop:nth-child(3) { animation-delay: 0.08s; } .quick-pop:nth-child(4) { animation-delay: 0.12s; } .quick-pop:nth-child(5) { animation-delay: 0.16s; }
 @media (prefers-reduced-motion: reduce) { .quick-pop { animation: none; } }
+
+/* caça aos ovos do rodapé */
+.hunt-egg { animation: hunt-in .55s cubic-bezier(.2, 1.5, .4, 1) both, hunt-bob 2.6s ease-in-out .55s infinite; filter: drop-shadow(0 0 calc(2px + var(--g, 0) * 8px) var(--c)); transform-origin: 50% 90%; }
+.hunt-egg:hover { filter: drop-shadow(0 0 10px var(--c)) brightness(1.15); }
+@keyframes hunt-in { from { opacity: 0; transform: translate(-50%, -26px) scale(.3) rotate(-30deg); } 60% { opacity: 1; } to { opacity: 1; transform: translate(-50%, 0) scale(1) rotate(0); } }
+@keyframes hunt-bob { 0%, 100% { transform: translate(-50%, 0) rotate(-4deg); } 50% { transform: translate(-50%, -3px) rotate(4deg); } }
+.hunt-burst { width: 0; height: 0; animation: hunt-gone .8s linear forwards; }
+@keyframes hunt-gone { to { opacity: 0; } }
+.hunt-ring { position: absolute; left: -12px; top: -12px; width: 24px; height: 24px; border-radius: 9999px; border: 2px solid var(--c); animation: hunt-ring .6s ease-out forwards; }
+@keyframes hunt-ring { from { transform: scale(.3); opacity: 1; } to { transform: scale(3.2); opacity: 0; } }
+.hunt-shard { position: absolute; left: -3px; top: -3px; width: 6px; height: 8px; border-radius: 50% 50% 45% 45%; background: var(--c); animation: hunt-shard .7s cubic-bezier(.2, .8, .3, 1) forwards; }
+@keyframes hunt-shard { from { transform: rotate(var(--a)) translateX(2px) scale(1); opacity: 1; } to { transform: rotate(var(--a)) translateX(var(--d)) scale(.4) rotate(120deg); opacity: 0; } }
+.hunt-final { transform: translateX(-50%); animation: hunt-final .9s ease-in forwards; }
+@keyframes hunt-final { 0% { transform: translateX(-50%) scale(1); } 60% { transform: translateX(-50%) translateY(-8px) scale(2.4); filter: brightness(1.4); } 100% { transform: translateX(-50%) translateY(-30px) scale(4); opacity: 0; } }
+.gold-foot { animation: gold-bob 3.4s ease-in-out var(--dl, 0s) infinite; }
+@keyframes gold-bob { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, -3px); } }
+.gold-twinkle { position: absolute; width: 5px; height: 5px; background: #fff7c2; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); animation: gold-tw 2.4s ease-in-out infinite; opacity: 0; }
+@keyframes gold-tw { 0%, 100% { opacity: 0; transform: scale(.3) rotate(0); } 50% { opacity: 1; transform: scale(1.3) rotate(45deg); } }
+@media (prefers-reduced-motion: reduce) { .hunt-egg, .gold-foot, .gold-twinkle, .hunt-ring, .hunt-shard { animation: none; } .hunt-egg { transform: translate(-50%, 0); } .gold-foot { transform: translate(-50%, 0); } }
