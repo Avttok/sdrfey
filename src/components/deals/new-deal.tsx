@@ -44,6 +44,14 @@ export function NewDeal({ terms }: { terms: string[] }) {
     return () => document.removeEventListener("keydown", k);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+  // atalho da barra flutuante: abre direto (evento na própria página, ou ?novo=1 vindo de outra)
+  useEffect(() => {
+    const go = () => setOpen(true);
+    window.addEventListener("fey:new-deal", go);
+    const u = new URL(window.location.href);
+    if (u.searchParams.get("novo") === "1") { setOpen(true); u.searchParams.delete("novo"); window.history.replaceState(null, "", u.pathname + u.search); }
+    return () => window.removeEventListener("fey:new-deal", go);
+  }, []);
   const [reading, setReading] = useState(false);
   const [billed, setBilled] = useState(false);
   const set = (k: keyof typeof EMPTY, v: string | boolean) => setF((p) => ({ ...p, [k]: v }));

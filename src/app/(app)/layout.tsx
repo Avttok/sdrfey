@@ -12,6 +12,7 @@ import { GoldMode } from "@/components/gold-mode";
 import { goldStatus } from "@/modules/goals/gold";
 import { AnnouncementHost } from "@/components/announcement-host";
 import { BottomFade } from "@/components/bottom-fade";
+import { QuickDock, type QuickKey } from "@/components/quick-dock";
 import { EnrichDock } from "@/components/enrich-dock";
 import { LiveSnap } from "@/components/live-snap";
 import { EggKnock } from "@/components/egg-knock";
@@ -39,6 +40,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const [me] = vocall.on && vocall.host ? await db.select({ a: users.vocallAgentId, r: users.vocallRamal }).from(users).where(eq(users.id, user.id)) : [];
   const dialer = vocall.on && vocall.host && me?.a && me?.r ? { cfg: { host: vocall.host, port: vocall.port, secure: vocall.secure, dac: vocall.dac, senha: vocall.senha, prefix: vocall.prefix }, agentId: me.a, ramal: me.r } : null;
   const shell = (children: React.ReactNode) => (dialer ? <VocallProvider cfg={dialer.cfg} agentId={dialer.agentId} ramal={dialer.ramal}>{children}</VocallProvider> : <>{children}</>);
+  const perm = (k: string) => user.isAdmin || !!user.permissions[k];
+  const quick: QuickKey[] = [
+    ...(perm("tab.negociacoes") && (user.roles.includes("seller") || user.permissions["deals.team"]) ? ["new-deal" as const] : []),
+    ...(perm("tab.comecar") ? ["shuffle" as const] : []),
+    ...(perm("tab.shuffler_vendas") ? ["shuffle-sales" as const] : []),
+    ...(perm("tab.visitas") ? ["visits" as const] : []),
+    ...(perm("tab.leads") ? ["leads" as const] : []),
+    ...(user.isAdmin ? ["admin" as const] : []),
+  ];
+  const hasChat = user.permissions["chat.use"] && settings.chat_on === 1;
   return shell(
     <ToastProvider>
       <TagIconProvider value={tagIcons}>
@@ -61,6 +72,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <LiveSnap />
       {user.isAdmin && <EnrichDock side={user.navLayout === "side"} />}
       {settings.copy_guard === 1 && !user.isAdmin && <CopyGuard />}
+      <QuickDock items={quick} hasChat={!!hasChat} />
       <Suspense fallback={null}><ChatMount user={user} /></Suspense>
       </AvatarProvider>
       </TagIconProvider>

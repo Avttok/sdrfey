@@ -80,12 +80,12 @@ export function ScriptPlayer({ script, vars, extra, onOutcome, onNote, onRun, fl
   const OutIcon = node.outcome ? OUTCOME_ICON[node.outcome] : Trophy;
 
   const [host, setHost] = useState<HTMLElement | null>(null);
-  useEffect(() => setHost(document.body), []);
+  useEffect(() => setHost(document.getElementById("quick-slot")), []);
   return (
     <div ref={root} className="space-y-4">
       {floatingCenter && !ended && host && createPortal(
         <button type="button" onClick={center} aria-label="Centralizar o roteiro na tela (atalho: C)" title="Leva o roteiro para o meio da tela (atalho: C)"
-          className="fixed bottom-[5.25rem] right-5 z-40 inline-flex h-12 items-center gap-2 rounded-full border border-line bg-panel pl-3.5 pr-4 text-sm font-semibold text-accent shadow-xl transition hover:scale-105 hover:border-accent active:scale-95">
+          className="relative inline-flex h-12 items-center gap-2 rounded-full border border-line bg-panel pl-3.5 pr-4 text-sm font-semibold text-accent shadow-xl transition hover:scale-105 hover:border-accent active:scale-95">
           <Crosshair size={20} aria-hidden /><span className="max-sm:sr-only">Centralizar</span>
           {follow && <span aria-hidden className="absolute -right-0.5 -top-0.5 size-3 animate-pulse rounded-full bg-accent ring-2 ring-panel" title="Seguindo sozinho" />}
         </button>, host)}
