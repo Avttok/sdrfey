@@ -22,7 +22,7 @@ const CONFETTI = ["#f59e0b", "#22c55e", "#0ea5e9", "#8b5cf6", "#f43f5e"];
  * O roteiro da ligação. O balão mostra EXATAMENTE o que você diz ao lead (com o nome dele já no lugar);
  * a dica é só para você (não se fala). Depois toque no que o lead respondeu e o roteiro avança.
  */
-export function ScriptPlayer({ script, vars, onOutcome, onNote, onRun }: { script: ScriptDoc; vars: ScriptVars; onOutcome?: (o: NonNullable<ScriptDoc["nodes"][number]["outcome"]>) => void; /** chamado com a anotação sugerida quando o operador escolhe uma resposta que tem nota */ onNote?: (note: string) => void; /** chamado a cada resposta escolhida, com o retrato do andamento (para guardar no lead) */ onRun?: (run: ScriptRun) => void }) {
+export function ScriptPlayer({ script, vars, extra, onOutcome, onNote, onRun }: { script: ScriptDoc; vars: ScriptVars; /** painel extra no passo atual (ex.: o campo do nome de quem fala); recebe `pick` para escolher uma resposta */ extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; onOutcome?: (o: NonNullable<ScriptDoc["nodes"][number]["outcome"]>) => void; /** chamado com a anotação sugerida quando o operador escolhe uma resposta que tem nota */ onNote?: (note: string) => void; /** chamado a cada resposta escolhida, com o retrato do andamento (para guardar no lead) */ onRun?: (run: ScriptRun) => void }) {
   const by = useMemo(() => new Map(script.nodes.map((n) => [n.id, n])), [script]);
   const [trail, setTrail] = useState<{ id: string; kind?: ScriptKind; via?: string }[]>([{ id: script.startId }]);
   useEffect(() => setTrail([{ id: script.startId }]), [script.id, script.startId]);
@@ -74,7 +74,7 @@ export function ScriptPlayer({ script, vars, onOutcome, onNote, onRun }: { scrip
     <div className="space-y-4">
       {/* Quem é o lead: nome completo bem pequeno, nome falado em destaque */}
       {vars.empresa && (
-        <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 px-1">
+        <div className="flex flex-wrap items-end justify-between lg:hidden gap-x-4 gap-y-1 px-1">
           <div className="min-w-0 leading-tight">
             {shortCompany(vars.empresa) !== vars.empresa.trim() && <p className="truncate text-[10px] uppercase tracking-wide text-muted">{vars.empresa}</p>}
             <p className="truncate text-lg font-extrabold">{shortCompany(vars.empresa)}</p>
@@ -83,13 +83,14 @@ export function ScriptPlayer({ script, vars, onOutcome, onNote, onRun }: { scrip
         </div>
       )}
       {/* Objetivo + placar */}
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border p-3" style={tint(goal.hex, 10, 35)}>
-        <span className="grid size-11 shrink-0 place-items-center rounded-xl text-white shadow" style={{ background: goal.hex }}><goal.Icon size={22} aria-hidden /></span>
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border px-3 py-2 lg:py-1.5" style={tint(goal.hex, 10, 35)}>
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl text-white shadow lg:size-8" style={{ background: goal.hex }}><goal.Icon size={20} aria-hidden /></span>
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: goal.hex }}>Objetivo · {goal.short}</p>
-          <p className="truncate text-sm font-semibold">{goal.mission}</p>
+          <p className="truncate text-sm font-semibold lg:hidden xl:block">{goal.mission}</p>
         </div>
-        <div className="flex items-center gap-1.5 text-xs font-semibold">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
+          {vars.contatoCompleto && <span className="hidden items-center gap-1 rounded-full bg-sunk px-2.5 py-1 lg:inline-flex" title="Com quem você fala"><Mic size={13} aria-hidden /> Falando com <b>{vars.contatoCompleto}</b></span>}
           <span className="inline-flex items-center gap-1 rounded-full bg-sunk px-2.5 py-1" title="Etapa da conversa"><Seg size={13} aria-hidden /> Etapa {trail.length}</span>
           <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1" style={{ ...tint("#22c55e", 16, 40), border: "1px solid" }} title="Bons sinais do lead"><Flame size={13} aria-hidden style={{ color: "#16a34a" }} /> {good}</span>
           <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1" style={{ ...tint("#f97316", 16, 40), border: "1px solid" }} title="Objeções enfrentadas"><ShieldCheck size={13} aria-hidden style={{ color: "#ea580c" }} /> {hurdles}</span>
@@ -97,7 +98,7 @@ export function ScriptPlayer({ script, vars, onOutcome, onNote, onRun }: { scrip
       </div>
 
       {/* Mapa do caminho (toque numa etapa para voltar a ela) */}
-      <HScroll className="flex items-center gap-1 px-2 py-2.5" label="Caminho percorrido">
+      <HScroll className="flex items-center gap-1 px-2 py-1" label="Caminho percorrido">
         {trail.map((t, i) => {
           const n = by.get(t.id); const m = MOODS[n ? moodOf(n) : "apoio"]; const last = i === trail.length - 1;
           return (
@@ -149,6 +150,7 @@ export function ScriptPlayer({ script, vars, onOutcome, onNote, onRun }: { scrip
                 <p className="whitespace-pre-line text-lg font-medium leading-relaxed sm:text-xl">{fillScript(node.say, vars)}</p>
               </div>
               {node.tip && <p className="flex items-start gap-2 rounded-xl border border-dashed border-line bg-sunk/60 px-3 py-2 text-sm"><Lightbulb size={16} aria-hidden className="mt-0.5 shrink-0 text-warn" /><span><b className="text-warn">Dica só para você</b> (não é para falar): {node.tip}</span></p>}
+              {extra?.(node.id, pick)}
             </>
           )}
         </div>
@@ -156,14 +158,14 @@ export function ScriptPlayer({ script, vars, onOutcome, onNote, onRun }: { scrip
 
       {/* Respostas */}
       {!ended && (
-        <div className="space-y-2">
+        <div className="space-y-2 lg:sticky lg:bottom-0 lg:z-10 lg:-mx-4 lg:border-t lg:border-line lg:bg-panel/95 lg:px-4 lg:pb-2 lg:pt-2.5 lg:backdrop-blur">
           <p className="flex items-center gap-2 text-sm font-bold"><Ear size={16} aria-hidden className="text-accent" /> O que o lead respondeu? <span className="hidden text-xs font-normal text-muted sm:inline">(toque ou use as teclas 1, 2, 3…)</span></p>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className={`grid gap-2 sm:grid-cols-2 ${node.options.length > 2 ? "lg:grid-cols-3" : ""}`}>
             {node.options.map((op, i) => {
               const k = KIND[op.kind]; const Icon = k.Icon; const off = !op.to || !by.has(op.to);
               return (
                 <button key={i} type="button" disabled={off} onClick={() => pick(i)} style={{ ...tint(k.hex, 9, 45), ["--c" as string]: `color-mix(in srgb, ${k.hex} 55%, transparent)` }}
-                  className="script-ans flex min-h-16 items-center gap-3 rounded-2xl border-2 px-3 py-2.5 text-left font-medium disabled:opacity-50">
+                  className="script-ans flex min-h-14 items-center gap-3 lg:min-h-[3.5rem] rounded-2xl border-2 px-3 py-2.5 text-left font-medium disabled:opacity-50">
                   <span className="grid size-10 shrink-0 place-items-center rounded-xl text-white shadow-sm" style={{ background: k.hex }}><Icon size={19} aria-hidden /></span>
                   <span className="flex-1 text-[15px] leading-snug">{op.label}<span className="mt-0.5 block text-[11px] font-semibold uppercase tracking-wide" style={{ color: k.hex }}>{KIND_LABEL[op.kind]}</span></span>
                   <kbd className="hidden size-6 shrink-0 place-items-center rounded-md border border-line bg-panel text-xs font-bold text-muted sm:grid">{i + 1}</kbd>

@@ -4,7 +4,7 @@ import type { ScriptGoal, ScriptMood, ScriptNode, ScriptOption } from "@/config/
 import { GOALS, SEGMENTS } from "@/config/scripts";
 
 /** Muda quando os textos de fábrica são reescritos: os scripts do time que ninguém editou são atualizados. */
-const SEED_VERSION = 8;
+const SEED_VERSION = 10;
 
 type Tipo = "revenda" | "producao" | "servico";
 /** O que cada tipo de cliente compra da Fey (fixadores) e o aperto que passa. `dor` completa "não ficar na mão com ___". */
@@ -75,7 +75,7 @@ function entrada(next: string, itens: string): ScriptNode[] {
     fala("horario", "Combinar outro horário", "Sem problema! Pra eu não atrapalhar: qual o nome dessa pessoa e em que horário ela costuma estar por aí? Aí eu ligo bem nessa hora.", [o("Deu o nome e o horário", "@retorno", "ok", "Retornar no horário combinado com o decisor")], "Anote nome, horário e quem informou. Na volta, abra com “a recepção me indicou este horário”.", "apoio"),
     fala("quem", "Pessoa errada", "Ih, desculpa o engano, e obrigado pela paciência! Quem cuida das compras de fixadores aí na {empresa}? Posso falar direto com essa pessoa?", [o("Passou o contato", "nome", "ok"), o("Não sabe ou não passa", "@encerrar", "objecao")], undefined, "ponte"),
     fala("sem_resp", "Ninguém atendeu", "Se cair na caixa postal, deixe um recado curto e com motivo: “Oi, aqui é {meunome}, da Fey, uma metalúrgica de fixadores. Liguei por causa de reposição de parafusos e grampos. Volto a ligar mais tarde. Obrigado!”", [o("Tentativa registrada", "@retorno", "neutro", "Ninguém atendeu: tentar outro horário ou número")], "Faça pelo menos seis tentativas, em horários e dias diferentes, antes de desistir. Manhã cedo e fim da tarde costumam funcionar melhor.", "apoio"),
-      fala("nome", "Com quem você fala", "[[contato?Só pra confirmar: estou falando com {contato}, certo?|Antes de seguir, me desculpe: não peguei o seu nome. Com quem eu falo, por favor?]]", [o("Disse ou confirmou o nome", next, "ok", "Nome de quem atendeu anotado"), o("Prefere não dizer o nome", next, "neutro")], "Escreva o nome no campo “Conversando atualmente com”, logo acima do roteiro: daí em diante as perguntas passam a chamar a pessoa pelo nome, o que aproxima e prende a atenção. Se o nome já aparecer lá, só confirme.", "ponte"),
+      fala("nome", "Com quem você fala", "[[contato?Só pra confirmar: estou falando com {contato}, certo?|Antes de seguir, me desculpe: não peguei o seu nome. Com quem eu falo, por favor?]]", [o("Disse ou confirmou o nome", next, "ok", "Nome de quem atendeu anotado"), o("Prefere não dizer o nome", next, "neutro")], "Escreva o nome no campo “Conversando atualmente com”, logo abaixo: daí em diante as perguntas passam a chamar a pessoa pelo nome, o que aproxima e prende a atenção. Se o nome já aparecer lá, só confirme.", "ponte"),
   ];
 }
 

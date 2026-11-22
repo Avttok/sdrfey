@@ -85,6 +85,9 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
   useBusyWhile(pending);
   const { ask, dialog } = useConfirm(pending);
   const [step, setStep] = useState(0);
+  const callWs = useRef<HTMLDivElement>(null);
+  // ao chegar na ligação, o espaço de trabalho sobe até o topo da tela: roteiro e ficha à vista, sem rolar
+  useEffect(() => { if (step !== 3 || !window.matchMedia("(min-width:1024px)").matches) return; const t = setTimeout(() => callWs.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 200); return () => clearTimeout(t); }, [step]);
   const [used, setUsed] = useState<Set<string>>(new Set());
   const [temperature, setTemperature] = useState<string | null>(lead.tags.find((t) => t.groupKey === "temperatura")?.key ?? null);
   const [qualification, setQualification] = useState<"qualificado" | "desqualificado" | null>((lead.tags.find((t) => t.groupKey === "qualificacao")?.key as never) ?? null);
@@ -398,12 +401,15 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
         {step === 3 && (
           <section className="space-y-4">
             <StepTitle i={3} />
+            {/* Espaço de trabalho: tudo da ligação cabe numa tela, sem subir nem descer. À esquerda a ficha e os contatos; à direita o roteiro. */}
+            <div ref={callWs} className="grid scroll-mt-20 gap-4 lg:h-[calc(100dvh-10.5rem)] lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]">
+              <div className="order-2 min-h-0 space-y-3 lg:order-1 lg:overflow-y-auto lg:pr-1">
             <ul className="grid gap-2">
               {goodPhones.map((p) => {
                 const who = p.personId ? allPeople.find((x) => x.id === p.personId) : null;
                 const on = callPhone?.id === p.id;
                 return (
-                  <li key={p.id} className={`lift flex items-center gap-3 rounded-2xl border-2 px-3 py-2.5 transition ${on ? "border-accent bg-accent/10" : "border-line bg-sunk/60"}`}>
+                  <li key={p.id} className={`lift flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border-2 px-3 py-2.5 transition ${on ? "border-accent bg-accent/10" : "border-line bg-sunk/60"}`}>
                     <span aria-hidden className={`grid size-10 shrink-0 place-items-center rounded-xl ${on ? "bg-accent text-on-accent" : "bg-accent/15 text-accent"}`}><Phone size={18} /></span>
                     <button type="button" className="min-w-0 flex-1 text-left" onClick={() => { setCallId(on ? null : p.id); setSpoken(null); if (!on && p.personId) setTalkingId(p.personId); }} title="Usar este número no roteiro" aria-pressed={on}>
                       <span className="figure block text-lg leading-tight">{fmtPhone(p.value)}</span>
@@ -416,15 +422,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
               })}
               {goodPhones.length === 0 && <li className="text-sm text-muted">Sem telefone válido.</li>}
             </ul>
-
-            {/* O roteiro é a estrela da etapa: ficha do lead e fala, juntos, na altura dos olhos */}
-            <div className="overflow-hidden rounded-3xl border-2 border-accent/40 bg-panel shadow-md">
-              <div className="bg-grad px-4 py-3 text-on-accent">
-                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider opacity-90"><ScrollText size={14} aria-hidden /> Roteiro da ligação</p>
-                <p className="mt-0.5 text-sm opacity-95">Leia a fala, escute e toque no que o lead respondeu.</p>
-              </div>
-              <div className="space-y-3 p-3 sm:p-4">
-                <div className="grid gap-x-5 gap-y-2 rounded-2xl bg-sunk p-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-x-5 gap-y-2 rounded-2xl bg-sunk p-3 text-sm sm:grid-cols-2 lg:grid-cols-1">
                   <Info label="Empresa"><b>{lead.tradeName ?? lead.company}</b>{lead.tradeName && lead.company !== lead.tradeName && <span className="block truncate text-[11px] text-muted">{lead.company}</span>}</Info>
                   <Info label="CNPJ"><CopyVal text={lead.cnpj}>{fmtCnpj(lead.cnpj)}</CopyVal></Info>
                   <Info label="Cidade">{lead.city ? `${lead.city}/${lead.uf}` : <span className="text-warn">Sem informação</span>}</Info>
@@ -432,17 +430,25 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
                   <Info label="Sócios" wide>{lead.info?.partners.length ? <ul className="flex flex-wrap gap-x-3 gap-y-0.5">{lead.info.partners.map((q, i) => <li key={i}><b>{q.name}</b>{cleanRole(q.role) ? <span className="text-muted"> · {cleanRole(q.role)}</span> : null}</li>)}</ul> : <span className="text-warn">Sem informação</span>}</Info>
                   <Info label="Atividade" wide>{lead.info?.activity ? `${lead.info.cnae ? `${lead.info.cnae} - ` : ""}${lead.info.activity}` : <span className="text-warn">Sem informação</span>}</Info>
                 </div>
-                <TalkingTo value={talkingTo} people={allPeople} knownId={allPeople.find((x) => x.name.trim().toLowerCase() === talkingTo.toLowerCase())?.id ?? null} leadId={lead.id}
-                  onChange={(v) => { setSpoken(v); const m = allPeople.find((x) => x.name.trim().toLowerCase() === v.trim().toLowerCase()); if (m) setTalkingId(m.id); }}
-                  onSaved={(p) => { setExtraPeople((l) => [...l.filter((x) => x.id !== p.id), p]); setTalkingId(p.id); setSpoken(null); }} />
                 <LiveContacts leadId={lead.id} people={allPeople} channels={allChannels} talkingId={callPerson?.id ?? null} onTalking={(id) => { setTalkingId(id); setSpoken(null); }} onSaved={(p, ch) => { setExtraPeople((l) => [...l.filter((x) => x.id !== p.id), p]); setExtraChannels((l) => [...l, ...ch]); }} />
                 <ProductHints recos={recos} />
+                <UsedToggle on={used.has("ligacao")} onClick={() => toggle(used, "ligacao", setUsed)} label="Ligação feita" Icon={Phone} color="#8b5cf6" />
+              </div>
+              <div className="order-1 flex min-h-0 flex-col overflow-hidden rounded-3xl border-2 border-accent/40 bg-panel shadow-md lg:order-2">
+                <div className="bg-grad px-4 py-2 text-on-accent">
+                  <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider"><ScrollText size={14} aria-hidden /> Roteiro da ligação <span className="font-normal normal-case tracking-normal opacity-90">· leia a fala, escute e toque no que o lead respondeu</span></p>
+                </div>
+                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
                 {scripts.length > 0
-                  ? <ScriptPicker scripts={scripts} goal={sales ? "vendas" : "sdr"} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} vars={{ empresa: vars.empresa, contato: vars.contato, contatoCompleto: talkingTo || null, cidade: vars.cidade, meunome: vars.meu_nome }} onNote={addNote} onRun={keepRun} />
+                  ? <ScriptPicker scripts={scripts} goal={sales ? "vendas" : "sdr"} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} extra={(nid, pick) => nid === "nome" ? (
+                  <TalkingTo value={spoken ?? callPerson?.name ?? ""} people={allPeople} knownId={allPeople.find((x) => x.name.trim().toLowerCase() === talkingTo.toLowerCase())?.id ?? null} leadId={lead.id}
+                  onChange={(v) => { setSpoken(v); const m = allPeople.find((x) => x.name.trim().toLowerCase() === v.trim().toLowerCase()); if (m) setTalkingId(m.id); }}
+                  onEnter={() => pick(0)} onSaved={(p) => { setExtraPeople((l) => [...l.filter((x) => x.id !== p.id), p]); setTalkingId(p.id); setSpoken(null); }} />
+                ) : null} vars={{ empresa: vars.empresa, contato: vars.contato, contatoCompleto: talkingTo || null, cidade: vars.cidade, meunome: vars.meu_nome }} onNote={addNote} onRun={keepRun} />
                   : <p className="text-sm text-muted">Ainda não há roteiros. O Adm pode criar em Scripts.</p>}
+                </div>
               </div>
             </div>
-            <UsedToggle on={used.has("ligacao")} onClick={() => toggle(used, "ligacao", setUsed)} label="Ligação feita" Icon={Phone} color="#8b5cf6" />
           </section>
         )}
 
