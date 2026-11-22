@@ -20,6 +20,8 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "tab.representantes", label: "Aba Representantes", group: "Abas", defaults: ["manager"] },
 
   { key: "tab.negociacoes", label: "Aba Vendas: Negociações", group: "Abas", defaults: ["seller", "manager"] },
+  { key: "tab.lista_flow", label: "Aba SDR: Lista Flow", group: "Abas", defaults: ["user", "manager"] },
+  { key: "tab.lista_flow_vendas", label: "Aba Vendas: Lista Flow", group: "Abas", defaults: ["seller", "manager"] },
   { key: "tab.email", label: "Aba Opções: E-mail (modelos pessoais)", group: "Abas", defaults: ["user", "seller", "manager"] },
   { key: "tab.scripts", label: "Aba Opções: Scripts de ligação", group: "Abas", defaults: ["user", "seller", "manager"] },
   { key: "tab.shuffler_vendas", label: "Aba Vendas: Shuffler (leads inativos)", group: "Abas", defaults: ["seller", "manager"] },

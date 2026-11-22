@@ -754,3 +754,14 @@ export const importBatches = pgTable("import_batches", {
   undoneCount: integer("undone_count"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Listas de leads montadas no Lista Flow. Uma ativa por pessoa e área: o Shuffler mostra o botão "Sortear da lista". */
+export const leadLists = pgTable("lead_lists", {
+  id: serial("id").primaryKey(),
+  ownerId: integer("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull().default("sdr"), // sdr | vendas
+  name: text("name").notNull(),
+  filters: jsonb("filters").notNull(),
+  active: boolean("active").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

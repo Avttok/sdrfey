@@ -7,6 +7,8 @@ import { db } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
 import { getSettings } from "@/modules/settings/get";
 import { effectiveGoals } from "@/modules/settings/goals";
+import { startSalesListAction } from "@/modules/lists/actions";
+import { activeList } from "@/modules/lists/queries";
 import { listScripts } from "@/modules/scripts/list";
 import { getActiveTemplates, getLeadView, getTagCatalog } from "@/modules/leads/view";
 import { startSalesShuffleAction } from "@/modules/sales/actions";
@@ -31,8 +33,9 @@ export default async function SalesShufflePage() {
       (select count(*) from seller_shuffles where user_id = ${me.id} and not is_test and outcome = 'deal' and done_at >= ${today})::int as deals`),
     inactiveStock(),
   ]);
+  const al = me.permissions["tab.lista_flow_vendas"] || me.isAdmin ? await activeList(me.id, "vendas") : null;
   return (
-    <ShuffleHero title="Shuffler Vendas" avatar={me.avatar} roles={me.shownRoles} action={startSalesShuffleAction} empty={stock > 0 ? undefined : { hint: "Nenhum lead inativo livre agora. Quando o time liberar novos (ou algum voltar da espera), eles aparecem aqui." }}>
+    <ShuffleHero list={al && al.count > 0 ? { action: startSalesListAction, name: al.name, count: al.count, href: "/lista-flow-vendas" } : undefined} title="Shuffler Vendas" avatar={me.avatar} roles={me.shownRoles} action={startSalesShuffleAction} empty={stock > 0 ? undefined : { hint: "Nenhum lead inativo livre agora. Quando o time liberar novos (ou algum voltar da espera), eles aparecem aqui." }}>
       <GoalPills items={[
         { icon: "shuffle", label: "Trabalhados hoje", value: r?.worked ?? 0 },
         { icon: "handshake", label: "Negociações abertas hoje", value: r?.deals ?? 0 },

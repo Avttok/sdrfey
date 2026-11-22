@@ -1,4 +1,4 @@
-import { SearchX, Shuffle } from "lucide-react";
+import { Filter, SearchX, Shuffle } from "lucide-react";
 import { FeyMark } from "@/components/logo";
 import { RefreshButton } from "@/components/refresh-button";
 import { BannerRain } from "@/components/banner-rain";
@@ -6,7 +6,7 @@ import type { Role } from "@/config/roles";
 import { SubmitButton } from "@/components/submit-button";
 
 /** Tela inicial do Shuffler: fundo vivo, cartas flutuando, título, conteúdo centralizado e botão grande. */
-export function ShuffleHero({ action, children, avatar, roles, empty, title = "Shuffler SDR" }: { /** Nome exibido no topo da tela inicial. */ title?: string; action: () => void | Promise<void>; children: React.ReactNode; avatar?: string | null; roles: readonly Role[]; /** Sem lead para sortear: troca a tela por um aviso. */ empty?: { hint: string } }) {
+export function ShuffleHero({ action, children, avatar, roles, empty, list, title = "Shuffler SDR" }: { /** Lista do Lista Flow ativa: mostra o botão extra. */ list?: { action: () => void | Promise<void>; name: string; count: number; href: string }; /** Nome exibido no topo da tela inicial. */ title?: string; action: () => void | Promise<void>; children: React.ReactNode; avatar?: string | null; roles: readonly Role[]; /** Sem lead para sortear: troca a tela por um aviso. */ empty?: { hint: string } }) {
   return (
     <>
       <div aria-hidden className="spawn-fade pointer-events-none fixed inset-0 -z-10" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 26%, var(--bg)) 0%, color-mix(in srgb, var(--accent) 7%, var(--bg)) 48%, color-mix(in srgb, var(--accent) 20%, var(--bg)) 100%)" }}>
@@ -47,6 +47,12 @@ export function ShuffleHero({ action, children, avatar, roles, empty, title = "S
           </div>
           <p className="text-sm font-medium text-muted">Toque para sortear um lead</p>
         </form>
+        {list && (
+          <form action={list.action} className="sh-rise flex flex-col items-center gap-1.5" style={{ "--d": ".7s" } as React.CSSProperties}>
+            <SubmitButton className="glow-pulse !rounded-2xl !px-5 !py-3"><Filter size={18} aria-hidden /> Sortear da lista “{list.name}”</SubmitButton>
+            <p className="text-xs text-muted">{list.count.toLocaleString("pt-BR")} leads na lista · <a href={list.href} className="underline">trocar lista</a></p>
+          </form>
+        )}
       </div>
       )}
     </>

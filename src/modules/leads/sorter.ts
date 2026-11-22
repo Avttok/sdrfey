@@ -2,6 +2,8 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { attendanceSessions, db, leadSkips, leads, users } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { getSettings } from "@/modules/settings/get";
+import type { ListFilters } from "@/config/lists";
+import { listCondition } from "@/modules/lists/where";
 
 /** Erro com mensagem pronta para mostrar ao usuário. */
 export class UserError extends Error {}
@@ -39,7 +41,7 @@ async function openSession(userId: number, leadId: number, isTest: boolean) {
  * Entrega o próximo lead aleatório para a pessoa. Se ela já tem um lead em mãos, devolve o mesmo.
  * O bloqueio é atômico (SKIP LOCKED): duas pessoas nunca recebem o mesmo lead.
  */
-export async function claimNext(userId: number, opts: { test?: boolean } = {}): Promise<number | null> {
+export async function claimNext(userId: number, opts: { test?: boolean; list?: ListFilters } = {}): Promise<number | null> {
   await releaseExpiredLocks();
   const [mine] = await db.select({ id: leads.id }).from(leads).where(eq(leads.lockedBy, userId)).limit(1);
   if (mine) return mine.id;
@@ -60,6 +62,7 @@ export async function claimNext(userId: number, opts: { test?: boolean } = {}): 
         and not exists (select 1 from deals dd where dd.lead_id = l.id)
         and not exists (select 1 from lead_skips s
                         where s.lead_id = l.id and s.user_id = ${userId} and s.until > now())
+        and ${opts.list ? listCondition(opts.list) : sql`true`}
       order by (l.enriched_at is not null and not exists (select 1 from interactions i where i.lead_id = l.id)) desc, random() limit 1
       for update skip locked)
     returning id`);

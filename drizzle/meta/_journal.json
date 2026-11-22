@@ -281,6 +281,13 @@
       "when": 1795355293624,
       "tag": "0039_scripts_e_modelos_pessoais",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1795355688755,
+      "tag": "0040_lead_lists",
+      "breakpoints": true
     }
   ]
 }
