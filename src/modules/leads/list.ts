@@ -76,7 +76,12 @@ export async function listLeads(f: LeadFilters) {
                 from lead_tags lt join tags t on t.id = lt.tag_id join tag_groups g on g.key = t.group_key where lt.lead_id = leads.id and t.active), '[]'::json) as tags
     from leads left join users o on o.id = leads.owner_id left join users lk on lk.id = leads.locked_by left join lateral (select su.id, su.name, su.accent, su.roles from deals d join users su on su.id = d.seller_id where d.lead_id = leads.id order by d.created_at desc limit 1) ds on true
     where ${w ?? sql`true`}
-    order by leads.updated_at desc, leads.id desc
+    order by
+      exists (select 1 from lead_tags lt join tags tg on tg.id = lt.tag_id where lt.lead_id = leads.id and tg.group_key = 'qualificacao' and tg.key = 'desqualificado'),
+      (leads.enriched_at is null),
+      (coalesce(leads.registration_status, '') not ilike 'ativ%'),
+      (leads.locked_by is not null or leads.owner_id is not null),
+      leads.updated_at desc, leads.id desc
     limit ${PAGE_SIZE} offset ${(f.page - 1) * PAGE_SIZE}`);
   return { total: n, rows: [...rows], pages: Math.max(1, Math.ceil(n / PAGE_SIZE)) };
 }

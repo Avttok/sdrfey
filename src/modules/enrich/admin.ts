@@ -6,6 +6,7 @@ import { db, settings } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { requireAdmin } from "@/modules/auth/guard";
 import { invalidateSettings } from "@/modules/settings/get";
+import { AGE_LISTS } from "./ages";
 import { enrichBatch, enrichStats, type EnrichStats } from "./batch";
 
 export async function setAutoEnrichAction(on: boolean): Promise<{ ok: boolean }> {
@@ -18,9 +19,10 @@ export async function setAutoEnrichAction(on: boolean): Promise<{ ok: boolean }>
 }
 
 /** Um lote (usado pelo botão e pelo modo contínuo da tela do Adm). */
-export async function runEnrichBatchAction(size: number): Promise<{ tried: number; ok: number; failed: number; left: number; stats: EnrichStats }> {
+export async function runEnrichBatchAction(size: number, olderDays = 0): Promise<{ tried: number; ok: number; failed: number; left: number; stats: EnrichStats }> {
   const me = await requireAdmin();
-  const r = await enrichBatch(Math.min(10, Math.max(1, Math.floor(size) || 10)), 40_000, me.id);
+  const days = (AGE_LISTS as readonly number[]).includes(Number(olderDays)) ? Number(olderDays) : 0;
+  const r = await enrichBatch(Math.min(10, Math.max(1, Math.floor(size) || 10)), 40_000, me.id, "lote", days);
   return { ...r, stats: await enrichStats() };
 }
 

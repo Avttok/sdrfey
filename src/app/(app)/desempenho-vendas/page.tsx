@@ -14,7 +14,7 @@ export default async function PerformancePage() {
   const me = await requirePerm("tab.desempenho_vendas");
   const people = await allowedPeople(me, "vendas");
   return (
-    <div className="mx-auto max-w-4xl space-y-5">
+    <div className="mx-auto max-w-6xl space-y-5">
       <PageHead icon={FileSpreadsheet} title="Desempenho" subtitle="Monte uma planilha bonita com seus números para apresentar em reuniões." />
       <PerformanceWizard kind="vendas" sections={SECTIONS.vendas} people={people} team={!!me.permissions["desempenho.equipe"]} />
     </div>

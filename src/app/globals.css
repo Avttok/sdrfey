@@ -306,8 +306,9 @@ body.dragging, body.dragging * { user-select: none !important; cursor: grabbing 
 
 /* Chuva no banner do perfil */
 @keyframes rain-fall { from { transform: translateY(-10px) rotate(0); } to { transform: translateY(var(--dist, 190px)) rotate(var(--rot, 20deg)); } }
-.rain-drop { animation: rain-fall var(--dur, 8s) linear var(--del, 0s) infinite; will-change: transform; }
-@media (prefers-reduced-motion: reduce) { .rain-drop { animation: none; transform: translateY(40px); } }
+/* Sem animação (navegador que não roda ou pedido de menos movimento) a chuva já nasce espalhada, como a foto de uma chuva caindo há um tempo: cada ícone fica numa altura própria (--pos). */
+.rain-drop { transform: translateY(calc(var(--dist, 190px) * var(--pos, .5))) rotate(calc(var(--rot, 20deg) * var(--pos, .5))); animation: rain-fall var(--dur, 8s) linear var(--del, 0s) infinite; will-change: transform; }
+@media (prefers-reduced-motion: reduce) { .rain-drop { animation: none; } }
 
 /* Redesenho de Leads / Representantes / Visitas */
 @keyframes card-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }

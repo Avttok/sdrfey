@@ -29,7 +29,7 @@ export function BannerRain({ avatar, roles, count = 16, field = false }: { avata
         const z = rnd(i, 1);
         const size = Math.round(8 + z * 16) + (field ? 6 : 0);
         const blur = z < 0.3 ? 0.6 : z > 0.8 ? 1.6 : 0;
-        const style = { left: `${(i / count) * 100 + rnd(i, 2) * (100 / count) - 3}%`, "--dur": `${13 - z * 7 + rnd(i, 3) * 3}s`, "--del": `${-rnd(i, 4) * 14}s`, "--rot": `${Math.round((rnd(i, 5) - 0.5) * 80)}deg`, "--dist": field ? "112vh" : `${150 + Math.round(rnd(i, 7) * 90)}px`, opacity: (field ? 0.18 : 0.12) + z * (field ? 0.3 : 0.22) + rnd(i, 6) * 0.08, color: field ? "color-mix(in srgb, var(--accent) 65%, var(--ink))" : undefined, filter: blur ? `blur(${blur}px)` : undefined } as React.CSSProperties;
+        const style = { left: `${(i / count) * 100 + rnd(i, 2) * (100 / count) - 3}%`, "--dur": `${13 - z * 7 + rnd(i, 3) * 3}s`, "--del": `${-rnd(i, 4) * 14}s`, "--pos": ((i * 0.618034 + rnd(i, 8) * 0.25) % 1).toFixed(3), "--rot": `${Math.round((rnd(i, 5) - 0.5) * 80)}deg`, "--dist": field ? "112vh" : `${150 + Math.round(rnd(i, 7) * 90)}px`, opacity: (field ? 0.18 : 0.12) + z * (field ? 0.3 : 0.22) + rnd(i, 6) * 0.08, color: field ? "color-mix(in srgb, var(--accent) 65%, var(--ink))" : undefined, filter: blur ? `blur(${blur}px)` : undefined } as React.CSSProperties;
         return (
           <span key={i} className={`rain-drop absolute -top-6 ${field ? "" : "text-white"}`} style={style}>
             {typeof k === "number" ? (() => { const I = FIELD[k]; return <I size={size} />; })() : k === "fey" ? <FeyMark size={size} color="currentColor" /> : k === "me" ? <Mine size={size} /> : (() => { const I = ROLE_ICON[k]; return <I size={size} />; })()}

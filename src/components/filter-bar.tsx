@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, FilterX, ListFilter, SlidersHorizontal } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 /**
  * Barra de filtros padrão do sistema: o que é principal (a busca) fica sempre à vista; os demais filtros
@@ -11,9 +11,9 @@ import { useEffect, useState } from "react";
 export function FilterBar({ id, search, active = 0, onClear, chips, children, defaultOpen = false, label = "Filtros" }: {
   id: string; search?: React.ReactNode; active?: number; onClear?: () => void; chips?: React.ReactNode; children?: React.ReactNode; defaultOpen?: boolean; label?: string;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
-  useEffect(() => { try { const v = localStorage.getItem(`filters:${id}`); if (v !== null) setOpen(v === "1"); } catch {} }, [id]);
-  const toggle = () => { const n = !open; setOpen(n); try { localStorage.setItem(`filters:${id}`, n ? "1" : "0"); } catch {} };
+  void defaultOpen; // todo filtro do sistema nasce recolhido, sempre (sem lembrar a escolha anterior)
+  const [open, setOpen] = useState(false);
+  const toggle = () => setOpen((o) => !o);
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-panel">
       <div className="flex flex-wrap items-center gap-2 p-3">

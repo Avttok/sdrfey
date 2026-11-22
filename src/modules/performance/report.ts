@@ -24,6 +24,9 @@ export const SECTIONS: Record<Kind, { id: string; label: string; hint: string }[
     { id: "meios", label: "Meios de contato", hint: "Quantos contatos por meio e quantos qualificaram" },
     { id: "atendimentos", label: "Todos os atendimentos", hint: "Lead por lead: empresa, resultado, tempo e tags" },
     { id: "visitas", label: "Visitas agendadas", hint: "Código, empresa, data, representante e andamento" },
+    { id: "ufs", label: "Por estado", hint: "Onde você mais atende e quanto qualifica em cada estado" },
+    { id: "resultados", label: "Resultados (tags)", hint: "Quantos leads ficaram com cada tag de resultado" },
+    { id: "semana", label: "Dia da semana", hint: "Em quais dias da semana você mais atende" },
     { id: "pessoas", label: "Quadro por pessoa", hint: "Comparativo entre as pessoas escolhidas (equipe)" },
   ],
   vendas: [
@@ -33,6 +36,8 @@ export const SECTIONS: Record<Kind, { id: string; label: string; hint: string }[
     { id: "negociacoes", label: "Todas as negociações", hint: "Negócio por negócio: etapa, valor, datas e responsáveis" },
     { id: "cotacoes", label: "Cotações enviadas", hint: "Data, cliente e valor de cada cotação" },
     { id: "visitas", label: "Visitas dos vendedores", hint: "Visitas ligadas às suas negociações" },
+    { id: "ufs", label: "Por estado", hint: "Negociações e vendas em cada estado" },
+    { id: "origem", label: "Por origem (SDR)", hint: "De qual SDR vieram as negociações e quanto vendeu" },
     { id: "pessoas", label: "Quadro por vendedor", hint: "Comparativo entre vendedores (equipe)" },
   ],
 };
@@ -118,6 +123,29 @@ export async function buildReport(p: ReportParams, personNames: Record<number, s
         where not l.is_test and v.canceled_at is null and v.user_id in (${U}) and v.created_at between ${from} and ${to} order by v.created_at desc limit 20000`);
       sheets.push({ id: "visitas", name: "Visitas", cols: [{ header: "Código", key: "code", width: 12 }, { header: "Empresa", key: "company", width: 38 }, { header: "Cidade", key: "city", width: 20 }, { header: "UF", key: "uf", width: 6 }, { header: "Data da visita", key: "vd", width: 14, fmt: "date" }, { header: "Andamento", key: "status", width: 14 }, { header: "Representante", key: "rep", width: 28 }, { header: "Distância (km)", key: "km", width: 14, fmt: "int" }, { header: "Agendada por", key: "who", width: 20 }, { header: "Agendada em", key: "at", width: 20, fmt: "datetime" }], rows: r.map((x) => ({ ...x, at: d2(x.at), status: { pendente: "Aguardando", confirmada: "Confirmada", realizada: "Realizada" }[x.status] ?? x.status })) });
     }
+    if (want.has("ufs")) {
+      const r = await db.execute<{ uf: string; n: number; q: number }>(sql`
+        select coalesce(l.uf, '—') as uf, count(*)::int as n,
+          count(*) filter (where exists (select 1 from lead_tags lt join tags t on t.id = lt.tag_id where lt.lead_id = l.id and t.key = 'qualificado'))::int as q
+        from attendance_sessions s join leads l on l.id = s.lead_id
+        where s.outcome = 'saved' and not s.is_test and s.user_id in (${U}) and s.saved_at between ${from} and ${to} group by 1 order by n desc`);
+      sheets.push({ id: "ufs", name: "Por estado", cols: [{ header: "Estado", key: "uf", width: 10 }, { header: "Atendidos", key: "n", width: 12, fmt: "int" }, { header: "Qualificados", key: "q", width: 14, fmt: "int" }, { header: "% qualificação", key: "p", width: 16, fmt: "pct" }], rows: r.map((x) => ({ uf: x.uf, n: x.n, q: x.q, p: nfp(x.q, x.n) })) });
+    }
+    if (want.has("resultados")) {
+      const r = await db.execute<{ grp: string; label: string; n: number }>(sql`
+        select g.name as grp, t.label, count(distinct s.lead_id)::int as n
+        from attendance_sessions s join lead_tags lt on lt.lead_id = s.lead_id join tags t on t.id = lt.tag_id join tag_groups g on g.key = t.group_key
+        where s.outcome = 'saved' and not s.is_test and s.user_id in (${U}) and s.saved_at between ${from} and ${to} and t.group_key in ('temperatura','qualificacao','situacao','agenda')
+        group by g.name, g.sort, t.label, t.sort order by g.sort, t.sort, n desc`);
+      sheets.push({ id: "resultados", name: "Resultados (tags)", cols: [{ header: "Grupo", key: "grp", width: 22 }, { header: "Tag", key: "label", width: 26 }, { header: "Leads", key: "n", width: 12, fmt: "int" }], rows: r.map((x) => ({ grp: x.grp, label: x.label, n: x.n })) });
+    }
+    if (want.has("semana")) {
+      const r = await db.execute<{ dow: number; n: number }>(sql`
+        select extract(dow from s.saved_at at time zone ${TZ})::int as dow, count(*)::int as n from attendance_sessions s
+        where s.outcome = 'saved' and not s.is_test and s.user_id in (${U}) and s.saved_at between ${from} and ${to} group by 1 order by 1`);
+      const nomes = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"]; const tot = r.reduce((a, x) => a + x.n, 0);
+      sheets.push({ id: "semana", name: "Dia da semana", cols: [{ header: "Dia", key: "d", width: 14 }, { header: "Atendidos", key: "n", width: 12, fmt: "int" }, { header: "% do total", key: "p", width: 12, fmt: "pct" }], rows: nomes.map((d, i) => { const n = r.find((x) => x.dow === i)?.n ?? 0; return { d, n, p: nfp(n, tot) }; }) });
+    }
     if (want.has("pessoas")) {
       const r = await db.execute<{ name: string; att: number; q: number; calls: number; sched: number; conv: number; secs: number | null }>(sql`
         select u.name,
@@ -183,6 +211,22 @@ export async function buildReport(p: ReportParams, personNames: Record<number, s
       select v.code, l.company, l.city, l.uf, v.visit_date::text as vd, v.status, u.name as who, v.created_at as at from visits v join leads l on l.id = v.lead_id left join users u on u.id = v.seller_id
       where not l.is_test and v.canceled_at is null and v.seller_id in (${U}) and v.created_at between ${from} and ${to} order by v.created_at desc limit 20000`);
     sheets.push({ id: "visitas", name: "Visitas", cols: [{ header: "Código", key: "code", width: 12 }, { header: "Empresa", key: "company", width: 38 }, { header: "Cidade", key: "city", width: 20 }, { header: "UF", key: "uf", width: 6 }, { header: "Data da visita", key: "vd", width: 14, fmt: "date" }, { header: "Andamento", key: "status", width: 14 }, { header: "Vendedor", key: "who", width: 20 }, { header: "Agendada em", key: "at", width: 20, fmt: "datetime" }], rows: r.map((x) => ({ ...x, at: d2(x.at), status: { pendente: "Aguardando", confirmada: "Confirmada", realizada: "Realizada" }[x.status] ?? x.status })) });
+  }
+  if (want.has("ufs")) {
+    const r = await db.execute<{ uf: string; n: number; won: number; val: number }>(sql`
+      select coalesce(l.uf, '—') as uf, count(*)::int as n, count(*) filter (where d.stage = 'ganho')::int as won, coalesce(sum(case when d.stage = 'ganho' then ${soldCents} end), 0)::float as val
+      from deals d join leads l on l.id = d.lead_id
+      where not d.is_test and d.seller_id in (${U}) and ((d.created_at between ${from} and ${to}) or (d.claimed_at between ${from} and ${to}) or (d.closed_at between ${from} and ${to}))
+      group by 1 order by val desc, n desc`);
+    sheets.push({ id: "ufs", name: "Por estado", cols: [{ header: "Estado", key: "uf", width: 10 }, { header: "Negociações", key: "n", width: 14, fmt: "int" }, { header: "Vendas", key: "won", width: 10, fmt: "int" }, { header: "Valor vendido", key: "val", width: 18, fmt: "brl" }], rows: r.map((x) => ({ uf: x.uf, n: x.n, won: x.won, val: brl(Number(x.val)) })) });
+  }
+  if (want.has("origem")) {
+    const r = await db.execute<{ sdr: string; n: number; won: number; val: number }>(sql`
+      select coalesce(ud.name, 'Sem SDR (inativo/manual)') as sdr, count(*)::int as n, count(*) filter (where d.stage = 'ganho')::int as won, coalesce(sum(case when d.stage = 'ganho' then ${soldCents} end), 0)::float as val
+      from deals d left join users ud on ud.id = d.sdr_id
+      where not d.is_test and d.seller_id in (${U}) and ((d.created_at between ${from} and ${to}) or (d.claimed_at between ${from} and ${to}) or (d.closed_at between ${from} and ${to}))
+      group by 1 order by val desc, n desc`);
+    sheets.push({ id: "origem", name: "Por origem (SDR)", cols: [{ header: "Origem", key: "sdr", width: 28 }, { header: "Negociações", key: "n", width: 14, fmt: "int" }, { header: "Vendas", key: "won", width: 10, fmt: "int" }, { header: "Valor vendido", key: "val", width: 18, fmt: "brl" }], rows: r.map((x) => ({ sdr: x.sdr, n: x.n, won: x.won, val: brl(Number(x.val)) })) });
   }
   if (want.has("pessoas")) sheets.push({ id: "pessoas", name: "Por vendedor", cols: [{ header: "Vendedor", key: "name", width: 24 }, { header: "Vendas", key: "won", width: 10, fmt: "int" }, { header: "Valor vendido", key: "value", width: 18, fmt: "brl" }, { header: "Cotações", key: "quotes", width: 11, fmt: "int" }, { header: "Valor cotado", key: "qv", width: 18, fmt: "brl" }, { header: "Contatos", key: "contacts", width: 11, fmt: "int" }, { header: "Em aberto", key: "open", width: 11, fmt: "int" }], rows: s.ranking.map((r) => ({ name: r.name, won: r.won, value: brl(r.value), quotes: r.quotes, qv: brl(r.quotesValue), contacts: r.contacts, open: r.open })) });
   return { title: "Desempenho de Vendas", subtitle: range, people, summary, sheets };

@@ -30,10 +30,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   if (one("status") === "inativo") c.push(eq(reps.active, false));
   const where = c.length ? and(...c) : undefined;
 
+  const visitCount = sql`(select count(*) from visits v where v.rep_sap = ${reps.sapCode} and v.canceled_at is null)`;
+  const sort = one("sort");
+  const order = sort === "visitas-desc" ? [sql`${visitCount} desc`, asc(reps.repName)] : sort === "visitas-asc" ? [sql`${visitCount} asc`, asc(reps.repName)] : [asc(reps.repName)];
   const distinct = async (col: typeof reps.uf | typeof reps.team | typeof reps.managerName) =>
     (await db.selectDistinct({ v: col }).from(reps).orderBy(asc(col))).map((r) => r.v).filter((v): v is string => !!v);
   const [rows, [{ n }], [tot], ufs, teams, managers] = await Promise.all([
-    db.select().from(reps).where(where).orderBy(asc(reps.repName)).limit(PAGE).offset((page - 1) * PAGE),
+    db.select().from(reps).where(where).orderBy(...order).limit(PAGE).offset((page - 1) * PAGE),
     db.select({ n: sql<number>`count(*)::int` }).from(reps).where(where),
     db.select({ n: sql<number>`count(*)::int`, ativos: sql<number>`count(*) filter (where ${reps.active})::int`, ufs: sql<number>`count(distinct ${reps.uf})::int` }).from(reps),
     distinct(reps.uf), distinct(reps.team), distinct(reps.managerName),

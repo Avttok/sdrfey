@@ -3,6 +3,7 @@
 import { Activity, CheckCircle2, Clock, DatabaseZap, History as HistoryIcon, ListOrdered, Loader2, Pause, Play, RotateCcw, Sparkles, TriangleAlert, XCircle, Zap } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
+import { AGE_LISTS } from "@/modules/enrich/ages";
 import type { EnrichStats } from "@/modules/enrich/batch";
 import { enrichLiveAction, enrichLogAction, retryFailedEnrichAction, runEnrichBatchAction, setAutoEnrichAction } from "@/modules/enrich/admin";
 import type { Live, LogRow } from "@/modules/enrich/live";
@@ -63,7 +64,8 @@ export function EnrichAdmin({ initial, on: on0, cronReady, live: live0 }: { init
     const id = setInterval(tick, 3000); const clock = setInterval(() => setNow(Date.now()), 1000);
     return () => { alive = false; clearInterval(id); clearInterval(clock); };
   }, []);
-  const [, setStats] = useState(initial);
+  const [stats, setStats] = useState(initial);
+  const [scope, setScope] = useState(0);
   const [on, setOn] = useState(on0);
     const [busy, setBusy] = useState(false);
   const [loop, setLoop] = useState(false);
@@ -75,9 +77,9 @@ export function EnrichAdmin({ initial, on: on0, cronReady, live: live0 }: { init
   const once = async (size = 10) => {
     setBusy(true);
     try {
-      const r = await runEnrichBatchAction(size);
+      const r = await runEnrichBatchAction(size, scope);
       setStats(r.stats);
-      setLog(r.tried ? `Último lote: ${r.ok} consultados, ${r.failed} sem resposta.` : "Nada pendente para consultar.");
+      setLog(r.tried ? `Último lote: ${r.ok} consultados, ${r.failed} sem resposta.` : "Nada pendente nesta lista.");
       return r;
     } catch { setLog("A conexão falhou neste lote. Tento de novo."); return null; } finally { setBusy(false); }
   };
@@ -118,12 +120,17 @@ export function EnrichAdmin({ initial, on: on0, cronReady, live: live0 }: { init
 
       <section className={`${panelCls} space-y-3 p-5`}>
         <h2 className="font-semibold">Consultar agora</h2>
+        <label className="block max-w-md text-sm"><span className="mb-1 block text-muted">Qual lista de leads consultar</span>
+          <select className={inputCls} value={scope} disabled={busy || loop} onChange={(e) => setScope(Number(e.target.value))}>
+            <option value={0}>Ainda não consultados ({(stats.pending ?? 0).toLocaleString("pt-BR")})</option>
+            {AGE_LISTS.map((d) => <option key={d} value={d}>Já consultados há mais de {d} dias ({(stats.older?.[d] ?? 0).toLocaleString("pt-BR")})</option>)}
+          </select></label>
         <div className="flex flex-wrap items-end gap-3">
                     <button type="button" className={btnPrimary} disabled={busy || loop} onClick={() => void once(10)}>{busy && !loop ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Zap size={16} aria-hidden />} Consultar um lote (10)</button>
           {loop ? <button type="button" className={btnGhost} onClick={() => { stop.current = true; }}><Pause size={16} aria-hidden /> Parar contínuo</button> : <button type="button" className={btnGhost} disabled={busy} onClick={() => void runLoop()}><Play size={16} aria-hidden /> Modo contínuo (1 em 1)</button>}
           <button type="button" className={btnGhost} disabled={busy || loop || pending} onClick={() => start(async () => { await retryFailedEnrichAction(); const r = await runEnrichBatchAction(1); setStats(r.stats); })}><RotateCcw size={15} aria-hidden /> Tentar os sem resposta de novo</button>
         </div>
-        <p className="text-sm text-muted" aria-live="polite">{loop ? <span className="inline-flex items-center gap-1.5"><Loader2 size={13} className="animate-spin" aria-hidden /> Contínuo ativo: continua até acabar ou você parar. Não feche esta página. </span> : null}{log}</p>
+        <div className="space-y-1 text-sm text-muted" aria-live="polite">{loop && <p className="flex items-center gap-1.5"><Loader2 size={13} className="shrink-0 animate-spin" aria-hidden /> Contínuo ativo: continua até acabar ou você parar. Não feche esta página.</p>}{log && <p>{log}</p>}</div>
       </section>
 
       <div role="tablist" aria-label="Visão" className="flex w-fit gap-1 rounded-xl border border-line bg-panel p-1 text-sm font-medium">
