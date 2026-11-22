@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Database, Download, FileJson, FileSpreadsheet } from "lucide-react";
+import Link from "next/link";
+import { Database, Download, FileJson, FileSpreadsheet, Users } from "lucide-react";
 import { PageHead } from "@/components/page-head";
 import { btnGhost, btnPrimary, panelCls } from "@/components/ui";
 import { requireAdmin } from "@/modules/auth/guard";
@@ -13,6 +14,12 @@ export default async function Page() {
   return (
     <div className="space-y-5">
       <PageHead icon={Download} size="md" title="Exportar / backup" />
+      <section className={`${panelCls} flex flex-wrap items-center gap-4 p-5`}>
+        <span className="grid size-12 place-items-center rounded-xl bg-grad text-on-accent"><FileSpreadsheet size={22} aria-hidden /></span>
+        <div className="min-w-0 flex-1"><h2 className="font-semibold">Central de exportação (aba Exportar)</h2><p className="text-sm text-muted">Planilhas ricas com filtros e colunas à escolha. Quem a aba aparece e quais bases cada pessoa pode baixar você define em Equipe e acessos › Permissões › “Exportar”.</p></div>
+        <Link href="/exportar" className={btnGhost}><Download size={15} aria-hidden /> Abrir</Link>
+        <Link href="/admin/usuarios" className={btnGhost}><Users size={15} aria-hidden /> Permissões</Link>
+      </section>
       <section className={`${panelCls} flex flex-wrap items-center gap-4 border-accent/40 bg-accent/5 p-5`}>
         <span className="grid size-12 place-items-center rounded-xl bg-grad text-on-accent"><Database size={22} aria-hidden /></span>
         <div className="min-w-0 flex-1"><h2 className="font-semibold">{EXPORT_KINDS.backup.label}</h2><p className="text-sm text-muted">{EXPORT_KINDS.backup.hint}</p></div>
@@ -23,7 +30,7 @@ export default async function Page() {
           <li key={k} className={`${panelCls} flex items-start gap-3 p-4`}>
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-sunk text-muted">{v.file.endsWith("json") ? <FileJson size={18} aria-hidden /> : <FileSpreadsheet size={18} aria-hidden />}</span>
             <div className="min-w-0 flex-1"><h2 className="font-semibold">{v.label}</h2><p className="text-sm text-muted">{v.hint}</p></div>
-            <a href={`/admin/exportar/${k}`} download className={btnGhost}><Download size={15} aria-hidden /> CSV</a>
+            <div className="flex flex-wrap justify-end gap-1.5"><a href={`/admin/exportar/${k}`} download className={btnGhost}><Download size={15} aria-hidden /> CSV</a>{k !== "backup" && <><a href={`/admin/exportar/${k}?format=xlsx`} download className={btnGhost}>Excel</a><a href={`/admin/exportar/${k}?format=pdf`} download className={btnGhost}>PDF</a></>}</div>
           </li>
         ))}
       </ul>

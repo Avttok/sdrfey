@@ -36,6 +36,7 @@ export const TERMS: Term[] = [
   { key: "modelos_email", label: "Modelos de E-mails", group: "Abas" },
   { key: "modelos_script", label: "Modelos de Scripts", group: "Abas" },
   { key: "registro", label: "Registro", group: "Abas" },
+  { key: "exportar", label: "Exportar", group: "Abas" },
   { key: "painel_adm", label: "Painel Administrador", group: "Abas" },
   { key: "minha_conta", label: "Minha conta", group: "Abas" },
   { key: "douradovo", label: "Douradovo", group: "Extras", hint: "O selo de quem achou o segredo." },

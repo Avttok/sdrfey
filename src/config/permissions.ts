@@ -27,6 +27,17 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "tab.scripts", label: "Aba Opções: Scripts de ligação", group: "Abas", defaults: ["user", "seller", "manager"] },
   { key: "tab.shuffler_vendas", label: "Aba Vendas: Shuffler Vendas (leads inativos)", group: "Abas", defaults: ["seller", "manager"] },
 
+  { key: "tab.exportar", label: "Aba Exportar (baixar planilhas)", group: "Abas", defaults: ["manager"] },
+  { key: "export.leads", label: "Exportar: Leads (contatos, Receita, internet, tags e andamento)", group: "Funções", defaults: ["manager"] },
+  { key: "export.negociacoes", label: "Exportar: Negociações (etapas, valores, cotações e pedidos)", group: "Funções", defaults: ["manager"] },
+  { key: "export.visitas", label: "Exportar: Visitas", group: "Funções", defaults: ["manager"] },
+  { key: "export.interacoes", label: "Exportar: Contatos registrados (ligações, WhatsApp, e-mails)", group: "Funções", defaults: ["manager"] },
+  { key: "export.atendimentos", label: "Exportar: Atendimentos do Shuffler (tempo e resultado)", group: "Funções", defaults: ["manager"] },
+  { key: "export.representantes", label: "Exportar: Representantes", group: "Funções", defaults: ["manager"] },
+  { key: "export.usuarios", label: "Exportar: Equipe (contas, cargos e metas)", group: "Funções", defaults: [] },
+  { key: "export.registro", label: "Exportar: Registro de atividades", group: "Funções", defaults: [] },
+  { key: "export.consultas", label: "Exportar: Consultas de CNPJ", group: "Funções", defaults: [] },
+
   { key: "panel.equipe", label: "Ver números da equipe toda (sem isso, só os próprios)", group: "Painel", defaults: ["manager"] },
   { key: "panel.kpi.contatos", label: "Indicador: Contatos", group: "Painel", defaults: ["user", "manager"] },
   { key: "panel.kpi.meta", label: "Indicador: Meta atendidos", group: "Painel", defaults: ["user", "manager"] },

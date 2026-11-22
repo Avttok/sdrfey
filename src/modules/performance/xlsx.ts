@@ -56,3 +56,26 @@ export function sheetCsv(r: Report, id?: string): string {
   const f = (v: string | number | null, fmt?: Col["fmt"]) => (v == null ? "" : typeof v === "number" ? (fmt === "pct" ? `${(v * 100).toFixed(1)}%`.replace(".", ",") : String(v).replace(".", ",")) : v);
   return "﻿" + [sh.cols.map((c) => q(c.header)).join(";"), ...sh.rows.map((rw) => sh.cols.map((c) => q(f(rw[c.key] ?? null, c.fmt))).join(";"))].join("\r\n");
 }
+
+const brDay = (v: string) => { const d = new Date(`${v.slice(0, 10)}T12:00:00`); return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString("pt-BR"); };
+function pdfCell(v: string | number | null | undefined, fmt?: Col["fmt"]): string {
+  if (v == null || v === "") return "";
+  if (typeof v === "number") return fmt === "pct" ? `${(v * 100).toFixed(1).replace(".", ",")}%` : fmt === "brl" ? v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : fmt === "dec" ? v.toLocaleString("pt-BR", { maximumFractionDigits: 2 }) : v.toLocaleString("pt-BR");
+  if (fmt === "date") return brDay(v);
+  if (fmt === "datetime") { const d = new Date(v); return Number.isNaN(d.getTime()) ? v : d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" }); }
+  return v;
+}
+
+/** O mesmo relatório em PDF: capa com os números-chave e uma tabela por aba (até 5.000 linhas cada). */
+export async function buildReportPdf(r: Report): Promise<Uint8Array> {
+  const { buildPdf, PDF_MAX_ROWS } = await import("@/modules/export/pdf");
+  return buildPdf({
+    title: r.title, subtitle: `Período: ${r.subtitle} · Pessoas: ${r.people.join(", ") || "—"}`.slice(0, 200),
+    summary: r.summary.map((m) => [m.label, m.hint ? `${m.value}  (${m.hint})` : m.value] as [string, string]),
+    sections: r.sheets.map((sh) => ({
+      name: sh.name, headers: sh.cols.map((c) => c.header), right: sh.cols.map((c) => !!c.fmt && c.fmt !== "text" && c.fmt !== "date" && c.fmt !== "datetime"),
+      rows: sh.rows.slice(0, PDF_MAX_ROWS).map((rw) => sh.cols.map((c) => pdfCell(rw[c.key], c.fmt))),
+      note: sh.rows.length > PDF_MAX_ROWS ? `Mostrando as primeiras ${PDF_MAX_ROWS.toLocaleString("pt-BR")} de ${sh.rows.length.toLocaleString("pt-BR")} linhas. O Excel traz tudo.` : undefined,
+    })),
+  });
+}

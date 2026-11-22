@@ -1,5 +1,5 @@
 import { term } from "@/config/terms";
-import { LayoutGrid, Gauge, Headset, Info, ShieldHalf, Contact, History, Play, CalendarCheck, ScrollText, ShieldCheck, Target, UserRound, Users, MapPin, Handshake, FileSpreadsheet, Filter, Mail, Truck, ScrollText as ScriptIcon, Settings2, type LucideIcon } from "lucide-react";
+import { LayoutGrid, Gauge, Headset, Info, ShieldHalf, Contact, History, Play, CalendarCheck, ScrollText, ShieldCheck, Target, UserRound, Users, MapPin, Handshake, FileSpreadsheet, Filter, Mail, Truck, ScrollText as ScriptIcon, Settings2, Download, type LucideIcon } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: string; adminOnly?: boolean; /** Menu a que pertence. Menu com um item só aparece como link solto; sem grupo = link solto. */ group?: string };
 
@@ -29,6 +29,7 @@ export const NAV: NavItem[] = [
   { href: "/transportadoras", label: term("transportadoras"), icon: Truck, perm: "tab.transportadoras", group: term("pessoas") },
   { href: "/email", label: term("modelos_email"), icon: Mail, perm: "tab.email", group: term("mais") },
   { href: "/scripts", label: term("modelos_script"), icon: ScriptIcon, perm: "tab.scripts", group: term("mais") },
+  { href: "/exportar", label: term("exportar"), icon: Download, perm: "tab.exportar", group: term("sistema") },
   { href: "/registro", label: term("registro"), icon: ScrollText, perm: "tab.registro", group: term("sistema") },
   { href: "/admin", label: term("painel_adm"), icon: ShieldCheck, adminOnly: true, group: term("sistema") },
   { href: "/conta", label: term("minha_conta"), icon: UserRound },

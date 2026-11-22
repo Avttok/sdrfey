@@ -1,15 +1,17 @@
 "use client";
 
-import { Flame, Trash2 } from "lucide-react";
+import { Flame, Sparkles, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useRun } from "@/components/use-run";
 import { btnGhost, inputCls, panelCls } from "@/components/ui";
 import { purgeCategoryAction, purgeEverythingAction } from "@/modules/admin/purge";
+import { cleanTempAction } from "@/modules/admin/temp-clean-action";
 import { CONFIRM_WORD, NUKE_WORD, PURGE_CATEGORIES, type PurgeCategory, type PurgeKey } from "@/modules/admin/purge-spec";
 import { TypedConfirm } from "./purge-confirm";
 
-type Counts = Record<PurgeKey, { total: number; test: number | null }>;
+type Counts = Record<PurgeKey, { total: number; test: number | null; bytes: number }>;
+const size = (b: number) => (b >= 1048576 ? `${(b / 1048576).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} MB` : `${Math.max(1, Math.round(b / 1024)).toLocaleString("pt-BR")} KB`);
 type Target = { cat: PurgeCategory; scope: "all" | "test"; before: string };
 
 const nf = (n: number) => n.toLocaleString("pt-BR");
@@ -27,6 +29,11 @@ export function PurgeCategories({ counts }: { counts: Counts }) {
 
   return (
     <div className="space-y-6">
+      <section className={`${panelCls} flex flex-wrap items-center gap-4 border-accent/40 bg-accent/5 p-4`}>
+        <span className="grid size-11 place-items-center rounded-xl bg-grad text-on-accent"><Sparkles size={20} aria-hidden /></span>
+        <div className="min-w-0 flex-1"><h2 className="font-semibold">Limpeza rápida de temporários</h2><p className="text-sm text-muted">Remove só o que se refaz sozinho: capturas do Ao vivo, pulos vencidos, notificações lidas com mais de 30 dias, consultas de CNPJ com mais de 90 dias e presença antiga. Não toca em leads, negociações nem no Registro. O sistema também faz isso sozinho todo dia.</p></div>
+        <button type="button" className={btnGhost} disabled={pending} onClick={() => run(() => cleanTempAction(), undefined, () => router.refresh(), "Limpando…")}><Sparkles size={15} aria-hidden /> Limpar agora</button>
+      </section>
       {groups.map((g) => (
         <section key={g} className="space-y-3">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">{g}</h2>
@@ -43,7 +50,7 @@ export function PurgeCategories({ counts }: { counts: Counts }) {
                       <h3 className="font-semibold leading-tight">{c.label}</h3>
                       <p className="mt-0.5 text-sm text-muted">{c.hint}</p>
                     </div>
-                    <p className="figure shrink-0 text-right text-2xl font-bold leading-none">{nf(shown)}<span className="mt-1 block text-[11px] font-normal text-muted">{sc === "test" ? "de teste" : "registros"}</span></p>
+                    <p className="figure shrink-0 text-right text-2xl font-bold leading-none">{nf(shown)}<span className="mt-1 block text-[11px] font-normal text-muted">{sc === "test" ? "de teste" : "registros"}</span><span className="block text-[11px] font-normal text-muted">{size(n.bytes)} em disco</span></p>
                   </div>
                   {c.cascade && <p className="rounded-lg bg-warn/10 px-3 py-2 text-xs text-warn">{c.cascade}</p>}
                   {(c.test || c.time) && (

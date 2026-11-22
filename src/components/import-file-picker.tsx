@@ -11,7 +11,7 @@ import { readSheetsAction } from "@/modules/import/sheets-action";
 const nf = new Intl.NumberFormat("pt-BR");
 type Book = { name: string; sheets: { name: string; rows: number; cols: number; csv: string }[]; pick: Set<number> };
 
-/** Seletor único de arquivo para todas as importações: CSV ou Excel (.xlsx, com escolha de abas). */
+/** Seletor único de arquivo para todas as importações: CSV, Excel (.xlsx, com escolha de abas) ou PDF com tabela. */
 export function ImportFilePicker({ file, checking, busy, hasResult, noun = "dados", onPick, onCheck, onReset }: {
   file: File | null; checking: boolean; busy: boolean; hasResult: boolean; noun?: string;
   onPick: (f: File | null, autoCheck?: boolean) => void; onCheck: () => void; onReset: () => void;
@@ -24,7 +24,7 @@ export function ImportFilePicker({ file, checking, busy, hasResult, noun = "dado
 
   const pick = (f: File | null | undefined) => {
     setBook(null);
-    if (f && /\.xlsx?$/i.test(f.name)) {
+    if (f && /\.(xlsx?|pdf)$/i.test(f.name)) {
       onPick(null);
       read(async () => {
         const body = new FormData(); body.set("file", f);
@@ -46,7 +46,7 @@ export function ImportFilePicker({ file, checking, busy, hasResult, noun = "dado
       all.push(...p.data);
     }
     const csv = Papa.unparse({ fields: heads, data: all.map((r) => heads.map((h) => r[h] ?? "")) });
-    const f = new File([csv], book.name.replace(/\.xlsx?$/i, "") + (chosen.length === 1 ? ` (${chosen[0].name})` : " (abas juntas)") + ".csv", { type: "text/csv" });
+    const f = new File([csv], book.name.replace(/\.(xlsx?|pdf)$/i, "") + (chosen.length === 1 ? ` (${chosen[0].name})` : " (abas juntas)") + ".csv", { type: "text/csv" });
     setBook(null); onPick(f, true);
   };
   const reset = () => { setBook(null); if (input.current) input.current.value = ""; onReset(); };
@@ -69,11 +69,11 @@ export function ImportFilePicker({ file, checking, busy, hasResult, noun = "dado
         ) : (
           <>
             {reading ? <Spinner size={36} /> : <Upload size={36} className="text-muted" aria-hidden />}
-            <p className="font-medium">{reading ? "Abrindo a planilha…" : "Arraste o CSV ou o Excel para cá"}</p>
+            <p className="font-medium">{reading ? "Abrindo o arquivo…" : "Arraste o CSV, o Excel ou o PDF para cá"}</p>
             <button type="button" className={btnGhost} disabled={reading} onClick={() => input.current?.click()}>Escolher arquivo</button>
           </>
         )}
-        <input ref={input} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
+        <input ref={input} type="file" accept=".csv,.xlsx,.pdf,text/csv,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
       </div>
       {book && (
         <div className={`${panelCls} mt-4 space-y-3 p-5`}>

@@ -3,11 +3,12 @@
 import { getSettings } from "@/modules/settings/get";
 import { requireUser } from "@/modules/auth/guard";
 import { decodeCsv, parseCsv } from "./csv";
+import { readPdfTables } from "./pdf-table";
 import { readXlsxSheets } from "./sheets";
 
 export type SheetsResult = { ok: true; sheets: { name: string; rows: number; cols: number; csv: string }[] } | { ok: false; message: string };
 
-/** Abre a planilha enviada (qualquer importação): .xlsx devolve uma entrada por aba; .csv devolve uma só. Nada é gravado. */
+/** Abre o arquivo enviado (qualquer importação): .xlsx devolve uma entrada por aba, .pdf com tabela devolve uma só; .csv também. Nada é gravado. */
 export async function readSheetsAction(formData: FormData): Promise<SheetsResult> {
   const me = await requireUser();
   if (!(me.permissions["tab.negociacoes"] || me.permissions["carriers.edit"] || me.permissions["tab.importar"] || me.roles.includes("admin"))) return { ok: false, message: "Sem permissão para importar." };
@@ -19,6 +20,11 @@ export async function readSheetsAction(formData: FormData): Promise<SheetsResult
     if (/\.xlsx$/i.test(file.name)) {
       const sheets = await readXlsxSheets(await file.arrayBuffer(), cfg.import_max_rows);
       if (!sheets.length) return { ok: false, message: "Não encontrei dados em nenhuma aba." };
+      return { ok: true, sheets };
+    }
+    if (/\.pdf$/i.test(file.name)) {
+      const sheets = await readPdfTables(await file.arrayBuffer(), cfg.import_max_rows);
+      if (!sheets.length) return { ok: false, message: "Não encontrei uma tabela com texto nesse PDF. PDF escaneado (imagem) não dá para ler: use o Excel ou o CSV." };
       return { ok: true, sheets };
     }
     if (/\.xls$/i.test(file.name)) return { ok: false, message: "Arquivo .xls antigo: salve como .xlsx ou .csv e envie de novo." };

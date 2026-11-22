@@ -1,5 +1,5 @@
 /** Categorias que o Adm pode apagar de uma vez. Só metadados (a tela e as ações usam a mesma lista). */
-export type PurgeKey = "leads" | "deals" | "quotes" | "visits" | "interactions" | "sessions" | "tags" | "channels" | "people" | "chat" | "audit" | "reps" | "products" | "terms";
+export type PurgeKey = "leads" | "deals" | "quotes" | "visits" | "interactions" | "sessions" | "tags" | "channels" | "people" | "chat" | "audit" | "reps" | "products" | "terms" | "liveSnaps" | "enrichLog" | "notifications" | "termSwaps" | "importBatches" | "skips";
 
 export type PurgeCategory = {
   key: PurgeKey;
@@ -12,7 +12,7 @@ export type PurgeCategory = {
   test: boolean;
   /** Aceita "anteriores a uma data". */
   time: boolean;
-  group: "Clientes" | "Vendas" | "Atendimento" | "Sistema";
+  group: "Clientes" | "Vendas" | "Atendimento" | "Sistema" | "Temporários e histórico técnico";
 };
 
 export const PURGE_CATEGORIES: PurgeCategory[] = [
@@ -30,6 +30,12 @@ export const PURGE_CATEGORIES: PurgeCategory[] = [
   { key: "reps", label: "Representantes", hint: "A lista de representantes (as visitas já guardam uma cópia).", test: false, time: false, group: "Sistema" },
   { key: "products", label: "Catálogo de produtos", hint: "Os produtos lidos das cotações.", test: false, time: false, group: "Sistema" },
   { key: "terms", label: "Condições de pagamento", hint: "A lista de condições de pagamento.", test: false, time: false, group: "Sistema" },
+  { key: "liveSnaps", label: "Capturas do Ao vivo", hint: "Imagens das telas que o Adm acompanhou. Ocupam bastante espaço e só servem por alguns minutos.", test: false, time: true, group: "Temporários e histórico técnico" },
+  { key: "enrichLog", label: "Histórico de consultas à Receita", hint: "O diário de cada consulta (origem, tempo e resultado). Os dados já gravados nos leads ficam.", test: false, time: true, group: "Temporários e histórico técnico" },
+  { key: "notifications", label: "Notificações", hint: "Avisos do sino de todas as pessoas.", test: false, time: true, group: "Temporários e histórico técnico" },
+  { key: "termSwaps", label: "Trocas do Glossário (para desfazer)", hint: "Os instantâneos que permitem desfazer uma troca de termo.", cascade: "Depois de apagar não dá mais para desfazer essas trocas. O texto novo continua como está.", test: false, time: true, group: "Temporários e histórico técnico" },
+  { key: "importBatches", label: "Histórico de importações", hint: "Quem importou o quê e quando (nome do arquivo e contagens). Nenhum arquivo é guardado.", cascade: "Perde-se a opção de desfazer essas importações.", test: false, time: true, group: "Temporários e histórico técnico" },
+  { key: "skips", label: "Leads pulados (vencidos ou todos)", hint: "O “pular” do Shuffler. Apagar libera esses leads para voltarem ao sorteio.", test: false, time: true, group: "Temporários e histórico técnico" },
 ];
 
 export type UserPurgeKey = "interactions" | "sessions" | "visits" | "dealsSdr" | "dealsSeller" | "chat" | "audit";
@@ -64,5 +70,11 @@ export const PURGE_SQL: Record<PurgeKey, { table: string; time?: string; test?: 
   reps: { table: "reps" },
   products: { table: "products" },
   terms: { table: "payment_terms" },
+  liveSnaps: { table: "live_snaps", time: "created_at" },
+  enrichLog: { table: "enrich_log", time: "at" },
+  notifications: { table: "notifications", time: "created_at" },
+  termSwaps: { table: "term_swaps", time: "at" },
+  importBatches: { table: "import_batches", time: "created_at" },
+  skips: { table: "lead_skips", time: "until" },
 };
 

@@ -46,7 +46,7 @@ export function PerformanceWizard({ kind, sections, people, team }: { kind: Kind
   const qs = () => new URLSearchParams({ kind, from, to, sections: sel.join(","), users: who.join(","), group }).toString();
   const load = () => { setReady(false); setPrev(null); start(async () => { setPrev(await previewAction(kind, { from, to, sections: sel, users: who, group })); setReady(true); }); };
   const go = (n: number) => { setStep(n); if (STEPS[n].id === "previa") load(); else if (STEPS[n].id !== "baixar") setReady(false); };
-  const dl = (fmt: "xlsx" | "csv") => { window.location.href = `/api/desempenho?${qs()}&format=${fmt}${fmt === "csv" && sheet ? `&sheet=${sheet}` : ""}`; };
+  const dl = (fmt: "xlsx" | "csv" | "pdf") => { window.location.href = `/api/desempenho?${qs()}&format=${fmt}${fmt === "csv" && sheet ? `&sheet=${sheet}` : ""}`; };
 
   return (
     <div className="space-y-5">
@@ -131,6 +131,7 @@ export function PerformanceWizard({ kind, sections, people, team }: { kind: Kind
             <span className="mx-auto grid size-16 place-items-center rounded-3xl bg-grad text-on-accent shadow-xl step-ping"><FileSpreadsheet size={32} aria-hidden /></span>
             <div><h2 className="display text-2xl">Tudo pronto!</h2><p className="text-sm text-muted">{from.split("-").reverse().join("/")} a {to.split("-").reverse().join("/")} · {sel.length} aba{sel.length === 1 ? "" : "s"} · {who.length} pessoa{who.length === 1 ? "" : "s"}</p></div>
             <button type="button" onClick={() => dl("xlsx")} className="inline-flex items-center gap-2 rounded-2xl bg-grad px-7 py-3.5 text-lg font-bold text-on-accent shadow-xl transition hover:-translate-y-0.5"><Download size={20} aria-hidden /> Baixar planilha (.xlsx)</button>
+            <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-muted"><span>ou todas as abas em</span><button type="button" onClick={() => dl("pdf")} className="rounded-xl border border-line px-4 py-2 font-semibold text-fg transition hover:border-accent/60">Baixar PDF</button></div>
             <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-muted">
               <span>ou só uma aba em CSV:</span>
               <select value={sheet} onChange={(e) => setSheet(e.target.value)} className="rounded-xl border border-line bg-bg px-3 py-2">{sel.map((id) => <option key={id} value={id}>{sections.find((s) => s.id === id)?.label ?? id}</option>)}</select>
@@ -147,7 +148,7 @@ export function PerformanceWizard({ kind, sections, people, team }: { kind: Kind
             <div className="rounded-xl bg-panel/80 p-3"><dt className="text-xs text-muted">Abas ({sel.length})</dt><dd className="mt-1 flex flex-wrap gap-1.5">{sel.length ? sel.map((id) => <span key={id} className="rounded-full border border-line bg-panel px-2.5 py-0.5 text-xs font-medium">{sections.find((x) => x.id === id)?.label ?? id}</span>) : <span className="text-xs text-muted">Nenhuma aba marcada</span>}</dd><dd className="mt-1.5 text-xs text-muted">Evolução por {group === "dia" ? "dia" : group === "semana" ? "semana" : "mês"}</dd></div>
             <div className="rounded-xl bg-panel/80 p-3"><dt className="text-xs text-muted">Pessoas</dt><dd className="font-semibold">{team ? `${who.length} de ${people.length}` : "Somente você"}</dd></div>
           </dl>
-          <p className="text-xs text-muted">Depois você confere uma prévia e baixa em Excel (.xlsx) ou CSV.</p>
+          <p className="text-xs text-muted">Depois você confere uma prévia e baixa em Excel (.xlsx), CSV ou PDF.</p>
         </aside>
       )}
       </div>

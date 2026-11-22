@@ -3,13 +3,13 @@ import { db } from "@/db";
 import { PURGE_CATEGORIES, PURGE_SQL, type PurgeKey } from "./purge-spec";
 
 /** Quantos registros há em cada categoria (e quantos são de teste). Uma consulta só. */
-export async function categoryCounts(): Promise<Record<PurgeKey, { total: number; test: number | null }>> {
+export async function categoryCounts(): Promise<Record<PurgeKey, { total: number; test: number | null; bytes: number }>> {
   const parts = PURGE_CATEGORIES.map((c) => {
     const t = PURGE_SQL[c.key];
-    return sql`select ${c.key}::text as k, count(*)::int as total, ${t.test ? sql`(count(*) filter (where ${sql.raw(t.test)}))::int` : sql`null::int`} as test from ${sql.raw(t.table)}`;
+    return sql`select ${c.key}::text as k, count(*)::int as total, ${t.test ? sql`(count(*) filter (where ${sql.raw(t.test)}))::int` : sql`null::int`} as test, pg_total_relation_size(${t.table}::regclass)::float8 as bytes from ${sql.raw(t.table)}`;
   });
-  const rows = await db.execute<{ k: PurgeKey; total: number; test: number | null }>(sql.join(parts, sql` union all `));
-  return Object.fromEntries(rows.map((r) => [r.k, { total: r.total, test: r.test }])) as Record<PurgeKey, { total: number; test: number | null }>;
+  const rows = await db.execute<{ k: PurgeKey; total: number; test: number | null; bytes: number }>(sql.join(parts, sql` union all `));
+  return Object.fromEntries(rows.map((r) => [r.k, { total: r.total, test: r.test, bytes: Number(r.bytes) }])) as Record<PurgeKey, { total: number; test: number | null; bytes: number }>;
 }
 
 export type UserPurgeRow = { id: number; name: string; username: string; roles: string[]; active: boolean; counts: Record<"interactions" | "sessions" | "visits" | "dealsSdr" | "dealsSeller" | "chat" | "audit", number> };
