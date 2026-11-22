@@ -3,6 +3,7 @@
 import { useBusyWhile } from "@/components/toast";
 import { Calendar, Check, ChevronLeft, ChevronRight, Download, Eye, FileSpreadsheet, Layers, Loader2, Users } from "lucide-react";
 import { useState, useTransition } from "react";
+import { HScroll } from "@/components/h-scroll";
 import { previewAction, type Preview } from "@/modules/performance/actions";
 
 type Kind = "sdr" | "vendas";
@@ -111,7 +112,7 @@ export function PerformanceWizard({ kind, sections, people, team }: { kind: Kind
                   {prev.sheets?.map((s) => (
                     <div key={s.id} className="overflow-hidden rounded-2xl border border-line">
                       <div className="flex items-center justify-between bg-grad-soft px-3.5 py-2 text-sm font-semibold"><span>{s.name}</span><span className="text-xs text-muted">{s.total} linha{s.total === 1 ? "" : "s"}</span></div>
-                      <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr>{s.cols.map((c) => <th key={c} className="whitespace-nowrap px-3 py-1.5 text-left text-muted">{c}</th>)}</tr></thead><tbody>{s.rows.map((r, i) => <tr key={i} className="border-t border-line">{r.map((v, j) => <td key={j} className="whitespace-nowrap px-3 py-1.5">{v}</td>)}</tr>)}{!s.rows.length && <tr><td className="px-3 py-3 text-muted" colSpan={s.cols.length}>Sem dados neste período.</td></tr>}</tbody></table></div>
+                      <HScroll><table className="w-full min-w-max text-sm"><thead><tr>{s.cols.map((c) => <th key={c} className="whitespace-nowrap px-4 py-2 text-left text-muted">{c}</th>)}</tr></thead><tbody>{s.rows.map((r, i) => <tr key={i} className="border-t border-line">{r.map((v, j) => <td key={j} className="whitespace-nowrap px-4 py-2">{v}</td>)}</tr>)}{!s.rows.length && <tr><td className="px-3 py-3 text-muted" colSpan={s.cols.length}>Sem dados neste período.</td></tr>}</tbody></table></HScroll>
                     </div>
                   ))}
                 </>
