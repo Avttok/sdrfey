@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, CalendarClock, ChevronDown, ExternalLink, FileText, Mail, MapPin, MessageCircle, Phone, StickyNote, UserPlus } from "lucide-react";
+import { Building2, CalendarClock, ChevronDown, ExternalLink, FileText, Palette, Mail, MapPin, MessageCircle, Phone, StickyNote, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRun } from "@/components/use-run";
@@ -8,9 +8,10 @@ import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { fmtBRL, OPEN_STAGES, STAGE_META } from "@/config/deals";
 import type { DealStage } from "@/db/schema";
 import { fmtDate, fmtPhone } from "@/lib/format";
-import { claimDealAction, logContactAction, setStageAction } from "@/modules/deals/actions";
+import { claimDealAction, logContactAction, setDealColorAction, setStageAction } from "@/modules/deals/actions";
 import type { DealRow } from "@/modules/deals/queries";
 import { AlertChip, StageChip } from "./deal-ui";
+import { ColorPicker } from "./color-picker";
 
 type Kind = "ligacao" | "whatsapp" | "email" | "nota";
 const KINDS: [Kind, string, typeof Phone][] = [["ligacao", "Ligação", Phone], ["whatsapp", "WhatsApp", MessageCircle], ["email", "E-mail", Mail], ["nota", "Nota", StickyNote]];
@@ -20,6 +21,7 @@ const isOpen = (d: DealRow) => d.stage !== "ganho" && d.stage !== "perdido";
 function Row({ d, meId, canClaim }: { d: DealRow; meId: number; canClaim: boolean }) {
   const { run, pending } = useRun();
   const [open, setOpen] = useState(false);
+  const [paint, setPaint] = useState(false);
   const [kinds, setKinds] = useState<Kind[]>(["ligacao"]);
   const [note, setNote] = useState("");
   const [next, setNext] = useState("");
@@ -39,9 +41,11 @@ function Row({ d, meId, canClaim }: { d: DealRow; meId: number; canClaim: boolea
         <div className="flex items-center justify-end gap-1.5">
           {!d.sellerId && canClaim && editable && <button type="button" disabled={pending} onClick={() => run(() => claimDealAction(d.id))} className={`${btnPrimary} !px-2.5 !py-1.5 !text-xs`}><UserPlus size={13} aria-hidden /> Assumir</button>}
           {editable && <button type="button" aria-expanded={open} aria-label="Registrar contato" onClick={() => setOpen(!open)} className={`${btnGhost} !px-2.5 !py-1.5`}><StickyNote size={14} aria-hidden /><ChevronDown size={13} aria-hidden className={`transition ${open ? "rotate-180" : ""}`} /></button>}
-          <Link href={`/negociacoes/${d.id}`} aria-label="Abrir negociação" className={`${btnGhost} !px-2.5 !py-1.5`}><ExternalLink size={14} aria-hidden /></Link>
+          {editable && <button type="button" aria-expanded={paint} aria-label="Cor da negociação" title="Destacar com uma cor" onClick={() => setPaint(!paint)} className={`${btnGhost} !px-2.5 !py-1.5`}><Palette size={14} aria-hidden style={d.color ? { color: d.color } : undefined} /></button>}
+          <Link href={`/negociacoes/${d.id}`} className={`${btnPrimary} !px-3 !py-1.5 !text-xs whitespace-nowrap`}><ExternalLink size={13} aria-hidden /> Abrir negociação</Link>
         </div>
       </div>
+      {paint && editable && <div className="card-in border-t border-line/60 p-2.5"><ColorPicker value={d.color} disabled={pending} onChange={(c) => run(() => setDealColorAction(d.id, c), "Cor salva.")} /></div>}
       {open && (
         <div className="card-in space-y-2 border-t border-line/60 p-2.5">
           <div className="flex flex-wrap gap-1.5">{KINDS.map(([k, l, Icon]) => <button key={k} type="button" aria-pressed={kinds.includes(k)} onClick={() => setKinds(kinds.includes(k) ? kinds.filter((x) => x !== k) : [...kinds, k])} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition ${kinds.includes(k) ? "border-accent bg-accent/15 text-accent" : "border-line bg-sunk/60 text-muted"}`}><Icon size={13} aria-hidden />{l}</button>)}</div>

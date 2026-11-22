@@ -62,6 +62,7 @@ export async function claimNext(userId: number, opts: { test?: boolean; list?: L
         and not exists (select 1 from deals dd where dd.lead_id = l.id)
         and not exists (select 1 from lead_skips s
                         where s.lead_id = l.id and s.user_id = ${userId} and s.until > now())
+        and not exists (select 1 from attendance_sessions asx where asx.lead_id = l.id and asx.user_id = ${userId} and asx.shown_at > now() - interval '1 day')
         and ${opts.list ? listCondition(opts.list) : sql`true`}
       order by (l.enriched_at is not null and not exists (select 1 from interactions i where i.lead_id = l.id)) desc, random() limit 1
       for update skip locked)
@@ -82,6 +83,7 @@ export async function hasAvailable(userId: number, opts: { test?: boolean } = {}
       and not exists (select 1 from lead_tags lt join tags t on t.id = lt.tag_id where lt.lead_id = l.id and t.blocks_sorting)
       and not exists (select 1 from deals dd where dd.lead_id = l.id)
       and not exists (select 1 from lead_skips s where s.lead_id = l.id and s.user_id = ${userId} and s.until > now())
+      and not exists (select 1 from attendance_sessions asx where asx.lead_id = l.id and asx.user_id = ${userId} and asx.shown_at > now() - interval '1 day')
     limit 1`);
   return rows.length > 0;
 }

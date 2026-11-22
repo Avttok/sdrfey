@@ -45,6 +45,7 @@ export async function claimInactive(userId: number, list?: ListFilters): Promise
            or (s.outcome = 'skipped' and s.user_id = ${userId} and s.done_at > now() - make_interval(days => ${REST_DAYS.skipped}))
            or (s.outcome = 'saved' and s.done_at > now() - make_interval(days => ${REST_DAYS.saved}))
            or (s.outcome in ('deal','visit'))))
+        and not exists (select 1 from seller_shuffles s where s.lead_id = l.id and s.user_id = ${userId} and s.shown_at > now() - interval '1 day')
         and ${list ? listCondition(list) : sql`true`}
       order by (l.enriched_at is not null and not exists (select 1 from interactions i where i.lead_id = l.id)) desc, random() limit 1`);
     if (!pick) return null;

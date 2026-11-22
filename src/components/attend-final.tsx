@@ -85,21 +85,21 @@ export function SellerQueue({ sellers, nextId, queueOn, value, onChange }: { sel
         {value && <button type="button" className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-accent hover:bg-accent/10" onClick={() => onChange(null)}>Voltar para a fila</button>}
       </div>
       {ordered.length > 0 && (
-        <ol className="no-sb flex items-center gap-2 overflow-x-auto pb-1" aria-label="Ordem da fila">
+        <ol className="no-sb flex items-start gap-1 overflow-x-auto px-1 pb-2 pt-1" aria-label="Ordem da fila">
           {line.map((s, i) => {
             const on = s.id === target;
             return (
-              <li key={s.id} className="flex items-center gap-2">
+              <li key={s.id} className="flex items-start gap-1">
                 <button type="button" onClick={() => onChange(s.id === value ? null : s.id)} aria-pressed={on} title={`Escolher ${s.name}`}
-                  className={`group flex w-20 shrink-0 flex-col items-center gap-1.5 rounded-2xl border-2 px-1.5 py-2 transition-all duration-300 ${on ? "-translate-y-0.5 border-accent bg-accent/10 shadow-lg shadow-accent/20" : "border-transparent opacity-70 hover:opacity-100"}`}>
-                  <span className={`relative grid size-11 place-items-center rounded-full text-sm font-bold text-white ${on ? "ring-4 ring-accent/30" : ""}`} style={{ background: s.hex ?? "var(--accent)" }}>
+                  className={`group flex w-20 shrink-0 flex-col items-center gap-1.5 rounded-2xl border-2 px-1.5 py-2 transition-all duration-300 ${on ? "border-accent bg-accent/10 shadow-lg shadow-accent/20" : "border-transparent opacity-70 hover:opacity-100"}`}>
+                  <span className={`relative grid size-11 shrink-0 place-items-center rounded-full text-sm font-bold text-white ${on ? "ring-4 ring-accent/30" : ""}`} style={{ background: s.hex ?? "var(--accent)" }}>
                     <AvatarGlyph avatar={null} initials={initials(s.name)} size={16} />
                     {on && <span aria-hidden className="absolute inset-0 animate-ping rounded-full bg-accent/30" />}
                   </span>
                   <span className="w-full truncate text-center text-xs font-semibold">{first(s.name)}</span>
                   <span className="text-[10px] font-medium text-muted">{i === 0 && queueOn && !value ? "agora" : `${i + 1}º`}</span>
                 </button>
-                {i < line.length - 1 && <span aria-hidden className="text-line">›</span>}
+                {i < line.length - 1 && <span aria-hidden className="mt-7 text-line">›</span>}
               </li>
             );
           })}
