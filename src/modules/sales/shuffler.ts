@@ -1,8 +1,6 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { leftPortfolio } from "@/modules/deals/portfolio";
-import type { ListFilters } from "@/config/lists";
-import { listCondition } from "@/modules/lists/where";
 
 /** Minutos que um lead fica reservado para quem o sorteou, antes de voltar ao estoque. */
 export const SALES_HOLD_MIN = 60;
@@ -25,7 +23,7 @@ export async function openShuffle(userId: number): Promise<SalesShuffle | null> 
  * Sorteia um lead inativo para o vendedor. Se ele já tem um em mãos, devolve o mesmo.
  * Uma trava de transação evita que dois vendedores recebam o mesmo lead ao mesmo tempo.
  */
-export async function claimInactive(userId: number, list?: ListFilters): Promise<SalesShuffle | null> {
+export async function claimInactive(userId: number, listId?: number): Promise<SalesShuffle | null> {
   const mine = await openShuffle(userId);
   if (mine) return mine;
   return db.transaction(async (tx) => {
@@ -46,7 +44,7 @@ export async function claimInactive(userId: number, list?: ListFilters): Promise
            or (s.outcome = 'saved' and s.done_at > now() - make_interval(days => ${REST_DAYS.saved}))
            or (s.outcome in ('deal','visit'))))
         and not exists (select 1 from seller_shuffles s where s.lead_id = l.id and s.user_id = ${userId} and s.shown_at > now() - interval '1 day')
-        and ${list ? listCondition(list) : sql`true`}
+        and ${listId ? sql`l.id in (select lead_id from lead_list_items where list_id = ${listId})` : sql`true`}
       order by (l.enriched_at is not null and not exists (select 1 from interactions i where i.lead_id = l.id)) desc, random() limit 1`);
     if (!pick) return null;
     const [row] = await tx.execute<{ id: number }>(sql`insert into seller_shuffles (lead_id, user_id) values (${pick.id}, ${userId}) returning id`);

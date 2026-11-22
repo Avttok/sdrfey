@@ -821,8 +821,20 @@ export const leadLists = pgTable("lead_lists", {
   name: text("name").notNull(),
   filters: jsonb("filters").notNull(),
   active: boolean("active").notNull().default(false),
+  /** Quando a lista foi posta para compartilhar. Enquanto ninguém resgata, ela continua ocupando o espaço de quem criou. */
+  sharedAt: timestamp("shared_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Leads reservados em cada lista (até 100). A chave é o lead: ele só pode estar em uma lista por vez. */
+export const leadListItems = pgTable(
+  "lead_list_items",
+  {
+    leadId: integer("lead_id").primaryKey().references(() => leads.id, { onDelete: "cascade" }),
+    listId: integer("list_id").notNull().references(() => leadLists.id, { onDelete: "cascade" }),
+  },
+  (t) => [index("lead_list_items_list_idx").on(t.listId)],
+);
 
 /** Transportadoras: por estado e tipo de frete (CIF/FOB/RED), com % de frete e prazo na capital e no interior. */
 export const carriers = pgTable(

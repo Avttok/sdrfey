@@ -8,8 +8,8 @@ import { describeFilters, EMPTY_FILTERS, LIST_MAX_LEADS, LIST_MAX_PER_USER, SEGM
 import { useConfirm } from "@/components/confirm-dialog";
 import { btnGhost, btnPrimary, inputCls } from "@/components/ui";
 import { useRun } from "@/components/use-run";
-import { deleteListAction, previewListAction, saveListAction, setActiveListAction, type ListPreview } from "@/modules/lists/actions";
-import type { ListKind, ListRow } from "@/modules/lists/queries";
+import { claimSharedListAction, deleteListAction, previewListAction, saveListAction, setActiveListAction, shareListAction, zeroListAction, type ListPreview } from "@/modules/lists/actions";
+import type { ListKind, ListRow, SharedRow } from "@/modules/lists/queries";
 
 type TagGroup = { key: string; name: string; tags: { key: string; label: string }[] };
 
@@ -57,10 +57,11 @@ function Block({ n, icon: I, title, hint, badge, children, open: o = true }: { n
   );
 }
 
-export function ListFlow({ kind, lists, tagGroups, used }: { kind: ListKind; lists: ListRow[]; tagGroups: TagGroup[]; /** listas da pessoa nas duas áreas */ used: number }) {
+export function ListFlow({ kind, lists, tagGroups, used, shared }: { kind: ListKind; lists: ListRow[]; tagGroups: TagGroup[]; /** listas da pessoa nas duas áreas */ used: number; /** listas de outras pessoas para resgatar */ shared: SharedRow[] }) {
   const [f, setF] = useState<ListFilters>(EMPTY_FILTERS);
   const [editId, setEditId] = useState<number | undefined>();
   const [name, setName] = useState("");
+  const [tab, setTab] = useState<"montar" | "compartilhadas">("montar");
   const [pv, setPv] = useState<ListPreview | null>(null);
   const [loading, setLoading] = useState(false);
   const { run, pending } = useRun();
@@ -72,10 +73,10 @@ export function ListFlow({ kind, lists, tagGroups, used }: { kind: ListKind; lis
   useEffect(() => {
     const n = ++seq.current;
     setLoading(true);
-    const t = setTimeout(() => { previewListAction(kind, f).then((r) => { if (n === seq.current) { setPv(r); setLoading(false); } }).catch(() => n === seq.current && setLoading(false)); }, 350);
+    const t = setTimeout(() => { previewListAction(kind, f, editId).then((r) => { if (n === seq.current) { setPv(r); setLoading(false); } }).catch(() => n === seq.current && setLoading(false)); }, 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, kind]);
+  }, [key, kind, editId]);
 
   const jump = () => document.getElementById("lf-build")?.scrollIntoView({ behavior: "smooth", block: "start" });
   const edit = (l: ListRow) => { setF(l.filters); setEditId(l.id); setName(l.name); jump(); };
@@ -84,7 +85,6 @@ export function ListFlow({ kind, lists, tagGroups, used }: { kind: ListKind; lis
   const summary = describeFilters(f);
   const set = <K extends keyof ListFilters>(k: K, v: ListFilters[K]) => setF({ ...f, [k]: v });
   const tagChips = tagGroups.flatMap((g) => g.tags.map((t) => ({ v: `${g.key}:${t.key}`, label: t.label })));
-  const over = (pv?.count ?? 0) > LIST_MAX_LEADS;
   const full = !editId && used >= LIST_MAX_PER_USER;
   const quality = [f.phone, f.email, f.person, f.untouched].filter(Boolean).length;
 
@@ -104,6 +104,30 @@ export function ListFlow({ kind, lists, tagGroups, used }: { kind: ListKind; lis
         </div>
       </section>
 
+      <div role="tablist" aria-label="Lista Flow" className="flex gap-1.5 rounded-2xl border border-line bg-panel p-1.5">
+        {([["montar", "Minhas listas e montagem"], ["compartilhadas", `Compartilhadas${shared.length ? ` (${shared.length})` : ""}`]] as const).map(([k, label]) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`flex-1 rounded-xl px-3 py-2 text-sm font-semibold transition ${tab === k ? "bg-accent text-on-accent shadow" : "text-muted hover:bg-sunk"}`}>{label}</button>
+        ))}
+      </div>
+
+      {tab === "compartilhadas" ? (
+        <section className="space-y-3" aria-label="Listas compartilhadas">
+          <p className="max-w-2xl text-sm text-muted">Listas que colegas da sua área deixaram para outra pessoa assumir. Ao resgatar, a lista vira sua e libera o espaço de quem compartilhou. Você usa {used} de {LIST_MAX_PER_USER} listas.</p>
+          {shared.length === 0 ? <p className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-muted">Nenhuma lista compartilhada agora.</p> : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {shared.map((l) => (
+                <article key={l.id} className="space-y-2 rounded-3xl border border-line bg-panel p-4 shadow-sm">
+                  <p className="truncate font-bold">{l.name}</p>
+                  <p className="text-xs text-muted">Compartilhada por {l.owner}</p>
+                  <p className="figure text-3xl">{l.count.toLocaleString("pt-BR")} <span className="text-sm font-normal text-muted">de {l.total.toLocaleString("pt-BR")} leads livres</span></p>
+                  <button type="button" className={btnPrimary} disabled={pending || used >= LIST_MAX_PER_USER} onClick={() => run(() => claimSharedListAction(kind, l.id))}><Plus size={14} aria-hidden /> Resgatar lista</button>
+                  {used >= LIST_MAX_PER_USER && <p className="text-[11px] text-muted">Seus {LIST_MAX_PER_USER} espaços estão ocupados. Exclua ou zere uma lista para resgatar.</p>}
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : (<>
       {/* Minhas listas */}
       {lists.length > 0 && (
         <section className="space-y-2.5">
@@ -112,13 +136,17 @@ export function ListFlow({ kind, lists, tagGroups, used }: { kind: ListKind; lis
             {lists.map((l) => (
               <article key={l.id} className={`lift relative w-72 shrink-0 space-y-2 overflow-hidden rounded-3xl border bg-panel p-4 shadow-sm ${l.active ? "border-accent ring-2 ring-accent/50" : "border-line"}`}>
                 <span aria-hidden className={`absolute inset-x-0 top-0 h-1.5 ${l.active ? "bg-grad" : "bg-line"}`} />
-                <div className="flex items-start gap-2 pt-1"><p className="min-w-0 flex-1 truncate font-bold">{l.name}</p>{l.active && <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-bold text-on-accent">No Shuffler</span>}</div>
-                <p className="figure text-3xl">{l.count.toLocaleString("pt-BR")} <span className="text-sm font-normal text-muted">leads</span></p>
+                <div className="flex items-start gap-2 pt-1"><p className="min-w-0 flex-1 truncate font-bold">{l.name}</p>{l.active && <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-bold text-on-accent">No Shuffler</span>}{l.shared && <span className="rounded-full bg-warn/20 px-2 py-0.5 text-[11px] font-bold">Aguardando resgate</span>}{l.total === 0 && <span className="rounded-full bg-sunk px-2 py-0.5 text-[11px] font-bold text-muted">Zerada</span>}</div>
+                <p className="figure text-3xl">{l.count.toLocaleString("pt-BR")} <span className="text-sm font-normal text-muted">de {l.total.toLocaleString("pt-BR")} leads livres</span></p>
                 <p className="line-clamp-2 min-h-8 text-xs text-muted">{describeFilters(l.filters).join(" · ") || "Sem filtros"}</p>
                 <div className="flex flex-wrap gap-1.5">
-                  <button type="button" className={l.active ? btnGhost : btnPrimary} disabled={pending || (!l.active && l.count === 0)} onClick={() => run(() => setActiveListAction(kind, l.active ? null : l.id))}>{l.active ? <><Power size={14} aria-hidden /> Desativar</> : <><Play size={14} aria-hidden /> Ativar</>}</button>
+                  <button type="button" className={l.active ? btnGhost : btnPrimary} disabled={pending || l.shared || (!l.active && l.count === 0)} onClick={() => run(() => setActiveListAction(kind, l.active ? null : l.id))}>{l.active ? <><Power size={14} aria-hidden /> Desativar</> : <><Play size={14} aria-hidden /> Ativar</>}</button>
                   <button type="button" className={btnGhost} onClick={() => edit(l)}>Editar</button>
-                  <button type="button" aria-label="Excluir lista" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => ask({ title: "Excluir esta lista?", body: `A lista "${l.name}" será excluída. Os leads continuam onde estão.`, label: "Excluir", tone: "danger", onConfirm: () => run(() => deleteListAction(kind, l.id)) })}><Trash2 size={14} aria-hidden /></button>
+                  {l.total > 0 && (l.shared
+                    ? <button type="button" className={btnGhost} disabled={pending} onClick={() => run(() => shareListAction(kind, l.id, false))}>Cancelar compartilhamento</button>
+                    : <button type="button" className={btnGhost} disabled={pending} onClick={() => ask({ title: "Compartilhar esta lista?", body: `A lista "${l.name}" vai para a aba Compartilhadas e outra pessoa da sua área poderá resgatá-la. Seu espaço só é liberado depois que alguém resgatar.`, label: "Compartilhar", onConfirm: () => run(() => shareListAction(kind, l.id, true)) })}>Compartilhar</button>)}
+                  {l.total > 0 && <button type="button" className={btnGhost} disabled={pending} onClick={() => ask({ title: "Zerar esta lista?", body: `Os ${l.total} leads de "${l.name}" voltam a ficar livres e o espaço da lista é liberado. O nome e os filtros ficam guardados.`, label: "Zerar", tone: "danger", onConfirm: () => run(() => zeroListAction(kind, l.id)) })}>Zerar</button>}
+                  <button type="button" aria-label="Excluir lista" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => ask({ title: "Excluir esta lista?", body: `A lista "${l.name}" será excluída. Os leads reservados voltam a ficar livres.`, label: "Excluir", tone: "danger", onConfirm: () => run(() => deleteListAction(kind, l.id)) })}><Trash2 size={14} aria-hidden /></button>
                 </div>
               </article>
             ))}
@@ -212,15 +240,16 @@ export function ListFlow({ kind, lists, tagGroups, used }: { kind: ListKind; lis
           </ul>
           {(pv?.sample.length ?? 0) > 0 && <p className="text-[11px] text-muted">Exemplos sorteados. A cada abertura aparecem outros.</p>}
           <label className="block text-sm font-medium">Nome da lista<input className={inputCls} value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Postos de molas de SP" /></label>
-          {over && <p role="alert" className="rounded-xl border border-warn/50 bg-warn/10 px-3 py-2 text-xs">Esta lista tem mais de {LIST_MAX_LEADS} leads, que é o limite. Acrescente filtros (cidade, tipo de empresa…) até ficar com {LIST_MAX_LEADS} ou menos.</p>}
-          {full && <p role="alert" className="rounded-xl border border-warn/50 bg-warn/10 px-3 py-2 text-xs">Você já usa {used} de {LIST_MAX_PER_USER} listas. Exclua uma em “Minhas listas” para abrir espaço.</p>}
-          <p className="text-[11px] text-muted">Limites: até {LIST_MAX_LEADS} leads por lista e {LIST_MAX_PER_USER} listas por pessoa ({used} em uso).</p>
+          {(pv?.count ?? 0) > LIST_MAX_LEADS && <p className="rounded-xl border border-line bg-sunk/50 px-3 py-2 text-xs">Há {pv!.count.toLocaleString("pt-BR")} leads livres. A lista reserva {LIST_MAX_LEADS} deles, escolhidos ao acaso.</p>}
+          {full && <p role="alert" className="rounded-xl border border-warn/50 bg-warn/10 px-3 py-2 text-xs">Você já usa {used} de {LIST_MAX_PER_USER} listas. Exclua, zere ou compartilhe uma em “Minhas listas” para abrir espaço.</p>}
+          <p className="text-[11px] text-muted">Limites: até {LIST_MAX_LEADS} leads por lista e {LIST_MAX_PER_USER} listas por pessoa ({used} em uso). Um lead fica em uma lista só.</p>
           <div className="grid gap-2">
-            <button type="button" className={btnPrimary} disabled={pending || full || over || !pv || pv.count === 0} onClick={() => save(true)}><Play size={15} aria-hidden /> Salvar e ativar no Shuffler</button>
-            <button type="button" className={btnGhost} disabled={pending || full || over} onClick={() => save(false)}><Plus size={15} aria-hidden /> Só salvar</button>
+            <button type="button" className={btnPrimary} disabled={pending || full || !pv || pv.count === 0} onClick={() => save(true)}><Play size={15} aria-hidden /> Salvar e ativar no Shuffler</button>
+            <button type="button" className={btnGhost} disabled={pending || full} onClick={() => save(false)}><Plus size={15} aria-hidden /> Só salvar</button>
           </div>
         </aside>
       </div>
+      </>)}
       {dialog}
     </div>
   );
