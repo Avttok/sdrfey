@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import { btnGhost } from "@/components/ui";
 import { Trash2, Sparkles } from "lucide-react";
 import { useConfirm } from "@/components/confirm-dialog";
-import { useToast } from "@/components/toast";
+import { useToast, useBusyWhile } from "@/components/toast";
 import { dbHealthAction, dbMaintenanceAction, type DbHealth, type Level } from "@/modules/admin/db-health";
 
 const N = new Intl.NumberFormat("pt-BR");
@@ -41,6 +41,7 @@ export function DbHealthPanel() {
   const [data, setData] = useState<DbHealth | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  useBusyWhile(pending);
   const { ask, dialog } = useConfirm();
   const toast = useToast();
   const [browse, setBrowse] = useState<string | null>(null);

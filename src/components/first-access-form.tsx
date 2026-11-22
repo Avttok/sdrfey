@@ -1,5 +1,6 @@
 "use client";
 
+import { useBusyWhile } from "@/components/toast";
 import { Check, Eye, EyeOff, Image as ImageIcon, Loader2, Moon, Palette, Sun, UserRound, KeyRound, Smile } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 import { BannerRain } from "@/components/banner-rain";
@@ -38,6 +39,7 @@ export function FirstAccessForm({ name: name0, username, roles, accent: accent0,
   const [show, setShow] = useState(false);
   const [err, setErr] = useState("");
   const [pending, start] = useTransition();
+  useBusyWhile(pending);
   useEffect(() => { try { if (localStorage.getItem("theme") === "dark") setMode("dark"); } catch {} }, []);
   const pickMode = (m: "light" | "dark") => { setMode(m); document.documentElement.classList.toggle("dark", m === "dark"); try { localStorage.setItem("theme", m); } catch {} };
   const ac = resolveAccent(accent, roles);

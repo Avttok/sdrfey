@@ -1,5 +1,6 @@
 "use client";
 
+import { useBusyWhile } from "@/components/toast";
 import { Eye, ShieldCheck, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -9,6 +10,7 @@ import { setAdminViewAction } from "@/modules/auth/view-mode";
 export function AdminViewSwitch({ mode }: { mode: "all" | "me" }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  useBusyWhile(pending);
   const [cur, setCur] = useState(mode);
   const all = (pending ? cur : mode) === "all";
   const toggle = () => { const next = all ? "me" : "all"; setCur(next); start(async () => { await setAdminViewAction(next); router.refresh(); }); };

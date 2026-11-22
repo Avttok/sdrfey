@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Search, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/components/confirm-dialog";
 import { btnGhost, inputCls, panelCls } from "@/components/ui";
-import { useToast } from "@/components/toast";
+import { useToast, useBusyWhile } from "@/components/toast";
 import { browseTableAction, deleteTableRowsAction, emptyTableAction, type BrowseResult } from "@/modules/admin/table-browser";
 
 /** Janela grande para ver os registros de uma tabela, buscar e apagar um a um, vários ou todos. */
@@ -15,6 +15,7 @@ export function TableBrowser({ table, onClose, onChanged }: { table: string; onC
   const [q, setQ] = useState("");
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
+  useBusyWhile(busy);
   const [word, setWord] = useState("");
   const [emptyOpen, setEmptyOpen] = useState(false);
   const { ask, dialog } = useConfirm(busy);

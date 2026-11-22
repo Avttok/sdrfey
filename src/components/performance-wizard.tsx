@@ -1,5 +1,6 @@
 "use client";
 
+import { useBusyWhile } from "@/components/toast";
 import { Calendar, Check, ChevronLeft, ChevronRight, Download, Eye, FileSpreadsheet, Layers, Loader2, Users } from "lucide-react";
 import { useState, useTransition } from "react";
 import { previewAction, type Preview } from "@/modules/performance/actions";
@@ -33,6 +34,7 @@ export function PerformanceWizard({ kind, sections, people, team }: { kind: Kind
   const [group, setGroup] = useState("dia");
   const [prev, setPrev] = useState<Preview | null>(null);
   const [pending, start] = useTransition();
+  useBusyWhile(pending);
   const [sheet, setSheet] = useState("");
 
   const toggle = <T,>(l: T[], v: T) => (l.includes(v) ? l.filter((x) => x !== v) : [...l, v]);

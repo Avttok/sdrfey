@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { DateInput } from "@/components/date-input";
-import { useToast } from "@/components/toast";
+import { useToast, useBusyWhile } from "@/components/toast";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { fmtBRL } from "@/config/deals";
 import { fmtDateTime, fmtPhone } from "@/lib/format";
@@ -34,6 +34,7 @@ export function NewDeal({ terms }: { terms: string[] }) {
   const [consult, setConsult] = useState<CnpjConsult | null>(null);
   const [phase, setPhase] = useState<"idle" | "db" | "receita">("idle");
   const [busy, start] = useTransition();
+  useBusyWhile(busy);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   useEffect(() => {
