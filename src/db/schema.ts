@@ -167,6 +167,8 @@ export const leads = pgTable(
     /** Achados da internet pela consulta: site e Instagram do estabelecimento. */
     site: text("site"),
     instagram: text("instagram"),
+    facebook: text("facebook"),
+    linkedin: text("linkedin"),
     /** Lead de teste (modo teste): nunca entra nas métricas reais. */
     isTest: boolean("is_test").notNull().default(false),
     /** Data combinada para voltar a falar com o lead. */

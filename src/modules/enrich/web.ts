@@ -1,5 +1,6 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
+import { belongsToCompany, bioLinks, candidateDomains, decodeCfEmail, decodeEntities, deobfuscate, internalLinks, jsonLdContacts, socialLinks } from "./site-parse";
 
 const UA = "Mozilla/5.0 (compatible; SDRFEY/1.0; +https://sdr-fey.vercel.app)";
 const MAX_BYTES = 600_000;
@@ -44,9 +45,9 @@ export async function fetchHtml(raw: string): Promise<string | null> {
   return null;
 }
 
-export type WebFind = { phones: string[]; emails: string[]; instagram: string | null };
+export type WebFind = { phones: string[]; emails: string[]; instagram: string | null; facebook: string | null; linkedin: string | null; pages: number };
 
-const JUNK_EMAIL = /\.(png|jpe?g|gif|svg|webp|css|js)$|sentry|wixpress|example\.|seudominio|email@|nome@|usuario@|@2x/i;
+const JUNK_EMAIL = /\.(png|jpe?g|gif|svg|webp|css|js)$|sentry|wixpress|example\.|seudominio|email@|nome@|usuario@|@2x|@(?:domain|dominio|site|seusite|empresa)\./i;
 
 function normPhone(raw: string): string | null {
   let d = raw.replace(/\D/g, "");
@@ -60,39 +61,81 @@ function normPhone(raw: string): string | null {
   return d;
 }
 
-/** Telefones, e-mails e Instagram que aparecem numa página. Prioriza links tel:/mailto:/WhatsApp; depois números soltos. */
-export function extractContacts(html: string): WebFind {
+/**
+ * Telefones, e-mails e redes sociais de uma página. Prioriza o que a página declara (tel:, mailto:, WhatsApp, dados estruturados,
+ * e-mail protegido pelo Cloudflare, "nome [at] site"); depois números e e-mails soltos no texto.
+ */
+export function extractContacts(rawHtml: string): WebFind {
+  const html = decodeEntities(rawHtml);
   const phones = new Set<string>(), emails = new Set<string>();
-  let instagram: string | null = null;
-  for (const m of html.matchAll(/href=["']tel:([^"']+)["']/gi)) { const p = normPhone(decodeURIComponent(m[1])); if (p) phones.add(p); }
-  for (const m of html.matchAll(/(?:wa\.me\/|api\.whatsapp\.com\/send\?phone=|whatsapp:\/\/send\?phone=)(\+?\d{10,14})/gi)) { const p = normPhone(m[1]); if (p) phones.add(p); }
-  for (const m of html.matchAll(/href=["']mailto:([^"'?]+)/gi)) { const e = decodeURIComponent(m[1]).trim().toLowerCase(); if (/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(e) && !JUNK_EMAIL.test(e)) emails.add(e); }
-  const text = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ");
-  for (const m of text.matchAll(/(?:\+?55\s?)?\(?\b\d{2}\)?[\s.-]?9?\d{4}[\s.-]?\d{4}\b/g)) { const p = normPhone(m[0]); if (p) phones.add(p); }
-  for (const m of text.matchAll(/\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b/gi)) { const e = m[0].toLowerCase(); if (!JUNK_EMAIL.test(e)) emails.add(e); }
-  const ig = html.match(/instagram\.com\/([A-Za-z0-9._]{2,30})(?=[\/"'?#\s])/);
-  if (ig && !/^(p|reel|explore|accounts|about|share)$/i.test(ig[1])) instagram = `https://instagram.com/${ig[1]}`;
-  return { phones: [...phones].slice(0, 6), emails: [...emails].slice(0, 4), instagram };
+  const addMail = (e: string) => { const m = e.trim().toLowerCase(); if (/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(m) && !JUNK_EMAIL.test(m)) emails.add(m); };
+  const addPhone = (v: string) => { const p = normPhone(v); if (p) phones.add(p); };
+  for (const m of html.matchAll(/href=["']tel:([^"']+)["']/gi)) { try { addPhone(decodeURIComponent(m[1])); } catch { addPhone(m[1]); } }
+  for (const m of html.matchAll(/(?:wa\.me\/|api\.whatsapp\.com\/send\/?\?(?:[^"'\s]*&)?phone=|web\.whatsapp\.com\/send\?phone=|whatsapp:\/\/send\?phone=)(\+?\d{10,14})/gi)) addPhone(m[1]);
+  for (const m of html.matchAll(/href=["']mailto:([^"'?]+)/gi)) { try { addMail(decodeURIComponent(m[1])); } catch { addMail(m[1]); } }
+  for (const m of html.matchAll(/data-cfemail=["']([0-9a-f]+)["']/gi)) { const e = decodeCfEmail(m[1]); if (e) addMail(e); }
+  const ld = jsonLdContacts(html);
+  ld.phones.forEach(addPhone); ld.emails.forEach(addMail);
+  const text = deobfuscate(html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " "));
+  for (const m of text.matchAll(/(?:\+?55\s?)?\(?\b\d{2}\)?[\s.-]?9?\d{4}[\s.-]?\d{4}\b/g)) addPhone(m[0]);
+  for (const m of text.matchAll(/\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b/gi)) addMail(m[0]);
+  const soc = socialLinks(html + " " + ld.links.join(" "));
+  return { phones: [...phones].slice(0, 8), emails: [...emails].slice(0, 5), instagram: soc.instagram, facebook: soc.facebook, linkedin: soc.linkedin, pages: 1 };
 }
 
-/** Lê a página inicial e, se achar, a de contato. */
-export async function scanSite(siteUrl: string): Promise<WebFind | null> {
+const merge = (into: WebFind, f: WebFind) => {
+  into.phones = [...new Set([...into.phones, ...f.phones])].slice(0, 8);
+  into.emails = [...new Set([...into.emails, ...f.emails])].slice(0, 5);
+  into.instagram ??= f.instagram; into.facebook ??= f.facebook; into.linkedin ??= f.linkedin;
+};
+
+/**
+ * Lê o site da empresa por inteiro: a página inicial e, a partir dela, as páginas internas mais promissoras (contato, fale conosco,
+ * sobre, unidades, onde estamos, representantes…), até 8 páginas e 14 s no total, 3 por vez. Segue também links de "link na bio"
+ * (Linktree e parecidos). Se o site não tem link de contato, tenta os endereços mais comuns.
+ */
+export async function scanSite(siteUrl: string, maxMs = 14_000): Promise<WebFind | null> {
   const home = await safeUrl(siteUrl);
   if (!home) return null;
+  const t0 = Date.now();
   const html = await fetchHtml(home.toString());
   if (!html) return null;
   const found = extractContacts(html);
-  const link = html.match(/href=["']([^"']*(?:contato|fale-conosco|contact)[^"']*)["']/i);
-  if (link && (found.phones.length < 2 || !found.emails.length)) {
-    try {
-      const sub = new URL(link[1], home);
-      if (sub.hostname === home.hostname) {
-        const h2 = await fetchHtml(sub.toString());
-        if (h2) { const f2 = extractContacts(h2); found.phones = [...new Set([...found.phones, ...f2.phones])].slice(0, 6); found.emails = [...new Set([...found.emails, ...f2.emails])].slice(0, 4); found.instagram ??= f2.instagram; }
-      }
-    } catch { /* link estranho: ignora */ }
+  const seen = new Set<string>([home.toString().replace(/\/$/, "")]);
+  const htmls = [html];
+  let queue = internalLinks(html, home);
+  if (!queue.length) queue = ["/contato", "/fale-conosco", "/contact", "/quem-somos", "/sobre"].map((p) => ({ url: new URL(p, home).toString(), score: 1 }));
+  while (queue.length && found.pages < 8 && Date.now() - t0 < maxMs && !(found.phones.length >= 4 && found.emails.length >= 2 && found.instagram)) {
+    const batch = queue.splice(0, 3).filter((q) => !seen.has(q.url.replace(/\/$/, "")));
+    if (!batch.length) continue;
+    batch.forEach((q) => seen.add(q.url.replace(/\/$/, "")));
+    const pages = await Promise.all(batch.map((q) => fetchHtml(q.url)));
+    for (let i = 0; i < pages.length; i++) {
+      const h = pages[i];
+      if (!h) continue;
+      found.pages++; htmls.push(h); merge(found, extractContacts(h));
+      for (const l of internalLinks(h, new URL(batch[i].url))) if (!seen.has(l.url.replace(/\/$/, "")) && !queue.some((q) => q.url === l.url)) queue.push(l);
+    }
+    queue.sort((a, b) => b.score - a.score);
+  }
+  const bios = [...new Set(htmls.flatMap(bioLinks))].slice(0, 2);
+  if (bios.length && Date.now() - t0 < maxMs + 4_000) {
+    const pages = await Promise.all(bios.map((u) => fetchHtml(u)));
+    for (const h of pages) if (h) { found.pages++; merge(found, extractContacts(h)); }
   }
   return found;
+}
+
+/** Quando o lead não tem site: tenta o domínio do e-mail da empresa e o do nome, e só aceita o que a página prova ser dela. */
+export async function discoverSite(c: { emails: string[]; names: (string | null | undefined)[]; cnpj: string }): Promise<string | null> {
+  const cands = candidateDomains(c.emails, c.names);
+  if (!cands.length) return null;
+  const tries = await Promise.all(cands.map(async (d) => {
+    const url = `https://${d.host}`;
+    const html = (await fetchHtml(url)) ?? (await fetchHtml(`https://www.${d.host}`));
+    return html && belongsToCompany(html, { cnpj: c.cnpj, names: c.names, byName: d.byName }) ? url : null;
+  }));
+  return tries.find(Boolean) ?? null;
 }
 
 export type PlaceFind = { phone: string | null; website: string | null };

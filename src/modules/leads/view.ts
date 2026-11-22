@@ -40,6 +40,8 @@ export async function getLeadView(leadId: number) {
     registrationStatus: lead.registrationStatus,
     site: lead.site,
     instagram: lead.instagram,
+    facebook: lead.facebook,
+    linkedin: lead.linkedin,
     notes: lead.notes,
     legacyVisit: lead.legacyVisit,
     salesforceUrl: lead.salesforceUrl,

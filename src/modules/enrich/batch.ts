@@ -28,7 +28,7 @@ const listCond = (key: string) => {
     case "no_address": return sql`(${blank("address")} or ${blank("zip")})`;
     case "no_city": return sql`(${blank("city")} or ${blank("uf")})`;
     case "no_status": return sql`${blank("registration_status")}`;
-    case "no_web": return sql`${blank("site")} and ${blank("instagram")}`;
+    case "no_web": return sql`${blank("site")} and ${blank("instagram")} and ${blank("facebook")} and ${blank("linkedin")}`;
     case "not_active": return sql`l.registration_status is not null and l.registration_status not ilike 'ativ%'`;
     default: return sql`true`;
   }

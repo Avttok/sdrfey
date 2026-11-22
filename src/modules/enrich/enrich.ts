@@ -6,7 +6,7 @@ import { setLeadTags } from "@/modules/tags/apply";
 import { slugify } from "@/modules/import/normalize";
 import { classifyCapital, classifyPorte } from "./classify";
 import { getSettings } from "@/modules/settings/get";
-import { findPlace, scanSite } from "./web";
+import { discoverSite, findPlace, scanSite } from "./web";
 import { mergeInfo, parseBrasilApi, parseReceitaWs, statusToSituation, type CnpjInfo } from "./parse";
 
 export type EnrichResult = {
@@ -101,7 +101,13 @@ async function enrichCore(leadId: number, userId: number | null): Promise<Enrich
     const pm = parseBrasilApi(m.data);
     if (pm) { a = pm; rb = m.data; }
   }
-  const info = mergeInfo(a, b);
+  let info = mergeInfo(a, b);
+  /* Poucos telefones/e-mails? A Minha Receita (mesma base, outro servidor) completa o que faltar. */
+  if (info && cfg.enrich_minhareceita === 1 && (info.phones.length < 2 || !info.emails.length)) {
+    const m = await getJson(`https://minhareceita.org/${lead.cnpj}`);
+    const pm = parseBrasilApi(m.data);
+    if (pm) info = mergeInfo(info, pm);
+  }
   const result: EnrichResult = {
     state: info ? "ok" : "unavailable",
     sources: { brasilapi: a ? "ok" : b ? "dispensada" : "falhou", receitaws: b ? "ok" : "falhou" },
@@ -124,6 +130,11 @@ async function enrichCore(leadId: number, userId: number | null): Promise<Enrich
         ...(/^CNPJ\s*\d*$/i.test(lead.company.trim()) || !lead.company.trim() ? { company: info.legalName ?? info.tradeName ?? lead.company } : {}),
         city: info.city ?? lead.city,
         uf: info.uf ?? lead.uf,
+        /* endereço e e-mail só entram se o cadastro estiver em branco (o que a pessoa digitou nunca é trocado) */
+        address: lead.address?.trim() ? lead.address : ([info.address.street, info.address.number, info.address.complement].filter(Boolean).join(", ") || lead.address),
+        neighborhood: lead.neighborhood?.trim() ? lead.neighborhood : info.address.district ?? lead.neighborhood,
+        zip: lead.zip?.trim() ? lead.zip : info.address.cep ? info.address.cep.replace(/^(\d{5})(\d{3})$/, "$1-$2") : lead.zip,
+        email: lead.email?.trim() ? lead.email : info.emails[0] ?? lead.email,
         registrationStatus: info.status ?? lead.registrationStatus,
         enrichedAt: new Date(),
         updatedAt: new Date(),
@@ -186,22 +197,34 @@ async function enrichCore(leadId: number, userId: number | null): Promise<Enrich
 
 type Cfg = Awaited<ReturnType<typeof getSettings>>;
 
-/** Fontes extras da internet (Google Places e site do estabelecimento), se ligadas no painel Adm. Nunca derrubam a consulta. */
+/**
+ * Fontes extras da internet, se ligadas no painel Adm: Google Places (telefone e site) e o site da empresa, lido por inteiro
+ * (página inicial + contato, sobre, unidades… + link na bio). Sem site cadastrado, tenta descobrir pelo domínio do e-mail e do nome,
+ * só aceitando o que a página prova ser da empresa. Nunca derruba a consulta.
+ */
 async function enrichWeb(leadId: number, lead: typeof leads.$inferSelect, cfg: Cfg, result: EnrichResult): Promise<void> {
   if (cfg.enrich_places !== 1 && cfg.enrich_site !== 1) return;
   try {
-    let site = lead.site, instagram = lead.instagram;
+    let site = lead.site, instagram = lead.instagram, facebook = lead.facebook, linkedin = lead.linkedin;
     const phones: { v: string; o: "google" | "site" }[] = [], emails: string[] = [];
     if (cfg.enrich_places === 1) {
       const pl = await findPlace(lead.tradeName ?? lead.company, lead.city ?? result.info?.city ?? null, lead.uf ?? result.info?.uf ?? null);
       if (pl?.phone) phones.push({ v: pl.phone, o: "google" });
       if (pl?.website && !site) site = pl.website;
     }
+    if (cfg.enrich_site === 1 && !site) {
+      const known = await db.select({ v: leadChannels.value }).from(leadChannels).where(sql`${leadChannels.leadId} = ${leadId} and ${leadChannels.kind} = 'email'`);
+      site = await discoverSite({ emails: [lead.email ?? "", ...(result.info?.emails ?? []), ...known.map((k) => k.v)].filter(Boolean), names: [lead.tradeName, result.info?.tradeName, lead.company, result.info?.legalName], cnpj: lead.cnpj });
+    }
     if (cfg.enrich_site === 1 && site) {
       const f = await scanSite(site);
-      if (f) { for (const p of f.phones) phones.push({ v: p, o: "site" }); emails.push(...f.emails); if (f.instagram && !instagram) instagram = f.instagram; }
+      if (f) {
+        for (const p of f.phones) phones.push({ v: p, o: "site" });
+        emails.push(...f.emails);
+        instagram ??= f.instagram; facebook ??= f.facebook; linkedin ??= f.linkedin;
+      }
     }
-    if (site !== lead.site || instagram !== lead.instagram) await db.update(leads).set({ site, instagram, updatedAt: new Date() }).where(eq(leads.id, leadId));
+    if (site !== lead.site || instagram !== lead.instagram || facebook !== lead.facebook || linkedin !== lead.linkedin) await db.update(leads).set({ site, instagram, facebook, linkedin, updatedAt: new Date() }).where(eq(leads.id, leadId));
     for (const p of phones) { const r = await db.insert(leadChannels).values({ leadId, kind: "phone", value: p.v, origin: p.o }).onConflictDoNothing().returning({ id: leadChannels.id }); result.newPhones += r.length; }
     for (const e of emails) { const r = await db.insert(leadChannels).values({ leadId, kind: "email", value: e, origin: "site" }).onConflictDoNothing().returning({ id: leadChannels.id }); result.newEmails += r.length; }
   } catch { /* fonte extra falhou: a consulta da Receita já valeu */ }

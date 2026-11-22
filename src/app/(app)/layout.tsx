@@ -17,7 +17,7 @@ import { getTermOverrides } from "@/modules/terms/get";
 import { QuickDock, type QuickKey } from "@/components/quick-dock";
 import { EnrichDock } from "@/components/enrich-dock";
 import { LiveSnap } from "@/components/live-snap";
-import { EggHunt, GoldFooterEggs } from "@/components/egg-hunt";
+import { EggHunt, GoldFooterEgg } from "@/components/egg-hunt";
 import { CopyGuard } from "@/components/copy-guard";
 import { SwRegister } from "@/components/sw-register";
 import { ChatMount } from "@/components/chat/chat-mount";
@@ -66,7 +66,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <AppHeader user={user} badges={badges} groupNav={groupNav} navAlign={settings.nav_align} />
           {user.isAdmin && user.navLayout === "side" && <div className="hidden justify-end px-6 pt-3 lg:flex"><AdminViewSwitch mode={user.adminView} /></div>}
           <main className="mx-auto flex w-full max-w-[92rem] flex-1 flex-col px-3 py-7 pb-10 sm:px-5 lg:px-6">{children}</main>
-          <footer className="relative z-40 px-4 pb-6 text-center text-xs text-muted"><span className="relative inline-block px-4 py-1.5"><span aria-hidden className="glow-pulse absolute inset-0 rounded-full bg-accent/50 blur-lg" /><span className="relative font-medium">Made by Ruan Carlos</span></span>{avatars.eggs.includes(user.id) ? <GoldFooterEggs /> : <EggHunt />}</footer>
+          <footer className="relative z-40 px-4 pb-6 text-center text-xs text-muted"><span className="relative inline-block px-4 py-1.5"><span aria-hidden className="glow-pulse absolute inset-0 rounded-full bg-accent/50 blur-lg" /><span className="relative font-medium">Made by Ruan Carlos</span>{avatars.eggs.includes(user.id) && <GoldFooterEgg />}</span>{!avatars.eggs.includes(user.id) && <EggHunt />}</footer>
         </div>
       </div>
       <GoldMode reached={gold.reached} label={gold.label} userId={user.id} />

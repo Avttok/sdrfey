@@ -61,17 +61,12 @@ export function EggHunt() {
   );
 }
 
-/** Para quem já achou o segredo: ovos dourados vivos no rodapé (balançam, brilham e soltam reflexos). */
-export function GoldFooterEggs() {
-  const spots = [{ x: 7, s: 16, d: 0 }, { x: 19, s: 12, d: 1.1 }, { x: 33, s: 14, d: 2.3 }, { x: 66, s: 13, d: 0.6 }, { x: 80, s: 17, d: 1.7 }, { x: 93, s: 12, d: 2.9 }];
+/** Para quem já achou o segredo: um Douradovo discreto ao lado da assinatura (balança de leve e solta um reflexo). */
+export function GoldFooterEgg() {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-9">
-      {spots.map((e, i) => (
-        <span key={i} className="gold-foot absolute bottom-1.5" style={{ left: `${e.x}%`, "--dl": `${e.d}s` } as React.CSSProperties}>
-          <EggBadge size={e.s} title="" />
-          <i className="gold-twinkle" style={{ left: "-30%", top: "-10%" }} /><i className="gold-twinkle" style={{ right: "-30%", top: "35%", animationDelay: "1.2s" }} />
-        </span>
-      ))}
-    </div>
+    <span aria-hidden className="gold-foot pointer-events-none absolute left-1/2 top-1/2 ml-[5.6rem] -mt-[1.05rem] sm:ml-24">
+      <EggBadge size={15} title="" />
+      <i className="gold-twinkle" style={{ right: "-45%", top: "-5%" }} />
+    </span>
   );
 }
