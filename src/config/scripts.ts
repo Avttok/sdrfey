@@ -1,6 +1,8 @@
 /** Scripts de ligação: tipos e listas usados pelo editor, pelo player e pelo servidor (sem banco, o navegador também usa). */
 export type ScriptKind = "ok" | "objecao" | "neutro";
 export type ScriptOption = { label: string; /** id do próximo passo; vazio = termina aqui. */ to: string | null; kind: ScriptKind };
+/** O "papel" do passo na conversa: define ícone e cor no jogo. */
+export type ScriptMood = "abertura" | "ponte" | "pergunta" | "proposta" | "objecao" | "fechamento" | "apoio";
 export type ScriptNode = {
   id: string;
   /** fala = o usuário fala; fim = encerra com um resultado. */
@@ -12,6 +14,8 @@ export type ScriptNode = {
   /** Dica de postura/objetivo do passo (opcional). */
   tip?: string;
   options: ScriptOption[];
+  /** Papel do passo (ícone e cor). Se faltar, o sistema deduz pelo nome. */
+  mood?: ScriptMood;
   /** Só para fim: o que fazer a seguir. */
   outcome?: "visita" | "cotacao" | "retorno" | "venda" | "encerrar";
 };
@@ -45,8 +49,47 @@ export const OUTCOMES: Record<NonNullable<ScriptNode["outcome"]>, { label: strin
 
 export const KIND_LABEL: Record<ScriptKind, string> = { ok: "Bom sinal", objecao: "Objeção", neutro: "Neutro" };
 
-/** Troca {empresa}, {contato}… pelos dados do lead; o que faltar vira uma alternativa natural. */
+/** Nome de empresa falado em voz alta: sem "LTDA/ME/EIRELI" e sem GRITAR quando vem tudo em maiúsculas. */
+export function spokenCompany(raw: string): string {
+  let n = raw.replace(/\b(LTDA|EIRELI|S\/?A|ME|EPP|MEI|S\.A\.)\b\.?/gi, "").replace(/\s*[-–]\s*$/, "").replace(/\s{2,}/g, " ").trim();
+  if (!n) n = raw.trim();
+  if (n === n.toUpperCase() && /[A-ZÀ-Ú]{3,}/.test(n)) n = n.toLowerCase().replace(/(^|\s|-)([a-zà-ú])/g, (_, a: string, b: string) => a + b.toUpperCase()).replace(/\b(Da|De|Do|Das|Dos|E)\b/g, (m) => m.toLowerCase());
+  return n;
+}
+
+/**
+ * Troca {empresa}, {contato}… pelos dados do lead. Quando falta o nome do contato no começo de uma frase,
+ * a frase simplesmente começa sem ele ("João, vou direto" → "Vou direto"); no meio da frase vira "o responsável".
+ * Toda frase sai com a primeira letra maiúscula.
+ */
 export function fillScript(text: string, v: { empresa?: string | null; contato?: string | null; cidade?: string | null; meunome?: string | null }): string {
-  const alt: Record<string, string> = { empresa: "a empresa", contato: "o responsável", cidade: "sua cidade", meunome: "eu" };
-  return text.replace(/\{(empresa|contato|cidade|meunome)\}/g, (_, k: string) => (v as Record<string, string | null | undefined>)[k]?.trim() || alt[k]);
+  const get = (k: "empresa" | "contato" | "cidade" | "meunome") => {
+    const raw = (v[k] ?? "").trim();
+    if (!raw) return "";
+    if (k === "empresa") return spokenCompany(raw);
+    if (k === "contato") return raw.split(/\s+/)[0].replace(/^./, (c) => c.toUpperCase()).replace(/(?<=.)./g, (c) => c.toLowerCase());
+    return raw;
+  };
+  const alt: Record<string, string> = { empresa: "sua empresa", contato: "o responsável", cidade: "a sua cidade", meunome: "eu" };
+  let out = text;
+  if (!get("contato")) out = out.replace(/(^|[.!?]\s+|\n)\{contato\}[,!]?\s*/g, "$1").replace(/,\s*\{contato\}(?=[,.!?])/g, "");
+  if (!get("empresa")) out = out.replace(/\b(da|na|pela|a|à|para a)\s+\{empresa\}/gi, "$1 empresa");
+  if (!get("meunome")) out = out.replace(/Aqui é \{meunome\}, da Fey/g, "Aqui é da Fey");
+  out = out.replace(/\{(empresa|contato|cidade|meunome)\}/g, (_, k: string) => get(k as "empresa") || alt[k]);
+  return out.replace(/(^|[.!?]\s+|\n)([a-zà-ú])/g, (_, a: string, b: string) => a + b.toUpperCase());
+}
+
+export const MOOD_KEYS: ScriptMood[] = ["abertura", "ponte", "pergunta", "proposta", "objecao", "fechamento", "apoio"];
+
+/** Papel do passo: o que o Adm/usuário escolheu ou, na falta, o que o código e o nome sugerem. */
+export function moodOf(n: Pick<ScriptNode, "id" | "type" | "title" | "mood">): ScriptMood {
+  if (n.mood) return n.mood;
+  if (n.type === "fim") return "fechamento";
+  const k = `${n.id} ${n.title}`.toLowerCase();
+  if (/^obj|obje|caro|pre[cç]o|fornecedor|sem tempo|sem interesse|pessoa errada/.test(k)) return "objecao";
+  if (/abertura|in[ií]cio/.test(k)) return "abertura";
+  if (/recep|secret|assunto|quem|chegar|ponte/.test(k)) return "ponte";
+  if (/pergunta|descoberta|d[uú]vida|motivo|entender/.test(k)) return "pergunta";
+  if (/pitch|proposta|visita|desconto|interesse|apresent|cota/.test(k)) return "proposta";
+  return "apoio";
 }

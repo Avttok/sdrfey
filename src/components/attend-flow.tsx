@@ -362,7 +362,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
               {goodPhones.length === 0 && <li className="text-sm text-muted">Sem telefone válido.</li>}
             </ul>
             <ProductHints recos={recos} />
-            {scripts.length > 0 && <details className="group rounded-2xl border border-line bg-sunk/40 p-3" open><summary className="cursor-pointer text-sm font-semibold">Script da ligação (toque nas respostas do lead)</summary><div className="mt-3"><ScriptPicker scripts={scripts} goal={sales ? "vendas" : "sdr"} vars={{ empresa: vars.empresa, contato: vars.contato, cidade: vars.cidade, meunome: vars.meu_nome }} compact /></div></details>}
+            {scripts.length > 0 && <details className="group rounded-2xl border border-line bg-sunk/40 p-3" open><summary className="cursor-pointer text-sm font-semibold">Roteiro da ligação: leia, fale e toque no que o lead respondeu</summary><div className="mt-3"><ScriptPicker scripts={scripts} goal={sales ? "vendas" : "sdr"} vars={{ empresa: vars.empresa, contato: vars.contato, cidade: vars.cidade, meunome: vars.meu_nome }} compact /></div></details>}
             <UsedToggle on={used.has("ligacao")} onClick={() => toggle(used, "ligacao", setUsed)} label="Ligação feita" />
           </section>
         )}

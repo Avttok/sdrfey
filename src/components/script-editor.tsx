@@ -2,12 +2,13 @@
 
 import { AlertTriangle, ArrowDown, ArrowUp, Plus, Save, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import { GOALS, OUTCOMES, SEGMENTS, type ScriptDoc, type ScriptGoal, type ScriptNode } from "@/config/scripts";
+import { GOALS, MOOD_KEYS, moodOf, OUTCOMES, SEGMENTS, type ScriptDoc, type ScriptGoal, type ScriptNode } from "@/config/scripts";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { useRun } from "@/components/use-run";
 import { saveScriptAction } from "@/modules/scripts/actions";
 import { unreachable } from "@/modules/scripts/schema";
 import { ScriptPlayer } from "./script-player";
+import { MOODS } from "./script-theme";
 
 const newId = (nodes: ScriptNode[]) => { let i = nodes.length + 1; while (nodes.some((n) => n.id === `p${i}`)) i++; return `p${i}`; };
 export const blankScript = (goal: ScriptGoal = "sdr"): ScriptDoc => ({ id: 0, title: "", segment: "geral", goal, summary: null, startId: "p1", global: false, mine: true, active: true, nodes: [{ id: "p1", type: "fala", title: "Abertura", say: "Bom dia! Aqui é {meunome}, da Fey. Falo com {contato} da {empresa}?", options: [{ label: "Atendeu", to: "p2", kind: "ok" }], tip: "" }, { id: "p2", type: "fim", title: "Fim", say: "Registre o resultado.", options: [], outcome: "encerrar" }] });
@@ -51,12 +52,13 @@ export function ScriptEditor({ initial, isAdmin, onClose }: { initial: ScriptDoc
               <span className="grid size-7 place-items-center rounded-lg bg-grad-soft text-xs font-bold text-accent">{i + 1}</span>
               <input aria-label="Nome do passo" className={`${inputCls} !w-auto min-w-0 flex-1`} value={n.title} maxLength={60} onChange={(e) => setNode(i, { title: e.target.value })} />
               <select aria-label="Tipo do passo" className={`${inputCls} !w-auto`} value={n.type} onChange={(e) => setNode(i, e.target.value === "fim" ? { type: "fim", options: [], outcome: n.outcome ?? "encerrar" } : { type: "fala", outcome: undefined })}><option value="fala">Fala (com respostas)</option><option value="fim">Fim (resultado)</option></select>
+              <select aria-label="Papel do passo" title="Define o ícone e a cor deste passo no jogo" className={`${inputCls} !w-auto`} value={moodOf(n)} onChange={(e) => setNode(i, { mood: e.target.value as ScriptNode["mood"] })}>{MOOD_KEYS.map((k) => <option key={k} value={k}>{MOODS[k].label}</option>)}</select>
               <button type="button" aria-label="Subir" className={btnGhost} onClick={() => move(i, -1)}><ArrowUp size={15} /></button>
               <button type="button" aria-label="Descer" className={btnGhost} onClick={() => move(i, 1)}><ArrowDown size={15} /></button>
               <button type="button" aria-label="Excluir passo" className={`${btnGhost} text-danger`} disabled={d.nodes.length <= 1} onClick={() => remove(i)}><Trash2 size={15} /></button>
             </div>
-            <textarea aria-label="Fala" rows={3} maxLength={1500} className={inputCls} value={n.say} onChange={(e) => setNode(i, { say: e.target.value })} placeholder="O que você diz neste passo" />
-            <input aria-label="Dica" className={inputCls} value={n.tip ?? ""} maxLength={400} onChange={(e) => setNode(i, { tip: e.target.value })} placeholder="Dica de postura (opcional)" />
+            <textarea aria-label="Fala" rows={3} maxLength={1500} className={inputCls} value={n.say} onChange={(e) => setNode(i, { say: e.target.value })} placeholder="O que você diz ao lead, do jeito que falaria (sem instruções aqui: elas vão na dica)" />
+            <input aria-label="Dica" className={inputCls} value={n.tip ?? ""} maxLength={400} onChange={(e) => setNode(i, { tip: e.target.value })} placeholder="Dica só para quem lê, não é falada (opcional)" />
             {n.type === "fim" ? (
               <label className="text-sm">Resultado<select className={inputCls} value={n.outcome ?? "encerrar"} onChange={(e) => setNode(i, { outcome: e.target.value as ScriptNode["outcome"] })}>{Object.entries(OUTCOMES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></label>
             ) : (

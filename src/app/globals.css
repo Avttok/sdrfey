@@ -407,3 +407,17 @@ html[data-copy-guard="on"] input, html[data-copy-guard="on"] textarea, html[data
 .egg-pad-on { animation: egg-pad .45s ease; }
 .egg-crack { animation: egg-crack .5s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .fx-egg, .egg-rise, .egg-pad-on, .egg-crack { animation: none; } }
+
+/* ── Scripts de ligação (jogo) ── */
+@keyframes script-pop { 0% { opacity: 0; transform: translateY(16px) scale(.97); } 60% { opacity: 1; transform: translateY(-2px) scale(1.01); } 100% { opacity: 1; transform: none; } }
+.script-pop { animation: script-pop .45s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes script-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ring) 55%, transparent); } 100% { box-shadow: 0 0 0 12px transparent; } }
+.script-ring { animation: script-ring 1.6s ease-out infinite; }
+@keyframes script-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+.script-bounce { animation: script-bounce 1.8s ease-in-out infinite; }
+@keyframes script-shake { 0%, 100% { transform: none; } 25% { transform: rotate(-6deg); } 75% { transform: rotate(6deg); } }
+.script-shake { animation: script-shake .9s ease-in-out infinite; }
+.script-ans { transition: transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .2s; }
+.script-ans:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 24px -12px var(--c); }
+.script-ans:active:not(:disabled) { transform: scale(.98); }
+@media (prefers-reduced-motion: reduce) { .script-pop, .script-ring, .script-bounce, .script-shake { animation: none; } .script-ans { transition: none; } }

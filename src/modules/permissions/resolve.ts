@@ -1,4 +1,4 @@
-import { PERMISSIONS, domainOf, type PermissionMap, type RoleOverrides } from "@/config/permissions";
+import { PERMISSIONS, type PermissionMap, type RoleOverrides } from "@/config/permissions";
 import type { Role } from "@/config/roles";
 
 /**
@@ -12,10 +12,7 @@ export function resolvePermissions(roles: readonly Role[], personal: PermissionM
   for (const p of PERMISSIONS) {
     if (isAdmin) { out[p.key] = true; continue; }
     if (p.key in personal) { out[p.key] = !!personal[p.key]; continue; }
-    /* o ajuste do CARGO nunca atravessa fronteira: vendedor não recebe telas de SDR e SDR não recebe telas de Vendas (só ajuste individual) */
-    const dom = domainOf(p.key);
-    const crosses = (r: Role) => (r === "seller" && dom === "SDR") || (r === "user" && dom === "Vendas");
-    out[p.key] = roles.some((r) => (byRole[r] && p.key in byRole[r]! && !crosses(r) ? !!byRole[r]![p.key] : p.defaults.includes(r)));
+    out[p.key] = roles.some((r) => (byRole[r] && p.key in byRole[r]! ? !!byRole[r]![p.key] : p.defaults.includes(r)));
   }
   return out;
 }

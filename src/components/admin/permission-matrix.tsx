@@ -38,13 +38,26 @@ export function PermissionMatrix({ users, roles: initialRoles, target: ext, onTa
   const roleOn = (r: RoleKey, key: string) => { const def = PERMISSIONS.find((p) => p.key === key)!; return key in roles[r] ? !!roles[r][key] : def.defaults.includes(r); };
   const inherited = (u: MatrixUser, key: string) => u.roles.some((r) => r !== "admin" && roleOn(r as RoleKey, key));
   const setOwn = (id: number, key: string, v: boolean | null) => { const n = { ...(per[id] ?? {}) }; if (v === null) delete n[key]; else n[key] = v; setPer({ ...per, [id]: n }); };
-  /** No cargo, só aparece o que faz sentido para ele; na pessoa, tudo (ajuste individual). */
-  const visible = (key: string) => { if (target.kind !== "role") return true; const d = domainOf(key); return target.role === "manager" || !((target.role === "seller" && d === "SDR") || (target.role === "user" && d === "Vendas")); };
+  /** Tudo pode ser liberado ou bloqueado para qualquer cargo e para qualquer pessoa: o Adm decide. */
+  const visible = (key: string) => { void key; return true; };
   const matches = (p: { key: string; label: string }) => (!q.trim() || p.label.toLowerCase().includes(q.trim().toLowerCase())) && (dom === "all" || domainOf(p.key) === dom) && visible(p.key);
   const bulk = (group: string, v: boolean | null) => {
     const keys = PERMISSIONS.filter((p) => p.group === group && matches(p)).map((p) => p.key);
     if (target.kind === "role") { const r = target.role; const n = { ...roles[r] }; for (const k of keys) n[k] = v === null ? PERMISSIONS.find((p) => p.key === k)!.defaults.includes(r) : v; setRoles({ ...roles, [r]: n }); }
     else { const id = target.id; const n = { ...(per[id] ?? {}) }; for (const k of keys) { if (v === null) delete n[k]; else n[k] = v; } setPer({ ...per, [id]: n }); }
+  };
+  /** O que vale agora para quem está sendo editado (cargo ou pessoa). */
+  const effective = (key: string) => {
+    if (target.kind === "role") return roleOn(target.role, key);
+    const u = users.find((x) => x.id === target.id); if (!u) return false;
+    const own = per[u.id] ?? {};
+    return key in own ? !!own[key] : inherited(u, key);
+  };
+  const toggleQuick = (key: string) => {
+    if (target.kind === "role") { setRoles({ ...roles, [target.role]: { ...roles[target.role], [key]: !roleOn(target.role, key) } }); return; }
+    const u = users.find((x) => x.id === target.id); if (!u) return;
+    const next = !effective(key);
+    setOwn(u.id, key, next === inherited(u, key) ? null : next);
   };
   const person = target.kind === "user" ? users.find((u) => u.id === target.id) ?? null : null;
   const overrides = (id: number) => Object.keys(per[id] ?? {}).length;
@@ -76,6 +89,25 @@ export function PermissionMatrix({ users, roles: initialRoles, target: ext, onTa
       <p className="text-sm text-muted">
         {person ? <>Editando <b className="text-ink">{person.name}</b>. “Padrão” segue o cargo; “Liberar” e “Bloquear” valem só para esta pessoa. O Adm sempre vê tudo.</> : <>Editando o padrão do cargo <b className="text-ink">{ROLE_LABEL[(target as { role: RoleKey }).role]}</b>. Vale para todos com esse cargo, exceto quem tem ajuste próprio.</>}
       </p>
+
+
+      <section className={`${panelCls} space-y-2 p-4`} aria-label="Abas do menu">
+        <div className="flex flex-wrap items-baseline gap-x-3">
+          <h2 className="text-sm font-semibold">Atalho: quais abas {person ? <b>{person.name.split(" ")[0]}</b> : <>o cargo <b>{ROLE_LABEL[(target as { role: RoleKey }).role]}</b></>} vê</h2>
+          <p className="text-xs text-muted">Toque numa aba para liberar ou bloquear. Verde = vê. {person ? "Ajuste só desta pessoa." : "Vale para todo o cargo."} Funciona com abas de qualquer área (por exemplo, Visitas para Vendas).</p>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {PERMISSIONS.filter((p) => p.group === "Abas").map((p) => {
+            const eff = effective(p.key);
+            return (
+              <button key={p.key} type="button" aria-pressed={eff} onClick={() => toggleQuick(p.key)} title={`${domainOf(p.key)}: clique para ${eff ? "bloquear" : "liberar"}`}
+                className={`inline-flex items-center gap-1.5 rounded-xl border-2 px-3 py-1.5 text-sm font-semibold transition active:scale-95 ${eff ? "border-ok/60 bg-ok/15 text-ink" : "border-line bg-sunk/60 text-muted hover:text-ink"}`}>
+                {eff ? <Check size={14} aria-hidden className="text-ok" /> : <X size={14} aria-hidden />}{p.label.replace(/^Aba /, "")}<span className="text-[10px] font-bold uppercase text-muted">{domainOf(p.key)}</span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="Categoria">
         {[{ key: "all" as const, label: "Todas", hint: "" }, ...DOMAINS].map((d) => {

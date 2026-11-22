@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ScriptNode } from "@/config/scripts";
-import { SEGMENTS } from "@/config/scripts";
+import { MOOD_KEYS, SEGMENTS } from "@/config/scripts";
 
 const text = (max: number) => z.string().trim().max(max);
 export const nodeSchema = z.object({
@@ -9,6 +9,7 @@ export const nodeSchema = z.object({
   title: text(60).min(1, "Todo passo precisa de um nome."),
   say: text(1500),
   tip: text(400).optional(),
+  mood: z.enum(MOOD_KEYS as [string, ...string[]]).optional(),
   options: z.array(z.object({ label: text(120).min(1, "Toda resposta precisa de um texto."), to: z.string().trim().max(24).nullable(), kind: z.enum(["ok", "objecao", "neutro"]) })).max(10),
   outcome: z.enum(["visita", "cotacao", "retorno", "venda", "encerrar"]).optional(),
 });
