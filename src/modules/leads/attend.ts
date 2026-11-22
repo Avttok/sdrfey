@@ -48,6 +48,7 @@ export async function saveAttendance(userId: number, input: SaveInput): Promise<
   const visitDate = input.visitDate && /^\d{4}-\d{2}-\d{2}$/.test(input.visitDate) ? input.visitDate : null;
   if (visitCode && !visitDate) throw new UserError("Informe a data da visita.");
   const visitLink = cleanVisitLink(input.visitLink);
+  if (visitCode && !visitLink) throw new UserError("Informe o link da visita no Salesforce (começando com https://).");
   if (input.visitLink?.trim() && !visitLink) throw new UserError("O link da visita precisa começar com https://.");
   const s = await getSettings();
 

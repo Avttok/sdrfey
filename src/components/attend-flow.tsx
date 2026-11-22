@@ -9,6 +9,7 @@ import { GoalBar } from "@/components/goal-bar";
 import { CopyVal } from "@/components/copy-val";
 import { LeadInfoPanel } from "@/components/lead-info-panel";
 import { TagChip } from "@/components/tag-chip";
+import { DestPicker, FinalActions, FlashTag, SellerQueue, TagDeck, VisitFields } from "@/components/attend-final";
 import { useBusyWhile, useToast } from "@/components/toast";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { chatproUrl, cleanRole, fmtCnpj, fmtDate, fmtDateTime, fmtMoney, fmtPhone } from "@/lib/format";
@@ -52,7 +53,7 @@ const copy = async (text: string, toast: ReturnType<typeof useToast>) => {
   }
 };
 
-export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myName, showMap, previous, doneToday, scheduledToday, goals, sellers, sales }: { /** Consulta automática de CNPJ ligada pelo Adm: o shuffler não consulta sozinho. */ autoEnrichOn?: boolean; /** Modo vendedor (lead inativo): mesmo fluxo, destinos diferentes no fim. */ sales?: { shuffleId: number }; sellers: { id: number; name: string }[]; lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; previous: PreviousAttendance | null; doneToday: number; scheduledToday: number; goals: Goals }) {
+export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myName, showMap, previous, doneToday, scheduledToday, goals, sellers, sales, queue }: { /** Fila de distribuição aos vendedores: ligada? e quem é o próximo. */ queue?: { on: boolean; nextId: number | null }; /** Consulta automática de CNPJ ligada pelo Adm: o shuffler não consulta sozinho. */ autoEnrichOn?: boolean; /** Modo vendedor (lead inativo): mesmo fluxo, destinos diferentes no fim. */ sales?: { shuffleId: number }; sellers: { id: number; name: string }[]; lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; previous: PreviousAttendance | null; doneToday: number; scheduledToday: number; goals: Goals }) {
   const toast = useToast();
   const [pending, start] = useTransition();
   const openedAt = useRef(Date.now());
@@ -158,10 +159,11 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
   };
 
   /** Antes de salvar: encaminhar exige visita preenchida (o servidor confere de novo). */
-  const visitMissing = showVisit && (!visit.trim() || !visitDate);
+  const linkOk = /^https:\/\/\S+$/i.test(visitLink.trim());
+  const visitMissing = showVisit && (!visit.trim() || !visitDate || !linkOk);
   const payload = () => ({ leadId: lead.id, channels: [...used], temperature, qualification, situations: [...situations], note, visitCode: showVisit ? visit : null, visitDate: showVisit ? visitDate : null, visitLink: showVisit ? visitLink || null : null, handoff: { to: dest, sellerId: dest === "sellers" ? sellerId : null, note: null } });
   /** Salva e sorteia o próximo lead. */
-  const blocked = () => { if (!visitMissing) return false; toast("warn", "Para encaminhar o lead, preencha o código e a data da visita."); return true; };
+  const blocked = () => { if (!visitMissing) return false; toast("warn", "Para encaminhar o lead, preencha o código, a data e o link da visita no Salesforce (começando com https://)."); return true; };
   const save = () => blocked() || run(async () => {
     saving.current = true;
     const r = await saveThis(payload()).catch(() => ({ ok: false as const, message: "Não foi possível salvar." }));
@@ -227,7 +229,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
       {/* topo: empresa, metas do dia e passos */}
       <header className={`${panelCls} fx-rise relative overflow-hidden p-5 sm:p-6`}>
         <div aria-hidden className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-accent/15 blur-2xl" /><div aria-hidden className="pointer-events-none absolute -bottom-20 -left-10 size-48 rounded-full bg-accent/10 blur-3xl" />
-        <div className="relative flex flex-wrap items-start gap-x-8 gap-y-4">
+        {step !== 4 && <div className="relative flex flex-wrap items-start gap-x-8 gap-y-4">
           <div className="min-w-0 flex-1">
             <p className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-accent"><span className="inline-flex items-center gap-1.5"><Building2 size={14} aria-hidden /> Lead sorteado</span><span className="inline-flex items-center gap-1 rounded-full bg-accent/12 px-2 py-0.5 normal-case tracking-normal" title="Tempo neste lead"><Timer size={12} aria-hidden /><Elapsed since={openedAt.current} /></span></p>
             <h1 className="display mt-1 text-2xl sm:text-3xl">{lead.tradeName ?? lead.company}</h1>
@@ -237,8 +239,8 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
             {!sales && goals.attended.on && <GoalBar label="Atendidos hoje" value={doneToday} qty={goals.attended.qty} />}
             {!sales && goals.scheduled.on && <GoalBar label="Agendados hoje" value={scheduledToday} qty={goals.scheduled.qty} alt />}
           </div>
-        </div>
-        <ol className="relative mt-6 flex items-center" aria-label="Passos do atendimento">
+        </div>}
+        <ol className={`relative flex items-center ${step !== 4 ? "mt-6" : ""}`} aria-label="Passos do atendimento">
           {visible.map((i, pos) => { const st = STEPS[i]; const SI = STEP_ICON[i]; const cur = i === step; const done = i < step; return (
             <li key={st} className={`flex items-center ${pos < visible.length - 1 ? "flex-1" : ""}`}>
               <button type="button" onClick={() => go(i)} aria-current={cur ? "step" : undefined} className="group flex flex-col items-center gap-1.5">
@@ -287,7 +289,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
           </div>
         )}
 
-        {step > 0 && (
+        {step > 0 && step !== 4 && (
           <div className="mb-5 grid gap-x-6 gap-y-3 rounded-xl bg-sunk p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <Info label="Empresa"><b>{lead.tradeName ?? lead.company}</b></Info>
             <Info label="CNPJ"><CopyVal text={lead.cnpj}>{fmtCnpj(lead.cnpj)}</CopyVal></Info>
@@ -358,65 +360,30 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
         )}
 
         {step === 4 && (
-          <section className="space-y-5">
+          <section className="space-y-6">
             <StepTitle i={4} />
-            <Group title={groups.meio?.name ?? "Meios de contato usados"}>{groups.meio?.tags.filter((t) => !t.autoOnly).map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={used.has(t.key)} onClick={() => toggle(used, t.key, setUsed)} />)}</Group>
-            <Group title={groups.temperatura?.name ?? "Temperatura"}>{groups.temperatura?.tags.map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={temperature === t.key} onClick={() => setTemperature(temperature === t.key ? null : t.key)} />)}</Group>
-            <Group title={groups.qualificacao?.name ?? "Qualificação"}>{groups.qualificacao?.tags.map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={qualification === t.key} onClick={() => setQualification(qualification === t.key ? null : (t.key as "qualificado"))} />)}</Group>
-            <Group title={groups.situacao?.name ?? "Situação"}>{groups.situacao?.tags.filter((t) => !t.autoOnly).map((t) => <TagChip key={t.key} small={false} label={t.label} color={t.color} on={situations.has(t.key)} onClick={() => toggle(situations, t.key, setSituations)} />)}</Group>
-            {sales ? (
-              <div className="space-y-3">
-                <p className="text-sm font-medium">O que fazer com este lead?</p>
-                <div role="radiogroup" aria-label="Destino do lead" className="grid gap-2 sm:grid-cols-3">
-                  {([["none", "Só salvar", "Registra o que você fez e segue sem encaminhar"], ["visit", "Agendar visita e enviar ao meu painel", "A negociação abre no seu painel Novo; exige visita marcada"], ["sdr", "Devolver à fila dos SDR", "Volta a ser prospecção e entra no Shuffler dos SDR"]] as const).map(([k, t, d]) => (
-                    <button key={k} type="button" role="radio" aria-checked={dest === k} onClick={() => setDest(k)} className={`rounded-xl border-2 px-3 py-2.5 text-left transition ${dest === k ? "border-accent bg-accent/10" : "border-line hover:bg-sunk"}`}>
-                      <span className="block text-sm font-semibold">{t}</span><span className="block text-xs text-muted">{d}</span>
-                    </button>
-                  ))}
-                </div>
-                {dest === "visit" && (
-                  <div className="flex flex-wrap items-end gap-3">
-                    <label className="block w-48 text-sm"><span className="mb-1 block text-muted">Código da visita <span className="text-danger">*</span></span><input className={inputCls} placeholder="V-12345" value={visit} onChange={(e) => setVisit(e.target.value)} /></label>
-                    <div className="block w-48 text-sm"><span className="mb-1 block text-muted">Data da visita <span className="text-danger">*</span></span><DateInput label="Data da visita" value={visitDate} onChange={setVisitDate} /></div>
-                    <label className="block min-w-60 flex-1 text-sm"><span className="mb-1 block text-muted">Link da visita (Salesforce, opcional)</span><input className={inputCls} placeholder="https://…" value={visitLink} onChange={(e) => setVisitLink(e.target.value)} /></label>
-                  </div>
-                )}
-              </div>
-            ) : (
+            {([
+              ["meio", "Meios de contato usados", "marque todos que usou", used.size, Phone, (g: TagCatalog[number]) => g.tags.filter((t) => !t.autoOnly).map((t) => <FlashTag key={t.key} label={t.label} color={t.color} on={used.has(t.key)} onClick={() => toggle(used, t.key, setUsed)} />)],
+              ["temperatura", "Temperatura do lead", "escolha 1", temperature ? 1 : 0, Flag, (g: TagCatalog[number]) => g.tags.map((t) => <FlashTag key={t.key} label={t.label} color={t.color} on={temperature === t.key} onClick={() => setTemperature(temperature === t.key ? null : t.key)} />)],
+              ["qualificacao", "Qualificação", "escolha 1", qualification ? 1 : 0, Check, (g: TagCatalog[number]) => g.tags.map((t) => <FlashTag key={t.key} label={t.label} color={t.color} on={qualification === t.key} onClick={() => setQualification(qualification === t.key ? null : (t.key as "qualificado"))} />)],
+              ["situacao", "Situação", "marque o que se aplica", situations.size, TriangleAlert, (g: TagCatalog[number]) => g.tags.filter((t) => !t.autoOnly).map((t) => <FlashTag key={t.key} label={t.label} color={t.color} on={situations.has(t.key)} onClick={() => toggle(situations, t.key, setSituations)} />)],
+            ] as const).map(([k, title, hint, n, GI, render]) => {
+              const g = groups[k];
+              if (!g) return null;
+              const cards = render(g);
+              return <TagDeck key={k} title={g.name ?? title} hint={hint} icon={GI} count={n} total={cards.length}>{cards}</TagDeck>;
+            })}
             <div className="space-y-3">
-              <p className="text-sm font-medium">Encaminhar este lead</p>
-              <div role="radiogroup" aria-label="Encaminhar lead" className="grid gap-2 sm:grid-cols-3">
-                {([["none", "Sem encaminhamento", "Só registrar o atendimento"], ["sellers", "Vendedores SDR", "Negociação imediata; o vendedor entra na visita pelo Salesforce e confirma"], ["reps", "Representante", "Agenda uma visita (leva dias para confirmar)"]] as const).map(([k, t, d]) => (
-                  <button key={k} type="button" role="radio" aria-checked={dest === k} onClick={() => setDest(k)} className={`rounded-xl border-2 px-3 py-2.5 text-left transition ${dest === k ? "border-accent bg-accent/10" : "border-line hover:bg-sunk"}`}>
-                    <span className="block text-sm font-semibold">{t}</span><span className="block text-xs text-muted">{d}</span>
-                  </button>
-                ))}
-              </div>
-              {dest === "sellers" && (
-                <div className="flex flex-wrap items-end gap-3">
-                  <label className="block min-w-60 text-sm"><span className="mb-1 block text-muted">Quem vai atender</span>
-                    <select className={inputCls} value={sellerId ?? ""} onChange={(e) => setSellerId(e.target.value ? Number(e.target.value) : null)}>
-                      <option value="">Grupo dos vendedores (o primeiro a assumir)</option>
-                      {sellers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                    </select></label>
-                </div>
-              )}
-              {(dest === "reps" || dest === "sellers") && (
-                <div className="flex flex-wrap items-end gap-3">
-                  <label className="block w-48 text-sm"><span className="mb-1 block text-muted">Código da visita <span className="text-danger">*</span></span><input className={inputCls} placeholder="V-12345" value={visit} onChange={(e) => setVisit(e.target.value)} /></label>
-                  <div className="block w-48 text-sm"><span className="mb-1 block text-muted">Data da visita <span className="text-danger">*</span></span><DateInput label="Data da visita" value={visitDate} onChange={setVisitDate} /></div>
-                  <label className="block min-w-60 flex-1 text-sm"><span className="mb-1 block text-muted">Link da visita (Salesforce, opcional)</span><input className={inputCls} placeholder="https://…" value={visitLink} onChange={(e) => setVisitLink(e.target.value)} /></label>
-                  <p className="w-full text-xs text-muted">{dest === "sellers" ? "Obrigatório: o lead só vai para os vendedores com a visita registrada (código e data). O vendedor entra pelo Salesforce e confirma." : "Obrigatório: o lead só vai para o representante com a visita registrada (código e data). Agendar qualifica o lead e guarda o representante mais próximo e a distância."}</p>
-                </div>
-              )}
+              <p className="flex items-center gap-2 text-sm font-semibold"><Send size={16} aria-hidden className="text-accent" /> {sales ? "O que fazer com este lead?" : "Encaminhar este lead"}</p>
+              <DestPicker value={dest} onChange={setDest} options={sales
+                ? ([["none", "Só salvar", "Registra o que você fez e segue sem encaminhar"], ["visit", "Agendar visita e levar ao meu painel", "A negociação abre no seu painel Novo; exige visita marcada"], ["sdr", "Devolver à fila dos SDR", "Volta a ser prospecção e entra no Shuffler dos SDR"]] as const)
+                : ([["none", "Sem encaminhamento", "Só registrar o atendimento"], ["sellers", "Vendedores SDR", "Negociação imediata; o vendedor entra na visita pelo Salesforce e confirma"], ["reps", "Representante", "Agenda uma visita (leva dias para confirmar)"]] as const)} />
+              {!sales && dest === "sellers" && <SellerQueue sellers={sellers} nextId={queue?.nextId ?? null} queueOn={!!queue?.on} value={sellerId} onChange={setSellerId} />}
+              {showVisit && <VisitFields code={visit} setCode={setVisit} date={visitDate} dateInput={<DateInput label="Data da visita" value={visitDate} onChange={setVisitDate} />} link={visitLink} setLink={setVisitLink} />}
+              {showVisit && !sales && <p className="text-xs text-muted">{dest === "sellers" ? "Obrigatório: o lead só vai para os vendedores com a visita registrada (código, data e link do Salesforce)." : "Obrigatório: o lead só vai para o representante com a visita registrada (código, data e link). Agendar qualifica o lead e guarda o representante mais próximo e a distância."}</p>}
             </div>
-            )}
-            <label className="block text-sm">Observação<textarea className={`${inputCls} min-h-24`} value={note} onChange={(e) => setNote(e.target.value)} /></label>
-            <div className="flex flex-wrap items-center justify-center gap-2 border-t border-line pt-5">
-              <button type="button" disabled={pending} className={btnPrimary} onClick={save}><Check size={17} aria-hidden /> SALVAR E PRÓXIMO</button>
-              <button type="button" disabled={pending} className={btnGhost} onClick={saveAndStop} title="Salva, libera o lead e volta ao botão Shuffler"><Pause size={16} aria-hidden /> SALVAR E PARAR</button>
-              <button type="button" disabled={pending} className={`${btnGhost} text-danger`} onClick={() => ask({ title: "Descartar este lead?", body: "Ele sai do sorteio e você recebe o próximo.", label: "Sim, descartar", icon: X, onConfirm: discardNow })}><X size={16} aria-hidden /> DESCARTAR LEAD</button>
-            </div>
+            <label className="block text-sm font-medium">Observação<textarea className={`${inputCls} mt-1 min-h-24 font-normal`} value={note} onChange={(e) => setNote(e.target.value)} /></label>
+            <FinalActions pending={pending} onSave={save} onStop={saveAndStop} onDiscard={() => ask({ title: "Descartar este lead?", body: "Ele sai do sorteio e você recebe o próximo.", label: "Sim, descartar", icon: X, onConfirm: discardNow })} />
           </section>
         )}
       </div>

@@ -4,7 +4,7 @@ import { createContext, useContext } from "react";
 import { TAG_ICONS } from "@/config/tag-icons";
 
 /** nome da tag (em maiúsculas) → chave do ícone. Vem do layout. */
-const TagIcons = createContext<Record<string, string>>({});
+export const TagIcons = createContext<Record<string, string>>({});
 export const TagIconProvider = TagIcons.Provider;
 
 /** Chip de tag com a cor própria dela e o ícone dela (a cor do cargo nunca aparece aqui). */

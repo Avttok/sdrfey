@@ -20,6 +20,9 @@ const GROUPS: { title: string; sub: string; icon: typeof Clock; fields: Field[] 
     { key: "alert_days", label: "Lead quente ou visita parada vira alerta", hint: "Aparece no bloco Alertas do dashboard.", unit: "dias", min: 1 },
     { key: "dash_default_days", label: "Período que o dashboard abre", hint: "Cada pessoa ainda pode trocar o filtro.", kind: "period" },
   ] },
+  { title: "Fila dos vendedores", sub: "Como os leads qualificados chegam aos vendedores", icon: Shuffle, fields: [
+    { key: "seller_queue_on", label: "Distribuir em fila (1, 2, 3, 4, 1…)", hint: "Ligado: o lead encaminhado pelo SDR vai para o próximo vendedor da vez. Desligado: cai no grupo e o primeiro a assumir fica com ele.", kind: "toggle" },
+  ] },
   { title: "Negociações", sub: "Avisos do kanban de vendas e prazos", icon: LayoutDashboard, fields: [
     { key: "deal_new_untouched_hours", label: "Negociação nova sem contato vira alerta", hint: "Depois desse tempo sem ninguém mexer.", unit: "horas", min: 1 },
     { key: "deal_pool_hours", label: "Negociação no pool sem dono vira alerta", hint: "Esperando um vendedor assumir.", unit: "horas", min: 1 },

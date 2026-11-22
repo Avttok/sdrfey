@@ -31,11 +31,11 @@ export default async function SalesShufflePage() {
     inactiveStock(),
   ]);
   return (
-    <ShuffleHero avatar={me.avatar} roles={me.shownRoles} action={startSalesShuffleAction} empty={stock > 0 ? undefined : { hint: "Nenhum lead inativo livre agora. Quando o time liberar novos (ou algum voltar da espera), eles aparecem aqui." }}>
+    <ShuffleHero title="Shuffler Vendas" avatar={me.avatar} roles={me.shownRoles} action={startSalesShuffleAction} empty={stock > 0 ? undefined : { hint: "Nenhum lead inativo livre agora. Quando o time liberar novos (ou algum voltar da espera), eles aparecem aqui." }}>
       <GoalPills items={[
         { icon: "shuffle", label: "Trabalhados hoje", value: r?.worked ?? 0 },
         { icon: "handshake", label: "Negociações abertas hoje", value: r?.deals ?? 0 },
-        { icon: "inactive", label: "Inativos livres", value: stock, plain: true },
+        { icon: "inactive", label: "Leads Inativos", value: stock, plain: true },
       ]} />
     </ShuffleHero>
   );

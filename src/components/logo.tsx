@@ -1,7 +1,7 @@
 /** Marca da FEY (desenhada em SVG: nítida em qualquer tamanho e cor). */
 export function FeyMark({ size = 28, color = "#E9283A", className = "", animated = false }: { size?: number; color?: string; className?: string; animated?: boolean }) {
   return (
-    <svg viewBox="0 90 1248 1198" width={size} height={size * (1198 / 1248)} role="img" aria-label="FEY" className={`${animated ? "fey-live" : ""} ${className}`} style={animated ? { filter: `drop-shadow(0 0 7px ${color}66)` } : undefined} fill={color}>
+    <svg viewBox="0 90 1248 1198" width={size} height={size * (1198 / 1248)} role="img" aria-label="FEY" className={`${animated ? "fey-live" : ""} ${className}`} style={animated ? { filter: color === "currentColor" ? "drop-shadow(0 0 9px color-mix(in srgb, currentColor 45%, transparent))" : `drop-shadow(0 0 7px ${color}66)` } : undefined} fill={color}>
       <path d="M0 90H1248V198H108V1287H0Z" style={{ "--i": 0 } as React.CSSProperties} />
       <path d="M216 306H1248V414H216Z" style={{ "--i": 1 } as React.CSSProperties} />
       <path d="M216 523H707V631H324V740H707V849H324V957H707V1070H216Z" style={{ "--i": 2 } as React.CSSProperties} />

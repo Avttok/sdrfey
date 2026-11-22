@@ -22,7 +22,7 @@ export async function saveSalesWork(userId: number, shuffleId: number, input: Sa
     if (!input.visitDate || !/^\d{4}-\d{2}-\d{2}$/.test(input.visitDate)) throw new UserError("Informe a data da visita.");
   }
   const link = cleanVisitLink(input.visitLink);
-  if (final === "visit" && input.visitLink?.trim() && !link) throw new UserError("O link da visita precisa começar com https://.");
+  if (final === "visit" && !link) throw new UserError("Informe o link da visita no Salesforce (começando com https://).");
 
   await db.transaction(async (tx) => {
     const [s] = await tx.select().from(sellerShuffles).where(and(eq(sellerShuffles.id, shuffleId), eq(sellerShuffles.userId, userId), sql`${sellerShuffles.outcome} is null`)).for("update");

@@ -8,6 +8,7 @@ import { ShuffleHero } from "@/components/shuffle-hero";
 import { attendanceSessions, db, leads, users, visits } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
 import { startAction } from "@/modules/leads/actions";
+import { peekNextSeller } from "@/modules/deals/handoff";
 import { getSettings } from "@/modules/settings/get";
 import { effectiveGoals } from "@/modules/settings/goals";
 import { getActiveTemplates, getLeadView, getTagCatalog } from "@/modules/leads/view";
@@ -61,5 +62,5 @@ export default async function AttendPage() {
   }
 
   const previous = prev ? { by: prev.name ?? "Outra pessoa", at: new Date(prev.at).toISOString(), channels: prev.channels ?? [], note: prev.note } : null;
-  return <AttendFlow autoEnrichOn={(await getSettings()).auto_enrich === 1} lead={lead} catalog={catalog!} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={previous} doneToday={done?.n ?? 0} scheduledToday={sched?.n ?? 0} goals={goals} sellers={sellers} />;
+  return <AttendFlow autoEnrichOn={(await getSettings()).auto_enrich === 1} lead={lead} catalog={catalog!} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={previous} doneToday={done?.n ?? 0} scheduledToday={sched?.n ?? 0} goals={goals} sellers={sellers} queue={{ on: settings.seller_queue_on === 1, nextId: await peekNextSeller() }} />;
 }

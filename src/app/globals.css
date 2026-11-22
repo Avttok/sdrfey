@@ -340,3 +340,14 @@ body.dragging, body.dragging * { user-select: none !important; cursor: grabbing 
 html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 *::-webkit-scrollbar, *::-webkit-scrollbar-thumb, *::-webkit-scrollbar-track { display: none; width: 0; height: 0; }
 .no-sb { scrollbar-width: none; }
+
+/* Cartões de tag e de destino (etapa final do atendimento) */
+@keyframes ft-pop { 0% { transform: scale(.94); } 60% { transform: scale(1.04); } 100% { transform: scale(1); } }
+.ft { border-style: dashed; border-color: var(--line); background: var(--sunk); color: var(--muted); }
+.ft .ft-ico { background: color-mix(in srgb, var(--muted) 14%, transparent); filter: grayscale(.6); }
+.ft .ft-pill { background: color-mix(in srgb, var(--muted) 14%, transparent); color: var(--muted); }
+.ft:hover { border-color: color-mix(in srgb, var(--cor) 55%, var(--line)); }
+.ft[data-on="true"] { border-style: solid; border-color: var(--cor); color: var(--ink); animation: ft-pop .35s ease-out; background: linear-gradient(135deg, color-mix(in srgb, var(--cor) 26%, var(--panel)), color-mix(in srgb, var(--cor) 8%, var(--panel))); box-shadow: 0 10px 26px -10px color-mix(in srgb, var(--cor) 65%, transparent), 0 0 0 1px color-mix(in srgb, var(--cor) 35%, transparent); }
+.ft[data-on="true"] .ft-ico { background: var(--cor); color: #fff; filter: none; box-shadow: 0 6px 14px -4px color-mix(in srgb, var(--cor) 70%, transparent); }
+.ft[data-on="true"] .ft-pill { background: color-mix(in srgb, var(--cor) 22%, transparent); color: color-mix(in srgb, var(--cor) 75%, var(--ink)); }
+@media (prefers-reduced-motion: reduce) { .ft[data-on="true"] { animation: none; } }

@@ -38,6 +38,8 @@ export const SETTING_DEFAULTS = {
   coin_quote: 3,
   coin_billed: 25,
   coin_shuffled: 1,
+  /** Fila de distribuição dos leads encaminhados pelos SDR (1 = ligada). */
+  seller_queue_on: 1,
   /** Avisos das negociações (kanban de vendas). */
   deal_new_untouched_hours: 2,
   deal_pool_hours: 1,
