@@ -44,11 +44,11 @@ export default async function AdminHome() {
       {ADMIN_SECTIONS.map((s) => (
         <section key={s.id} className="space-y-2.5">
           <h2 className="flex items-center gap-2 text-sm font-semibold"><span aria-hidden className="h-4 w-1 rounded-full" style={{ background: s.hue }} />{s.title}</h2>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {s.items.map(({ href, label, hint, icon: Icon }, i) => (
               <Link key={href} href={href} style={{ "--i": i } as React.CSSProperties} className={`${panelCls} lift card-in group flex items-center gap-3.5 p-4`}>
                 <span className="grid size-11 shrink-0 place-items-center rounded-2xl transition group-hover:scale-105" style={{ background: `color-mix(in srgb, ${s.hue} 16%, transparent)`, color: s.hue }}><Icon size={22} aria-hidden /></span>
-                <span className="min-w-0"><span className="block font-semibold leading-tight">{label}</span><span className="block truncate text-xs text-muted">{hint}</span></span>
+                <span className="min-w-0"><span className="block font-semibold leading-tight">{label}</span><span className="line-clamp-2 break-words text-xs text-muted">{hint}</span></span>
                 <ArrowUpRight size={16} className="ml-auto shrink-0 text-muted opacity-0 transition group-hover:opacity-100" aria-hidden />
               </Link>
             ))}

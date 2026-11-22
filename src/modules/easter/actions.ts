@@ -21,10 +21,12 @@ export async function eggKnockAction(): Promise<{ ok: boolean }> {
 }
 
 export async function eggHasKey(uid: number): Promise<boolean> {
+  if ((await requireUser()).id !== uid) return false;
   const p = await readEgg<{ uid: number; key: number }>((await cookies()).get(EGG_COOKIE)?.value);
   return !!p && p.uid === uid && p.key === 1;
 }
 export async function eggIsDone(uid: number): Promise<boolean> {
+  if ((await requireUser()).id !== uid) return false;
   const [r] = await db.select({ id: coinLedger.id }).from(coinLedger).where(and(eq(coinLedger.userId, uid), eq(coinLedger.ref, "egg:done")));
   return !!r;
 }

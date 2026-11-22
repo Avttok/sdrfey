@@ -150,7 +150,7 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, icmsPct
                   <button type="button" disabled={!clickable || pending} aria-current={cur ? "step" : undefined} onClick={() => run(() => setStageAction(deal.id, s as DealStage))} title={STAGE_META[s].hint}
                     className={`group flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm font-semibold transition ${clickable ? "hover:bg-sunk" : "cursor-default"} ${cur || done ? "text-ink" : "text-muted"}`}>
                     <span className="grid size-7 shrink-0 place-items-center rounded-full border-2 text-xs transition" style={cur || done ? { background: color, borderColor: color, color: "var(--on-accent)" } : undefined}>{done && !cur ? <Check size={14} aria-hidden /> : i + 1}</span>
-                    <span>{STAGE_META[s].label}</span>
+                    <span className={cur ? "" : "max-sm:sr-only"}>{STAGE_META[s].label}</span>
                   </button>
                   {i < STEPS.length - 1 && <span aria-hidden className="mx-1 h-0.5 min-w-4 flex-1 rounded-full bg-line"><span className="block h-full rounded-full bg-accent transition-all" style={{ width: i < idx || deal.stage === "ganho" ? "100%" : "0%" }} /></span>}
                 </li>
@@ -159,7 +159,7 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, icmsPct
           </ol>
         )}
 
-        <div className="grid items-start gap-4 xl:grid-cols-2">
+        <div className="gap-4 xl:columns-2 [&>*]:mb-4 [&>*]:break-inside-avoid">
         {mine && deal.sellerId && (
           <SectionCard icon={NotebookPen} title="Andamento" className="flex flex-col">
             {!closed && (

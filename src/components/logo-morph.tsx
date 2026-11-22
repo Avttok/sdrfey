@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef } from "react";
-import { FEY_PATH, logoFrame, rectsPath } from "@/config/logo-shapes";
+import { FEY_PATH, logoFrame, logoMoveProgress, rectsPath } from "@/config/logo-shapes";
 
 /** Escolhas do Adm para a logo (Parâmetros → Identidade visual): 0 = parada, 1 = morph, 2 = onda. */
 export type LogoCfg = { anim: number; pace: number; text: number };
@@ -16,16 +16,24 @@ export function MorphMark({ size = 38, color = RED, anim, pace, className = "" }
   const cfg = useLogoCfg();
   const a = anim ?? cfg.anim, pc = pace ?? cfg.pace;
   const ref = useRef<SVGPathElement>(null);
+  const svg = useRef<SVGSVGElement>(null);
   useEffect(() => {
     const el = ref.current; if (!el) return;
     if (!a || window.matchMedia("(prefers-reduced-motion: reduce)").matches) { el.setAttribute("d", FEY_PATH); return; }
     let raf = 0;
-    const loop = () => { el.setAttribute("d", rectsPath(logoFrame(performance.now(), a === 2 ? "wave" : "morph", pc))); raf = requestAnimationFrame(loop); };
+    const loop = () => {
+      const now = performance.now();
+      el.setAttribute("d", rectsPath(logoFrame(now, a === 2 ? "wave" : "morph", pc)));
+      // no meio da troca a marca desfoca e esmaece de leve, para a transição FEY ⇄ SDR não ser seca
+      const s = Math.sin(Math.PI * logoMoveProgress(now, pc));
+      const box = svg.current; if (box) { box.style.filter = s > 0.02 ? `blur(${(s * size * 0.05).toFixed(2)}px)` : ""; box.style.opacity = String(1 - 0.4 * s); }
+      raf = requestAnimationFrame(loop);
+    };
     loop();
     return () => cancelAnimationFrame(raf);
-  }, [a, pc]);
+  }, [a, pc, size]);
   return (
-    <svg viewBox="0 0 1248 1248" width={size} height={size} role="img" aria-label="FEY SDR" className={className} fill={color}>
+    <svg ref={svg} viewBox="0 0 1248 1248" width={size} height={size} role="img" aria-label="FEY SDR" className={className} fill={color}>
       <path ref={ref} d={FEY_PATH} />
     </svg>
   );

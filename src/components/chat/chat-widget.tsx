@@ -160,7 +160,7 @@ function ProfileDialog({ userId, hex, isAdmin, onClose, onPurged }: { userId: nu
           {p && (
             <div className="mt-4 space-y-4">
               <div className="sh-rise flex flex-wrap justify-center gap-1.5" style={{ "--d": ".18s" } as React.CSSProperties}>{p.roles.map((r) => <RoleBadge key={r} role={r} />)}</div>
-              {p.egg && <div className="sh-rise egg-card flex items-center gap-3 rounded-2xl border border-amber-400/60 px-4 py-3" style={{ "--d": ".2s" } as React.CSSProperties}><EggBadge size={40} /><div className="min-w-0"><p className="text-sm font-extrabold">Douraovo</p><p className="text-xs text-muted">Encontrou o segredo escondido no sistema.</p></div></div>}
+              {p.egg && <div className="sh-rise egg-card flex items-center gap-3 rounded-2xl border border-amber-400/60 px-4 py-3" style={{ "--d": ".2s" } as React.CSSProperties}><EggBadge size={40} /><div className="min-w-0"><p className="text-sm font-extrabold">Douradovo</p><p className="text-xs text-muted">Encontrou o segredo escondido no sistema.</p></div></div>}
               <dl className="grid grid-cols-2 gap-2 text-sm">
                 {[["Mensagens", String(p.sent)], ["Conquistas", `${p.badges.length}/${p.badgeTotal}`], ...(p.isAdminView ? [["Conta", p.active ? "Ativa" : "Bloqueada"], ["Último acesso", p.lastLoginAt ? dtFmt.format(new Date(p.lastLoginAt)) : "nunca"]] : [])].map(([t, v], i) => (
                   <div key={t} className="sh-rise rounded-2xl bg-sunk px-3 py-2.5" style={{ "--d": `${0.22 + i * 0.06}s` } as React.CSSProperties}><dt className="text-[11px] text-muted">{t}</dt><dd className="figure text-base font-bold">{/^\d+$/.test(v) ? <CountUp to={Number(v)} /> : v}</dd></div>

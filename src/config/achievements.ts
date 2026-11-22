@@ -76,7 +76,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   A("Geral", "acc_180", "Meio ano", "Seis meses de SDR Fey.", "days_account", 180, BadgeCheck, "#818CF8", "dias"),
   A("Geral", "acc_365", "Aniversário", "Um ano de SDR Fey. Parabéns!", "days_account", 365, Cake, "#F472B6", "dias"),
   A("Geral", "acc_730", "Raiz", "Dois anos de SDR Fey.", "days_account", 730, Bird, "#FACC15", "dias"),
-  { ...A("Geral", "egg", "Douraovo", "Você encontrou o segredo escondido no sistema. Poucos chegam aqui!", "egg", 1, Egg, "#FBBF24", "segredo"), hidden: true },
+  { ...A("Geral", "egg", "Douradovo", "Você encontrou o segredo escondido no sistema. Poucos chegam aqui!", "egg", 1, Egg, "#FBBF24", "segredo"), hidden: true },
 ];
 
 export const ACHIEVEMENT_BY_KEY = new Map(ACHIEVEMENTS.map((a) => [a.key, a]));

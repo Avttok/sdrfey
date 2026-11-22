@@ -15,14 +15,14 @@ function navFor(user: CurrentUser) {
 }
 
 /** Barra horizontal no topo. Com a barra lateral ativa, só aparece em telas pequenas. */
-export function AppHeader({ user, badges = {}, groupNav = true }: { user: CurrentUser; badges?: Record<string, number>; groupNav?: boolean }) {
+export function AppHeader({ user, badges = {}, groupNav = true, navAlign = 0 }: { user: CurrentUser; badges?: Record<string, number>; groupNav?: boolean; navAlign?: number }) {
   const accent = resolveAccent(user.accent, user.shownRoles);
   return (
     <header className={`sticky top-0 z-20 border-b border-line bg-panel ${user.navLayout === "side" ? "lg:hidden" : ""}`}>
       <div className="mx-auto flex w-full max-w-[92rem] items-center gap-x-3 px-3 py-2.5 sm:px-5 lg:px-6">
         <Link href="/painel" aria-label="SDR FEY, ir para o início" className="flex items-center transition hover:scale-[1.03]"><Logo /></Link>
         <MobileNav hrefs={navFor(user)} badges={badges} grouped={groupNav} custom={user.navCustom} tree={user.navTree} />
-        <div className="hidden min-w-0 flex-1 lg:block"><NavLinks hrefs={navFor(user)} badges={badges} grouped={groupNav} custom={user.navCustom} tree={user.navTree} /></div>
+        <div className="hidden min-w-0 flex-1 lg:block"><NavLinks align={navAlign} hrefs={navFor(user)} badges={badges} grouped={groupNav} custom={user.navCustom} tree={user.navTree} /></div>
         <div className="ml-auto flex items-center gap-2 lg:ml-0">
         {user.isAdmin && <div className="hidden sm:block"><AdminViewSwitch mode={user.adminView} /></div>}
         <NotificationBell />

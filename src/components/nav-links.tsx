@@ -46,7 +46,7 @@ function buildTree(tree: NavTree, all: Item[], grouped: boolean): Entry[] {
 }
 
 /** Itens do menu, na ordem recebida. `vertical` = barra lateral. */
-export function NavLinks({ hrefs, vertical = false, collapsed = false, badges = {}, grouped = true, custom = EMPTY_CUSTOM, tree = null }: { tree?: NavTree | null; custom?: NavCustom; hrefs: string[]; vertical?: boolean; collapsed?: boolean; badges?: Record<string, number>; grouped?: boolean }) {
+export function NavLinks({ hrefs, vertical = false, collapsed = false, badges = {}, grouped = true, custom = EMPTY_CUSTOM, tree = null, align = 0 }: { align?: number; tree?: NavTree | null; custom?: NavCustom; hrefs: string[]; vertical?: boolean; collapsed?: boolean; badges?: Record<string, number>; grouped?: boolean }) {
   const pathname = usePathname();
   const all = hrefs.map((h) => NAV.find((n) => n.href === h)).filter((n): n is Item => !!n);
   const entries = tree ? buildTree(tree, all, grouped) : build(all, grouped);
@@ -103,7 +103,7 @@ export function NavLinks({ hrefs, vertical = false, collapsed = false, badges = 
     );
   };
   return (
-    <nav aria-label="Principal" className={vertical ? "flex flex-col gap-1" : "-mx-1 flex items-center gap-1 overflow-x-auto"}>
+    <nav aria-label="Principal" className={vertical ? "flex flex-col gap-1" : `-mx-1 flex items-center gap-1 overflow-x-auto ${align === 1 ? "justify-center-safe" : align === 2 ? "justify-end-safe" : ""}`}>
       {entries.map((e) => e.kind === "link" ? link(e.item) : vertical
         ? (
           <div key={e.label} role="group" aria-label={eTitle(e)} className="mt-2 flex flex-col gap-1 border-t border-line pt-2">

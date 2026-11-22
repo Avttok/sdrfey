@@ -1,6 +1,8 @@
 import { and, asc, eq } from "drizzle-orm";
 import { PanelTop } from "lucide-react";
 import Link from "next/link";
+import { NavAlign } from "@/components/admin/nav-align";
+import { getSettings } from "@/modules/settings/get";
 import { NavCustomForm } from "@/components/admin/nav-custom-form";
 import { PageHead } from "@/components/page-head";
 import { panelCls } from "@/components/ui";
@@ -32,6 +34,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ u
   return (
     <div className="space-y-5">
       <PageHead icon={PanelTop} size="md" title="Barra de menus" />
+      <section className={`${panelCls} p-5`}><NavAlign initial={(await getSettings()).nav_align} /></section>
       <section className={`${panelCls} space-y-4 p-5`}>
         <h2 className="display text-lg">Nome, ícone e ordem</h2>
         <div className="flex flex-wrap items-center gap-2">

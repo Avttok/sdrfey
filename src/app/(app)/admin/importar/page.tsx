@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Upload } from "lucide-react";
+import { ArrowRight, Upload } from "lucide-react";
+import Link from "next/link";
 import { ImportForm } from "@/components/import-form";
 import { PageHead } from "@/components/page-head";
 import { ImportHistory } from "@/components/import-history";
@@ -15,7 +16,12 @@ export default async function Page() {
   const history = await importHistory();
   return (
     <div className="space-y-5">
-      <PageHead icon={Upload} size="md" title="Importar CSV" />
+      <PageHead icon={Upload} size="md" title="Importar planilhas" />
+      <nav aria-label="Outras importações" className="grid gap-3 sm:grid-cols-2">
+        {[["/negociacoes/importar", "Negociações", "Pedidos e cotações dos vendedores, com PDFs"], ["/transportadoras/importar", "Transportadoras", "Tabela de fretes por estado e tipo"]].map(([href, t, d]) => (
+          <Link key={href} href={href} className="lift flex items-center justify-between gap-3 rounded-2xl border border-line bg-panel p-4"><span><b className="block">Importar {t}</b><span className="text-sm text-muted">{d}</span></span><ArrowRight size={18} aria-hidden className="text-accent" /></Link>
+        ))}
+      </nav>
       <ImportForm />
       <ImportHistory rows={history} />
     </div>

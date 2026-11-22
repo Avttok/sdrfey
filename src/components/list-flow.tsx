@@ -137,7 +137,7 @@ export function ListFlow({ kind, lists, tagGroups }: { kind: ListKind; lists: Li
         </div>
       </section>
 
-      <div id="lf-build" className="grid scroll-mt-20 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_21rem]">
+      <div id="lf-build" className="grid scroll-mt-20 grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,1fr)_21rem]">
         <div className="space-y-4">
           <Block n={1} icon={MapIcon} title="Onde" hint="Estados e cidade (vazio = Brasil todo)" badge={f.ufs.length || f.city ? `${f.ufs.length} estado${f.ufs.length === 1 ? "" : "s"}${f.city ? " + cidade" : ""}` : undefined}>
             <div className="space-y-2.5">

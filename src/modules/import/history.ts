@@ -11,10 +11,11 @@ export type ActionResult = { ok: boolean; message: string };
 export type BatchRow = { id: number; kind: string; fileName: string; user: string | null; total: number; inserted: number; skipped: number; at: string; undoneAt: string | null; undoneCount: number | null; canUndo: boolean; touched: number };
 
 export async function importHistory(limit = 30): Promise<BatchRow[]> {
+  await requireAdmin();
   const rows = await db.execute<{ id: number; kind: string; file_name: string; user: string | null; total: number; inserted: number; skipped: number; at: string; undone_at: string | null; undone_count: number | null; touched: number }>(sql`
     select b.id, b.kind, b.file_name, u.name as user, b.total, b.inserted, b.skipped, b.created_at as at, b.undone_at, b.undone_count,
       (select count(*)::int from leads l where l.import_batch_id = b.id and ${touchedSql}) as touched
-    from import_batches b left join users u on u.id = b.user_id order by b.created_at desc limit ${limit}`);
+    from import_batches b left join users u on u.id = b.user_id order by b.created_at desc limit ${Math.min(Math.max(1, Math.floor(limit) || 30), 200)}`);
   return rows.map((r) => ({ id: r.id, kind: r.kind, fileName: r.file_name, user: r.user, total: r.total, inserted: r.inserted, skipped: r.skipped, at: new Date(r.at).toISOString(), undoneAt: r.undone_at ? new Date(r.undone_at).toISOString() : null, undoneCount: r.undone_count, canUndo: (r.kind === "leads" || r.kind === "inativos") && !r.undone_at && r.inserted > 0, touched: r.touched }));
 }
 

@@ -88,8 +88,7 @@ export function LeadEditor({ kpis, records, afterLeft, afterRight, lead, catalog
       </ConfirmDialog>
       <div className={`${panelCls} p-5 sm:p-6`}><LeadInfoPanel lead={lead} wide showMap={showMap} /></div>
 
-      <div className={`grid items-start gap-5 lg:grid-cols-2`}>
-      <div className="space-y-5">
+      <div className="gap-5 lg:columns-2 [&>*]:mb-5 [&>*]:break-inside-avoid">
       <SectionCard icon={Pencil} title="Editar dados">
         <div className="grid gap-3 sm:grid-cols-2">
           {input("company", "Razão social", true)}{input("tradeName", "Nome fantasia")}{input("city", "Cidade")}{input("uf", "UF")}
@@ -102,8 +101,6 @@ export function LeadEditor({ kpis, records, afterLeft, afterRight, lead, catalog
 
 
       {afterLeft}
-      </div>
-      <div className="space-y-5">
       <SectionCard icon={Link2} title="Perfis do cliente">
         <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); run(() => saveLeadLinksAction(lead.id, { salesforceUrl: links.sf, eoxUrl: links.eox })); }}>
           <label className="block text-sm"><span className="mb-1 block text-muted">Perfil no Salesforce</span><input className={inputCls} placeholder="https://…" value={links.sf} onChange={(e) => setLinks({ ...links, sf: e.target.value })} /></label>
@@ -153,7 +150,6 @@ export function LeadEditor({ kpis, records, afterLeft, afterRight, lead, catalog
         O registro da visita é removido do lead e da aba Visitas. A ação fica no Registro de atividades.
       </ConfirmDialog>
       {afterRight}
-      </div>
       </div>
       <SectionCard icon={Tag} title="Tags">
         {!(canEdit && !sellerView) && <p className="text-xs text-muted">Somente leitura: quem atende o lead ou a gestão altera as tags.</p>}

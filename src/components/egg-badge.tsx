@@ -1,5 +1,5 @@
-/** O Douraovo: selo de quem achou o segredo. Brilha, balança de leve e solta um reflexo. */
-export function EggBadge({ size = 28, className = "", title = "Douraovo: achou o segredo!" }: { size?: number; className?: string; title?: string }) {
+/** O Douradovo: selo de quem achou o segredo. Brilha, balança de leve e solta um reflexo. */
+export function EggBadge({ size = 28, className = "", title = "Douradovo: achou o segredo!" }: { size?: number; className?: string; title?: string }) {
   return (
     <span role="img" aria-label={title} title={title} className={`egg-gold inline-block shrink-0 ${className}`} style={{ width: size, height: size * 1.2 }}>
       <svg viewBox="0 0 40 48" width="100%" height="100%" aria-hidden>

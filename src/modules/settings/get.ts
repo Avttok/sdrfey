@@ -24,6 +24,8 @@ export const SETTING_DEFAULTS = {
   dash_default_days: 1,
   /** 1 = contas com mais de um cargo veem as abas em grupos (SDR, Vendas, Gestor, Adm). */
   nav_group: 1,
+  /** Onde ficam as abas/pastas da barra superior: 0 = esquerda, 1 = centro, 2 = direita. */
+  nav_align: 0,
   /** Logo animada: 0 = parada (marca FEY + SDR), 1 = morph, 2 = onda. Ritmo: 0 calmo, 1 normal, 2 ágil. Texto “SDR” ao lado: 1 = mostra. */
   logo_anim: 1,
   logo_pace: 1,

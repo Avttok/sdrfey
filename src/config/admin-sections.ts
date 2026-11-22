@@ -1,4 +1,4 @@
-import { Activity, Archive, Megaphone, Coins, Clock, DatabaseZap, Download, Eraser, Handshake, KeyRound, PhoneCall, Mail, PanelTop, Settings2, Tags, Upload, Users, type LucideIcon } from "lucide-react";
+import { Activity, Archive, Megaphone, Coins, Clock, DatabaseZap, Download, Eraser, ScrollText, Truck, Handshake, KeyRound, PhoneCall, Mail, PanelTop, Settings2, Tags, Upload, Users, type LucideIcon } from "lucide-react";
 
 export type AdminItem = { href: string; label: string; hint: string; icon: LucideIcon };
 export type AdminSection = { id: string; title: string; hue: string; items: AdminItem[] };
@@ -12,13 +12,15 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   { id: "vendas", title: "Vendas (cargo Vendedor)", hue: "#10b981", items: [
     { href: "/admin/vendas", label: "Condições e produtos", hint: "Pagamento e catálogo", icon: Handshake },
     { href: "/admin/nomenclatura", label: "Nomenclatura de produtos", hint: "Siglas, classificação e sugestões", icon: Tags },
+    { href: "/transportadoras", label: "Transportadoras", hint: "Tabela de fretes e importação", icon: Truck },
     { href: "/admin/negociacoes-apagadas", label: "Apagadas", hint: "Negociações apagadas/resetadas", icon: Archive },
   ] },
   { id: "conteudo", title: "Conteúdo e dados", hue: "#f59e0b", items: [
     { href: "/admin/tags", label: "Tags", hint: "Nomes, cores, ícones e ordem", icon: Tags },
     { href: "/admin/avisos", label: "Avisos globais", hint: "Cards que caem do topo para todos", icon: Megaphone },
     { href: "/admin/modelos", label: "Modelos de e-mail", hint: "Textos prontos", icon: Mail },
-    { href: "/admin/importar", label: "Importar CSV", hint: "Leads e representantes", icon: Upload },
+    { href: "/admin/importar", label: "Importar planilhas", hint: "Leads, representantes, negociações e transportadoras · histórico", icon: Upload },
+    { href: "/admin/roteiros", label: "Roteiros de ligação", hint: "Versão de fábrica, restaurar e conferir", icon: ScrollText },
     { href: "/admin/consulta-cnpj", label: "Consulta de CNPJ", hint: "Buscar dados dos leads em lote", icon: DatabaseZap },
     { href: "/admin/exportar", label: "Exportar / backup", hint: "Baixar o banco com segurança", icon: Download },
     { href: "/admin/apagar", label: "Apagar", hint: "Excluir dados com segurança", icon: Eraser },

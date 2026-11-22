@@ -109,7 +109,7 @@ export function UserMenu({ banner, avatar, name, username, hex, onHex, accentKey
             </Link>
             <ThemeTile />
           </div>
-          {egg && <Link role="menuitem" href="/conquistas" onClick={() => setOpen(false)} className="egg-card mx-3 mb-3 flex items-center gap-3 rounded-2xl border border-amber-400/60 px-3 py-2.5"><EggBadge size={34} /><span className="text-sm font-bold">Douraovo<span className="block text-xs font-normal text-muted">Você achou o segredo!</span></span></Link>}
+          {egg && <Link role="menuitem" href="/conquistas" onClick={() => setOpen(false)} className="egg-card mx-3 mb-3 flex items-center gap-3 rounded-2xl border border-amber-400/60 px-3 py-2.5"><EggBadge size={34} /><span className="text-sm font-bold">Douradovo<span className="block text-xs font-normal text-muted">Você achou o segredo!</span></span></Link>}
           <Link role="menuitem" href="/conquistas" onClick={() => setOpen(false)} className="menu-tile group mx-3 mb-3 flex items-center gap-3 rounded-2xl bg-sunk p-3 transition hover:-translate-y-0.5 hover:shadow-md">
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-grad text-on-accent shadow-sm"><Trophy size={17} aria-hidden className="transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-110" /></span>
             <span className="min-w-0 flex-1 text-sm font-semibold">Conquistas<span className="block text-xs font-normal text-muted">{badges ? `${badges.earned} de ${badges.total}` : "Suas medalhas"}</span></span>

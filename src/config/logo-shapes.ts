@@ -73,6 +73,13 @@ export function logoFrame(ms: number, kind: LogoAnim, pace = 1): Rect[] {
   return kind === "wave" ? wave(fw, p) : morph(fw, p);
 }
 
+/** 0 parado, 0→1 durante a troca FEY ⇄ SDR. Serve para suavizar a transição (blur e fade). */
+export function logoMoveProgress(ms: number, pace = 1): number {
+  const { hold, move } = PACES[pace] ?? PACES[1], tt = 2 * (hold + move);
+  const t = ((ms % tt) + tt) % tt, tl = t < tt / 2 ? t : t - tt / 2;
+  return tl < hold ? 0 : cl((tl - hold) / move);
+}
+
 /** Uma única forma: todas as peças no mesmo caminho (não aparecem fios entre elas) e 0,4 de sobreposição. */
 export function rectsPath(rs: Rect[]): string {
   return rs.filter((r) => r.w * r.h > 0.5).map((r) => { const e = 0.4, x = r.x - e, y = r.y - e, w = r.w + 2 * e, h = r.h + 2 * e; return `M${x.toFixed(1)} ${y.toFixed(1)}h${w.toFixed(1)}v${h.toFixed(1)}h${(-w).toFixed(1)}z`; }).join("");

@@ -4,7 +4,7 @@ import type { ScriptGoal, ScriptMood, ScriptNode, ScriptOption } from "@/config/
 import { GOALS, SEGMENTS } from "@/config/scripts";
 
 /** Muda quando os textos de fábrica são reescritos: os scripts do time que ninguém editou são atualizados. */
-const SEED_VERSION = 11;
+export const SEED_VERSION = 11;
 
 type Tipo = "revenda" | "producao" | "servico";
 /** O que cada tipo de cliente compra da Fey (fixadores) e o aperto que passa. `dor` completa "não ficar na mão com ___". */
@@ -353,4 +353,18 @@ export async function ensureGlobalScripts(): Promise<void> {
   }
   await db.execute(sql`insert into settings (key, value) values ('scripts_seed_v', ${String(SEED_VERSION)}::jsonb) on conflict (key) do update set value = excluded.value, updated_at = now()`);
   checkedAt = Date.now();
+}
+
+/** Restaura os roteiros de fábrica. "unedited" só atualiza os que ninguém editou; "all" sobrescreve também os editados (o texto antigo se perde). */
+export async function restoreSeedScripts(mode: "unedited" | "all"): Promise<number> {
+  let n = 0;
+  for (const b of buildAll()) {
+    const title = `${GOALS[b.goal].label.split(" (")[0]} · ${SEGMENTS[b.segment]}`;
+    await db.insert(scripts).values({ seedKey: b.key, ownerId: null, title, segment: b.segment, goal: b.goal, summary: GOALS[b.goal].hint, nodes: b.nodes, startId: b.startId }).onConflictDoNothing();
+    const guard = mode === "all" ? sql`` : sql` and updated_at <= created_at + interval '2 seconds'`;
+    const r = await db.execute(sql`update scripts set title = ${title}, summary = ${GOALS[b.goal].hint}, nodes = ${JSON.stringify(b.nodes)}::jsonb, start_id = ${b.startId}, updated_at = now() where seed_key = ${b.key}${guard} returning id`);
+    n += r.length;
+  }
+  await db.execute(sql`insert into settings (key, value) values ('scripts_seed_v', ${String(SEED_VERSION)}::jsonb) on conflict (key) do update set value = excluded.value, updated_at = now()`);
+  return n;
 }

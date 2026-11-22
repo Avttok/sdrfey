@@ -53,7 +53,7 @@ export async function achievementsOf(uid: number, roles: readonly string[]): Pro
   return { stats, list };
 }
 
-/** Quem tem o Douraovo (achou o segredo, ou o Adm deu na mão e não bloqueou). Mostrado no perfil. */
+/** Quem tem o Douradovo (achou o segredo, ou o Adm deu na mão e não bloqueou). Mostrado no perfil. */
 export async function eggHolders(): Promise<number[]> {
   const rows = await db.execute<{ id: number }>(sql`
     select u.id from users u

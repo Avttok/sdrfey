@@ -83,7 +83,7 @@ export async function toggleReactionAction(messageId: number, emoji: string): Pr
   return { ok: true };
 }
 
-export type ChatProfile = { avatar: string | null; banner: string | null; id: number; name: string; username: string; roles: Role[]; sent: number; lastLoginAt: string | null; active: boolean; isAdminView: boolean; /** conquistas liberadas (só chaves; o ícone vem do catálogo) */ badges: { key: string; name: string }[]; badgeTotal: number; /** tem o Douraovo */ egg: boolean; style: Record<string, string>; theme: { hex: string; hex2: string | null; on: string } };
+export type ChatProfile = { avatar: string | null; banner: string | null; id: number; name: string; username: string; roles: Role[]; sent: number; lastLoginAt: string | null; active: boolean; isAdminView: boolean; /** conquistas liberadas (só chaves; o ícone vem do catálogo) */ badges: { key: string; name: string }[]; badgeTotal: number; /** tem o Douradovo */ egg: boolean; style: Record<string, string>; theme: { hex: string; hex2: string | null; on: string } };
 
 /** Perfil de quem escreveu. Todos veem nome, @usuário e cargos; o Adm vê também situação e último acesso. */
 export async function chatProfileAction(userId: number): Promise<R<{ profile: ChatProfile }>> {

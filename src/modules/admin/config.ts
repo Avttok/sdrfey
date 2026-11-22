@@ -194,3 +194,17 @@ export async function savePermissionMatrixAction(input: { roles: Record<"user" |
   revalidatePath("/", "layout");
   return { ok: true, message: changed ? "Permissões salvas." : "Nada mudou." };
 }
+
+/* ───── Posição das abas na barra superior ───── */
+export async function saveNavAlignAction(value: number): Promise<ActionResult> {
+  const me = await requireAdmin();
+  if (value !== 0 && value !== 1 && value !== 2) return fail("Posição inválida.");
+  const before = (await getSettings()).nav_align;
+  if (before !== value) {
+    await db.insert(settings).values({ key: "nav_align", value, updatedBy: me.id }).onConflictDoUpdate({ target: settings.key, set: { value, updatedAt: new Date(), updatedBy: me.id } });
+    invalidateSettings();
+    await logAudit(db, { userId: me.id, entity: "setting", action: "alterou parâmetro", field: "nav_align", oldValue: before, newValue: value });
+  }
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Posição das abas salva." };
+}
