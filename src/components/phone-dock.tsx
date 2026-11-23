@@ -178,12 +178,22 @@ export function PhoneDock() {
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(!open)} aria-label={open ? "Fechar o telefone" : "Abrir o telefone"} aria-expanded={open} title="Telefone"
-        className="group fixed bottom-5 left-5 z-[64] grid size-14 place-items-center rounded-full border border-white/20 text-white shadow-xl transition hover:scale-105 hover:shadow-2xl active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        style={{ background: live ? "linear-gradient(135deg,#16a34a,#15803d)" : "linear-gradient(135deg,#7c3aed,#5b21b6)" }}>
-        {live && <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/40" aria-hidden />}
-        {open ? <X size={22} aria-hidden className="relative" /> : live ? <PhoneCall size={22} aria-hidden className="relative script-shake" /> : <Phone size={22} aria-hidden className="relative" />}
-      </button>
+      <div className="fixed bottom-5 left-5 z-[64] flex max-w-[calc(100vw-6rem)] items-center gap-2">
+        <button type="button" onClick={() => setOpen(!open)} aria-label={open ? "Fechar o telefone" : inCall ? `Abrir o telefone: ${call!.empresa ?? fmtPhone(callDigits)}, ${label}` : "Abrir o telefone"} aria-expanded={open} title="Telefone"
+          className={`group relative flex h-14 min-w-14 items-center justify-center rounded-full border border-white/20 text-white shadow-xl transition hover:shadow-2xl active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${!open && inCall ? "gap-3 pl-4 pr-5" : "size-14 hover:scale-105"}`}
+          style={{ background: live ? "linear-gradient(135deg,#16a34a,#15803d)" : inCall ? "linear-gradient(135deg,#1e293b,#0f172a)" : "linear-gradient(135deg,#7c3aed,#5b21b6)" }}>
+          {live && <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/30" aria-hidden />}
+          {open ? <X size={22} aria-hidden className="relative" /> : inCall ? (ended ? <PhoneOff size={21} aria-hidden className="relative shrink-0" /> : <PhoneCall size={21} aria-hidden className="relative shrink-0 script-shake" />) : <Phone size={22} aria-hidden className="relative" />}
+          {!open && inCall && (
+            <span className="relative min-w-0 text-left" role="status" aria-live="polite">
+              <span className="block max-w-[16rem] truncate text-sm font-bold leading-tight">{lead ? (lead.tradeName ?? lead.company) : call!.empresa ?? fmtPhone(callDigits)}</span>
+              <span className="block max-w-[16rem] truncate text-xs text-white/75">{lead || call!.empresa ? `${fmtPhone(callDigits)} · ` : ""}{label}</span>
+            </span>
+          )}
+          {!open && inCall && <span className="relative text-sm"><Timer since={call!.since} endedAt={call!.endedAt} /></span>}
+        </button>
+        {!open && ended && call!.qualUrl && <a href={call!.qualUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center gap-1.5 rounded-full bg-white px-4 text-sm font-bold text-slate-900 shadow-xl transition hover:bg-amber-200"><ExternalLink size={15} aria-hidden /> Qualificar</a>}
+      </div>
 
       {open && (
         <section role="dialog" aria-label="Telefone" className="card-in fixed bottom-24 left-5 z-[66] flex max-h-[min(44rem,calc(100dvh-7.5rem))] w-[24rem] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-3xl border border-line bg-panel shadow-2xl">

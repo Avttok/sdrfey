@@ -7,6 +7,7 @@ import { logAudit } from "@/modules/audit/log";
 import { requireAdmin } from "@/modules/auth/guard";
 import { roleKindOf } from "@/modules/facts/contacts";
 import type { EoxCompany } from "./planilha";
+import { isRecordId } from "./sync";
 
 export type EoxBatchResult =
   | { ok: true; missingRows: { cnpj: string; company: string; code: string | null }[]; found: number; missing: number; created: number; ids: number; codes: number; filled: number; info: number; phones: number; emails: number; people: number }
@@ -41,7 +42,7 @@ export async function importEoxBatchAction(input: EoxCompany[], apply: boolean, 
   for (const c of todo) {
     const l = byCnpj.get(c.cnpj)!;
     const diff = (n: string | null | undefined, o: string | null) => !!n && (overwrite ? n !== o : !o);
-    if (diff(c.recordId, l.eoxId)) res.ids++;
+    if (diff(c.recordId, isRecordId(l.eoxId) && l.eoxId !== l.eoxCode ? l.eoxId : null)) res.ids++; // um ID EOX gravado no lugar do Código conta como vazio
     if (diff(c.code, l.eoxCode)) res.codes++;
     if (diff(c.tradeName, l.tradeName) || diff(c.address, l.address) || diff(c.neighborhood, l.neighborhood) || diff(c.zip, l.zip) || diff(c.city, l.city) || diff(c.uf, l.uf) || diff(c.email, l.email)) res.filled++;
     if (Object.keys(c.info ?? {}).length) res.info++;
@@ -82,7 +83,7 @@ export async function importEoxBatchAction(input: EoxCompany[], apply: boolean, 
       });
       await tx.execute(sql`
         update leads l set
-          eox_id = ${pick("eox_id", "rec")}, eox_code = ${pick("eox_code", "code")}, trade_name = ${pick("trade_name", "trade")},
+          eox_id = ${sql.raw(overwrite ? "coalesce(v.rec, l.eox_id)" : "case when l.eox_id ~ '^\\d{7,}$' and l.eox_id is distinct from l.eox_code then l.eox_id else coalesce(v.rec, l.eox_id) end")}, eox_code = ${pick("eox_code", "code")}, trade_name = ${pick("trade_name", "trade")},
           address = ${pick("address", "addr")}, neighborhood = ${pick("neighborhood", "nb")}, zip = ${pick("zip", "zip")},
           city = ${pick("city", "city")}, uf = ${pick("uf", "uf")}, email = ${pick("email", "email")},
           eox_info = coalesce(v.info, l.eox_info), eox_synced_at = case when v.info is null then l.eox_synced_at else now() end

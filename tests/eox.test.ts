@@ -68,16 +68,26 @@ describe.skipIf(!HAS_DB)("preencher o link da EOX nos leads (banco real)", () =>
   });
   afterAll(async () => { await m.db.db.delete(m.db.leads).where(like(m.db.leads.company, "ZZEOX%")); });
   it("liga por CNPJ (com ou sem máscara) e por Código EOX, sem trocar Id existente", async () => {
-    await m.db.db.update(m.db.leads).set({ eoxId: "3" }).where(like(m.db.leads.company, "ZZEOX C"));
+    await m.db.db.update(m.db.leads).set({ eoxId: "3333333" }).where(like(m.db.leads.company, "ZZEOX C"));
     await m.db.db.update(m.db.leads).set({ eoxCode: "117805" }).where(like(m.db.leads.company, "ZZEOX D"));
-    const map = new Map([["11222333000181", "1"], ["11222333000262", "2"], ["11222333000343", "9"]]);
-    const n = await m.sync.linkLeads(m.db.db, map, new Map([["117805", "4"]]), null);
+    const map = new Map([["11222333000181", "1111111"], ["11222333000262", "2222222"], ["11222333000343", "9999999"]]);
+    const n = await m.sync.linkLeads(m.db.db, map, new Map([["117805", "4444444"]]), null);
     expect(n).toBe(3);
     const rows = await m.db.db.select().from(m.db.leads).where(like(m.db.leads.company, "ZZEOX%"));
     const by = Object.fromEntries(rows.map((r) => [r.company, r.eoxId]));
-    expect(by).toEqual({ "ZZEOX A": "1", "ZZEOX B": "2", "ZZEOX C": "3", "ZZEOX D": "4" });
-    expect(await m.sync.linkLeads(m.db.db, map, new Map([["117805", "4"]]), null)).toBe(0);
+    expect(by).toEqual({ "ZZEOX A": "1111111", "ZZEOX B": "2222222", "ZZEOX C": "3333333", "ZZEOX D": "4444444" });
+    expect(await m.sync.linkLeads(m.db.db, map, new Map([["117805", "4444444"]]), null)).toBe(0);
     void eq;
+  });
+  it("corrige o ID EOX que foi gravado no lugar do Código EOX", async () => {
+    // o ID EOX (curto) não serve para link nem qualificação: o Código certo o substitui
+    await m.db.db.update(m.db.leads).set({ eoxId: "117805" }).where(like(m.db.leads.company, "ZZEOX A"));
+    expect(await m.sync.linkLeads(m.db.db, new Map([["11222333000181", "1111111"]]), new Map(), null)).toBe(1);
+    const [a] = await m.db.db.select().from(m.db.leads).where(like(m.db.leads.company, "ZZEOX A"));
+    expect(a.eoxId).toBe("1111111");
+    expect(m.sync.isRecordId("117805")).toBe(false);
+    expect(m.sync.eoxProfileUrl("https://x", "117805")).toBeNull();
+    expect(m.sync.eoxProfileUrl("https://x", "1293925")).toContain("record=1293925");
   });
 });
 

@@ -22,28 +22,36 @@ async function saveSyncState(d: Db, st: EoxSyncState) {
 
 /** Endereço da EOX (o da integração; se ainda não houver, o da Fey). */
 export const eoxBaseUrl = async () => parseEox(await settingValue(EOX_KEY)).baseUrl || EOX_FALLBACK_BASE;
-export const eoxProfileUrl = (base: string, id: string | null | undefined) => (id ? eoxLink(base, "Accounts", id) : null);
+/**
+ * Código EOX de verdade (o record= do perfil) tem 7 dígitos ou mais; o ID EOX (ex.: 117805) é menor e só serve para achar o registro.
+ * Um valor menor, ou igual ao ID EOX do próprio lead, é o ID EOX gravado no lugar errado e não pode ir para link nem qualificação.
+ */
+export const isRecordId = (v: string | null | undefined): v is string => !!v && /^\d{7,}$/.test(v.trim());
+/** SQL: o lead não tem Código EOX utilizável (vazio, curto demais ou igual ao ID EOX). */
+export const needsRecordSql = sql`(${leads.eoxId} is null or ${leads.eoxId} !~ '^\\d{7,}$' or ${leads.eoxId} = ${leads.eoxCode})`;
+export const eoxProfileUrl = (base: string, id: string | null | undefined) => (isRecordId(id) ? eoxLink(base, "Accounts", id) : null);
 
 /**
  * Grava o Código EOX (o record=) nos leads que ainda não têm. Acha o lead pelo CNPJ e, se não achar, pelo ID EOX.
- * Nunca troca um Id que já existe. Devolve quantos gravou.
+ * Não troca um Código válido que já existe; só preenche o vazio ou corrige o ID EOX que foi parar no lugar dele. Devolve quantos gravou.
  */
 export async function linkLeads(d: Db, byCnpj: Map<string, string>, byCode: Map<string, string>, userId: number | null): Promise<number> {
   let n = 0;
   const apply = async (rows: { id: number; rec: string }[]) => {
     for (const l of rows) {
       await d.transaction(async (tx) => {
-        const r = await tx.update(leads).set({ eoxId: l.rec, updatedAt: new Date() }).where(and(eq(leads.id, l.id), isNull(leads.eoxId))).returning({ id: leads.id });
-        if (r.length) { n++; await logAudit(tx, { userId, leadId: l.id, entity: "lead", action: "alterou", field: "Código EOX", oldValue: null, newValue: l.rec, meta: { automatico: true } }); }
+        const [cur] = await tx.select({ eoxId: leads.eoxId }).from(leads).where(eq(leads.id, l.id));
+        const r = await tx.update(leads).set({ eoxId: l.rec, updatedAt: new Date() }).where(and(eq(leads.id, l.id), needsRecordSql)).returning({ id: leads.id });
+        if (r.length) { n++; await logAudit(tx, { userId, leadId: l.id, entity: "lead", action: "alterou", field: "Código EOX", oldValue: cur?.eoxId ?? null, newValue: l.rec, meta: { automatico: true } }); }
       });
     }
   };
   if (byCnpj.size) {
-    const todo = await d.select({ id: leads.id, cnpj: leads.cnpj }).from(leads).where(and(isNull(leads.eoxId), inArray(sql`regexp_replace(${leads.cnpj}, '\\D', '', 'g')`, [...byCnpj.keys()])));
+    const todo = await d.select({ id: leads.id, cnpj: leads.cnpj }).from(leads).where(and(needsRecordSql, inArray(sql`regexp_replace(${leads.cnpj}, '\\D', '', 'g')`, [...byCnpj.keys()])));
     await apply(todo.flatMap((l) => { const rec = byCnpj.get(digitsOf(l.cnpj)); return rec ? [{ id: l.id, rec }] : []; }));
   }
   if (byCode.size) {
-    const todo = await d.select({ id: leads.id, code: leads.eoxCode }).from(leads).where(and(isNull(leads.eoxId), inArray(leads.eoxCode, [...byCode.keys()])));
+    const todo = await d.select({ id: leads.id, code: leads.eoxCode }).from(leads).where(and(needsRecordSql, inArray(leads.eoxCode, [...byCode.keys()])));
     await apply(todo.flatMap((l) => { const rec = l.code ? byCode.get(l.code) : null; return rec ? [{ id: l.id, rec }] : []; }));
   }
   return n;
@@ -56,7 +64,7 @@ export async function linkLeads(d: Db, byCnpj: Map<string, string>, byCode: Map<
 export async function lookupMissingIds(d: Db, s: EoxSession, deadline: number, cursor: number, userId: number | null): Promise<{ linked: number; checked: number; cursor: number; done: boolean }> {
   let linked = 0, checked = 0, cur = cursor;
   while (Date.now() < deadline) {
-    const batch = await d.select({ id: leads.id, cnpj: leads.cnpj, code: leads.eoxCode }).from(leads).where(and(isNull(leads.eoxId), sql`${leads.id} > ${cur}`, eq(leads.isTest, false))).orderBy(leads.id).limit(100);
+    const batch = await d.select({ id: leads.id, cnpj: leads.cnpj, code: leads.eoxCode }).from(leads).where(and(needsRecordSql, sql`${leads.id} > ${cur}`, eq(leads.isTest, false))).orderBy(leads.id).limit(100);
     if (!batch.length) return { linked, checked, cursor: 0, done: true };
     for (let i = 0; i < batch.length && Date.now() < deadline; i += 5) {
       const group = batch.slice(i, i + 5);
@@ -115,7 +123,7 @@ export async function ensureEoxId(leadId: number, userId: number | null): Promis
   if (!eoxReady(cfg)) return null;
   const [l] = await db.select({ cnpj: leads.cnpj, eoxId: leads.eoxId, eoxCode: leads.eoxCode }).from(leads).where(eq(leads.id, leadId));
   if (!l) return null;
-  if (l.eoxId) return l.eoxId;
+  if (isRecordId(l.eoxId) && l.eoxId !== l.eoxCode) return l.eoxId;
   try {
     const s = await eoxLogin(cfg);
     const rec = (await eoxFindByCnpj(s, l.cnpj)) ?? (l.eoxCode ? await eoxFindByCode(s, l.eoxCode) : null);
@@ -129,7 +137,7 @@ export type EoxStep = { ok: boolean; message: string; phase: "direct" | "scan"; 
 
 /** Quantos leads (reais) ainda não têm Código EOX, e quantos são no total. */
 export async function eoxRemaining(): Promise<{ remaining: number; total: number }> {
-  const [r] = await db.execute<{ remaining: number; total: number }>(sql`select count(*) filter (where eox_id is null)::int as remaining, count(*)::int as total from leads where is_test = false`);
+  const [r] = await db.execute<{ remaining: number; total: number }>(sql`select count(*) filter (where eox_id is null or eox_id !~ '^\\d{7,}$' or eox_id = eox_code)::int as remaining, count(*)::int as total from leads where is_test = false`);
   return { remaining: Number(r?.remaining ?? 0), total: Number(r?.total ?? 0) };
 }
 

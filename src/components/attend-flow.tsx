@@ -1,7 +1,7 @@
 "use client";
 
 import { callNumber } from "@/components/call-number";
-import { trackTouch } from "@/lib/touch-bus";
+import { flushTouches, queuedTouches, trackTouch, type TouchDone } from "@/lib/touch-bus";
 import { Timer, UserRound, Flag, Ban, Building2, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Send, Plus, RotateCcw, History, SkipForward, ScrollText, Square, TriangleAlert, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -177,8 +177,43 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
     n.has(key) ? n.delete(key) : n.add(key);
     setter(n);
   };
+  /**
+   * As tags de E-mail, WhatsApp e Ligação só ligam quando TODOS os contatos do canal foram feitos e qualificados
+   * (cada resposta do painel de resultado conta um contato). Ligar/desligar a tag também traz as perguntas pendentes.
+   */
+  const [done, setDone] = useState<Record<string, Set<string>>>({ email: new Set(), whatsapp: new Set(), ligacao: new Set() });
+  const keyOf = (ch: string, v: string) => (ch === "email" ? v.trim().toLowerCase() : v.replace(/\D/g, "").slice(-8));
+  const CH_OF: Record<string, "email" | "whatsapp" | "call"> = { email: "email", whatsapp: "whatsapp", ligacao: "call" };
+  const targetsOf = (k: string): string[] => (k === "email" ? goodEmails.map((e) => e.value) : k === "whatsapp" ? (goodPhones.filter((p) => p.value.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "").length === 11).length ? goodPhones.filter((p) => p.value.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "").length === 11) : goodPhones).map((p) => p.value) : goodPhones.map((p) => p.value));
+  const missingOf = (k: string, d = done) => targetsOf(k).filter((v) => !d[k]?.has(keyOf(k, v)));
+  useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<TouchDone>).detail;
+      if (d.leadId !== lead.id) return;
+      const k = d.channel === "call" ? "ligacao" : d.channel;
+      setDone((cur) => {
+        const next = { ...cur, [k]: new Set(cur[k]).add(keyOf(k, d.target)) };
+        if (missingOf(k, next).length === 0) setUsed((u) => new Set(u).add(k));
+        return next;
+      });
+    };
+    window.addEventListener("fey:touch-done", on);
+    return () => window.removeEventListener("fey:touch-done", on);
+  }); // eslint-disable-line react-hooks/exhaustive-deps
+  const toggleUsed = (key: string) => {
+    const ch = CH_OF[key];
+    if (!ch) { toggle(used, key, setUsed); return; }
+    flushTouches(lead.id, ch, true);
+    if (used.has(key)) { toggle(used, key, setUsed); return; }
+    const miss = missingOf(key);
+    if (miss.length === 0) { toggle(used, key, setUsed); return; }
+    const total = targetsOf(key).length;
+    const what = key === "email" ? "e-mails" : key === "whatsapp" ? "WhatsApps" : "números";
+    toast("warn", queuedTouches(lead.id, ch) ? `Responda como foi cada contato. Faltam ${miss.length} de ${total} ${what}.` : `Faltam ${miss.length} de ${total} ${what} para marcar.`);
+  };
   const go = (n: number) => {
     if (step === 0 && n > 0) void startedAction(lead.id);
+    if (n > step) { flushTouches(lead.id, "whatsapp"); flushTouches(lead.id, "email"); flushTouches(lead.id, "call"); } // ao avançar, pergunta o resultado do que foi enviado
     const to = Math.min(Math.max(n, 0), STEPS.length - 1);
     dir.current = to >= step ? "fwd" : "back";
     setStep(to);
@@ -221,7 +256,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
   const copyAndOpen = async () => {
     await copyFormatted();
     const to = emailTo || goodEmails[0]?.value;
-    if (to) void trackTouch({ leadId: lead.id, channel: "email", target: to, label: lead.tradeName ?? lead.company });
+    if (to) void trackTouch({ leadId: lead.id, channel: "email", target: to, label: lead.tradeName ?? lead.company, defer: true });
     if (tpl && to) window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(renderTemplate(tpl.subject, vars))}`;
   };
 
@@ -252,7 +287,6 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
     try {
       if (html && typeof ClipboardItem !== "undefined") await navigator.clipboard.write([new ClipboardItem({ "text/html": new Blob([html], { type: "text/html" }), "text/plain": new Blob([htmlToText(html)], { type: "text/plain" }) })]);
       else await navigator.clipboard.writeText(html ? htmlToText(html) : renderTemplate(tpl.body, vars));
-      setUsed(new Set(used).add("email"));
       toast("ok", html ? "E-mail formatado copiado. Cole no corpo da mensagem (Ctrl+V)." : "Texto copiado.");
     } catch { toast("warn", "Não consegui copiar. Tente de novo."); }
   };
@@ -390,12 +424,12 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                 <div className="flex flex-wrap gap-2">
                   <button type="button" className={btnPrimary} onClick={copyAndOpen}><Send size={16} aria-hidden /> Copiar e abrir e-mail</button>
                   <button type="button" className={btnGhost} onClick={copyFormatted}><Copy size={16} aria-hidden /> Só copiar</button>
-                  {mail && <a href={mail} onClick={() => { setUsed(new Set(used).add("email")); const to = emailTo || goodEmails[0]?.value; if (to) void trackTouch({ leadId: lead.id, channel: "email", target: to, label: lead.tradeName ?? lead.company }); }} className={btnGhost}><ExternalLink size={16} aria-hidden /> Abrir com texto simples</a>}
+                  {mail && <a href={mail} onClick={() => { const to = emailTo || goodEmails[0]?.value; if (to) void trackTouch({ leadId: lead.id, channel: "email", target: to, label: lead.tradeName ?? lead.company, defer: true }); }} className={btnGhost}><ExternalLink size={16} aria-hidden /> Abrir com texto simples</a>}
                 </div>
                 <p className="text-xs text-muted">“Copiar e abrir e-mail” copia o corpo formatado (negrito, cores e imagens) e abre o e-mail com destinatário e assunto prontos: é só colar com Ctrl+V.</p>
               </>
             )}
-            <UsedToggle on={used.has("email")} onClick={() => toggle(used, "email", setUsed)} label="E-mail enviado" Icon={Mail} color="#0ea5e9" />
+            <UsedToggle on={used.has("email")} onClick={() => toggleUsed("email")} label="E-mail enviado" Icon={Mail} color="#0ea5e9" />
           </section>
         )}
 
@@ -406,12 +440,12 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
               {goodPhones.map((p) => (
                 <li key={p.id} className="lift flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-sunk/60 px-4 py-3"><span aria-hidden className="grid size-10 place-items-center rounded-xl bg-ok/15 text-ok"><MessageCircle size={18} /></span>
                   <span className="flex-1"><CopyVal text={p.value}><span className="figure text-lg">{fmtPhone(p.value)}</span></CopyVal></span>
-                  <a href={chatproUrl(p.value)} target="_blank" rel="noreferrer" onClick={() => { setUsed(new Set(used).add("whatsapp")); void trackTouch({ leadId: lead.id, channel: "whatsapp", target: p.value, label: lead.tradeName ?? lead.company, personId: p.personId ?? null }); }} className={btnPrimary}><MessageCircle size={16} aria-hidden /> Abrir no ChatPro</a>
+                  <a href={chatproUrl(p.value)} target="_blank" rel="noreferrer" onClick={() => { void trackTouch({ leadId: lead.id, channel: "whatsapp", target: p.value, label: lead.tradeName ?? lead.company, personId: p.personId ?? null, defer: true }); }} className={btnPrimary}><MessageCircle size={16} aria-hidden /> Abrir no ChatPro</a>
                 </li>
               ))}
               {goodPhones.length === 0 && <li className="text-sm text-muted">Sem telefone válido.</li>}
             </ul>
-            <UsedToggle on={used.has("whatsapp")} onClick={() => toggle(used, "whatsapp", setUsed)} label="WhatsApp enviado" Icon={MessageCircle} color="#22c55e" />
+            <UsedToggle on={used.has("whatsapp")} onClick={() => toggleUsed("whatsapp")} label="WhatsApp enviado" Icon={MessageCircle} color="#22c55e" />
           </section>
         )}
 
@@ -432,8 +466,8 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                       <span className="figure block text-lg leading-tight">{fmtPhone(p.value)}</span>
                       <span className="block truncate text-xs text-muted">{who ? <><UserRound size={11} aria-hidden className="mr-0.5 inline" />{who.name}{who.roleTitle ? ` · ${who.roleTitle}` : ""}</> : "Sem contato indexado"}</span>
                     </button>
-                    <button type="button" className={btnPrimary} onClick={() => { setCallId(p.id); void callNumber(p.value, lead.tradeName ?? lead.company, toast, vocall, lead, p.personId ?? null); setUsed(new Set(used).add("ligacao")); }}><Phone size={15} aria-hidden /> Ligar</button>
-                    <button type="button" className={btnGhost} aria-label="Copiar número" onClick={() => { void copy(p.value, toast); setUsed(new Set(used).add("ligacao")); }}><Copy size={15} aria-hidden /> Copiar</button>
+                    <button type="button" className={btnPrimary} onClick={() => { setCallId(p.id); void callNumber(p.value, lead.tradeName ?? lead.company, toast, vocall, lead, p.personId ?? null); }}><Phone size={15} aria-hidden /> Ligar</button>
+                    <button type="button" className={btnGhost} aria-label="Copiar número" onClick={() => { void copy(p.value, toast); void trackTouch({ leadId: lead.id, channel: "call", target: p.value, label: lead.tradeName ?? lead.company, personId: p.personId ?? null, defer: true }); }}><Copy size={15} aria-hidden /> Copiar</button>
                   </li>
                 );
               })}
@@ -449,7 +483,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                 </div>
                 <LiveContacts leadId={lead.id} people={allPeople} channels={allChannels} talkingId={callPerson?.id ?? null} onTalking={(id) => { setTalkingId(id); setSpoken(null); }} onSaved={(p, ch) => { setExtraPeople((l) => [...l.filter((x) => x.id !== p.id), p]); setExtraChannels((l) => [...l, ...ch]); }} />
                 <ProductHints recos={recos} />
-                <UsedToggle on={used.has("ligacao")} onClick={() => toggle(used, "ligacao", setUsed)} label="Ligação feita" Icon={Phone} color="#8b5cf6" />
+                <UsedToggle on={used.has("ligacao")} onClick={() => toggleUsed("ligacao")} label="Ligação feita" Icon={Phone} color="#8b5cf6" />
               </div>
               <div className="order-1 flex min-h-0 flex-col overflow-hidden rounded-3xl border-2 border-accent/40 bg-panel shadow-md lg:order-2">
                 <div className="bg-grad px-4 py-2 text-on-accent">
@@ -475,7 +509,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
           <section className="space-y-6">
             <StepTitle i={4} />
             {([
-              ["meio", "Meios de contato usados", "marque todos que usou", used.size, Phone, (g: TagCatalog[number]) => g.tags.filter((t) => !t.autoOnly).map((t) => <FlashTag key={t.key} label={t.label} color={t.color} on={used.has(t.key)} onClick={() => toggle(used, t.key, setUsed)} />)],
+              ["meio", "Meios de contato usados", "marque todos que usou", used.size, Phone, (g: TagCatalog[number]) => g.tags.filter((t) => !t.autoOnly).map((t) => <FlashTag key={t.key} label={t.label} color={t.color} on={used.has(t.key)} onClick={() => toggleUsed(t.key)} />)],
               ["temperatura", "Temperatura do lead", "escolha 1", temperature ? 1 : 0, Flag, (g: TagCatalog[number]) => g.tags.map((t) => <FlashTag key={t.key} label={t.label} color={t.color} on={temperature === t.key} onClick={() => setTemperature(temperature === t.key ? null : t.key)} />)],
               ["qualificacao", "Qualificação", "escolha 1", qualification ? 1 : 0, Check, (g: TagCatalog[number]) => g.tags.map((t) => <FlashTag key={t.key} label={t.label} color={t.color} on={qualification === t.key} onClick={() => setQualification(qualification === t.key ? null : (t.key as "qualificado"))} />)],
               ["situacao", "Situação", "marque o que se aplica", situations.size, TriangleAlert, (g: TagCatalog[number]) => g.tags.filter((t) => !t.autoOnly).map((t) => <FlashTag key={t.key} label={t.label} color={t.color} on={situations.has(t.key)} onClick={() => toggle(situations, t.key, setSituations)} />)],
@@ -500,7 +534,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
         )}
       </div>
 
-      <div className="sticky bottom-3 z-40 flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-panel/90 p-3 shadow-lg backdrop-blur">
+      <div className="sticky bottom-3 z-40 flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-panel/90 p-3 shadow-lg backdrop-blur lg:px-[5.5rem]">
         <button type="button" className={`${btnPrimary} !bg-grad-danger !text-white`} disabled={pending} onClick={() => run(() => leave(releaseThis))}><Square size={15} aria-hidden /> Parar</button>
         <button type="button" className={btnGhost} disabled={pending} title="Esconde este lead só de você por 24 h e não conta na meta" onClick={() => ask({ title: "Pular este lead?", body: "Ele fica escondido só de você por 24 h e não conta na meta. Você recebe o próximo.", label: "Sim, pular", tone: "warn", icon: SkipForward, onConfirm: seek })}><SkipForward size={16} aria-hidden /> Pular lead</button>
         <span className="flex-1" />

@@ -110,8 +110,8 @@ export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, on
       {facts ? <FactConflict facts={facts} /> : null}
       {floatingCenter && !ended && host && createPortal(
         <button type="button" onClick={center} aria-label="Centralizar o roteiro na tela (atalho: C)" title="Leva o roteiro para o meio da tela (atalho: C)"
-          className="relative inline-flex h-12 items-center gap-2 rounded-full border border-line bg-panel pl-3.5 pr-4 text-sm font-semibold text-accent shadow-xl transition hover:scale-105 hover:border-accent active:scale-95">
-          <Crosshair size={20} aria-hidden /><span className="max-sm:sr-only">Centralizar</span>
+          className="relative grid size-12 place-items-center rounded-full border border-line bg-panel text-accent shadow-xl transition hover:scale-105 hover:border-accent active:scale-95">
+          <Crosshair size={20} aria-hidden /><span className="sr-only">Centralizar</span>
           {follow && <span aria-hidden className="absolute -right-0.5 -top-0.5 size-3 animate-pulse rounded-full bg-accent ring-2 ring-panel" title="Seguindo sozinho" />}
         </button>, host)}
       {/* Quem é o lead: nome completo bem pequeno, nome falado em destaque */}

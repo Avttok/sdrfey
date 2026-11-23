@@ -1,9 +1,7 @@
 "use client";
 
-import { ExternalLink, Loader2, PhoneCall, PhoneOff, X } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { VocallConfig } from "@/modules/vocall/config";
-import { estadoLabel, Timer } from "@/components/call-ui";
 import { hintLastCall } from "@/lib/touch-bus";
 import { PhoneDock } from "@/components/phone-dock";
 import { qualificationUrl, type EoxRef } from "@/modules/vocall/eox";
@@ -128,6 +126,7 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
       clearTimeout(giveUp);
       if (ws.current !== sock) return;
       // caiu no meio da chamada: o aviso não pode ficar preso na tela
+      if (!hinted.current) { hinted.current = true; const a = answeredAt.current; hintLastCall(a != null, a != null ? Math.round((Date.now() - a) / 1000) : null); }
       setCall((c) => (c && c.estado !== "Finalizado" ? { ...c, estado: "Conexão encerrada", endedAt: Date.now() } : c));
       dismissIn(GONE_MS);
       hangup("idle");
@@ -146,6 +145,7 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
     eoxRef.current = eox ?? null; answeredAt.current = null; hinted.current = false;
     const digits = phone.replace(/\D/g, "");
     if (digits.length < 8) return false;
+    setPanel(true); // ligou: o discador abre sozinho; se a pessoa minimizar, o botão flutuante mostra a chamada
     const s = await connect();
     if (!s || s.readyState !== 1) return false;
     return new Promise<boolean>((resolve) => {
@@ -154,34 +154,11 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
       callWait.current.push(waiter);
       // o VocallPhone não confirmou: tira da fila e não deixa a conexão aberta à toa
       timer = setTimeout(() => { const i = callWait.current.indexOf(waiter); if (i >= 0) { callWait.current.splice(i, 1); resolve(false); hangup("idle"); } }, CONFIRM_MS);
-      s.send(JSON.stringify({ action: "discar", data: { telefone: `${prefix}${digits}`, cliente: { label: (label ?? "").replace(/\|/g, "").slice(0, 80), ...(eox ? { setype: eox.setype, crmid: eox.crmid, ...(eox.setype !== "Contacts" ? { id_contato: 0 } : {}) } : {}) } } }));
+      // só o pedido de ligação: quem decide se gera qualificação é a própria EOX/central, pelo número cadastrado lá (sem forçar o cadastro por aqui)
+      s.send(JSON.stringify({ action: "discar", data: { telefone: `${prefix}${digits}`, cliente: { label: (label ?? "").replace(/\|/g, "").slice(0, 80) } } }));
     });
   }, [connect, hangup, prefix]);
 
   const value = useMemo(() => ({ configured: true, panel, setPanel, prefix, state, call, dial, dismiss: () => { clearTimeout(timers.current.clear); setCall(null); } }), [panel, prefix, state, call, dial]);
-  return <VocallCtx.Provider value={value}>{children}{call && !panel && <CallPill call={call} onOpen={() => setPanel(true)} onClose={() => { clearTimeout(timers.current.clear); setCall(null); }} />}<PhoneDock /></VocallCtx.Provider>;
-}
-
-/** Faixa flutuante da ligação (quando o telefone está fechado): clique para abrir o telefone; ao fim oferece "Qualificar". */
-function CallPill({ call, onClose, onOpen }: { call: VocallCall; onClose: () => void; onOpen: () => void }) {
-  const ended = !!call.endedAt;
-  return (
-    <div role="status" aria-live="polite" className="fixed inset-x-0 bottom-4 z-[65] flex justify-center px-3 pointer-events-none">
-      <div className="pointer-events-auto flex w-full max-w-xl items-center gap-3 rounded-2xl border border-white/10 p-2.5 pr-3 text-white shadow-2xl card-in" style={{ background: ended ? "linear-gradient(135deg,#1e293b,#0f172a)" : "linear-gradient(135deg,#5b21b6,#3b0f8c)" }}>
-        <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" aria-label="Abrir o telefone">
-          <span className={`relative grid size-11 shrink-0 place-items-center rounded-xl ${ended ? "bg-white/10" : "bg-white/15"}`}>
-            {ended ? <PhoneOff size={20} aria-hidden /> : <><span className="absolute inset-0 animate-ping rounded-xl bg-white/20" aria-hidden /><PhoneCall size={20} aria-hidden className="relative script-shake" /></>}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-bold leading-tight">{call.empresa ?? call.telefone}</span>
-            <span className="block truncate text-xs text-white/70">{call.empresa ? `${call.telefone} · ` : ""}{estadoLabel(call.estado, ended)}</span>
-          </span>
-          <Timer since={call.since} endedAt={call.endedAt} />
-        </button>
-        {ended && call.qualLooking && <span className="flex items-center gap-1.5 text-xs text-white/70"><Loader2 size={14} className="animate-spin" aria-hidden /> Buscando…</span>}
-        {ended && call.qualUrl && <a href={call.qualUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-white px-4 text-sm font-bold text-slate-900 transition hover:bg-amber-200"><ExternalLink size={15} aria-hidden /> Qualificar</a>}
-        {ended && <button type="button" onClick={onClose} aria-label="Fechar painel da ligação" className="grid size-9 shrink-0 place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white"><X size={16} aria-hidden /></button>}
-      </div>
-    </div>
-  );
+  return <VocallCtx.Provider value={value}>{children}<PhoneDock /></VocallCtx.Provider>;
 }

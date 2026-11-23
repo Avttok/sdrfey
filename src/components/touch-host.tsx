@@ -6,7 +6,7 @@ import { Check, Clock, Mail, MessageCircle, Phone, X } from "lucide-react";
 import { useToast } from "@/components/toast";
 import { CHANNELS, outcomeOf, type Outcome, type TouchChannel } from "@/config/touches";
 import { fmtPhone } from "@/lib/format";
-import type { TouchHint, TouchOpen } from "@/lib/touch-bus";
+import { announceDone, type TouchHint, type TouchOpen } from "@/lib/touch-bus";
 import { dropTouchAction, myOpenTouchesAction, resolveTouchAction, touchContextAction } from "@/modules/touches/actions";
 
 type Item = TouchOpen & { company: string | null; people: { id: number; name: string; role: string | null }[]; linkedId: number | null; hint: TouchHint | null };
@@ -33,7 +33,7 @@ export function TouchHost() {
 
   const add = useCallback(async (t: TouchOpen & { company?: string | null }) => {
     const ctx = await touchContextAction(t.leadId, t.channel, t.target).catch(() => ({ people: [], linkedId: null }));
-    setItems((cur) => (cur.some((x) => x.id === t.id) ? cur : [...cur, { ...t, company: t.company ?? t.label, people: ctx.people, linkedId: t.personId ?? ctx.linkedId, hint: null }]));
+    setItems((cur) => (cur.some((x) => x.id === t.id) ? cur : [...cur, { ...t, company: t.company ?? t.label, people: ctx.people, linkedId: t.personId ?? ctx.linkedId, hint: t.hint ?? null }]));
   }, []);
 
   useEffect(() => {
@@ -52,6 +52,7 @@ export function TouchHost() {
     setBusy(false);
     if (!r.ok) { toast("bad", r.message ?? "Não foi possível salvar."); return; }
     toast("ok", o.wrong ? `${CHANNELS[it.channel].label} registrada. ${it.channel === "email" ? "E-mail" : "Número"} marcado como inválido.` : `${CHANNELS[it.channel].label} registrada: ${o.label}.`);
+    announceDone({ id: it.id, leadId: it.leadId, channel: it.channel, target: it.target, outcome: o.key });
     setNote(""); setRetry(0); setWho(null); close(it.id);
   }
   function choose(it: Item, o: Outcome) {
