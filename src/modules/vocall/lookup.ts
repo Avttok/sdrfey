@@ -35,15 +35,15 @@ export async function lookupPhoneAction(raw: string): Promise<PhoneLead[]> {
   const rows = await db.execute<{ id: number }>(sql`
     select l.id from leads l
     where l.is_test = false and (
-      exists (select 1 from lead_channels c where c.lead_id = l.id and c.kind = 'phone' and right(regexp_replace(c.value, '\D', '', 'g'), 8) = ${key})
-      or exists (select 1 from unnest(l.phones) p where right(regexp_replace(p, '\D', '', 'g'), 8) = ${key}))
-    order by (case when ${ddd} <> '' and exists (select 1 from unnest(l.phones) p where regexp_replace(p, '\D', '', 'g') like ${ddd + "%"}) then 0 else 1 end), l.times_served desc, l.id
+      exists (select 1 from lead_channels c where c.lead_id = l.id and c.kind = 'phone' and right(regexp_replace(c.value, '\\D', '', 'g'), 8) = ${key})
+      or exists (select 1 from unnest(l.phones) p where right(regexp_replace(p, '\\D', '', 'g'), 8) = ${key}))
+    order by (case when ${ddd} <> '' and exists (select 1 from unnest(l.phones) p where regexp_replace(p, '\\D', '', 'g') like ${ddd + "%"}) then 0 else 1 end), l.times_served desc, l.id
     limit 5`);
   if (!rows.length) return [];
   const ids = rows.map((r) => Number(r.id));
   const data = await db.execute<Record<string, unknown>>(sql`
     select l.id, l.company, l.trade_name, l.city, l.uf, l.contact_name, l.role_title, l.email, l.kind, l.times_served, l.notes, l.eox_id, l.eox_code, l.sf_id, l.eox_info,
-      (select p.name || '|' || coalesce(p.role_title, '') from lead_channels c join lead_people p on p.id = c.person_id where c.lead_id = l.id and c.kind = 'phone' and right(regexp_replace(c.value, '\D', '', 'g'), 8) = ${key} limit 1) as person,
+      (select p.name || '|' || coalesce(p.role_title, '') from lead_channels c join lead_people p on p.id = c.person_id where c.lead_id = l.id and c.kind = 'phone' and right(regexp_replace(c.value, '\\D', '', 'g'), 8) = ${key} limit 1) as person,
       (select name from users u where u.id = l.owner_id) as owner_name,
       (select d.stage from deals d where d.lead_id = l.id and d.stage not in ('ganho','perdido') limit 1) as deal_stage
     from leads l where l.id in (${sql.join(ids.map((i) => sql`${i}`), sql`, `)})`);

@@ -10,8 +10,8 @@ export type VocallState = "off" | "idle" | "connecting" | "online" | "error";
 /** Se o app do VocallPhone está operante: confirmado pelo estado do ramal (livre) que o VocallAgent informa ao entrar. */
 export type VocallHealth = { status: "unknown" | "checking" | "ok" | "down"; reason: string | null; at: number | null };
 export type VocallCall = { telefone: string; empresa: string | null; estado: string | null; since: number; /** Momento em que a chamada acabou (congela o cronômetro). */ endedAt?: number; /** Formulário de Atendimento da EOX para qualificar esta ligação. */ qualUrl?: string | null; /** Procurando a qualificação pendente na central. */ qualLooking?: boolean };
-type Ctx = { configured: boolean; /** Estado do app do VocallPhone (última verificação ou tentativa de ligação). */ health: VocallHealth; /** Verifica agora se o app responde (entra, lê o estado do ramal e sai). */ check: () => Promise<boolean>; /** Painel do telefone aberto. */ panel: boolean; setPanel: (open: boolean) => void; /** Texto colocado antes do número ao discar (para reconhecer o lead na chamada). */ prefix: string; state: VocallState; call: VocallCall | null; /** Liga: conecta ao VocallAgent só agora, pede a chamada e resolve true quando o VocallPhone confirma; false se não conectou ou não confirmou (aí vale copiar e colar no app). A conexão é cortada quando a chamada termina. */ dial: (phone: string, label?: string | null, eox?: EoxRef | null) => Promise<boolean>; /** Fecha o aviso da ligação que acabou. */ dismiss: () => void };
-const VocallCtx = createContext<Ctx>({ configured: false, health: { status: "unknown", reason: null, at: null }, check: async () => false, panel: false, setPanel: () => {}, prefix: "", state: "off", call: null, dial: async () => false, dismiss: () => {} });
+type Ctx = { configured: boolean; /** Qualificação que a EOX ainda espera (o ramal fica em "waiting" e não disca até ela ser salva). */ pending: { url: string; empresa: string | null } | null; /** Procura a qualificação pendente na central. */ findPending: () => Promise<string | null>; /** Estado do app do VocallPhone (última verificação ou tentativa de ligação). */ health: VocallHealth; /** Verifica agora se o app responde (entra, lê o estado do ramal e sai). */ check: () => Promise<boolean>; /** Painel do telefone aberto. */ panel: boolean; setPanel: (open: boolean) => void; /** Texto colocado antes do número ao discar (para reconhecer o lead na chamada). */ prefix: string; state: VocallState; call: VocallCall | null; /** Liga: conecta ao VocallAgent só agora, pede a chamada e resolve true quando o VocallPhone confirma; false se não conectou ou não confirmou (aí vale copiar e colar no app). A conexão é cortada quando a chamada termina. */ dial: (phone: string, label?: string | null, eox?: EoxRef | null) => Promise<boolean>; /** Fecha o aviso da ligação que acabou. */ dismiss: () => void };
+const VocallCtx = createContext<Ctx>({ configured: false, pending: null, findPending: async () => null, health: { status: "unknown", reason: null, at: null }, check: async () => false, panel: false, setPanel: () => {}, prefix: "", state: "off", call: null, dial: async () => false, dismiss: () => {} });
 export const useVocall = () => useContext(VocallCtx);
 
 export const vocallUrl = (c: Pick<VocallConfig, "host" | "port" | "secure">) => `${c.secure ? "wss" : "ws"}://${c.host}:${c.port}/vocallagent`;
@@ -45,6 +45,8 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, children }: { /**
   const hinted = useRef(true);
   /** A central disse que esta chamada não tem qualificação (retorno "Desconhecido"). */
   const noQual = useRef(false);
+  const [pending, setPending] = useState<{ url: string; empresa: string | null } | null>(null);
+  const blockedWaiting = useRef(false);
   const [health, setHealth] = useState<VocallHealth>({ status: "unknown", reason: null, at: null });
   /** Último estado do ramal informado pelo VocallAgent (undefined = ainda não informou). false = livre. */
   const livre = useRef<string | false | null | undefined>(undefined);
@@ -75,22 +77,38 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, children }: { /**
    */
   const askQual = useCallback(async (knownId?: string) => {
     clearTimeout(timers.current.qual);
-    setCall((c) => (c ? { ...c, qualLooking: !knownId } : c));
+    setCall((c) => (c ? { ...c, qualLooking: true } : c));
     let id: string | null = knownId && /^\d+$/.test(knownId) ? knownId : null;
-    if (!id && !noQual.current) {
+    let parent: string | null = null, base = "", empresa: string | null = null;
+    if (!noQual.current || id) {
       try {
         const r = await fetch("/api/vocall/qualificacao", { method: "POST", cache: "no-store" });
-        const j = (await r.json()) as { id: string | null };
-        if (j.id && /^\d+$/.test(j.id)) id = j.id;
+        const j = (await r.json()) as { id: string | null; parent?: string | null; eoxBase?: string | null; empresa?: string | null };
+        if (j.id && /^\d+$/.test(j.id)) { id = id ?? j.id; parent = j.parent ?? null; base = j.eoxBase ?? ""; empresa = j.empresa ?? null; }
       } catch { /* sem link: o painel só avisa que acabou */ }
     }
-    const origin = eoxRef.current?.origin || eoxBase || "";
-    const url = id && !noQual.current && origin ? qualificationLink(origin, eoxRef.current, id) : null;
+    const origin = eoxRef.current?.origin || base || eoxBase || "";
+    const ref = eoxRef.current ?? (parent ? { crmid: parent, setype: "Accounts" } : null);
+    const url = id && origin ? qualificationLink(origin, ref, id) : null;
     hangup("idle");
     if (!alive.current) return;
     setCall((c) => (c ? { ...c, qualUrl: url, qualLooking: false } : c));
+    if (url) setPending({ url, empresa });
     dismissIn(url ? QUAL_KEEP_MS : GONE_MS);
   }, [hangup, dismissIn, eoxBase]);
+
+  /** Procura a qualificação que a central ainda espera (só consulta, não mexe na conexão do app). */
+  const findPending = useCallback(async (): Promise<string | null> => {
+    try {
+      const r = await fetch("/api/vocall/qualificacao", { method: "POST", cache: "no-store" });
+      const j = (await r.json()) as { id: string | null; parent?: string | null; eoxBase?: string | null; empresa?: string | null };
+      const origin = eoxRef.current?.origin || j.eoxBase || eoxBase || "";
+      if (!j.id || !/^\d+$/.test(j.id) || !origin) { if (alive.current) setPending(null); return null; }
+      const url = qualificationLink(origin, eoxRef.current ?? (j.parent ? { crmid: j.parent, setype: "Accounts" } : null), j.id);
+      if (alive.current) setPending({ url, empresa: j.empresa ?? null });
+      return url;
+    } catch { return null; }
+  }, [eoxBase]);
 
   const finish = useCallback((estado: string) => {
     if (!hinted.current) { hinted.current = true; const a = answeredAt.current; hintLastCall(a != null, a != null ? Math.round((Date.now() - a) / 1000) : null); }
@@ -139,7 +157,8 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, children }: { /**
         // a EOX respondeu: id numérico = há qualificação (é o sourceuuid); "Desconhecido" = não há
         const id = String((m.data as { id_qualificacao_pendente?: unknown } | undefined)?.id_qualificacao_pendente ?? "");
         clearTimeout(timers.current.idle);
-        if (/^\d+$/.test(id)) void askQual(id); else { noQual.current = true; void askQual(); }
+        const pend = String((m.data as { pendentes?: unknown } | undefined)?.pendentes ?? "");
+        if (/^\d+$/.test(id)) void askQual(id); else { if (pend === "0") noQual.current = true; void askQual(); }
       } else if (m.action === "aguardando_qualificacao") {
         clearTimeout(timers.current.idle);
         // espera a resposta da EOX (retorno_qualificacao); se não vier em 3 s, pergunta direto à central
@@ -177,8 +196,9 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, children }: { /**
     livre.current = undefined;
     const s = await connect();
     if (!s || s.readyState !== 1) { down("Não consegui entrar no VocallAgent. Confira o agente, o ramal e a conexão."); return false; }
-    await waitLivre(1_500); // sem resposta do ramal o app costuma estar travado: ainda assim tenta o pedido
-    if (!s || s.readyState !== 1) return false;
+    const st = await waitLivre(1_500); // sem resposta do ramal o app costuma estar travado: ainda assim tenta o pedido
+    if (s.readyState !== 1) return false;
+    if (typeof st === "string" && /wait/i.test(st)) { blockedWaiting.current = true; hangup("idle"); return false; } // ramal esperando qualificação: não adianta discar
     return new Promise<boolean>((resolve) => {
       let timer: ReturnType<typeof setTimeout>;
       const waiter = (ok: boolean) => { clearTimeout(timer); resolve(ok); };
@@ -197,15 +217,21 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, children }: { /**
     if (digits.length < 8) return false;
     setPanel(true); // ligou: o discador abre sozinho; se a pessoa minimizar, o botão flutuante mostra a chamada
     setHealth((h) => ({ ...h, status: "checking" }));
+    blockedWaiting.current = false;
     let ok = await attempt(digits);
+    if (!ok && blockedWaiting.current) {
+      const u = await findPending();
+      down(u ? "A última chamada ainda espera qualificação. Salve a qualificação na EOX para liberar o discador." : "O ramal está esperando uma qualificação da última chamada. Salve-a na EOX (aba aberta) para liberar o discador.");
+      return false;
+    }
     if (!ok) { // não confirmou: derruba a conexão, espera um instante e entra de novo do zero (resolve app que perdeu a sessão)
       hangup("idle"); await sleep(700);
       ok = await attempt(digits);
     }
-    if (ok) { if (alive.current) setHealth({ status: "ok", reason: null, at: Date.now() }); return true; }
+    if (ok) { if (alive.current) { setHealth({ status: "ok", reason: null, at: Date.now() }); setPending(null); } return true; }
     down(livre.current === undefined ? "O VocallPhone não respondeu: o ramal não informou estado. Confira se o app está aberto e logado." : typeof livre.current === "string" ? `O ramal está em "${livre.current}".` : "O VocallPhone recebeu o pedido mas não iniciou a chamada.");
     return false;
-  }, [attempt, hangup, down]);
+  }, [attempt, hangup, down, findPending]);
 
   const check = useCallback(async (): Promise<boolean> => {
     if (call && !call.endedAt) return true;
@@ -216,11 +242,12 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, children }: { /**
     const st = await waitLivre(3_000);
     hangup("idle");
     if (st === undefined) { down("O ramal não informou estado: o app do VocallPhone parece fechado ou travado."); return false; }
+    if (typeof st === "string" && /wait/i.test(st)) { const u = await findPending(); down(u ? "A última chamada ainda espera qualificação. Salve a qualificação na EOX para liberar o discador." : "O ramal está esperando uma qualificação da última chamada. Salve-a na EOX (aba aberta) para liberar o discador."); return false; }
     if (typeof st === "string") { down(`Ramal ocupado ou indisponível: ${st}.`); return false; }
     if (alive.current) setHealth({ status: "ok", reason: null, at: Date.now() });
     return true;
-  }, [call, connect, hangup, down, waitLivre]);
+  }, [call, connect, hangup, down, waitLivre, findPending]);
 
-  const value = useMemo(() => ({ configured: true, health, check, panel, setPanel, prefix, state, call, dial, dismiss: () => { clearTimeout(timers.current.clear); setCall(null); } }), [health, check, panel, prefix, state, call, dial]);
+  const value = useMemo(() => ({ configured: true, pending, findPending, health, check, panel, setPanel, prefix, state, call, dial, dismiss: () => { clearTimeout(timers.current.clear); setCall(null); } }), [pending, findPending, health, check, panel, prefix, state, call, dial]);
   return <VocallCtx.Provider value={value}>{children}<PhoneDock /></VocallCtx.Provider>;
 }

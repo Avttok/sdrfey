@@ -138,6 +138,9 @@ export function PhoneDock() {
   useEffect(() => { try { const r = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]"); if (Array.isArray(r)) setRecent(r.filter((x) => x && typeof x.digits === "string").slice(0, 8)); } catch { /* sem armazenamento */ } }, []);
   useEffect(() => { if (!open) return; const h = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); }; window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h); }, [open, setOpen]);
   useEffect(() => { if (open && !call && tab === "dial") inputRef.current?.focus(); }, [open, call, tab]);
+  // ao abrir o discador, vê se a última chamada ainda espera qualificação (só uma consulta, não mexe no app)
+  const { findPending } = vocall;
+  useEffect(() => { if (open && !call) void findPending(); }, [open, call, findPending]);
 
   const digits = num.replace(/\D/g, "");
   const inCall = !!call;
@@ -244,6 +247,13 @@ export function PhoneDock() {
               </div>
             )}
 
+            {!inCall && vocall.pending && (
+              <a href={vocall.pending.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-2xl border-2 border-warn/50 bg-warn/10 p-3 text-left transition hover:bg-warn/20">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-warn/20 text-warn"><ExternalLink size={18} aria-hidden /></span>
+                <span className="min-w-0 flex-1"><span className="block text-sm font-bold">Qualificação pendente{vocall.pending.empresa ? ` · ${vocall.pending.empresa}` : ""}</span><span className="block text-xs text-muted">Salve na EOX para liberar o discador. Clique para abrir.</span></span>
+              </a>
+            )}
+
             {!inCall && shownTab === "dial" && (
               <>
                 <div className="relative">
@@ -279,7 +289,7 @@ export function PhoneDock() {
           {!inCall && shownTab === "dial" && (
             <footer className="space-y-1.5 border-t border-line bg-panel p-3">
               {blocked && <p className="flex items-center gap-1.5 text-xs font-semibold text-danger"><Ban size={13} aria-hidden /> A EOX bloqueou a discagem deste cliente. Vai pedir confirmação.</p>}
-              {vocall.health.status === "down" && <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{vocall.health.reason ?? "O VocallPhone não respondeu."} Se o app estiver aberto, clique em Verificar; o sistema entra de novo do zero a cada ligação.</p>}
+              {vocall.health.status === "down" && <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{vocall.health.reason ?? "O VocallPhone não respondeu."} </p>}
               <button type="button" onClick={() => void dialTo(digits)} disabled={digits.length < 8 || dialing} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40" style={{ background: "linear-gradient(135deg,#16a34a,#15803d)" }}>
                 {dialing ? <Loader2 size={20} className="animate-spin" aria-hidden /> : <Phone size={20} aria-hidden />} {dialing ? "Ligando…" : "Ligar"}
               </button>
