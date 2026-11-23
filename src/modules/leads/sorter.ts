@@ -58,6 +58,7 @@ export async function claimNext(userId: number, opts: { test?: boolean; listId?:
         and not exists (select 1 from lead_tags lt join tags t on t.id = lt.tag_id
                         where lt.lead_id = l.id and t.blocks_sorting)
         and not exists (select 1 from deals dd where dd.lead_id = l.id)
+        and coalesce(l.eox_info->>'Discagens bloqueadas', '') not ilike 'sim'
         and not exists (select 1 from lead_skips s
                         where s.lead_id = l.id and s.user_id = ${userId} and s.until > now())
         and not exists (select 1 from attendance_sessions asx where asx.lead_id = l.id and asx.user_id = ${userId} and asx.shown_at > now() - interval '1 day')
@@ -80,6 +81,7 @@ export async function hasAvailable(userId: number, opts: { test?: boolean; skipR
       and (l.owner_id is null or l.owner_id = ${userId})
       and not exists (select 1 from lead_tags lt join tags t on t.id = lt.tag_id where lt.lead_id = l.id and t.blocks_sorting)
       and not exists (select 1 from deals dd where dd.lead_id = l.id)
+        and coalesce(l.eox_info->>'Discagens bloqueadas', '') not ilike 'sim'
       and not exists (select 1 from lead_skips s where s.lead_id = l.id and s.user_id = ${userId} and s.until > now())
       and not exists (select 1 from attendance_sessions asx where asx.lead_id = l.id and asx.user_id = ${userId} and asx.shown_at > now() - interval '1 day')
     limit 1`);

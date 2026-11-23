@@ -9,7 +9,8 @@ import { parseEoxUrl } from "@/modules/vocall/eox";
  * "Ligar": se a pessoa tem agente/ramal configurados, pede a chamada ao VocallPhone (como o clique no número da EOX).
  * Sem isso, ou se o app não confirmar, copia o número já pronto para colar no VocallPhone e dar Enter. No celular abre o discador.
  */
-export const callNumber = async (digits: string, label: string | null, toast: ReturnType<typeof useToast>, vocall: ReturnType<typeof useVocall>, lead?: { id: number; eoxUrl: string | null }) => {
+export const callNumber = async (digits: string, label: string | null, toast: ReturnType<typeof useToast>, vocall: ReturnType<typeof useVocall>, lead?: { id: number; eoxUrl: string | null; eoxInfo?: Record<string, string> | null }) => {
+  if (/^sim$/i.test(lead?.eoxInfo?.["Discagens bloqueadas"] ?? "") && !window.confirm(`A EOX marca a discagem deste cliente como BLOQUEADA${lead?.eoxInfo?.["Motivo bloqueio"] ? ` (${lead.eoxInfo["Motivo bloqueio"]})` : ""}.\n\nLigar mesmo assim?`)) return;
   if (vocall.configured) {
     // sem o link do cadastro da EOX o Atendimento da EOX abre em branco: procura agora pelo CNPJ (se a integração estiver ligada)
     let url = lead?.eoxUrl ?? null;

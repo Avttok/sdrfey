@@ -150,6 +150,9 @@ export const leads = pgTable(
     /** Código do cliente na EOX (ex.: 117805). Diferente do Id (record=): serve para achar o cadastro pela API. */
     eoxCode: text("eox_code"),
     sfId: text("sf_id"),
+    /** Retrato do cadastro na EOX (tipo, vendedor, bloqueio de discagem, últimas compras…). Vem da planilha de Empresas. */
+    eoxInfo: jsonb("eox_info").$type<Record<string, string>>(),
+    eoxSyncedAt: timestamp("eox_synced_at", { withTimezone: true }),
 
     ownerId: integer("owner_id").references(() => users.id, { onDelete: "set null" }),
     lockedBy: integer("locked_by").references(() => users.id, { onDelete: "set null" }),

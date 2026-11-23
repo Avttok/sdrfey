@@ -4,6 +4,7 @@ import { PersonBubble } from "@/components/person-bubble";
 import { RoteiroLink } from "@/components/roteiro-link";
 
 import { ClientIds } from "@/components/client-ids";
+import { EoxInfoCard } from "@/components/eox-info";
 import { ArrowLeft, Ban, CalendarCheck, Copy, ExternalLink, Handshake, Link2, MapPin, Pencil, Phone, Plus, Tag, Trash2, RotateCcw, UnlockKeyhole, Users } from "lucide-react";
 import Link from "next/link";
 import { SectionCard } from "@/components/section-card";
@@ -98,6 +99,7 @@ export function LeadEditor({ kpis, records, afterLeft, afterRight, lead, catalog
 
 
       {afterLeft}
+      <SectionCard icon={Link2} title="Na EOX"><EoxInfoCard info={lead.eoxInfo} syncedAt={lead.eoxSyncedAt} /></SectionCard>
       <SectionCard icon={Link2} title="Ids do cliente"><ClientIds leadId={lead.id} eoxId={lead.eoxId} eoxCode={lead.eoxCode} sfId={lead.sfId} eoxUrl={lead.eoxUrl} /></SectionCard>
 
       <SectionCard icon={Phone} title="Contatos">

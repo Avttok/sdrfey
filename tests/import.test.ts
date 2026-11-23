@@ -135,7 +135,7 @@ describe("Id EOX e Id Salesforce na planilha", () => {
     expect(cleanSfId("curto")).toBeNull();
   });
   it("os cabeçalhos da exportação são reconhecidos", () => {
-    const m = mapColumns(["CNPJ", "IdEOX", "Id SF"], LEAD_COLUMNS);
-    expect(m.eoxId).toBe("IdEOX"); expect(m.sfId).toBe("Id SF");
+    const m = mapColumns(["CNPJ", "idEmpresa", "Id SF"], LEAD_COLUMNS);
+    expect(m.eoxId).toBe("idEmpresa"); expect(m.sfId).toBe("Id SF");
   });
 });

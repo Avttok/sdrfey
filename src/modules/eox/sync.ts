@@ -6,8 +6,8 @@ import { digitsOf, EOX_FALLBACK_BASE, eoxAccountsPage, eoxFindByCnpj, eoxFindByC
 import { EOX_KEY, eoxReady, parseEox } from "./config";
 
 export const EOX_SYNC_KEY = "eox_sync";
-export type EoxSyncState = { offset: number; at: string | null; lastLinked: number; lastScanned: number; round: number };
-export const EOX_SYNC_DEFAULT: EoxSyncState = { offset: 0, at: null, lastLinked: 0, lastScanned: 0, round: 0 };
+export type EoxSyncState = { offset: number; at: string | null; lastLinked: number; lastScanned: number; round: number; /** último lead conferido na busca direta */ cursor: number };
+export const EOX_SYNC_DEFAULT: EoxSyncState = { offset: 0, at: null, lastLinked: 0, lastScanned: 0, round: 0, cursor: 0 };
 
 export const loadEox = async () => parseEox(await settingValue(EOX_KEY));
 export async function loadSyncState(): Promise<EoxSyncState> {
@@ -50,6 +50,29 @@ export async function linkLeads(d: Db, byCnpj: Map<string, string>, byCode: Map<
 }
 
 /**
+ * Busca direta: para cada lead sem Id da EOX pergunta à EOX pelo Código e, se não achar, pelo CNPJ (5 perguntas ao mesmo tempo).
+ * Anda por ordem de lead e guarda onde parou, então leads que a EOX não conhece não são perguntados de novo na mesma rodada.
+ */
+export async function lookupMissingIds(d: Db, s: EoxSession, deadline: number, cursor: number, userId: number | null): Promise<{ linked: number; checked: number; cursor: number; done: boolean }> {
+  let linked = 0, checked = 0, cur = cursor;
+  while (Date.now() < deadline) {
+    const batch = await d.select({ id: leads.id, cnpj: leads.cnpj, code: leads.eoxCode }).from(leads).where(and(isNull(leads.eoxId), sql`${leads.id} > ${cur}`, eq(leads.isTest, false))).orderBy(leads.id).limit(100);
+    if (!batch.length) return { linked, checked, cursor: 0, done: true };
+    for (let i = 0; i < batch.length && Date.now() < deadline; i += 5) {
+      const group = batch.slice(i, i + 5);
+      const found = await Promise.all(group.map(async (l) => {
+        try { return (l.code ? await eoxFindByCode(s, l.code) : null) ?? (await eoxFindByCnpj(s, l.cnpj)); } catch { return null; }
+      }));
+      const m = new Map<string, string>();
+      group.forEach((l, k) => { if (found[k]) m.set(digitsOf(l.cnpj), found[k]!); });
+      if (m.size) linked += await linkLeads(d, m, new Map(), userId);
+      checked += group.length; cur = group[group.length - 1].id;
+    }
+  }
+  return { linked, checked, cursor: cur, done: false };
+}
+
+/**
  * Varre os cadastros da EOX e preenche o link nos leads que têm o mesmo CNPJ.
  * Continua de onde parou (a API entrega 100 por vez); ao chegar no fim volta ao começo na próxima rodada.
  */
@@ -57,12 +80,16 @@ export async function syncEoxLinks(opts: { budgetMs?: number; userId?: number | 
   const d = opts.database ?? db;
   const cfg = await loadEox();
   if (!eoxReady(cfg)) return { ok: false, message: "Integração com a EOX desligada ou incompleta.", linked: 0, scanned: 0, done: false };
-  const deadline = Date.now() + (opts.budgetMs ?? 45_000);
+  const total = opts.budgetMs ?? 45_000;
+  const deadline = Date.now() + total;
   const st = await loadSyncState();
   let s: EoxSession;
   try { s = opts.session ?? (await eoxLogin(cfg)); } catch (e) { return { ok: false, message: `Não entrei na EOX: ${(e as Error).message}`, linked: 0, scanned: 0, done: false }; }
-  let offset = st.offset, linked = 0, scanned = 0, done = false;
+  let offset = st.offset, linked = 0, scanned = 0, done = false, cursor = st.cursor;
   try {
+    // 1) busca direta, lead por lead (metade do tempo); 2) varredura geral da EOX com o resto
+    const t = await lookupMissingIds(d, s, Date.now() + total / 2, cursor, opts.userId ?? null);
+    linked += t.linked; scanned += t.checked; cursor = t.cursor;
     while (Date.now() < deadline) {
       const { rows, end } = await eoxAccountsPage(s, offset);
       scanned += rows.length; offset += 100;
@@ -75,10 +102,10 @@ export async function syncEoxLinks(opts: { budgetMs?: number; userId?: number | 
       if (end) { done = true; offset = 0; break; }
     }
   } catch (e) {
-    await saveSyncState(d, { ...st, offset, at: new Date().toISOString(), lastLinked: linked, lastScanned: scanned });
+    await saveSyncState(d, { ...st, offset, cursor, at: new Date().toISOString(), lastLinked: linked, lastScanned: scanned });
     return { ok: false, message: `A EOX parou de responder: ${(e as Error).message}`, linked, scanned, done: false };
   }
-  await saveSyncState(d, { offset, at: new Date().toISOString(), lastLinked: linked, lastScanned: scanned, round: st.round + (done ? 1 : 0) });
+  await saveSyncState(d, { offset, cursor, at: new Date().toISOString(), lastLinked: linked, lastScanned: scanned, round: st.round + (done ? 1 : 0) });
   return { ok: true, message: done ? `Rodada completa: ${linked} leads receberam o link.` : `${linked} leads receberam o link; continua de onde parou na próxima execução.`, linked, scanned, done };
 }
 

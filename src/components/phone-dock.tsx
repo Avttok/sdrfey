@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { callNumber } from "@/components/call-number";
 import { estadoLabel, Timer } from "@/components/call-ui";
 import { ClientIds } from "@/components/client-ids";
+import { EoxInfoCard } from "@/components/eox-info";
 import { useToast } from "@/components/toast";
 import { useVocall } from "@/components/vocall-provider";
 import { fmtPhone } from "@/lib/format";
@@ -50,6 +51,8 @@ function LeadCard({ lead, others, onPick, inCall }: { lead: PhoneLead; others: P
         </div>
       </div>}
       {inCall && <div className="flex flex-wrap gap-1.5"><span className="rounded-full bg-accent/12 px-2 py-0.5 text-[11px] font-semibold text-accent">{lead.kind === "inativo" ? "Cliente (Vendas)" : "Prospecção"}</span>{lead.dealStage && <span className="rounded-full bg-ok/15 px-2 py-0.5 text-[11px] font-semibold text-ok">{STAGE[lead.dealStage] ?? lead.dealStage}</span>}</div>}
+      {lead.person && <p className="flex items-center gap-2 rounded-lg bg-ok/10 px-2.5 py-1.5 text-sm"><UserRound size={15} className="shrink-0 text-ok" aria-hidden /><span><b>{lead.person.name}</b>{lead.person.role && <span className="text-muted"> · {lead.person.role}</span>}<span className="text-muted"> · é quem costuma atender neste número</span></span></p>}
+      <EoxInfoCard info={lead.eoxInfo} compact />
       <div className="space-y-1">
         {place && <p className={row}><MapPin size={15} className="mt-0.5 shrink-0 text-muted" aria-hidden />{place}</p>}
         {lead.contactName && <p className={row}><UserRound size={15} className="mt-0.5 shrink-0 text-muted" aria-hidden /><span>{lead.contactName}{lead.roleTitle && <span className="text-muted"> · {lead.roleTitle}</span>}</span></p>}
@@ -103,7 +106,7 @@ export function PhoneDock() {
     const l = lead ?? null;
     const label = l ? (l.tradeName ?? l.company) : fmtPhone(digits);
     try {
-      await callNumber(digits, label, toast, vocall, l ? { id: l.id, eoxUrl: l.eoxUrl } : undefined);
+      await callNumber(digits, label, toast, vocall, l ? { id: l.id, eoxUrl: l.eoxUrl, eoxInfo: l.eoxInfo } : undefined);
       const next = [{ digits, label }, ...recent.filter((r) => r.digits !== digits)].slice(0, 5);
       setRecent(next);
       try { localStorage.setItem(RECENT_KEY, JSON.stringify(next)); } catch { /* ok */ }

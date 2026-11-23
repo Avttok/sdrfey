@@ -44,7 +44,7 @@ export const LEAD_GUIDE: GuideCol[] = [
   { col: "CNPJ", required: true, what: "Identifica a empresa. Com ou sem pontos.", format: "00.000.000/0001-91" },
   { col: "EMPRESA", what: "Razão social.", alias: ["RAZAO SOCIAL", "NOME"] },
   { col: "COD SAP", what: "Código do cliente no SAP.", alias: ["SAP"] },
-  { col: "IDEOX", what: "Número do cadastro na EOX (o record= do link). Faz o Atendimento da EOX abrir depois da ligação.", alias: ["ID EOX", "RECORD"], format: "1293925" },
+  { col: "IDEMPRESA", what: "Registro na EOX (o record= do link do cliente). Faz o Atendimento da EOX abrir depois da ligação.", alias: ["RECORD", "ID EOX"], format: "1293925" },
   { col: "CODEOX", what: "Código do cliente na EOX (ex.: 117805). Não é o número do link: serve para a integração achar o cadastro.", alias: ["COD EOX", "CODIGO EOX"], format: "117805" },
   { col: "IDSF", what: "Id da conta no Salesforce (15 ou 18 letras e números).", alias: ["ID SF", "ID SALESFORCE"] },
   { col: "CONTATO", what: "Nome de quem atende." },
