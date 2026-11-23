@@ -15,7 +15,9 @@ export function ScriptPicker({ scripts, vars, goal, segmentHint, extra, onNote, 
   const [full, setFull] = useState<Record<number, ScriptDoc>>({});
   const list = useMemo(() => scripts.filter((s) => s.goal === g).map((s) => full[s.id] ?? s), [scripts, g, full]);
   const [id, setId] = useState<number | null>(null);
-  const current = list.find((s) => s.id === id) ?? list.find((s) => s.segment === segmentHint) ?? list.find((s) => s.segment === "geral") ?? list[0];
+  /** Ao trocar de fase, o tipo de cliente acompanha: Prospecção · Auto center vira Venda · Auto center. */
+  const [carry, setCarry] = useState<string | null>(null);
+  const current = list.find((s) => s.id === id) ?? (carry ? list.find((s) => s.segment === carry) : undefined) ?? list.find((s) => s.segment === segmentHint) ?? list.find((s) => s.segment === "geral") ?? list[0];
   const [failed, setFailed] = useState(false);
   const needs = current && current.nodes.length === 0 ? current.id : null;
   useEffect(() => {
@@ -36,14 +38,14 @@ export function ScriptPicker({ scripts, vars, goal, segmentHint, extra, onNote, 
   return (
     <div className="space-y-3">
       {current && (() => {
-        const why = id !== null && list.some((s) => s.id === id) ? { t: "escolhido por você", Icon: Hand } : current.segment === segmentHint ? { t: "escolhido automaticamente pelo tipo de empresa", Icon: Wand2 } : current.segment === "geral" ? { t: "script geral (tipo de empresa não identificado)", Icon: Wand2 } : { t: "primeiro da lista", Icon: Wand2 };
+        const why = id !== null && list.some((s) => s.id === id) ? { t: "escolhido por você", Icon: Hand } : carry && current.segment === carry ? { t: "mesmo tipo de cliente da fase anterior", Icon: Wand2 } : current.segment === segmentHint ? { t: "escolhido automaticamente pelo tipo de empresa", Icon: Wand2 } : current.segment === "geral" ? { t: "script geral (tipo de empresa não identificado)", Icon: Wand2 } : { t: "primeiro da lista", Icon: Wand2 };
         return <div className="flex items-center gap-2"><p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-sunk px-3 py-2 text-sm" aria-live="polite"><FileText size={15} aria-hidden className="text-accent" /><span className="text-muted">Script em uso:</span><b>{current.title}</b><span className="inline-flex items-center gap-1 text-xs text-muted"><why.Icon size={12} aria-hidden /> {why.t}</span></p><button type="button" aria-expanded={types} onClick={() => setTypes(!types)} className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-line bg-panel px-3 py-2 text-sm font-semibold transition hover:border-accent/50">Alterar roteiro <ChevronDown size={15} aria-hidden className={`transition ${types ? "rotate-180" : ""}`} /></button></div>;
       })()}
       {types && <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Fase da ligação">
         {(Object.keys(GOALS) as ScriptGoal[]).map((k) => {
           const t = GOAL_THEME[k]; const on = g === k;
           return (
-            <button key={k} type="button" role="tab" aria-selected={on} onClick={() => { setG(k); setId(null); }} style={on ? { background: t.hex, borderColor: t.hex } : tint(t.hex, 8, 30)}
+            <button key={k} type="button" role="tab" aria-selected={on} onClick={() => { if (k === g) return; setCarry(current?.segment ?? null); setG(k); setId(null); }} style={on ? { background: t.hex, borderColor: t.hex } : tint(t.hex, 8, 30)}
               className={`inline-flex items-center gap-1.5 rounded-xl border-2 px-3 py-1.5 text-sm font-bold transition active:scale-95 ${on ? "text-white shadow" : "text-ink hover:brightness-95"}`}><t.Icon size={15} aria-hidden /> {t.short}</button>
           );
         })}
@@ -52,7 +54,7 @@ export function ScriptPicker({ scripts, vars, goal, segmentHint, extra, onNote, 
         {list.map((s) => {
           const Icon = SEGMENT_ICON[s.segment] ?? SEGMENT_ICON.geral; const on = s.id === current?.id; const hint = s.segment === segmentHint;
           return (
-            <button key={s.id} type="button" aria-pressed={on} onClick={() => setId(s.id)} title={s.title}
+            <button key={s.id} type="button" aria-pressed={on} onClick={() => { setId(s.id); setCarry(null); }} title={s.title}
               className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${on ? "border-accent bg-accent/15 text-accent" : "border-line bg-sunk/60 text-muted hover:text-ink"}`}>
               {s.mine ? <Star size={13} aria-hidden /> : <Icon size={13} aria-hidden />}{s.mine ? s.title : SEGMENTS[s.segment] ?? s.segment}{hint && <span className="rounded-full bg-ok/20 px-1.5 text-[10px] text-ok">sugerido</span>}
             </button>
