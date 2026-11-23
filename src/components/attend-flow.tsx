@@ -78,6 +78,9 @@ export const copy = async (text: string, toast: ReturnType<typeof useToast>) => 
   }
 };
 
+/** Leads que a pessoa deixou de propósito (Parar/Pular/Descartar). Fica fora do componente porque a tela pode remontar durante o redirecionamento. */
+const LEFT = new Set<number>();
+
 export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myName, showMap, previous, doneToday, scheduledToday, goals, sellers, sales, queue, scripts = [], recos = [], scriptGoal }: { /** Categoria do roteiro que combina com a situação do lead. */ scriptGoal?: ScriptGoal; /** Produtos para oferecer, por tipo de cliente. */ recos?: Reco[]; /** Scripts de ligação que a pessoa pode usar (do time e dela). */ scripts?: ScriptDoc[]; /** Fila de distribuição aos vendedores: ligada? e quem é o próximo. */ queue?: { on: boolean; nextId: number | null }; /** Consulta automática de CNPJ ligada pelo Adm: o shuffler não consulta sozinho. */ autoEnrichOn?: boolean; /** Modo vendedor (lead inativo): mesmo fluxo, destinos diferentes no fim. */ sales?: { shuffleId: number }; sellers: { id: number; name: string }[]; lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; previous: PreviousAttendance | null; doneToday: number; scheduledToday: number; goals: Goals }) {
   const toast = useToast();
   const vocall = useVocall();
@@ -105,6 +108,12 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
   const showVisit = dest === "reps" || dest === "sellers" || dest === "visit";
   const home = sales ? "/shuffler-vendas" : "/atender";
   const nextLead = () => (sales ? startSalesShuffleAction() : startAction());
+  /** Sair do lead de propósito (Parar, Pular, Descartar): o batimento não pode tratar isso como inatividade. */
+  const leaving = { get current() { return LEFT.has(lead.id); } };
+  const leave = async <R extends { ok: boolean }>(fn: () => Promise<R>): Promise<R> => {
+    LEFT.add(lead.id);
+    const r = await fn(); if (!r.ok) LEFT.delete(lead.id); return r; // se lançar (redirect do servidor ao parar), segue "saindo": a tela já está trocando
+  };
   const skipThis = () => (sales ? finishSalesShuffleAction(sales.shuffleId, "skipped", "") : skipAction(lead.id));
   const releaseThis = () => (sales ? finishSalesShuffleAction(sales.shuffleId, "released", "").then(async (r) => { if (r.ok) { router.replace("/shuffler-vendas"); router.refresh(); } return r; }) : releaseAction(lead.id));
   const discardThis = () => (sales ? finishSalesShuffleAction(sales.shuffleId, "no_interest", "Descartado no atendimento") : discardAction(lead.id, "Descartado no atendimento"));
@@ -122,7 +131,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
   const [priorAck, setPriorAck] = useState<number | null>(null);
   const priorOpen = !!previous && priorAck !== lead.id;
   const inactive = !priorOpen && !!status && status !== "ATIVA" && statusAck !== lead.id;
-  const seek = () => run(async () => { const r = await skipThis(); if (r.ok) await nextLead(); return r; });
+  const seek = () => run(() => leave(async () => { const r = await skipThis(); if (r.ok) await nextLead(); return r; }));
 
   /** Contatos anotados durante a ligação (já salvos no lead; entram na hora na lista, sem recarregar). */
   const [extraPeople, setExtraPeople] = useState<CapturedPerson[]>([]);
@@ -154,7 +163,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
     const beat = async () => {
       if (gone) return;
       const held = await heartbeatAction(lead.id, `Atendendo ${lead.company}`, Date.now() - last < 45_000).catch(() => true);
-      if (held || gone || saving.current) return; // salvando: o lead sai de você de propósito, não é inatividade
+      if (held || gone || saving.current || leaving.current) return; // salvando, parando ou pulando: o lead sai de você de propósito, não é inatividade
       gone = true;
       toast("warn", "Este lead foi liberado por inatividade. Use o Shuffler para pegar outro.");
       router.replace(home); router.refresh();
@@ -260,7 +269,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
     if (r.ok) { setUsed(new Set()); setTemperature(null); setQualification(null); setSituations(new Set()); setNote(""); setVisit(""); setVisitDate(""); setVisitLink(""); setVisitPublic(false); setDest("none"); setSellerId(null); setConfirmReset(false); setStep(0); router.refresh(); }
     return r;
   });
-  const discardNow = () => run(async () => { const r = await discardThis(); if (r.ok) await nextLead(); return r; });
+  const discardNow = () => run(() => leave(async () => { const r = await discardThis(); if (r.ok) await nextLead(); return r; }));
 
   const resetDiscard = (
     <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
@@ -498,7 +507,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
       </div>
 
       <div className="sticky bottom-3 z-40 flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-panel/90 p-3 shadow-lg backdrop-blur">
-        <button type="button" className={`${btnPrimary} !bg-grad-danger !text-white`} disabled={pending} onClick={() => run(() => releaseThis())}><Square size={15} aria-hidden /> Parar</button>
+        <button type="button" className={`${btnPrimary} !bg-grad-danger !text-white`} disabled={pending} onClick={() => run(() => leave(releaseThis))}><Square size={15} aria-hidden /> Parar</button>
         <button type="button" className={btnGhost} disabled={pending} title="Esconde este lead só de você por 24 h e não conta na meta" onClick={() => ask({ title: "Pular este lead?", body: "Ele fica escondido só de você por 24 h e não conta na meta. Você recebe o próximo.", label: "Sim, pular", tone: "warn", icon: SkipForward, onConfirm: seek })}><SkipForward size={16} aria-hidden /> Pular lead</button>
         <span className="flex-1" />
         {step > 0 && <button type="button" className={btnGhost} onClick={() => go(prevStep(step))}><ChevronLeft size={16} aria-hidden /> Voltar</button>}

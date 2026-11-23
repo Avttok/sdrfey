@@ -53,8 +53,8 @@ export function UserMenu({ banner, avatar, name, username, hex, onHex, accentKey
       const W = 320, m = 8;
       if (side) {
         const left = collapsed ? r.right + m : Math.min(Math.max(m, r.left), window.innerWidth - W - m);
-        setPos(collapsed ? { left, bottom: Math.max(m, window.innerHeight - r.bottom) } : { left, bottom: window.innerHeight - r.top + m });
-      } else setPos({ right: Math.max(m, window.innerWidth - r.right), top: r.bottom + m });
+        setPos(collapsed ? { left, bottom: Math.max(m, window.innerHeight - r.bottom), maxHeight: Math.max(240, r.bottom - m) } : { left, bottom: window.innerHeight - r.top + m, maxHeight: Math.max(240, r.top - 2 * m) });
+      } else setPos({ right: Math.max(m, window.innerWidth - r.right), top: r.bottom + m, maxHeight: Math.max(240, window.innerHeight - r.bottom - 2 * m) });
     };
     place();
     window.addEventListener("resize", place); window.addEventListener("scroll", place, true);
@@ -84,7 +84,7 @@ export function UserMenu({ banner, avatar, name, username, hex, onHex, accentKey
         {side && !collapsed && <span className="flex min-w-0 flex-1 flex-wrap gap-1">{sorted.map((r) => <RoleBadge key={r} role={r} />)}</span>}
       </button>
       {open && mounted && createPortal(
-        <div ref={menu} role="menu" style={pos} className="pop-in menu-stagger fixed z-[80] w-80 overflow-hidden rounded-3xl border border-line bg-panel shadow-[0_30px_80px_-20px_rgb(0_0_0/0.5)]">
+        <div ref={menu} role="menu" style={pos} className="pop-in menu-stagger fixed z-[80] w-80 overflow-y-auto overscroll-contain rounded-3xl border border-line bg-panel shadow-[0_30px_80px_-20px_rgb(0_0_0/0.5)]">
           <div className="aurora relative overflow-hidden bg-grad px-5 pb-5 pt-6 text-on-accent" style={bannerStyle(banner)}>
             <BannerRain avatar={avatar} roles={roles} count={20} /><span aria-hidden className="aurora-blob a" /><span aria-hidden className="aurora-blob b" /><span aria-hidden className="aurora-blob c" />
             <div className="relative flex items-center gap-4">
@@ -127,7 +127,7 @@ export function UserMenu({ banner, avatar, name, username, hex, onHex, accentKey
               <Link href="/conta" onClick={() => setOpen(false)} title="Mais cores" aria-label="Mais cores" className="grid aspect-square place-items-center rounded-full border border-dashed border-line bg-sunk text-muted transition duration-200 hover:scale-110 hover:text-ink"><Plus size={14} aria-hidden /></Link>
             </div>
           </form>
-          <form action={logoutAction} className="border-t border-line p-2"><SubmitButton className="logout-btn group !w-full !bg-none !bg-transparent !text-danger hover:!bg-danger/10"><LogOut size={16} aria-hidden className="transition-transform duration-300 group-hover:translate-x-1" /> Sair da conta</SubmitButton></form>
+          <form action={logoutAction} className="sticky bottom-0 z-10 border-t border-line bg-panel p-2"><SubmitButton className="logout-btn group !w-full !bg-none !bg-transparent !text-danger hover:!bg-danger/10"><LogOut size={16} aria-hidden className="transition-transform duration-300 group-hover:translate-x-1" /> Sair da conta</SubmitButton></form>
         </div>,
         document.body,
       )}

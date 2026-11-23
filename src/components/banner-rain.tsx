@@ -26,12 +26,15 @@ export function BannerRain({ avatar, roles, count = 16, field = false, egg }: { 
   const eggs = egg ?? mine;
   const Mine = (avatar && AVATAR_BY_KEY.get(avatar)?.icon) || UserRound;
   const kinds: ("fey" | "me" | "egg" | Role | number)[] = ["me", "fey", ...roles.filter((r) => r !== "admin" || roles.length === 1), "fey"];
-  if (eggs) kinds.splice(2, 0, "egg", "egg");
   if (field) { const base = kinds.length; for (let i = 0; i < FIELD.length * 2; i++) kinds.splice(1 + ((i * 3) % (base + i)), 0, i % FIELD.length); }
+  // Ovos espalhados por toda a largura: índices uniformes (e não posições fixas da lista, que os juntavam em 2 colunas).
+  const eggCount = eggs ? Math.max(2, Math.round(count / (field ? 5 : 6))) : 0;
+  const eggAt = new Set(Array.from({ length: eggCount }, (_, j) => Math.min(count - 1, Math.floor((j + 0.25 + rnd(j, 11) * 0.5) * (count / eggCount)))));
+  let seq = 0;
   return (
     <span aria-hidden className={`banner-rain pointer-events-none overflow-hidden ${field ? "fixed inset-0 z-0" : "absolute inset-0"}`}>
       {Array.from({ length: count }, (_, i) => {
-        const k = kinds[i % kinds.length];
+        const k = eggAt.has(i) ? "egg" : kinds[seq++ % kinds.length];
         // profundidade: 0 = longe (pequeno, lento, apagado, levemente fora de foco), 1 = perto (grande, rápido, desfocado de perto)
         const z = rnd(i, 1);
         const size = Math.round(8 + z * 16) + (field ? 6 : 0);
