@@ -156,6 +156,62 @@ export function moodOf(n: Pick<ScriptNode, "id" | "type" | "title" | "mood">): S
   return "apoio";
 }
 
+/** Postura sugerida para quem fala: um emoji e uma frase curta, só para o usuário (não entra no texto lido ao lead). */
+export type Posture = { emoji: string; text: string };
+const POSTURE_BY_ID: [RegExp, Posture][] = [
+  [/^abertura$/, { emoji: "😊", text: "Sorria ao falar: o sorriso aparece na voz" }],
+  [/^(secretaria|gk_quem|p_assistente)$/, { emoji: "🙏", text: "Gentil, pedindo uma ajuda" }],
+  [/^(horario|rec_email)$/, { emoji: "🙂", text: "Cordial e prático; anote o que ouvir" }],
+  [/^(transferido|quem)$/, { emoji: "🙂", text: "Leve e simpático, sem pressa" }],
+  [/^(nome|papel|pedir_decisor)$/, { emoji: "😄", text: "Simpático, ritmo calmo" }],
+  [/^assunto$/, { emoji: "🎯", text: "Direto e confiante, sem rodeio" }],
+  [/^sem_resp$/, { emoji: "🗣️", text: "Fale devagar e repita o telefone" }],
+  [/^wa_msg$/, { emoji: "✍️", text: "Mensagem curta e amigável" }],
+  [/^p_socio$/, { emoji: "💼", text: "Firme e objetivo: o tempo dele vale ouro" }],
+  [/^p_compras$/, { emoji: "📋", text: "Profissional e específico" }],
+  [/^(p_gestor|p_operacao)$/, { emoji: "🔧", text: "Prático, falando do dia a dia dele" }],
+  [/^(p_balcao|p_admin)$/, { emoji: "😊", text: "Simpático e humilde" }],
+  [/^p_alcada$/, { emoji: "🧐", text: "Curioso, sem pressão" }],
+  [/^conf_minimo$/, { emoji: "🧾", text: "Transparente e seguro" }],
+  [/^conf_/, { emoji: "🤝", text: "Tranquilo, de igual para igual" }],
+  [/^(impl|ganho)$/, { emoji: "🤔", text: "Empático e devagar: deixe ele falar" }],
+  [/^contrato$/, { emoji: "🙂", text: "Leve e honesto" }],
+  [/^(visita|v_prep)$/, { emoji: "📅", text: "Animado e objetivo; ofereça duas opções" }],
+  [/^(visita_confirma|digital|reenviar|prazo|v_tempo|reat_depois)$/, { emoji: "🤝", text: "Combinado claro; repita dia e horário" }],
+  [/^(pitch|proposta|reat_oferta|fid_reposicao|fid_catalogo)$/, { emoji: "🚀", text: "Entusiasmado, mas calmo" }],
+  [/^(fechar|venda_extra)$/, { emoji: "✅", text: "Confiante e atencioso; confirme os dados" }],
+  [/^(obj_ruim|v_problema|reat_tecnica|fid_tecnica|fid_pedido|duvida_tec)$/, { emoji: "😔", text: "Empático, voz mais baixa e atenta" }],
+  [/^obj_tempo$/, { emoji: "⏱️", text: "Rápido e educado" }],
+  [/^(obj_nao|obj_verba|obj_depois|obj_estoque|ret_ultima|motivo|v_cancela)$/, { emoji: "🕊️", text: "Sereno e agradecido, sem cobrança" }],
+  [/^(obj_fornecedor|obj_satisfeito|obj_distribuidor)$/, { emoji: "😌", text: "Respeitoso; nunca critique o outro" }],
+  [/^obj_/, { emoji: "🧘", text: "Calmo e acolhedor; não discuta" }],
+  [/^fid_nps$/, { emoji: "🙂", text: "Leve e curioso; escute a nota" }],
+  [/^fid_indica$/, { emoji: "😊", text: "Leve, sem pressão; pode ouvir não" }],
+  [/^fid_/, { emoji: "💖", text: "Caloroso e grato" }],
+  [/^(v_confirma|v_lembra)$/, { emoji: "😊", text: "Simpático e objetivo" }],
+  [/^v_remarca$/, { emoji: "🙂", text: "Flexível, sem drama" }],
+  [/^(v_pos|v_wa|v_horario)$/, { emoji: "😄", text: "Animado e curioso" }],
+  [/^(reat_historico|reat_apresenta|reat_hoje|reat_motivo|reat_atualiza)$/, { emoji: "👂", text: "Curioso, sem cobrança; escute" }],
+  [/^enr_/, { emoji: "👂", text: "Curioso e atento; faça silêncio depois" }],
+  [/^duvidas$/, { emoji: "👂", text: "Atento: pergunte e escute" }],
+];
+const POSTURE_BY_MOOD: Record<ScriptMood, Posture> = {
+  abertura: { emoji: "😊", text: "Sorria ao falar" },
+  ponte: { emoji: "🙏", text: "Gentil, pedindo ajuda" },
+  confirma: { emoji: "🤝", text: "Tranquilo, de igual para igual" },
+  pergunta: { emoji: "👂", text: "Curioso e atento; escute" },
+  proposta: { emoji: "🚀", text: "Entusiasmado, mas calmo" },
+  objecao: { emoji: "🧘", text: "Calmo e acolhedor; não discuta" },
+  fideliza: { emoji: "💖", text: "Caloroso e grato" },
+  fechamento: { emoji: "✅", text: "Confiante e atencioso" },
+  apoio: { emoji: "🙂", text: "Natural e cordial" },
+};
+/** Postura do passo: a regra do código do passo vence; na falta, a do papel (mood). */
+export function postureOf(n: Pick<ScriptNode, "id" | "type" | "title" | "mood">): Posture {
+  const hit = POSTURE_BY_ID.find(([re]) => re.test(n.id));
+  return hit ? hit[1] : POSTURE_BY_MOOD[moodOf(n)];
+}
+
 /** Palavras que indicam o segmento do lead (nome + atividade). A primeira regra que bater vence; as mais específicas vêm antes. */
 const SEGMENT_RULES: [string, RegExp][] = [
   ["posto_molas", /\b(mola|molas|feixe de mola|posto de mola)/],

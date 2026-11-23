@@ -3,7 +3,7 @@
 import { ArrowLeft, Crosshair, Ear, Flame, Lightbulb, Mic, RotateCcw, ShieldAlert, NotebookPen, ShieldCheck, Sparkles, ThumbsUp, ChevronRight, Trophy, Volume2 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { fillScript, sayOf, shortCompany, KIND_LABEL, moodOf, OUTCOMES, TONE_KEYS, TONES, type ScriptDoc, type ScriptKind, type ScriptTone } from "@/config/scripts";
+import { fillScript, sayOf, shortCompany, KIND_LABEL, moodOf, postureOf, OUTCOMES, TONE_KEYS, TONES, type ScriptDoc, type ScriptKind, type ScriptTone } from "@/config/scripts";
 import { btnGhost } from "@/components/ui";
 import { HScroll } from "./h-scroll";
 import { GOAL_THEME, MOODS, OUTCOME_ICON, SEGMENT_ICON, tint } from "./script-theme";
@@ -177,7 +177,7 @@ export function ScriptPlayer({ script, vars, extra, onOutcome, onNote, onRun, en
           ) : (
             <>
               <div className="relative rounded-2xl rounded-tl-sm px-4 py-3.5" style={{ ...tint(mood.hex, 9, 30), border: "1px solid" }}>
-                <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider" style={{ color: mood.hex }}><Volume2 size={12} aria-hidden /> Diga ao lead</p>
+                <p className="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] font-bold uppercase tracking-wider" style={{ color: mood.hex }}><span className="flex items-center gap-1.5"><Volume2 size={12} aria-hidden /> Diga ao lead</span><span className="rounded-full bg-panel/70 px-2.5 py-0.5 normal-case tracking-normal text-ink" title="Como você deve soar nesta fala"><span aria-hidden className="mr-1 text-sm">{postureOf(node).emoji}</span>Postura: {postureOf(node).text}</span></p>
                 <p className="whitespace-pre-line text-lg font-medium leading-relaxed sm:text-xl">{fillScript(sayOf(node, tone), vars)}</p>
               </div>
               {node.tip && <p className="flex items-start gap-2 rounded-xl border border-dashed border-line bg-sunk/60 px-3 py-2 text-sm"><Lightbulb size={16} aria-hidden className="mt-0.5 shrink-0 text-warn" /><span><b className="text-warn">Dica só para você</b>: {node.tip}</span></p>}
