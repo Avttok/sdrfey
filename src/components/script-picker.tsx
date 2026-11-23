@@ -9,7 +9,7 @@ import { ScriptPlayer, type ScriptRun, type ScriptVars } from "./script-player";
 import { GOAL_THEME, SEGMENT_ICON, tint } from "./script-theme";
 
 /** Escolha da fase (prospecção, venda, retorno) e do tipo de cliente, em botões com ícone; depois roda o roteiro. Shuffler e página Scripts. */
-export function ScriptPicker({ scripts, vars, goal, segmentHint, extra, onNote, onRun }: { scripts: ScriptDoc[]; vars: ScriptVars; extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; goal?: ScriptGoal; segmentHint?: string | null; onNote?: (note: string) => void; onRun?: (run: ScriptRun) => void }) {
+export function ScriptPicker({ scripts, vars, goal, segmentHint, extra, onNote, onRun, endExtra }: { endExtra?: (ctx: { runId: string }) => React.ReactNode; scripts: ScriptDoc[]; vars: ScriptVars; extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; goal?: ScriptGoal; segmentHint?: string | null; onNote?: (note: string) => void; onRun?: (run: ScriptRun) => void }) {
   const [g, setG] = useState<ScriptGoal>(goal ?? "sdr");
   /** Scripts que chegaram sem os passos (para a tela abrir rápido) e foram buscados ao escolher. */
   const [full, setFull] = useState<Record<number, ScriptDoc>>({});
@@ -61,7 +61,7 @@ export function ScriptPicker({ scripts, vars, goal, segmentHint, extra, onNote, 
           );
         })}
       </HScroll></div>}
-      {current && needs !== null ? <p className="rounded-xl bg-sunk px-3 py-6 text-center text-sm text-muted" role="status">{failed ? "Não consegui carregar este roteiro. Escolha outro ou tente de novo." : "Carregando o roteiro…"}</p> : current ? <ScriptPlayer script={current} vars={vars} extra={extra} onNote={onNote} onRun={onRun} floatingCenter /> : <p className="text-sm text-muted">Sem script para esta fase.</p>}
+      {current && needs !== null ? <p className="rounded-xl bg-sunk px-3 py-6 text-center text-sm text-muted" role="status">{failed ? "Não consegui carregar este roteiro. Escolha outro ou tente de novo." : "Carregando o roteiro…"}</p> : current ? <ScriptPlayer script={current} vars={vars} extra={extra} onNote={onNote} onRun={onRun} endExtra={endExtra} floatingCenter /> : <p className="text-sm text-muted">Sem script para esta fase.</p>}
     </div>
   );
 }

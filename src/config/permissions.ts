@@ -21,6 +21,8 @@ export const PERMISSIONS: PermissionDef[] = [
 
   { key: "tab.negociacoes", label: "Aba Vendas: Negociações", group: "Abas", defaults: ["seller", "manager"] },
   { key: "tab.lista_flow", label: "Aba SDR: Lista Flow", group: "Abas", defaults: ["user", "manager"] },
+  { key: "tab.tarefas", label: "Aba SDR: Tarefas", group: "Abas", defaults: ["user", "manager"] },
+  { key: "tab.tarefas_vendas", label: "Aba Vendas: Tarefas", group: "Abas", defaults: ["seller", "manager"] },
   { key: "tab.lista_flow_vendas", label: "Aba Vendas: Lista Flow", group: "Abas", defaults: ["seller", "manager"] },
   { key: "tab.transportadoras", label: "Aba Transportadoras (consultar)", group: "Abas", defaults: ["seller", "manager"] },
   { key: "tab.email", label: "Aba Opções: E-mail (modelos pessoais)", group: "Abas", defaults: ["user", "seller", "manager"] },
@@ -101,7 +103,7 @@ export const DOMAINS: { key: PermissionDomain; label: string; hint: string }[] =
   { key: "Gestão", label: "Gestão", hint: "Equipe, números e edição" },
   { key: "Geral", label: "Geral", hint: "Vale para todos os cargos" },
 ];
-const SDR_KEYS = new Set(["tab.comecar", "tab.historico", "tab.visitas", "tab.metas", "tab.lista_flow", "tab.desempenho", "visits.team", "panel.agendamentos"]);
+const SDR_KEYS = new Set(["tab.comecar", "tab.historico", "tab.visitas", "tab.metas", "tab.lista_flow", "tab.tarefas", "tab.desempenho", "visits.team", "panel.agendamentos"]);
 const SALES_KEYS = new Set(["tab.negociacoes", "tab.transportadoras", "carriers.edit", "deals.team", "deals.delete", "panel.vendas"]);
 const GENERAL_KEYS = new Set(["tab.painel", "tab.leads", "tab.email", "tab.scripts", "chat.use"]);
 export function domainOf(key: string): PermissionDomain {

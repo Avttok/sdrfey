@@ -1,5 +1,5 @@
 import { term } from "@/config/terms";
-import { LayoutGrid, Gauge, Headset, Info, ShieldHalf, Contact, History, Play, CalendarCheck, ScrollText, ShieldCheck, Target, UserRound, Users, MapPin, Handshake, FileSpreadsheet, Filter, Mail, Truck, ScrollText as ScriptIcon, Settings2, Download, type LucideIcon } from "lucide-react";
+import { ListChecks, LayoutGrid, Gauge, Headset, Info, ShieldHalf, Contact, History, Play, CalendarCheck, ScrollText, ShieldCheck, Target, UserRound, Users, MapPin, Handshake, FileSpreadsheet, Filter, Mail, Truck, ScrollText as ScriptIcon, Settings2, Download, type LucideIcon } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: string; adminOnly?: boolean; /** Menu a que pertence. Menu com um item só aparece como link solto; sem grupo = link solto. */ group?: string };
 
@@ -14,6 +14,7 @@ export const NAV: NavItem[] = [
   { href: "/painel", label: term("dashboard"), icon: Gauge, perm: "tab.painel" },
   { href: "/atender", label: term("shuffler_sdr"), icon: Play, perm: "tab.comecar", group: term("sdr") },
   { href: "/lista-flow", label: term("lista_flow"), icon: Filter, perm: "tab.lista_flow", group: term("sdr") },
+  { href: "/tarefas", label: term("tarefas"), icon: ListChecks, perm: "tab.tarefas", group: term("sdr") },
   { href: "/visitas", label: term("visitas"), icon: CalendarCheck, perm: "tab.visitas", group: term("sdr") },
   { href: "/metas", label: term("metas"), icon: Target, perm: "tab.metas", group: term("sdr") },
   { href: "/historico", label: term("historico"), icon: History, perm: "tab.historico", group: term("sdr") },
@@ -21,6 +22,7 @@ export const NAV: NavItem[] = [
   { href: "/negociacoes", label: term("negociacoes"), icon: Handshake, perm: "tab.negociacoes", group: term("vendas") },
   { href: "/shuffler-vendas", label: term("shuffler_sales"), icon: Play, perm: "tab.shuffler_vendas", group: term("vendas") },
   { href: "/lista-flow-vendas", label: term("lista_flow"), icon: Filter, perm: "tab.lista_flow_vendas", group: term("vendas") },
+  { href: "/tarefas-vendas", label: term("tarefas"), icon: ListChecks, perm: "tab.tarefas_vendas", group: term("vendas") },
   { href: "/metas-vendas", label: term("metas"), icon: Target, perm: "tab.metas_vendas", group: term("vendas") },
   { href: "/historico-vendas", label: term("historico"), icon: History, perm: "tab.historico_vendas", group: term("vendas") },
   { href: "/desempenho-vendas", label: term("desempenho"), icon: FileSpreadsheet, perm: "tab.desempenho_vendas", group: term("vendas") },

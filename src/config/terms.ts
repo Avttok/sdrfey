@@ -26,6 +26,7 @@ export const TERMS: Term[] = [
   { key: "sistema", label: "Sistema", group: "Cargos e menus", hint: "Menu do Adm." },
   { key: "dashboard", label: "Dashboard", group: "Abas" },
   { key: "visitas", label: "Visitas", group: "Abas" },
+  { key: "tarefas", label: "Tarefas", group: "Abas", hint: "O que os scripts deixaram combinado: ligar de novo, enviar e-mail, enviar a cotação." },
   { key: "metas", label: "Metas", group: "Abas" },
   { key: "historico", label: "Histórico", group: "Abas" },
   { key: "desempenho", label: "Desempenho", group: "Abas" },

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, ArrowDown, ArrowUp, Plus, Save, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, ListChecks, Plus, Save, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { GOALS, MOOD_KEYS, moodOf, OUTCOMES, SEGMENTS, type ScriptDoc, type ScriptGoal, type ScriptNode } from "@/config/scripts";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
@@ -9,8 +9,29 @@ import { saveScriptAction } from "@/modules/scripts/actions";
 import { unreachable } from "@/modules/scripts/schema";
 import { ScriptPlayer } from "./script-player";
 import { MOODS } from "./script-theme";
+import { TASK_KEYS, TASK_KINDS, type ScriptTask, type TaskKind } from "@/config/tasks";
 
 const newId = (nodes: ScriptNode[]) => { let i = nodes.length + 1; while (nodes.some((n) => n.id === `p${i}`)) i++; return `p${i}`; };
+/** Tarefas que um passo ou uma resposta geram na janela Tarefas (ex.: ligar daqui a 2 dias, enviar e-mail). */
+function TasksField({ tasks, onChange, label }: { tasks: ScriptTask[] | undefined; onChange: (t: ScriptTask[] | undefined) => void; label: string }) {
+  const list = tasks ?? [];
+  const set = (i: number, patch: Partial<ScriptTask>) => onChange(list.map((t, j) => (j === i ? { ...t, ...patch } : t)));
+  return (
+    <div className="space-y-1 rounded-lg border border-dashed border-line px-2 py-1.5">
+      <p className="flex items-center gap-1.5 text-xs font-semibold text-muted"><ListChecks size={13} aria-hidden /> {label}</p>
+      {list.map((t, i) => (
+        <div key={i} className="flex flex-wrap items-center gap-1.5">
+          <select aria-label="Tipo da tarefa" className={`${inputCls} !w-auto !min-h-9 !py-1 !text-sm`} value={t.kind} onChange={(e) => set(i, { kind: e.target.value as TaskKind })}>{TASK_KEYS.map((k) => <option key={k} value={k}>{TASK_KINDS[k].label}</option>)}</select>
+          <input aria-label="Nome da tarefa" className={`${inputCls} !min-h-9 !w-auto min-w-0 flex-1 !py-1 !text-sm`} value={t.title} maxLength={80} placeholder="O que fazer" onChange={(e) => set(i, { title: e.target.value })} />
+          <label className="flex items-center gap-1 text-xs text-muted">daqui a <input aria-label="Dias" type="number" min={0} max={365} className={`${inputCls} !min-h-9 !w-16 !px-2 !py-1 !text-sm`} value={t.days} onChange={(e) => set(i, { days: Math.max(0, Math.min(365, Math.round(Number(e.target.value) || 0))) })} /> dia(s)</label>
+          <button type="button" aria-label="Remover tarefa" className={`${btnGhost} !min-h-9 !px-2 text-danger`} onClick={() => { const rest = list.filter((_, j) => j !== i); onChange(rest.length ? rest : undefined); }}><X size={13} /></button>
+        </div>
+      ))}
+      {list.length < 3 && <button type="button" className="text-xs font-semibold text-accent hover:underline" onClick={() => onChange([...list, { kind: "ligar", title: "Ligar de novo", days: 2 }])}>+ Tarefa</button>}
+    </div>
+  );
+}
+
 export const blankScript = (goal: ScriptGoal = "sdr"): ScriptDoc => ({ id: 0, title: "", segment: "geral", goal, summary: null, startId: "p1", global: false, mine: true, active: true, nodes: [{ id: "p1", type: "fala", title: "Abertura", say: "{saudacao}! Aqui é {meunome}, da Fey. Falo com {contato} da {empresa}?", options: [{ label: "Atendeu", to: "p2", kind: "ok" }], tip: "" }, { id: "p2", type: "fim", title: "Fim", say: "Registre o resultado.", options: [], outcome: "encerrar" }] });
 
 export function ScriptEditor({ initial, isAdmin, onClose }: { initial: ScriptDoc; isAdmin: boolean; onClose: () => void }) {
@@ -64,7 +85,10 @@ export function ScriptEditor({ initial, isAdmin, onClose }: { initial: ScriptDoc
             </div>
             <input aria-label="Dica" className={inputCls} value={n.tip ?? ""} maxLength={400} onChange={(e) => setNode(i, { tip: e.target.value })} placeholder="Dica só para quem lê, não é falada (opcional)" />
             {n.type === "fim" ? (
-              <label className="text-sm">Resultado<select className={inputCls} value={n.outcome ?? "encerrar"} onChange={(e) => setNode(i, { outcome: e.target.value as ScriptNode["outcome"] })}>{Object.entries(OUTCOMES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></label>
+              <div className="space-y-2">
+                <label className="text-sm">Resultado<select className={inputCls} value={n.outcome ?? "encerrar"} onChange={(e) => setNode(i, { outcome: e.target.value as ScriptNode["outcome"] })}>{Object.entries(OUTCOMES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></label>
+                <TasksField label="Tarefas deste final (valem quando nenhuma resposta do caminho definiu as suas)" tasks={n.tasks} onChange={(t) => setNode(i, { tasks: t })} />
+              </div>
             ) : (
               <div className="space-y-1.5">
                 <p className="text-xs font-semibold text-muted">Respostas que o lead pode dar</p>
@@ -75,6 +99,7 @@ export function ScriptEditor({ initial, isAdmin, onClose }: { initial: ScriptDoc
                     <select aria-label="Vai para" className={`${inputCls} !w-auto`} value={o.to ?? ""} onChange={(e) => setNode(i, { options: n.options.map((x, j) => (j === k ? { ...x, to: e.target.value || null } : x)) })}><option value="">→ escolha o passo</option>{d.nodes.filter((m) => m.id !== n.id).map((m) => <option key={m.id} value={m.id}>→ {m.title || m.id}</option>)}</select>
                     <input aria-label="Anotação automática" title="Texto que vai para a observação do atendimento quando esta resposta é escolhida" placeholder="Anotar na observação (opcional)" className={`${inputCls} !w-full sm:!w-56`} value={o.note ?? ""} maxLength={160} onChange={(e) => setNode(i, { options: n.options.map((x, j) => (j === k ? { ...x, note: e.target.value || undefined } : x)) })} />
                     <button type="button" aria-label="Remover resposta" className={`${btnGhost} text-danger`} onClick={() => setNode(i, { options: n.options.filter((_, j) => j !== k) })}><X size={14} /></button>
+                    <div className="w-full pl-2"><TasksField label="Tarefas que esta resposta gera" tasks={o.tasks} onChange={(t) => setNode(i, { options: n.options.map((x, j) => (j === k ? { ...x, tasks: t } : x)) })} /></div>
                   </div>
                 ))}
                 {n.options.length < 10 && <button type="button" className={btnGhost} onClick={() => setNode(i, { options: [...n.options, { label: "", to: null, kind: "neutro" }] })}><Plus size={14} aria-hidden /> Resposta</button>}

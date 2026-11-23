@@ -11,6 +11,7 @@ import { useVocall } from "@/components/vocall-provider";
 import { ProductHints } from "@/components/product-hints";
 import type { Reco } from "@/modules/recommendations/data";
 import { ScriptPicker } from "@/components/script-picker";
+import { RunTasks } from "@/components/run-tasks";
 import { saveScriptRunAction } from "@/modules/scripts/runs";
 import type { ScriptRun } from "@/components/script-player";
 import { TalkingTo } from "@/components/talking-to";
@@ -195,7 +196,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
   const runTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const keepRun = (r: ScriptRun) => {
     if (runTimer.current) clearTimeout(runTimer.current);
-    runTimer.current = setTimeout(() => { void saveScriptRunAction(lead.id, r).catch(() => {}); }, r.finished ? 100 : 1200);
+    runTimer.current = setTimeout(() => { void saveScriptRunAction(lead.id, { ...r, isTest: lead.isTest }, sales ? "vendas" : "sdr").catch(() => {}); }, r.finished ? 100 : 1200);
   };
   /** Respostas do roteiro que trazem anotação entram na observação, sem repetir. */
   const addNote = (t: string) => setNote((c) => (c.includes(t) ? c : `${c ? `${c.replace(/\s+$/, "")}\n` : ""}• ${t}`));
@@ -444,7 +445,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
                   <TalkingTo value={spoken ?? callPerson?.name ?? ""} people={allPeople} knownId={allPeople.find((x) => x.name.trim().toLowerCase() === talkingTo.toLowerCase())?.id ?? null} leadId={lead.id}
                   onChange={(v) => { setSpoken(v); const m = allPeople.find((x) => x.name.trim().toLowerCase() === v.trim().toLowerCase()); if (m) setTalkingId(m.id); }}
                   onEnter={() => pick(0)} onSaved={(p) => { setExtraPeople((l) => [...l.filter((x) => x.id !== p.id), p]); setTalkingId(p.id); setSpoken(null); }} />
-                ) : null} vars={{ empresa: vars.empresa, contato: vars.contato, contatoCompleto: talkingTo || null, cidade: vars.cidade, meunome: vars.meu_nome }} onNote={addNote} onRun={keepRun} />
+                ) : null} vars={{ empresa: vars.empresa, contato: vars.contato, contatoCompleto: talkingTo || null, cidade: vars.cidade, meunome: vars.meu_nome }} onNote={addNote} onRun={keepRun} endExtra={lead.isTest ? undefined : ({ runId }) => <RunTasks runId={runId} area={sales ? "vendas" : "sdr"} />} />
                   : <p className="text-sm text-muted">Ainda não há roteiros. O Adm pode criar em Scripts.</p>}
                 </div>
               </div>

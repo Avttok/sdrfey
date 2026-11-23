@@ -2,7 +2,9 @@ import { z } from "zod";
 import type { ScriptNode } from "@/config/scripts";
 import { MOOD_KEYS, SEGMENTS } from "@/config/scripts";
 
+import { TASK_KEYS } from "@/config/tasks";
 const text = (max: number) => z.string().trim().max(max);
+const taskSchema = z.array(z.object({ kind: z.enum(TASK_KEYS as [string, ...string[]]), title: text(80).min(1), days: z.number().int().min(0).max(365) })).max(3);
 export const nodeSchema = z.object({
   id: z.string().trim().regex(/^[a-z0-9_-]{1,24}$/i, "Código de passo inválido."),
   type: z.enum(["fala", "fim"]),
@@ -11,7 +13,8 @@ export const nodeSchema = z.object({
   v: z.object({ formal: text(1500).optional(), solto: text(1500).optional() }).optional(),
   tip: text(400).optional(),
   mood: z.enum(MOOD_KEYS as [string, ...string[]]).optional(),
-  options: z.array(z.object({ label: text(120).min(1, "Toda resposta precisa de um texto."), to: z.string().trim().max(24).nullable(), kind: z.enum(["ok", "objecao", "neutro"]), note: text(160).optional() })).max(10),
+  options: z.array(z.object({ label: text(120).min(1, "Toda resposta precisa de um texto."), to: z.string().trim().max(24).nullable(), kind: z.enum(["ok", "objecao", "neutro"]), note: text(160).optional(), tasks: taskSchema.optional() })).max(10),
+  tasks: taskSchema.optional(),
   outcome: z.enum(["visita", "cotacao", "retorno", "venda", "encerrar"]).optional(),
 });
 

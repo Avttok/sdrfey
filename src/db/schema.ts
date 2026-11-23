@@ -926,3 +926,31 @@ export const termSwaps = pgTable("term_swaps", {
   rows: integer("rows").notNull().default(0),
   undoneAt: timestamp("undone_at", { withTimezone: true }),
 });
+
+/* ───────────── Tarefas (geradas pelos scripts ou criadas à mão) ───────────── */
+
+/** Tarefa de quem atende (SDR) ou vende: ligar de novo, enviar e-mail, enviar a cotação… Nasce quando o script termina. */
+export const tasks = pgTable(
+  "tasks",
+  {
+    id: serial("id").primaryKey(),
+    /** Em qual janela aparece: Tarefas do SDR ou Tarefas de Vendas. */
+    area: text("area").$type<"sdr" | "vendas">().notNull().default("sdr"),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    leadId: integer("lead_id").references(() => leads.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull().default("ligar"),
+    title: text("title").notNull(),
+    note: text("note"),
+    dueAt: timestamp("due_at", { withTimezone: true }),
+    doneAt: timestamp("done_at", { withTimezone: true }),
+    /** Ligação (script) que gerou a tarefa e o tipo dela nessa ligação: evita criar duas vezes. */
+    runId: text("run_id"),
+    runKey: text("run_key"),
+    createdAt: now(),
+  },
+  (t) => [
+    index("tasks_user_idx").on(t.userId, t.area, t.doneAt, t.dueAt),
+    index("tasks_lead_idx").on(t.leadId),
+    uniqueIndex("tasks_run_key_uq").on(t.runId, t.runKey),
+  ],
+);

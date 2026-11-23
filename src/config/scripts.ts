@@ -1,6 +1,7 @@
 /** Scripts de ligação: tipos e listas usados pelo editor, pelo player e pelo servidor (sem banco, o navegador também usa). */
 export type ScriptKind = "ok" | "objecao" | "neutro";
-export type ScriptOption = { label: string; /** id do próximo passo; vazio = termina aqui. */ to: string | null; kind: ScriptKind; /** Anotação que esta resposta gera para a observação do lead (ex.: "Contato: decisor de compra"). */ note?: string };
+import type { ScriptTask } from "@/config/tasks";
+export type ScriptOption = { /** Tarefas que esta resposta gera (ligar daqui a 2 dias, enviar e-mail…). Vazio = nenhuma, e ela dispensa o padrão do passo final. */ tasks?: ScriptTask[]; label: string; /** id do próximo passo; vazio = termina aqui. */ to: string | null; kind: ScriptKind; /** Anotação que esta resposta gera para a observação do lead (ex.: "Contato: decisor de compra"). */ note?: string };
 /** O "papel" do passo na conversa: define ícone e cor na ligação. */
 export type ScriptMood = "abertura" | "ponte" | "confirma" | "pergunta" | "proposta" | "objecao" | "fideliza" | "fechamento" | "apoio";
 /** O jeito de falar: o caminho da conversa é o mesmo, muda o tom das frases. */
@@ -26,6 +27,8 @@ export type ScriptNode = {
   options: ScriptOption[];
   /** Papel do passo (ícone e cor). Se faltar, o sistema deduz pelo nome. */
   mood?: ScriptMood;
+  /** Tarefas padrão de um passo final (quando nenhuma resposta do caminho declarou as suas). */
+  tasks?: ScriptTask[];
   /** Só para fim: o que fazer a seguir. */
   outcome?: "visita" | "cotacao" | "retorno" | "venda" | "encerrar";
 };

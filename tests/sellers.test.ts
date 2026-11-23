@@ -19,7 +19,7 @@ describe("cargo vendedor", () => {
   it("vendedor só vê as abas de Vendas, Leads, Dashboard e Opções", () => {
     const p = resolvePermissions(["seller"]);
     const tabs = Object.entries(p).filter(([k, v]) => k.startsWith("tab.") && v).map(([k]) => k).sort();
-    expect(tabs).toEqual(["tab.desempenho_vendas", "tab.email", "tab.historico_vendas", "tab.leads", "tab.lista_flow_vendas", "tab.metas_vendas", "tab.negociacoes", "tab.painel", "tab.scripts", "tab.shuffler_vendas", "tab.transportadoras"]);
+    expect(tabs).toEqual(["tab.desempenho_vendas", "tab.email", "tab.historico_vendas", "tab.leads", "tab.lista_flow_vendas", "tab.metas_vendas", "tab.negociacoes", "tab.painel", "tab.scripts", "tab.shuffler_vendas", "tab.tarefas_vendas", "tab.transportadoras"]);
     expect(p["tab.comecar"]).toBe(false);
     expect(p["tab.visitas"]).toBe(false);
     expect(p["deals.team"]).toBe(false);

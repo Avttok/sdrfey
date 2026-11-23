@@ -1,12 +1,13 @@
 import { sql } from "drizzle-orm";
 import { db, scripts } from "@/db";
 import type { ScriptGoal, ScriptNode } from "@/config/scripts";
+import type { ScriptTask } from "@/config/tasks";
 import { GOALS, SEGMENTS } from "@/config/scripts";
 import { NEXT, ONLINE, PARES, SEG, T, fala, fim, o, type Alvo } from "./seed-core";
 import { confirma, enriquece, entrada, minimo, objecoes, perfis } from "./seed-parts";
 
 /** Muda quando os textos de fábrica são reescritos: os scripts do time que ninguém editou são atualizados. */
-export const SEED_VERSION = 15;
+export const SEED_VERSION = 16;
 
 type Seg = (typeof SEG)[string];
 
@@ -380,6 +381,52 @@ function reativar(s: Seg): { nodes: ScriptNode[]; startId: string } {
   return { nodes, startId: "abertura" };
 }
 
+/* ───────────── Tarefas que o script gera ───────────── */
+const tk = (kind: ScriptTask["kind"], title: string, days: number): ScriptTask => ({ kind, title, days });
+const LIGAR_2 = (t: string) => tk("ligar", t, 2);
+/** Resposta (passo + texto da resposta) → tarefas. O que não está aqui usa o padrão do passo final. */
+const OPTION_TASKS: { node: RegExp; label: RegExp; tasks: ScriptTask[] }[] = [
+  { node: /^horario$/, label: /nome e o hor/i, tasks: [tk("ligar", "Ligar no horário combinado", 1)] },
+  { node: /^rec_email$/, label: /e-mail/i, tasks: [tk("email", "Enviar o e-mail de apresentação", 0), LIGAR_2("Ligar para confirmar que o e-mail chegou")] },
+  { node: /^digital$/, label: /concordou/i, tasks: [tk("email", "Enviar o material (e-mail ou WhatsApp)", 0), LIGAR_2("Ligar para saber o que achou do material")] },
+  { node: /^sem_resp$/, label: /tentativa registrada/i, tasks: [tk("ligar", "Ligar de novo (ninguém atendeu)", 1)] },
+  { node: /^obj_enviar$/, label: /passou o contato/i, tasks: [tk("email", "Enviar o material pedido (e-mail ou WhatsApp)", 0), LIGAR_2("Ligar para saber o que achou")] },
+  { node: /^obj_tempo$/, label: /deu um hor/i, tasks: [tk("ligar", "Ligar no horário combinado", 1)] },
+  { node: /^obj_estoque$/, label: /combinou/i, tasks: [tk("ligar", "Retomar o contato (estoque cheio)", 30)] },
+  { node: /^obj_depois$/, label: /data ou um gatilho/i, tasks: [tk("ligar", "Ligar na data combinada", 30)] },
+  { node: /^obj_verba$/, label: /combinou retorno/i, tasks: [tk("ligar", "Retomar o contato (sem verba no momento)", 30)] },
+  { node: /^obj_pensar(_geral)?$/, label: /combinou o retorno/i, tasks: [tk("ligar", "Ligar para saber da decisão", 3)] },
+  { node: /^p_assistente$/, label: /marcou um hor/i, tasks: [tk("ligar", "Ligar no horário marcado", 1)] },
+  { node: /^reenviar$/, label: /combinado/i, tasks: [tk("cotacao", "Reenviar a cotação (e-mail e WhatsApp)", 0), LIGAR_2("Ligar para conversar sobre a cotação")] },
+  { node: /^prazo$/, label: /deu uma data/i, tasks: [tk("ligar", "Ligar na data combinada", 3)] },
+  { node: /^ret_ultima$/, label: /um m[eê]s/i, tasks: [tk("ligar", "Retomar o contato (despedida)", 30)] },
+  { node: /^motivo$/, label: /novo contato/i, tasks: [tk("ligar", "Retomar o contato", 30)] },
+  { node: /^(duvida_tec|fid_tecnica|reat_tecnica)$/, label: /explicou/i, tasks: [tk("outro", "Acionar o time técnico", 0), tk("ligar", "Retornar com a resposta do time técnico", 1)] },
+  { node: /^fid_pedido$/, label: /passou os dados/i, tasks: [tk("outro", "Verificar o pedido ou a entrega", 0), tk("ligar", "Retornar com a resposta sobre o pedido", 1)] },
+  { node: /^fid_catalogo$/, label: /receber o cat/i, tasks: [tk("email", "Enviar o catálogo e a sugestão de itens", 0), LIGAR_2("Ligar para saber o que achou do catálogo")] },
+  { node: /^fid_catalogo$/, label: /agora n/i, tasks: [tk("ligar", "Retomar o contato com novidades", 30)] },
+  { node: /^fid_indica$/, label: /indicou/i, tasks: [tk("outro", "Cadastrar a indicação (nome e telefone)", 0), tk("ligar", "Ligar para a empresa indicada", 1)] },
+  { node: /^fid_indica$/, label: /n[aã]o lembra/i, tasks: [tk("ligar", "Retomar o contato e pedir indicação", 30)] },
+  { node: /^fid_reposicao$/, label: /repor agora/i, tasks: [tk("pedido", "Abrir o pedido de reposição", 0)] },
+  { node: /^reat_atualiza$/, label: /atualizou/i, tasks: [tk("outro", "Atualizar o cadastro do lead no sistema", 0), tk("ligar", "Retomar o contato mais pra frente", 30)] },
+  { node: /^reat_depois$/, label: /combinou/i, tasks: [tk("ligar", "Ligar na data combinada", 2)] },
+];
+/** Padrão de cada passo final. Venda e conversa agendada não geram tarefa de ligação. */
+const END_TASKS: Record<string, ScriptTask[]> = {
+  fim_retorno: [tk("ligar", "Ligar de novo", 2)],
+  fim_cotacao: [tk("cotacao", "Enviar a cotação", 0), LIGAR_2("Ligar para acompanhar a cotação")],
+  fim_venda: [tk("pedido", "Abrir o pedido", 0)],
+  fim_visita: [],
+  fim_encerrar: [],
+};
+function withTasks(nodes: ScriptNode[]): ScriptNode[] {
+  return nodes.map((n) => ({
+    ...n,
+    ...(n.type === "fim" && END_TASKS[n.id] ? { tasks: END_TASKS[n.id] } : {}),
+    options: n.options.map((x) => { const r = OPTION_TASKS.find((t) => t.node.test(n.id) && t.label.test(x.label)); return r ? { ...x, tasks: r.tasks } : x; }),
+  }));
+}
+
 function build(goal: ScriptGoal, segment: string) {
   const s = SEG[segment] ?? SEG.geral;
   return goal === "sdr" ? sdr(s) : goal === "vendas" ? vendas(s) : goal === "retorno" ? retorno(s) : goal === "reativar" ? reativar(s) : fidelizar(s);
@@ -401,7 +448,7 @@ function close(_goal: ScriptGoal, nodes: ScriptNode[], startId: string) {
     used.add(k);
     return { ...x, to: ends[k].id };
   }) }));
-  return { nodes: [...fixed, ...[...used].map((k) => ends[k])], startId };
+  return { nodes: withTasks([...fixed, ...[...used].map((k) => ends[k])]), startId };
 }
 
 /** Todos os scripts de fábrica (para o banco e para os testes). */

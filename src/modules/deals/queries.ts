@@ -6,6 +6,7 @@ import { dealEvents, dealQuoteItems, dealQuotes, deals, db, leadChannels, leads,
 import { ALERT_RULES } from "@/config/deals";
 import { getSettings } from "@/modules/settings/get";
 import { soldBeforeThisMonth } from "./portfolio";
+import { dueCounts } from "@/modules/tasks/queries";
 
 export type DealAlertKind = "pool" | "novo" | "retorno" | "cobrar" | "parado";
 export type DealAlert = { kind: DealAlertKind; tone: "danger" | "warn" | "info"; text: string };
@@ -145,7 +146,8 @@ const badgeCache = new Map<number, { at: number; v: Record<string, number> }>();
 
 /** Aviso nas abas. Guardado 20 s por pessoa na memória: roda em toda página e a conta é pesada. */
 export async function navBadges(user: { id: number; permissions: Record<string, boolean>; roles: string[] }): Promise<Record<string, number>> {
-  if (!user.permissions["tab.negociacoes"]) return {};
+  const wantsTasks = !!(user.permissions["tab.tarefas"] || user.permissions["tab.tarefas_vendas"]);
+  if (!user.permissions["tab.negociacoes"] && !wantsTasks) return {};
   const hit = badgeCache.get(user.id);
   if (hit && Date.now() - hit.at < 20_000) return hit.v;
   const v = await computeBadges(user);
@@ -155,8 +157,16 @@ export async function navBadges(user: { id: number; permissions: Record<string, 
 }
 
 async function computeBadges(user: { id: number; permissions: Record<string, boolean>; roles: string[] }): Promise<Record<string, number>> {
-  const team = !!user.permissions["deals.team"];
-  const rows = await listDeals(user.id, team);
-  const n = rows.filter((r) => r.alerts.length && (team || r.sellerId === user.id || (!r.sellerId && user.roles.includes("seller")))).length;
-  return n ? { "/negociacoes": n } : {};
+  const out: Record<string, number> = {};
+  if (user.permissions["tab.negociacoes"]) {
+    const team = !!user.permissions["deals.team"];
+    const rows = await listDeals(user.id, team);
+    const n = rows.filter((r) => r.alerts.length && (team || r.sellerId === user.id || (!r.sellerId && user.roles.includes("seller")))).length;
+    if (n) out["/negociacoes"] = n;
+  }
+  // tarefas atrasadas ou de hoje, em cada janela
+  const due = await dueCounts(user.id).catch(() => ({ sdr: 0, vendas: 0 }));
+  if (due.sdr && user.permissions["tab.tarefas"]) out["/tarefas"] = due.sdr;
+  if (due.vendas && user.permissions["tab.tarefas_vendas"]) out["/tarefas-vendas"] = due.vendas;
+  return out;
 }
