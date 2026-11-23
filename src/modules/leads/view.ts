@@ -46,6 +46,8 @@ export async function getLeadView(leadId: number) {
     legacyVisit: lead.legacyVisit,
     salesforceUrl: lead.salesforceUrl,
     eoxUrl: lead.eoxUrl,
+    eoxId: lead.eoxId,
+    sfId: lead.sfId,
     ownerId: lead.ownerId,
     lockedBy: lead.lockedBy,
     isTest: lead.isTest,

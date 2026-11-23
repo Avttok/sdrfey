@@ -17,6 +17,9 @@ export type LeadDraft = {
   cnpj: string;
   company: string;
   sapCode: string | null;
+  /** Número do cadastro na EOX e Id do Salesforce. */
+  eoxId?: string | null;
+  sfId?: string | null;
   contactName: string | null;
   roleTitle: string | null;
   phones: string[];
@@ -206,6 +209,8 @@ export function parseLeadRows(
       cnpj,
       company,
       sapCode: get(row, "sapCode"),
+      eoxId: cleanEoxId(get(row, "eoxId")),
+      sfId: cleanSfId(get(row, "sfId")),
       contactName: get(row, "contact"),
       roleTitle: get(row, "role"),
       phones,
@@ -223,4 +228,16 @@ export function parseLeadRows(
 
   report.valid = drafts.length;
   return { drafts, report };
+}
+
+/** Aceita "1293925", "6x1293925" (id da API) ou o link inteiro da EOX; devolve só o número do cadastro. */
+export function cleanEoxId(v: string | null | undefined): string | null {
+  if (!v) return null;
+  const rec = /[?&]record=(\d+)/.exec(v)?.[1] ?? /^\s*\d+x(\d+)\s*$/.exec(v)?.[1] ?? (/^\s*\d{1,12}\s*$/.test(v) ? v.trim() : null);
+  return rec && Number(rec) > 0 ? String(Number(rec)) : null;
+}
+/** Id do Salesforce: 15 ou 18 letras e números. */
+export function cleanSfId(v: string | null | undefined): string | null {
+  const t = (v ?? "").trim();
+  return /^[A-Za-z0-9]{15}([A-Za-z0-9]{3})?$/.test(t) ? t : null;
 }

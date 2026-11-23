@@ -14,6 +14,8 @@ const LEADS = mk(LEAD_COLUMNS, {
   cnpj: ["CNPJ", "Identifica a empresa (com ou sem pontos)", "CNPJ"],
   company: ["Razão Social", "Nome da empresa como na Receita", "EMPRESA"],
   sapCode: ["Código SAP", "Código do cliente no SAP", "COD SAP"],
+  eoxId: ["Id EOX", "Número do cadastro na EOX (o record= do link). Faz o Atendimento da EOX abrir", "IDEOX"],
+  sfId: ["Id Salesforce", "Id da conta no Salesforce", "IDSF"],
   contact: ["Nome do contato", "Pessoa que atende", "CONTATO"],
   phone: ["Telefone", "Pode ter vários, separados por vírgula", "TELEFONE"],
   role: ["Cargo do contato", "Ex.: Compradora, Gerente", "CARGO"],

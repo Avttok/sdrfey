@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { LEAD_COLUMNS, mapColumns } from "@/modules/import/columns";
 import { parseCsv } from "@/modules/import/csv";
 import { parseLeadRows } from "@/modules/import/leads-parse";
 import {
@@ -119,5 +120,22 @@ describe("cargos, cores e senhas", () => {
     expect(checkPasswordRules("12345")).not.toBeNull();
     expect(checkPasswordRules("somenteletras")).not.toBeNull();
     expect(checkPasswordRules("senhaBoa123")).toBeNull();
+  });
+});
+
+import { cleanEoxId, cleanSfId } from "@/modules/import/leads-parse";
+describe("Id EOX e Id Salesforce na planilha", () => {
+  it("aceita número, id da API e link; recusa lixo", () => {
+    expect(cleanEoxId("1293925")).toBe("1293925");
+    expect(cleanEoxId("6x1293925")).toBe("1293925");
+    expect(cleanEoxId("https://fey.vocallcontact.com.br/index.php?module=Accounts&view=Detail&record=1293925")).toBe("1293925");
+    expect(cleanEoxId("abc")).toBeNull();
+    expect(cleanEoxId("0")).toBeNull();
+    expect(cleanSfId("0015e00000AbCdEfGH")).toBe("0015e00000AbCdEfGH");
+    expect(cleanSfId("curto")).toBeNull();
+  });
+  it("os cabeçalhos da exportação são reconhecidos", () => {
+    const m = mapColumns(["CNPJ", "IdEOX", "Id SF"], LEAD_COLUMNS);
+    expect(m.eoxId).toBe("IdEOX"); expect(m.sfId).toBe("Id SF");
   });
 });

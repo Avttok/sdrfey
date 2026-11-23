@@ -30,7 +30,7 @@ export async function linkLeads(d: Db, baseUrl: string, module: string, byCnpj: 
     if (!rec) continue;
     const url = eoxLink(baseUrl, module, rec);
     await d.transaction(async (tx) => {
-      const r = await tx.update(leads).set({ eoxUrl: url, updatedAt: new Date() }).where(and(eq(leads.id, l.id), isNull(leads.eoxUrl))).returning({ id: leads.id });
+      const r = await tx.update(leads).set({ eoxUrl: url, eoxId: rec, updatedAt: new Date() }).where(and(eq(leads.id, l.id), isNull(leads.eoxUrl))).returning({ id: leads.id });
       if (r.length) { n++; await logAudit(tx, { userId, leadId: l.id, entity: "lead", action: "alterou", field: "Link do CRM (EOX)", oldValue: null, newValue: url, meta: { automatico: true } }); }
     });
   }

@@ -38,7 +38,7 @@ export function LeadEditor({ kpis, records, afterLeft, afterRight, lead, catalog
   const [vis, setVis] = useState({ code: "", date: "", link: "" });
   const [delVisit, setDelVisit] = useState<number | null>(null);
   const [p, setP] = useState({ name: "", roleTitle: "", extension: "" });
-  const [links, setLinks] = useState({ sf: lead.salesforceUrl ?? "", eox: lead.eoxUrl ?? "" });
+  const [links, setLinks] = useState({ sf: lead.salesforceUrl ?? "", eox: lead.eoxUrl ?? "", eoxId: lead.eoxId ?? "", sfId: lead.sfId ?? "" });
 
   const toggleTag = (g: string, k: string, exclusive: boolean) => {
     const ref = `${g}:${k}`;
@@ -103,9 +103,11 @@ export function LeadEditor({ kpis, records, afterLeft, afterRight, lead, catalog
 
       {afterLeft}
       <SectionCard icon={Link2} title="Perfis do cliente">
-        <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); run(() => saveLeadLinksAction(lead.id, { salesforceUrl: links.sf, eoxUrl: links.eox })); }}>
+        <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); run(() => saveLeadLinksAction(lead.id, { salesforceUrl: links.sf, eoxUrl: links.eox, eoxId: links.eoxId, sfId: links.sfId })); }}>
           <label className="block text-sm"><span className="mb-1 block text-muted">Perfil no Salesforce</span><input className={inputCls} placeholder="https://…" value={links.sf} onChange={(e) => setLinks({ ...links, sf: e.target.value })} /></label>
           <label className="block text-sm"><span className="mb-1 block text-muted">Perfil no CRM (EOX)</span><input className={inputCls} placeholder="https://…" value={links.eox} onChange={(e) => setLinks({ ...links, eox: e.target.value })} /></label>
+          <label className="block text-sm"><span className="mb-1 block text-muted">Id Salesforce</span><input className={inputCls} placeholder="15 ou 18 caracteres" value={links.sfId} onChange={(e) => setLinks({ ...links, sfId: e.target.value })} /></label>
+          <label className="block text-sm"><span className="mb-1 block text-muted">Id EOX <span className="text-xs">(número do cadastro; faz o Atendimento da EOX abrir)</span></span><input className={inputCls} inputMode="numeric" placeholder="Ex.: 1293925" value={links.eoxId} onChange={(e) => setLinks({ ...links, eoxId: e.target.value })} /></label>
           <div className="sm:col-span-2"><button type="submit" className={btnPrimary} disabled={pending}>Salvar links</button></div>
         </form>
       </SectionCard>

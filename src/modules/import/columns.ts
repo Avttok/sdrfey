@@ -8,6 +8,8 @@ export const LEAD_COLUMNS = {
   cnpj: ["CNPJ"],
   company: ["EMPRESA", "RAZAOSOCIAL", "NOMEEMPRESA", "NOME"],
   sapCode: ["CODSAP", "SAP", "CODIGOSAP"],
+  eoxId: ["IDEOX", "EOXID", "CODEOX", "CODIGOEOX", "RECORD", "RECORDID", "IDCRM", "CRMID", "IDCLIENTEEOX"],
+  sfId: ["IDSF", "SFID", "IDSALESFORCE", "SALESFORCEID", "CODSF", "IDCONTA", "ACCOUNTID"],
   contact: ["CONTATO", "NOMECONTATO"],
   phone: ["TELEFONE", "TELEFONES", "TEL", "FONE", "CELULAR"],
   role: ["CARGO"],

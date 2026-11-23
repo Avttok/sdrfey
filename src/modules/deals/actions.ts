@@ -1,5 +1,7 @@
 "use server";
 
+import { cleanEoxId, cleanSfId } from "@/modules/import/leads-parse";
+import { parseEoxUrl } from "@/modules/vocall/eox";
 import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -198,19 +200,26 @@ export async function returnDealToSdrAction(id: number, reason?: string): Promis
 }
 
 /** Links do cliente no Salesforce e no CRM (EOX). Vendedor edita pela negociação; SDR/gestor pela página do lead. */
-export async function saveLeadLinksAction(leadId: number, input: { salesforceUrl: string; eoxUrl: string }): Promise<ActionResult> {
+export async function saveLeadLinksAction(leadId: number, input: { salesforceUrl: string; eoxUrl: string; eoxId?: string; sfId?: string }): Promise<ActionResult> {
   const me = await requirePerm("tab.leads");
   const clean = (v: string) => { const t = v.trim(); return t ? (/^https?:\/\/\S+$/i.test(t) && t.length <= 600 ? t : undefined) : null; };
   const sf = clean(input.salesforceUrl), eox = clean(input.eoxUrl);
   if (sf === undefined || eox === undefined) return fail("Os links precisam começar com https://.");
-  const [b] = await db.select({ salesforceUrl: leads.salesforceUrl, eoxUrl: leads.eoxUrl }).from(leads).where(eq(leads.id, leadId));
+  const [b] = await db.select({ salesforceUrl: leads.salesforceUrl, eoxUrl: leads.eoxUrl, eoxId: leads.eoxId, sfId: leads.sfId }).from(leads).where(eq(leads.id, leadId));
   if (!b) return fail("Lead não encontrado.");
-  if (b.salesforceUrl === sf && b.eoxUrl === eox) return { ok: true };
+  // Id da EOX: o digitado (só o número, "6x123" ou o link) ou, se vazio, o que está no link do perfil
+  let eoxId: string | null = b.eoxId, sfId: string | null = b.sfId;
+  if (input.eoxId !== undefined) { const t = input.eoxId.trim(); eoxId = t ? cleanEoxId(t) : null; if (t && !eoxId) return fail("Id da EOX inválido: use só o número do cadastro (o record= do link)."); }
+  else if (eox && eox !== b.eoxUrl) eoxId = parseEoxUrl(eox)?.crmid ?? eoxId;
+  if (input.sfId !== undefined) { const t = input.sfId.trim(); sfId = t ? cleanSfId(t) : null; if (t && !sfId) return fail("Id do Salesforce inválido: são 15 ou 18 letras e números."); }
+  if (b.salesforceUrl === sf && b.eoxUrl === eox && b.eoxId === eoxId && b.sfId === sfId) return { ok: true };
   await db.transaction(async (tx) => {
-    await tx.update(leads).set({ salesforceUrl: sf, eoxUrl: eox, updatedAt: new Date() }).where(eq(leads.id, leadId));
+    await tx.update(leads).set({ salesforceUrl: sf, eoxUrl: eox, eoxId, sfId, updatedAt: new Date() }).where(eq(leads.id, leadId));
     const out: AuditEntry[] = [];
     if (b.salesforceUrl !== sf) out.push({ userId: me.id, leadId, entity: "lead", action: "alterou", field: "Link do Salesforce", oldValue: b.salesforceUrl, newValue: sf });
     if (b.eoxUrl !== eox) out.push({ userId: me.id, leadId, entity: "lead", action: "alterou", field: "Link do CRM (EOX)", oldValue: b.eoxUrl, newValue: eox });
+    if (b.eoxId !== eoxId) out.push({ userId: me.id, leadId, entity: "lead", action: "alterou", field: "Id EOX", oldValue: b.eoxId, newValue: eoxId });
+    if (b.sfId !== sfId) out.push({ userId: me.id, leadId, entity: "lead", action: "alterou", field: "Id Salesforce", oldValue: b.sfId, newValue: sfId });
     await logAudit(tx, out);
   });
   revalidatePath(`/leads/${leadId}`); revalidatePath("/negociacoes");

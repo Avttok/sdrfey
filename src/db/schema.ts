@@ -145,6 +145,9 @@ export const leads = pgTable(
     /** Link do perfil do cliente no Salesforce e no CRM (EOX). */
     salesforceUrl: text("salesforce_url"),
     eoxUrl: text("eox_url"),
+    /** Código do cadastro na EOX (o "record=" do link) e o Id do Salesforce. Vêm da importação ou da integração. */
+    eoxId: text("eox_id"),
+    sfId: text("sf_id"),
 
     ownerId: integer("owner_id").references(() => users.id, { onDelete: "set null" }),
     lockedBy: integer("locked_by").references(() => users.id, { onDelete: "set null" }),

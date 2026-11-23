@@ -57,7 +57,7 @@ export const DEFS: Record<ExDatasetKey, Def> = {
   leads: {
     from: "leads l", base: ["not l.is_test"], order: "l.id",
     expr: {
-      cnpj: "l.cnpj", company: "l.company", trade_name: "coalesce(l.trade_name, l.brasilapi_data->>'nome_fantasia', l.receitaws_data->>'fantasia')", legal_name: "coalesce(l.brasilapi_data->>'razao_social', l.receitaws_data->>'nome')", sap_code: "l.sap_code",
+      cnpj: "l.cnpj", company: "l.company", trade_name: "coalesce(l.trade_name, l.brasilapi_data->>'nome_fantasia', l.receitaws_data->>'fantasia')", legal_name: "coalesce(l.brasilapi_data->>'razao_social', l.receitaws_data->>'nome')", sap_code: "l.sap_code", eox_id: "l.eox_id", sf_id: "l.sf_id",
       kind: "case l.kind when 'inativo' then 'Inativo (Vendas)' else 'Novo (Prospecção)' end", id: "l.id",
       contact_name: "l.contact_name", role_title: "l.role_title", phones: ch("phone"), phone_main: ch("phone", true), emails: ch("email"), email_main: ch("email", true),
       address: "l.address", neighborhood: "l.neighborhood", zip: "l.zip", city: "l.city", uf: "l.uf", state_reg: "l.state_reg",

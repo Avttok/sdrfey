@@ -81,3 +81,31 @@ describe.skipIf(!HAS_DB)("preencher o link da EOX nos leads (banco real)", () =>
     void eq;
   });
 });
+
+describe.skipIf(!HAS_DB)("importar Id EOX / Id SF em 'só enriquecer' (banco real)", () => {
+  let d: typeof import("@/db"); let ap: typeof import("@/modules/import/leads-apply");
+  const mk = (cnpj: string, extra: object) => ({ cnpj, company: "ZZEOXI", sapCode: null, contactName: null, roleTitle: null, phones: [], email: null, notes: null, tags: [], ...extra }) as unknown as import("@/modules/import/leads-parse").LeadDraft;
+  beforeAll(async () => {
+    d = await import("@/db"); ap = await import("@/modules/import/leads-apply");
+    await d.db.delete(d.leads).where(like(d.leads.company, "ZZEOXI%"));
+    await d.db.insert(d.leads).values([
+      { cnpj: "55000000000191", company: "ZZEOXI 1", isTest: true },
+      { cnpj: "55000000000272", company: "ZZEOXI 2", isTest: true, eoxId: "5", eoxUrl: "https://meu-link", sfId: "0015e00000AAAAAAAA" },
+    ]);
+  });
+  afterAll(async () => { await d.db.delete(d.leads).where(like(d.leads.company, "ZZEOXI%")); });
+  it("preenche o que falta, monta o link e não troca o que já existe", async () => {
+    const r = await ap.applyLeadDrafts([
+      mk("55000000000191", { eoxId: "1293925", sfId: "0015e00000AbCdEfGH" }),
+      mk("55000000000272", { eoxId: "999", sfId: "0015e00000ZZZZZZZZ" }),
+      mk("55000000000353", { eoxId: "7" }),
+    ], { importedBy: null, sourceName: "teste", mode: "nutrir" });
+    expect(r.inserted).toBe(0);
+    const rows = await d.db.select().from(d.leads).where(like(d.leads.company, "ZZEOXI%"));
+    const by = Object.fromEntries(rows.map((x) => [x.company, x]));
+    expect(by["ZZEOXI 1"].eoxId).toBe("1293925");
+    expect(by["ZZEOXI 1"].eoxUrl).toBe(`${ap.EOX_FALLBACK_BASE}/index.php?module=Accounts&view=Detail&record=1293925`);
+    expect(by["ZZEOXI 1"].sfId).toBe("0015e00000AbCdEfGH");
+    expect(by["ZZEOXI 2"].eoxId).toBe("5"); expect(by["ZZEOXI 2"].eoxUrl).toBe("https://meu-link"); expect(by["ZZEOXI 2"].sfId).toBe("0015e00000AAAAAAAA");
+  });
+});
