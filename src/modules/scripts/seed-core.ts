@@ -43,7 +43,7 @@ export const cat = (...xs: Say[]): Tri => ({ n: xs.map((x) => tri(x).n).join("")
 export const o = (label: string, to: string | null, kind: ScriptOption["kind"] = "neutro", note?: string): ScriptOption => ({ label, to, kind, ...(note ? { note } : {}) });
 /** Vocativo opcional: com o nome de quem fala, a pergunta vira “…, certo, Carlos?”; sem nome, sai igual. */
 const NM = "[[contato?, {contato}|]]";
-const CHAMA = /^(conf_(empresa|segmento|negocio|minimo)|enr_|visita|pitch|desc_itens|p_(socio|compras|gestor|operacao|alcada)|fid_nps)/;
+const CHAMA = /^(conf_(empresa|segmento|negocio|minimo)|enr_|visita|pitch|desc_itens|p_(socio|compras|gestor|operacao|alcada)|fid_nps|reat_(historico|hoje|apresenta))/;
 const chama = (id: string, say: string) => (CHAMA.test(id) && say.endsWith("?") && !say.includes("{contato}") && !say.includes("[[contato") ? say.slice(0, -1) + NM + "?" : say);
 
 export const fala = (id: string, title: string, say: Say, options: ScriptOption[], tip?: string, mood?: ScriptMood): ScriptNode => {
@@ -87,4 +87,4 @@ export const FEY = T(
 export const PARES: Record<Tipo, string> = { revenda: "lojas e distribuidores da região que revendem fixadores", producao: "indústrias da região que usam fixadores na produção", servico: "oficinas e frotas da região que usam fixadores na manutenção" };
 
 /** Por objetivo: quem queremos alcançar e por que ligamos, em cada tom. */
-export type Alvo = { /** quem queremos alcançar, em uma frase ("quem cuida das compras de parafusos") */ quem: string; /** por que ligamos, curto e verdadeiro, para qualquer pessoa ouvir */ motivo: Tri; /** o que queremos tratar com essa pessoa ("pra apresentar nossa linha") */ para?: Tri; /** frase que apresenta a Fey a quem não conhece (padrão: quem atendemos) */ gk?: Tri; /** fecho do pedido de transferência na recepção */ fecha?: Tri };
+export type Alvo = { /** quem queremos alcançar, em uma frase ("quem cuida das compras de parafusos") */ quem: string; /** por que ligamos, curto e verdadeiro, para qualquer pessoa ouvir */ motivo: Tri; /** o que queremos tratar com essa pessoa ("pra apresentar nossa linha") */ para?: Tri; /** frase que apresenta a Fey a quem não conhece (padrão: quem atendemos) */ gk?: Tri; /** fecho do pedido de transferência na recepção */ fecha?: Tri; /** assunto curto para recado e WhatsApp ("sobre a cotação que enviei") */ tema?: Tri };

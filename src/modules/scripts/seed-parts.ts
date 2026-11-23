@@ -8,6 +8,7 @@ import { FEY, FIRST, NEXT, ONLINE, PAR, PARES, T, cat, fala, o, type Alvo, type 
  */
 export function entrada(nomeTo: string, itens: string, a: Alvo, tipo: Tipo): ScriptNode[] {
   const m = a.motivo;
+  const tema = a.tema ?? T("sobre a reposição de parafusos e grampos", "sobre o fornecimento de parafusos e grampos", "sobre reposição de parafuso e grampo");
   const gk = a.gk ?? T(`Atendemos ${PARES[tipo]}, e é por isso que estou ligando.`, `Atendemos ${PARES[tipo]}, e esse é o motivo do contato.`, `Atende ${PARES[tipo]}, por isso estou ligando.`);
   const fecha = a.fecha ?? T("É coisa rápida, e quem cuida disso é quem decide se interessa. Essa pessoa consegue falar agora?", "É um assunto breve, e cabe a quem cuida disso decidir se há interesse. Essa pessoa poderia me atender agora?", "É rapidinho, e quem cuida disso é quem decide se vale a pena. Dá pra chamar essa pessoa?");
   /** "quem cuida das compras" → "a pessoa que cuida das compras" */
@@ -52,14 +53,14 @@ export function entrada(nomeTo: string, itens: string, a: Alvo, tipo: Tipo): Scr
       `Ih, foi mal o engano, e valeu pela paciência! Quem é ${pessoa} aí na {empresa}? Posso falar direto com ela?`,
     ), [o("Passou o contato", "transferido", "ok"), o("Não sabe ou não passa", "@encerrar", "objecao")], undefined, "ponte"),
     fala("sem_resp", "Ninguém atendeu", T(
-      "Se cair na caixa postal, deixe um recado de uns vinte segundos, com motivo e o telefone repetido: “Oi, aqui é {meunome}, da Fey, metalúrgica de fixadores. Liguei por causa da reposição de parafusos e grampos. Volto a ligar mais tarde, e se preferir é só me chamar neste número. Repito: [seu telefone]. Um abraço!”",
-      "Se cair na caixa postal, deixe um recado de cerca de vinte segundos, com o motivo e o telefone repetido: “{saudacao}. Aqui é {meunome}, da Fey, metalúrgica de fixadores. Entro em contato sobre o fornecimento de parafusos e grampos. Retornarei a ligação mais tarde e, se preferir, pode me chamar neste número, que repito: [seu telefone]. Agradeço e desejo um ótimo dia.”",
-      "Se cair na caixa postal, deixe um recado de uns vinte segundos, com motivo e o telefone repetido: “Oi! Aqui é {meunome}, da Fey, a metalúrgica de fixadores. Liguei rapidinho sobre reposição de parafuso e grampo. Mais tarde eu tento de novo, e se quiser, me chama nesse número. Repito: [seu telefone]. Valeu, um abraço!”",
+      `Se cair na caixa postal, deixe um recado de uns vinte segundos, com motivo e o telefone repetido: “Oi, aqui é {meunome}, da Fey, metalúrgica de fixadores. Liguei ${tema.n}. Volto a ligar mais tarde, e se preferir é só me chamar neste número. Repito: [seu telefone]. Um abraço!”`,
+      `Se cair na caixa postal, deixe um recado de cerca de vinte segundos, com o motivo e o telefone repetido: “{saudacao}. Aqui é {meunome}, da Fey, metalúrgica de fixadores. Entro em contato ${tema.f}. Retornarei a ligação mais tarde e, se preferir, pode me chamar neste número, que repito: [seu telefone]. Agradeço e desejo um ótimo dia.”`,
+      `Se cair na caixa postal, deixe um recado de uns vinte segundos, com motivo e o telefone repetido: “Oi! Aqui é {meunome}, da Fey, a metalúrgica de fixadores. Liguei rapidinho ${tema.s}. Mais tarde eu tento de novo, e se quiser, me chama nesse número. Repito: [seu telefone]. Valeu, um abraço!”`,
     ), [o("Deixou o recado", "wa_msg", "neutro"), o("Não deu para deixar recado", "wa_msg", "neutro"), o("Tentativa registrada", "@retorno", "neutro", "Ninguém atendeu: tentar outro horário ou número")], "Faça pelo menos seis tentativas, em horários e dias diferentes, antes de desistir. Manhã cedo e fim da tarde costumam funcionar melhor. Recado curto (cerca de vinte segundos), com o motivo, e o número repetido duas vezes.", "apoio"),
     fala("wa_msg", "Mensagem de WhatsApp", T(
-      "Mande no WhatsApp, logo depois da ligação: “Oi! Aqui é {meunome}, da Fey, a metalúrgica de fixadores. Acabei de tentar falar com você por telefone, sobre a reposição de parafusos e grampos. Posso te ligar mais tarde ou, se preferir, me diga por aqui o melhor horário. Um abraço!”",
-      "Envie no WhatsApp, logo depois da ligação: “{saudacao}! Aqui é {meunome}, da Fey, metalúrgica de fixadores. Tentei contato por telefone sobre o fornecimento de parafusos e grampos. Posso ligar em outro momento ou, se preferir, informe por aqui o melhor horário. Agradeço a atenção.”",
-      "Mande no WhatsApp, logo depois da ligação: “Oi, tudo bem? Aqui é {meunome}, da Fey, a metalúrgica de fixadores. Tentei te ligar agora há pouco, é sobre reposição de parafuso e grampo. Se quiser, me fala aqui o melhor horário que eu te ligo. Valeu!”",
+      `Mande no WhatsApp, logo depois da ligação: “Oi! Aqui é {meunome}, da Fey, a metalúrgica de fixadores. Acabei de tentar falar com você por telefone, ${tema.n}. Posso te ligar mais tarde ou, se preferir, me diga por aqui o melhor horário. Um abraço!”`,
+      `Envie no WhatsApp, logo depois da ligação: “{saudacao}! Aqui é {meunome}, da Fey, metalúrgica de fixadores. Tentei contato por telefone ${tema.f}. Posso ligar em outro momento ou, se preferir, informe por aqui o melhor horário. Agradeço a atenção.”`,
+      `Mande no WhatsApp, logo depois da ligação: “Oi, tudo bem? Aqui é {meunome}, da Fey, a metalúrgica de fixadores. Tentei te ligar agora há pouco, é ${tema.s}. Se quiser, me fala aqui o melhor horário que eu te ligo. Valeu!”`,
     ), [o("Mensagem enviada", "@retorno", "ok", "Recado na caixa postal e mensagem de WhatsApp enviados"), o("Não tem WhatsApp", "@retorno", "neutro", "Sem WhatsApp: tentar outro horário")], "Mensagem curta, sem anexo e sem preço na primeira vez: o objetivo é abrir a conversa. Quem vê duas tentativas (ligação e mensagem) lembra do nome.", "apoio"),
     fala("nome", "Com quem você fala", T(
       "[[contato?Só pra confirmar: estou falando com {contato}, certo?|Prazer! Me diz seu nome, por favor, que eu quero anotar certinho.]]",
@@ -87,6 +88,7 @@ export function entrada(nomeTo: string, itens: string, a: Alvo, tipo: Tipo): Scr
 export type Perfis = { itens: string; dor: string; tipo: Tipo; alvo: Alvo; /** onde o decisor segue */ next: string; falas: { socio: Say; compras: Say; gestor: Say }; /** respostas depois da fala do decisor */ alcada: boolean; ok: (note: string, to: string) => ScriptOption[]; tips: { socio: string; compras: string; gestor: string } };
 export function perfis(p: Perfis): ScriptNode[] {
   const { itens, alvo } = p;
+  const tema = alvo.tema ?? T("sobre a reposição de parafusos e grampos", "sobre o fornecimento de parafusos e grampos", "sobre reposição de parafuso e grampo");
   const para = alvo.para ?? T("pra apresentar nossa linha", "para apresentar nossa linha", "pra mostrar nossa linha");
   return [
     fala("p_socio", "Dono, sócio ou diretor", p.falas.socio, p.ok("Contato: decisor de compra (dono, sócio ou diretor)", p.next), p.tips.socio, "proposta"),
@@ -108,9 +110,9 @@ export function perfis(p: Perfis): ScriptNode[] {
       `Entendi, valeu! Já adianto que não é cobrança nem nada financeiro: é sobre compra de fixadores. Pra não te tomar tempo: quem cuida disso aí e como eu falo com essa pessoa?`,
     ), [o("Passou a ligação", "transferido", "ok", "Administrativo transferiu a ligação"), o("Deu nome e horário", "horario", "neutro"), o("Perguntou o assunto", "assunto"), o("Também cuida das compras", p.next, "ok", "Contato: administrativo que também compra"), o("Não passa", "obj_nao", "objecao", "Não passou o decisor")], "Financeiro e administrativo costumam saber quem compra e quem aprova. Deixe claro que não é cobrança nem pedido de dado: isso derruba a guarda. Em algumas empresas pequenas eles também compram: confirme.", "ponte"),
     fala("p_assistente", "Assistente ou secretária(o)", T(
-      `Oi! Você consegue me ajudar? Preciso de dois minutos com ${alvo.quem} aí na {empresa}, pra apresentar uma opção de fornecimento. Qual o melhor dia e horário pra eu falar com essa pessoa?`,
-      `Olá! Poderia me ajudar? Preciso de dois minutos com ${alvo.quem} na {empresa}, para apresentar uma opção de fornecimento. Qual seria o melhor dia e horário para falar com essa pessoa?`,
-      `Oi! Você me ajuda? Preciso de uns dois minutinhos com ${alvo.quem} aí na {empresa}, pra mostrar uma opção de fornecimento. Qual o melhor dia e horário pra falar com essa pessoa?`,
+      `Oi! Você consegue me ajudar? Preciso de dois minutos com ${alvo.quem} aí na {empresa}, ${para.n}. Qual o melhor dia e horário pra eu falar com essa pessoa?`,
+      `Olá! Poderia me ajudar? Preciso de dois minutos com ${alvo.quem} na {empresa}, ${para.f}. Qual seria o melhor dia e horário para falar com essa pessoa?`,
+      `Oi! Você me ajuda? Preciso de uns dois minutinhos com ${alvo.quem} aí na {empresa}, ${para.s}. Qual o melhor dia e horário pra falar com essa pessoa?`,
     ), [o("Passou a ligação", "transferido", "ok", "Assistente transferiu a ligação"), o("Marcou um horário", "@retorno", "ok", "Horário marcado com o decisor, via assistente"), o("Perguntou o assunto", "assunto"), o("Pediu para mandar e-mail", "rec_email"), o("Não passa", "obj_nao", "objecao")], "Assistente conhece a agenda e o humor do chefe: trate como parceira, nunca como obstáculo. Peça horário (não “posso falar?”) e confirme o nome do decisor. Cumprir o horário combinado é o que abre a próxima ligação.", "ponte"),
     ...(p.alcada ? [fala("p_alcada", "Quem aprova a compra", T(
       "Antes de seguir: quando vocês fecham com um fornecedor novo, a decisão é sua ou passa por mais alguém?",
