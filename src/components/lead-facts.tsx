@@ -224,7 +224,7 @@ export function LeadKnowledge({ facts, units, goalIsSales = false, startOpen = f
             <li key={u.id} className="rounded-lg bg-sunk/50 px-2.5 py-1.5 text-sm">
               <p className="font-medium">{u.company}{u.city ? <span className="font-normal text-muted"> · {u.city}{u.uf ? `/${u.uf}` : ""}</span> : null}</p>
               <p className="text-xs text-muted">{u.people.length ? u.people.map((p) => p.name + (p.roleTitle ? ` (${p.roleTitle})` : "")).join(" · ") : "Sem contatos ainda"}{u.phones.length ? ` · ${u.phones.length} ${u.phones.length === 1 ? "telefone" : "telefones"}` : ""}</p>
-              <a className="text-xs font-semibold text-accent hover:underline" href={`/roteiro/${u.id}`}>Ligar com roteiro para esta unidade</a>
+              <a className="text-xs font-semibold text-accent hover:underline" href={`/roteiro/${u.id}`} target="_blank" rel="noopener noreferrer">Ligar com roteiro para esta unidade (abre ao lado, em outra aba)</a>
             </li>
           ))}</ul>}
         </div>

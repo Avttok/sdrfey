@@ -17,8 +17,8 @@ export default async function Page() {
   return (
     <div className="space-y-5">
       <PageHead icon={Upload} size="md" title="Importar planilhas" />
-      <nav aria-label="Outras importações" className="grid gap-3 sm:grid-cols-2">
-        {[["/negociacoes/importar", "Negociações", "Pedidos e cotações dos vendedores, com PDFs"], ["/transportadoras/importar", "Transportadoras", "Tabela de fretes por estado e tipo"]].map(([href, t, d]) => (
+      <nav aria-label="Outras importações" className="grid gap-3 sm:grid-cols-3">
+        {[["/negociacoes/importar", "Negociações", "Pedidos e cotações dos vendedores, com PDFs"], ["/transportadoras/importar", "Transportadoras", "Tabela de fretes por estado e tipo"], ["/admin/importar/contatos", "Contatos", "Pessoas de cada empresa, ligadas pelo CNPJ"]].map(([href, t, d]) => (
           <Link key={href} href={href} className="lift flex items-center justify-between gap-3 rounded-2xl border border-line bg-panel p-4"><span><b className="block">Importar {t}</b><span className="text-sm text-muted">{d}</span></span><ArrowRight size={18} aria-hidden className="text-accent" /></Link>
         ))}
       </nav>
