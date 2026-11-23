@@ -3,12 +3,14 @@
 import { ExternalLink, Loader2, PhoneCall, PhoneOff, X } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { VocallConfig } from "@/modules/vocall/config";
+import { estadoLabel, Timer } from "@/components/call-ui";
+import { PhoneDock } from "@/components/phone-dock";
 import { qualificationUrl, type EoxRef } from "@/modules/vocall/eox";
 
 export type VocallState = "off" | "idle" | "connecting" | "online" | "error";
 export type VocallCall = { telefone: string; empresa: string | null; estado: string | null; since: number; /** Momento em que a chamada acabou (congela o cronômetro). */ endedAt?: number; /** Formulário de Atendimento da EOX para qualificar esta ligação. */ qualUrl?: string | null; /** Procurando a qualificação pendente na central. */ qualLooking?: boolean };
-type Ctx = { configured: boolean; state: VocallState; call: VocallCall | null; /** Liga: conecta ao VocallAgent só agora, pede a chamada e resolve true quando o VocallPhone confirma; false se não conectou ou não confirmou (aí vale copiar e colar no app). A conexão é cortada quando a chamada termina. */ dial: (phone: string, label?: string | null, eox?: EoxRef | null) => Promise<boolean> };
-const VocallCtx = createContext<Ctx>({ configured: false, state: "off", call: null, dial: async () => false });
+type Ctx = { configured: boolean; /** Painel do telefone aberto. */ panel: boolean; setPanel: (open: boolean) => void; /** Texto colocado antes do número ao discar (para reconhecer o lead na chamada). */ prefix: string; state: VocallState; call: VocallCall | null; /** Liga: conecta ao VocallAgent só agora, pede a chamada e resolve true quando o VocallPhone confirma; false se não conectou ou não confirmou (aí vale copiar e colar no app). A conexão é cortada quando a chamada termina. */ dial: (phone: string, label?: string | null, eox?: EoxRef | null) => Promise<boolean>; /** Fecha o aviso da ligação que acabou. */ dismiss: () => void };
+const VocallCtx = createContext<Ctx>({ configured: false, panel: false, setPanel: () => {}, prefix: "", state: "off", call: null, dial: async () => false, dismiss: () => {} });
 export const useVocall = () => useContext(VocallCtx);
 
 export const vocallUrl = (c: Pick<VocallConfig, "host" | "port" | "secure">) => `${c.secure ? "wss" : "ws"}://${c.host}:${c.port}/vocallagent`;
@@ -30,6 +32,7 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
   const [state, setState] = useState<VocallState>("idle");
   const [call, setCall] = useState<VocallCall | null>(null);
   const eoxRef = useRef<EoxRef | null>(null);
+  const [panel, setPanel] = useState(false);
   const ws = useRef<WebSocket | null>(null);
   const logged = useRef(false);
   const timers = useRef<{ ping?: ReturnType<typeof setInterval>; idle?: ReturnType<typeof setTimeout>; max?: ReturnType<typeof setTimeout>; clear?: ReturnType<typeof setTimeout>; qual?: ReturnType<typeof setTimeout> }>({});
@@ -149,34 +152,26 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
     });
   }, [connect, hangup, prefix]);
 
-  const value = useMemo(() => ({ configured: true, state, call, dial }), [state, call, dial]);
-  return <VocallCtx.Provider value={value}>{children}{call && <CallPill call={call} onClose={() => { clearTimeout(timers.current.clear); setCall(null); }} />}</VocallCtx.Provider>;
+  const value = useMemo(() => ({ configured: true, panel, setPanel, prefix, state, call, dial, dismiss: () => { clearTimeout(timers.current.clear); setCall(null); } }), [panel, prefix, state, call, dial]);
+  return <VocallCtx.Provider value={value}>{children}{call && !panel && <CallPill call={call} onOpen={() => setPanel(true)} onClose={() => { clearTimeout(timers.current.clear); setCall(null); }} />}<PhoneDock /></VocallCtx.Provider>;
 }
 
-function Timer({ since, endedAt }: { since: number; endedAt?: number }) {
-  const [now, setNow] = useState(since);
-  useEffect(() => {
-    if (endedAt) return;
-    setNow(Date.now()); const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t);
-  }, [endedAt]);
-  const s = Math.max(0, Math.floor(((endedAt ?? now) - since) / 1000));
-  return <span className="figure text-lg font-bold tabular-nums">{String(Math.floor(s / 60)).padStart(2, "0")}:{String(s % 60).padStart(2, "0")}</span>;
-}
-
-/** Painel flutuante da ligação, embaixo e no centro: durante a chamada mostra quem e há quanto tempo; ao fim oferece "Qualificar". */
-function CallPill({ call, onClose }: { call: VocallCall; onClose: () => void }) {
+/** Faixa flutuante da ligação (quando o telefone está fechado): clique para abrir o telefone; ao fim oferece "Qualificar". */
+function CallPill({ call, onClose, onOpen }: { call: VocallCall; onClose: () => void; onOpen: () => void }) {
   const ended = !!call.endedAt;
   return (
     <div role="status" aria-live="polite" className="fixed inset-x-0 bottom-4 z-[65] flex justify-center px-3 pointer-events-none">
       <div className="pointer-events-auto flex w-full max-w-xl items-center gap-3 rounded-2xl border border-white/10 p-2.5 pr-3 text-white shadow-2xl card-in" style={{ background: ended ? "linear-gradient(135deg,#1e293b,#0f172a)" : "linear-gradient(135deg,#5b21b6,#3b0f8c)" }}>
-        <span className={`relative grid size-11 shrink-0 place-items-center rounded-xl ${ended ? "bg-white/10" : "bg-white/15"}`}>
-          {ended ? <PhoneOff size={20} aria-hidden /> : <><span className="absolute inset-0 animate-ping rounded-xl bg-white/20" aria-hidden /><PhoneCall size={20} aria-hidden className="relative script-shake" /></>}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold leading-tight">{call.empresa ?? call.telefone}</p>
-          <p className="truncate text-xs text-white/70">{call.empresa ? `${call.telefone} · ` : ""}{ended ? (call.estado === "Finalizado" ? "Ligação encerrada" : call.estado) : (call.estado ?? "Em ligação")}</p>
-        </div>
-        <Timer since={call.since} endedAt={call.endedAt} />
+        <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" aria-label="Abrir o telefone">
+          <span className={`relative grid size-11 shrink-0 place-items-center rounded-xl ${ended ? "bg-white/10" : "bg-white/15"}`}>
+            {ended ? <PhoneOff size={20} aria-hidden /> : <><span className="absolute inset-0 animate-ping rounded-xl bg-white/20" aria-hidden /><PhoneCall size={20} aria-hidden className="relative script-shake" /></>}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-bold leading-tight">{call.empresa ?? call.telefone}</span>
+            <span className="block truncate text-xs text-white/70">{call.empresa ? `${call.telefone} · ` : ""}{estadoLabel(call.estado, ended)}</span>
+          </span>
+          <Timer since={call.since} endedAt={call.endedAt} />
+        </button>
         {ended && call.qualLooking && <span className="flex items-center gap-1.5 text-xs text-white/70"><Loader2 size={14} className="animate-spin" aria-hidden /> Buscando…</span>}
         {ended && call.qualUrl && <a href={call.qualUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-white px-4 text-sm font-bold text-slate-900 transition hover:bg-amber-200"><ExternalLink size={15} aria-hidden /> Qualificar</a>}
         {ended && <button type="button" onClick={onClose} aria-label="Fechar painel da ligação" className="grid size-9 shrink-0 place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white"><X size={16} aria-hidden /></button>}
