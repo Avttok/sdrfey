@@ -1,7 +1,7 @@
 "use client";
 
 import { useBusyWhile } from "@/components/toast";
-import { Check, Eye, EyeOff, Image as ImageIcon, Loader2, Moon, Palette, Sun, UserRound, KeyRound, Smile } from "lucide-react";
+import { Check, Lock, Eye, EyeOff, Image as ImageIcon, Loader2, Moon, Palette, Sun, UserRound, KeyRound, Smile } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 import { BannerRain } from "@/components/banner-rain";
 import { BannerGrid } from "@/components/banner-grid";
@@ -10,6 +10,7 @@ import { AvatarGlyph } from "@/components/avatar-glyph";
 import { RoleBadge } from "@/components/role-badge";
 import { inputCls, labelCls } from "@/components/ui";
 import { AVATARS } from "@/config/avatars";
+import { unlockHint } from "@/components/rarity-tag";
 import type { Role } from "@/config/roles";
 import { CHOOSABLE_ACCENTS, resolveAccent, swatchBg } from "@/config/theme";
 import { completeProfileAction, firstAccessAction } from "@/modules/auth/actions";
@@ -89,16 +90,22 @@ export function FirstAccessForm({ name: name0, username, roles, accent: accent0,
         <input id="fa-name" className={inputCls} value={name} maxLength={60} onChange={(e) => setName(e.target.value)} required autoComplete="name" />
       </Step>
 
-      <Step n={2} icon={Smile} title="Seu ícone" hint="Ainda não há upload de foto: escolha um bichinho.">
+      <Step n={2} icon={Smile} title="Seu ícone" hint="Escolha um bichinho. Os com cadeado você libera com conquistas, e ficam disponíveis em Minha conta.">
         <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Ícone de perfil">
           <button type="button" role="radio" aria-checked={!avatar} title="Iniciais do nome" onClick={() => setAvatar(null)} className={`grid size-12 place-items-center rounded-2xl border-2 text-sm font-bold transition ${!avatar ? "border-accent bg-grad text-on-accent" : "border-line bg-sunk text-muted hover:text-ink"}`}>{initialsOf(name) || "?"}</button>
-          {AVATARS.map((a) => (
-            <button key={a.key} type="button" role="radio" aria-checked={avatar === a.key} title={a.label} onClick={() => setAvatar(a.key)} className={`grid size-12 place-items-center rounded-2xl border-2 transition hover:-translate-y-0.5 ${avatar === a.key ? "border-accent bg-grad text-on-accent shadow-md" : "border-line bg-sunk text-muted hover:text-ink"}`}><AvatarGlyph avatar={a.key} initials="" size={22} /></button>
-          ))}
+          {AVATARS.map((a) => {
+            const locked = !!a.unlock; // quem acabou de chegar ainda não tem conquistas
+            return (
+              <button key={a.key} type="button" role="radio" aria-checked={avatar === a.key} aria-disabled={locked} disabled={locked} title={locked ? `${a.label} · ${unlockHint(a.unlock!)}` : a.label} onClick={() => setAvatar(a.key)} className={`relative grid size-12 place-items-center rounded-2xl border-2 transition ${locked ? "cursor-not-allowed opacity-50" : "hover:-translate-y-0.5"} ${avatar === a.key ? "border-accent bg-grad text-on-accent shadow-md" : "border-line bg-sunk text-muted hover:text-ink"}`}>
+                <AvatarGlyph avatar={a.key} initials="" size={22} />
+                {locked && <span className="absolute -bottom-1 -right-1 grid size-4 place-items-center rounded-full bg-panel text-muted ring-1 ring-line"><Lock size={9} aria-hidden /></span>}
+              </button>
+            );
+          })}
         </div>
       </Step>
 
-      <Step n={3} icon={ImageIcon} title="Banner do perfil" hint="Um padrão com a sua cor. A prévia lá em cima muda na hora.">
+      <Step n={3} icon={ImageIcon} title="Banner do perfil" hint="Um padrão com a sua cor. A prévia lá em cima muda na hora. Os com cadeado saem de conquistas.">
         <BannerGrid value={banner} onPick={setBanner} />
       </Step>
 
