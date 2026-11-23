@@ -66,7 +66,7 @@ export async function applyLeadDrafts(
       }
     }
     const old = drafts.filter((d) => existing.has(d.cnpj));
-    if (old.length && mode !== "novos") result.enriched = await enrichExisting(tx, old, opts);
+    if (old.length && mode !== "novos") result.enriched = await enrichExisting(tx, old, opts, base);
     if (fresh.length === 0) return result;
 
     /* 2. garantir que todas as tags citadas existem (porte e capital nascem aqui) */
@@ -175,23 +175,32 @@ export async function applyLeadDrafts(
 }
 
 /** Para quem já está cadastrado: acrescenta só a informação nova e ignora o que é igual ou veio vazio. */
-async function enrichExisting(tx: Parameters<Parameters<Db["transaction"]>[0]>[0], drafts: LeadDraft[], opts: { importedBy: number | null; sourceName: string }): Promise<number> {
-  let touched = 0;
-  const base = await eoxBase();
-  const tagRows = await tx.select().from(tags);
+type Q = Pick<Db, "select">;
+type EnrichPlan = {
+  touched: number;
+  fills: { id: number; fill: Partial<typeof leads.$inferInsert> }[];
+  channels: (typeof leadChannels.$inferInsert)[];
+  people: (typeof leadPeople.$inferInsert)[];
+  tagLinks: (typeof leadTags.$inferInsert)[];
+  audits: Parameters<typeof logAudit>[1] & unknown[];
+};
+
+/** Só LÊ: descobre o que cada lead que já existe receberia da planilha. Nada é gravado aqui (serve à simulação e à importação). */
+async function planEnrich(q: Q, drafts: LeadDraft[], opts: { importedBy: number | null; sourceName: string }, base: string): Promise<EnrichPlan> {
+  const plan: EnrichPlan = { touched: 0, fills: [], channels: [], people: [], tagLinks: [], audits: [] };
+  const tagRows = await q.select().from(tags);
   const tagId = new Map(tagRows.map((t) => [`${t.groupKey}:${t.key}`, t.id]));
-  for (const part of chunk(drafts, 300)) {
-    const rows = await tx.select().from(leads).where(inArray(leads.cnpj, part.map((d) => d.cnpj)));
+  const norm = (x: string) => stripAccents(x).trim().toUpperCase();
+  for (const part of chunk(drafts, 1000)) {
+    const rows = await q.select().from(leads).where(inArray(leads.cnpj, part.map((d) => d.cnpj)));
     const byCnpj = new Map(rows.map((r) => [r.cnpj, r]));
     const ids = rows.map((r) => r.id);
     const [people, have] = ids.length ? await Promise.all([
-      tx.select({ leadId: leadPeople.leadId, name: leadPeople.name }).from(leadPeople).where(inArray(leadPeople.leadId, ids)),
-      tx.select({ leadId: leadTags.leadId, tagId: leadTags.tagId }).from(leadTags).where(inArray(leadTags.leadId, ids)),
+      q.select({ leadId: leadPeople.leadId, name: leadPeople.name }).from(leadPeople).where(inArray(leadPeople.leadId, ids)),
+      q.select({ leadId: leadTags.leadId, tagId: leadTags.tagId }).from(leadTags).where(inArray(leadTags.leadId, ids)),
     ]) : [[], []];
-    const norm = (x: string) => stripAccents(x).trim().toUpperCase();
     const personKeys = new Set(people.map((p) => `${p.leadId}|${norm(p.name)}`));
     const tagKeys = new Set(have.map((h) => `${h.leadId}|${h.tagId}`));
-    const audits: Parameters<typeof logAudit>[1] = [];
     for (const d of part) {
       const l = byCnpj.get(d.cnpj);
       if (!l) continue;
@@ -209,30 +218,44 @@ async function enrichExisting(tx: Parameters<Parameters<Db["transaction"]>[0]>[0
       if (l.company.startsWith("CNPJ ") && d.company && !d.company.startsWith("CNPJ ")) { fill.company = d.company; added.push("Nome da empresa"); }
       const newPhones = d.phones.filter((p) => !l.phones.includes(p));
       if (newPhones.length) { fill.phones = [...l.phones, ...newPhones]; added.push(`${newPhones.length} telefone(s)`); }
-      for (const ph of newPhones) await tx.insert(leadChannels).values({ leadId: l.id, kind: "phone", value: ph, origin: "import" }).onConflictDoNothing();
-      for (const em of d.emails?.length ? d.emails : d.email ? [d.email] : []) await tx.insert(leadChannels).values({ leadId: l.id, kind: "email", value: em, origin: "import" }).onConflictDoNothing();
-      if (d.contactName && !personKeys.has(`${l.id}|${norm(d.contactName)}`)) { await tx.insert(leadPeople).values({ leadId: l.id, name: d.contactName, roleTitle: d.roleTitle }); personKeys.add(`${l.id}|${norm(d.contactName)}`); if (!added.includes("Contato")) added.push("Pessoa de contato"); }
+      for (const ph of newPhones) plan.channels.push({ leadId: l.id, kind: "phone", value: ph, origin: "import" });
+      for (const em of d.emails?.length ? d.emails : d.email ? [d.email] : []) plan.channels.push({ leadId: l.id, kind: "email", value: em, origin: "import" });
+      if (d.contactName && !personKeys.has(`${l.id}|${norm(d.contactName)}`)) { plan.people.push({ leadId: l.id, name: d.contactName, roleTitle: d.roleTitle }); personKeys.add(`${l.id}|${norm(d.contactName)}`); if (!added.includes("Contato")) added.push("Pessoa de contato"); }
       const links = d.tags.flatMap((t) => { const id = tagId.get(`${t.group}:${t.key}`); return id && !tagKeys.has(`${l.id}|${id}`) ? [{ leadId: l.id, tagId: id, source: "import" as const, appliedBy: opts.importedBy }] : []; });
-      if (links.length) { await tx.insert(leadTags).values(links); added.push(`${links.length} tag(s)`); }
+      for (const k of links) tagKeys.add(`${l.id}|${k.tagId}`);
+      if (links.length) { plan.tagLinks.push(...links); added.push(`${links.length} tag(s)`); }
       if (!added.length) continue;
-      if (Object.keys(fill).length) await tx.update(leads).set({ ...fill, updatedAt: new Date() }).where(inArray(leads.id, [l.id]));
-      audits.push({ userId: opts.importedBy, leadId: l.id, entity: "lead" as const, action: "completado pela importação", field: added.join(", "), meta: { arquivo: opts.sourceName } });
-      touched++;
+      if (Object.keys(fill).length) plan.fills.push({ id: l.id, fill });
+      plan.audits.push({ userId: opts.importedBy, leadId: l.id, entity: "lead" as const, action: "completado pela importação", field: added.join(", "), meta: { arquivo: opts.sourceName } });
+      plan.touched++;
     }
-    if (audits.length) await logAudit(tx, audits);
   }
-  return touched;
+  return plan;
 }
 
-/** Quantos já cadastrados receberiam informação nova (simulação: roda a mesma lógica e desfaz). */
+const FILL_COLS: Record<string, string> = { sapCode: "sap_code", eoxId: "eox_id", eoxUrl: "eox_url", sfId: "sf_id", contactName: "contact_name", roleTitle: "role_title", email: "email", notes: "notes", legacyVisit: "legacy_visit", company: "company" };
+
+/** Grava o plano em poucas consultas grandes (uma por coluna e por lote), em vez de uma por lead. */
+async function enrichExisting(tx: Parameters<Parameters<Db["transaction"]>[0]>[0], drafts: LeadDraft[], opts: { importedBy: number | null; sourceName: string }, base: string): Promise<number> {
+  const plan = await planEnrich(tx, drafts, opts, base);
+  for (const [key, col] of Object.entries(FILL_COLS)) {
+    const rows = plan.fills.flatMap((f) => { const v = (f.fill as Record<string, unknown>)[key]; return typeof v === "string" ? [{ id: f.id, v }] : []; });
+    for (const part of chunk(rows, 500)) await tx.execute(sql`update leads set ${sql.identifier(col)} = v.val, updated_at = now() from (values ${sql.join(part.map((r) => sql`(${r.id}::int, ${r.v}::text)`), sql`, `)}) as v(id, val) where leads.id = v.id`);
+  }
+  const ph = plan.fills.flatMap((f) => (f.fill.phones ? [{ id: f.id, v: JSON.stringify(f.fill.phones) }] : []));
+  for (const part of chunk(ph, 500)) await tx.execute(sql`update leads set phones = (select coalesce(array_agg(x), '{}') from jsonb_array_elements_text(v.val::jsonb) x), updated_at = now() from (values ${sql.join(part.map((r) => sql`(${r.id}::int, ${r.v}::text)`), sql`, `)}) as v(id, val) where leads.id = v.id`);
+  for (const rows of chunk(plan.channels, 2000)) await tx.insert(leadChannels).values(rows).onConflictDoNothing();
+  for (const rows of chunk(plan.people, 2000)) await tx.insert(leadPeople).values(rows);
+  for (const rows of chunk(plan.tagLinks, 2000)) await tx.insert(leadTags).values(rows);
+  for (const rows of chunk(plan.audits as Parameters<typeof logAudit>[1][] as never[], 1000)) await logAudit(tx, rows as never);
+  return plan.touched;
+}
+
+/** Quantos já cadastrados receberiam informação nova (simulação: só lê, não grava nada). */
 export async function countEnrichable(drafts: LeadDraft[]): Promise<number> {
-  let n = 0;
   const cnpjs = new Set<string>();
   for (const part of chunk(drafts.map((d) => d.cnpj), 5000)) (await db.select({ cnpj: leads.cnpj }).from(leads).where(inArray(leads.cnpj, part))).forEach((r) => cnpjs.add(r.cnpj));
   const old = drafts.filter((d) => cnpjs.has(d.cnpj));
   if (!old.length) return 0;
-  try {
-    await db.transaction(async (tx) => { n = await enrichExisting(tx, old, { importedBy: null, sourceName: "simulação" }); tx.rollback(); });
-  } catch { /* rollback intencional */ }
-  return n;
+  return (await planEnrich(db, old, { importedBy: null, sourceName: "simulação" }, await eoxBase())).touched;
 }
