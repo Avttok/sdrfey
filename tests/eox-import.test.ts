@@ -117,4 +117,18 @@ describe("gravação em lote", () => {
     expect(back.eoxId).toBeNull(); expect(back.email).toBeNull(); expect(back.phones).toEqual(["47911110000"]);
     expect(await m.db.db.select().from(m.db.leadChannels).where(eq(m.db.leadChannels.leadId, l.id))).toHaveLength(0);
   });
+  it("com sobrescrever, o que está diferente na planilha troca; sem isso fica", async () => {
+    const { eq } = await import("drizzle-orm");
+    const { companies } = parseEoxSheets(empresas, contatos);
+    await m.db.db.delete(m.db.leads).where(like(m.db.leads.company, "ZZEIMP%"));
+    await m.db.db.insert(m.db.leads).values({ cnpj: "11222333000181", company: "ZZEIMP Alfa", city: "Outra", eoxCode: "111" });
+    await m.act.importEoxBatchAction(companies, true, false, "t");
+    let [l] = await m.db.db.select().from(m.db.leads).where(eq(m.db.leads.cnpj, "11222333000181"));
+    expect(l).toMatchObject({ city: "Outra", eoxCode: "111" });
+    const prev = await m.act.importEoxBatchAction(companies, false, false, "t", null, true);
+    expect(prev).toMatchObject({ ok: true, codes: 1 });
+    await m.act.importEoxBatchAction(companies, true, false, "t", null, true);
+    [l] = await m.db.db.select().from(m.db.leads).where(eq(m.db.leads.cnpj, "11222333000181"));
+    expect(l).toMatchObject({ city: "Joinville", eoxCode: "900001" });
+  });
 });

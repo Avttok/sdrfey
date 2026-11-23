@@ -21,6 +21,7 @@ export function EoxImport() {
   const [parsed, setParsed] = useState<Parsed | null>(null);
   const [label, setLabel] = useState("");
   const [create, setCreate] = useState(false);
+  const [overwrite, setOverwrite] = useState(false);
   const [busy, setBusy] = useState<null | "prev" | "apply">(null);
   const [progress, setProgress] = useState(0);
   const [totals, setTotals] = useState<Totals | null>(null);
@@ -47,7 +48,7 @@ export function EoxImport() {
     let batchId: number | null = null;
     if (apply) { const b = await beginEoxImportAction(label || "planilha EOX", p.companies.length); if (!b.ok) throw new Error(b.message); batchId = b.batchId; }
     for (let i = 0; i < p.companies.length; i += BATCH) {
-      const r: EoxBatchResult = await importEoxBatchAction(p.companies.slice(i, i + BATCH), apply, create, label || "planilha", batchId);
+      const r: EoxBatchResult = await importEoxBatchAction(p.companies.slice(i, i + BATCH), apply, create, label || "planilha", batchId, overwrite);
       if (!r.ok) throw new Error(r.message);
       for (const k of Object.keys(sum) as (keyof Totals)[]) sum[k] += r[k];
       setProgress(Math.min(100, Math.round(((i + BATCH) / p.companies.length) * 100)));
@@ -80,6 +81,7 @@ export function EoxImport() {
         <label className="space-y-1 text-sm">Contatos (opcional)<input ref={con} type="file" accept=".csv,text/csv" className="block w-full text-sm" /></label>
       </div>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={create} onChange={(e) => setCreate(e.target.checked)} />Criar como lead as empresas que ainda não existem (Customer vai para Vendas, o resto para Prospecção)</label>
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={overwrite} onChange={(e) => { setOverwrite(e.target.checked); setTotals(null); }} />Sobrescrever dados que já existem e estão diferentes na planilha (Códigos, endereço, nome fantasia, e-mail). Telefones e contatos só são acrescentados. Dá para desfazer.</label>
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" disabled={!!busy} onClick={read} className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-medium hover:bg-line/40 disabled:opacity-50">{busy === "prev" ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}Conferir antes de gravar</button>
         <button type="button" disabled={!!busy || !parsed || !totals || applied} onClick={save} className="inline-flex items-center gap-2 rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy === "apply" ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}Gravar</button>

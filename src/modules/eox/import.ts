@@ -21,7 +21,7 @@ const txt = (v: unknown, max = 300): string | null => { const s = String(v ?? ""
  * o "retrato da EOX" (tipo, vendedor, bloqueio de discagem, compras…) é sempre atualizado, porque a EOX é a fonte.
  * Com `apply` falso só conta (prévia). Com `create`, empresas que ainda não são leads viram leads.
  */
-export async function importEoxBatchAction(input: EoxCompany[], apply: boolean, create: boolean, batchLabel: string, batchId: number | null = null): Promise<EoxBatchResult> {
+export async function importEoxBatchAction(input: EoxCompany[], apply: boolean, create: boolean, batchLabel: string, batchId: number | null = null, overwrite = false): Promise<EoxBatchResult> {
   const me = await requireAdmin();
   if (!Array.isArray(input) || input.length === 0) return { ok: false, message: "Lote vazio." };
   if (input.length > MAX_BATCH) return { ok: false, message: `Lote grande demais (máximo ${MAX_BATCH}).` };
@@ -40,12 +40,13 @@ export async function importEoxBatchAction(input: EoxCompany[], apply: boolean, 
   // contagem (prévia e gravação usam as mesmas regras)
   for (const c of todo) {
     const l = byCnpj.get(c.cnpj)!;
-    if (c.recordId && !l.eoxId) res.ids++;
-    if (c.code && !l.eoxCode) res.codes++;
-    if ((c.tradeName && !l.tradeName) || (c.address && !l.address) || (c.neighborhood && !l.neighborhood) || (c.zip && !l.zip) || (c.city && !l.city) || (c.uf && !l.uf)) res.filled++;
+    const diff = (n: string | null | undefined, o: string | null) => !!n && (overwrite ? n !== o : !o);
+    if (diff(c.recordId, l.eoxId)) res.ids++;
+    if (diff(c.code, l.eoxCode)) res.codes++;
+    if (diff(c.tradeName, l.tradeName) || diff(c.address, l.address) || diff(c.neighborhood, l.neighborhood) || diff(c.zip, l.zip) || diff(c.city, l.city) || diff(c.uf, l.uf) || diff(c.email, l.email)) res.filled++;
     if (Object.keys(c.info ?? {}).length) res.info++;
     res.phones += c.phones.filter((p) => !l.phones.includes(p)).length;
-    if (c.email && !l.email) res.emails++;
+    if (diff(c.email, l.email)) res.emails++;
     res.people += (c.people ?? []).length;
   }
   if (create) res.created = absent.length;
@@ -71,6 +72,7 @@ export async function importEoxBatchAction(input: EoxCompany[], apply: boolean, 
     }
     if (!todo.length) return;
 
+    const pick = (col: string, v: string) => sql.raw(overwrite ? `coalesce(v.${v}, l.${col})` : `coalesce(l.${col}, v.${v})`);
     // 1) leads existentes: completa o que falta e troca o retrato
     for (const part of chunk(todo, 200)) {
       const vals = part.map((c) => {
@@ -79,9 +81,9 @@ export async function importEoxBatchAction(input: EoxCompany[], apply: boolean, 
       });
       await tx.execute(sql`
         update leads l set
-          eox_id = coalesce(l.eox_id, v.rec), eox_code = coalesce(l.eox_code, v.code), trade_name = coalesce(l.trade_name, v.trade),
-          address = coalesce(l.address, v.addr), neighborhood = coalesce(l.neighborhood, v.nb), zip = coalesce(l.zip, v.zip),
-          city = coalesce(l.city, v.city), uf = coalesce(l.uf, v.uf), email = coalesce(l.email, v.email),
+          eox_id = ${pick("eox_id", "rec")}, eox_code = ${pick("eox_code", "code")}, trade_name = ${pick("trade_name", "trade")},
+          address = ${pick("address", "addr")}, neighborhood = ${pick("neighborhood", "nb")}, zip = ${pick("zip", "zip")},
+          city = ${pick("city", "city")}, uf = ${pick("uf", "uf")}, email = ${pick("email", "email")},
           eox_info = coalesce(v.info, l.eox_info), eox_synced_at = case when v.info is null then l.eox_synced_at else now() end
         from (values ${sql.join(vals, sql`, `)}) as v(id, rec, code, trade, addr, nb, zip, city, uf, email, info)
         where l.id = v.id`);
