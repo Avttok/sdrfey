@@ -3,10 +3,10 @@ import type { ScriptMood, ScriptNode, ScriptOption } from "@/config/scripts";
 export type Tipo = "revenda" | "producao" | "servico";
 /** O que cada tipo de cliente compra da Fey (fixadores) e o aperto que passa. `dor` completa "não ficar na mão com ___". */
 export const SEG: Record<string, { itens: string; um: string; dor: string; tipo: Tipo }> = {
-  geral: { itens: "parafusos, porcas e grampos", um: "parafuso", dor: "o fixador certo em falta na hora de atender", tipo: "revenda" },
+  geral: { itens: "parafusos, porcas e grampos", um: "parafuso", dor: "falta do fixador certo na hora de atender", tipo: "revenda" },
   distribuidor_fixadores: { itens: "parafusos, porcas, arruelas e grampos", um: "parafuso sextavado", dor: "ruptura de estoque nos itens de maior giro", tipo: "revenda" },
   distribuidor_industrial: { itens: "fixadores e componentes de manutenção industrial", um: "parafuso de alta resistência", dor: "cliente industrial esperando um item que faltou", tipo: "revenda" },
-  parafusos: { itens: "parafusos, porcas e arruelas", um: "item de giro", dor: "o item de maior giro acabando no balcão", tipo: "revenda" },
+  parafusos: { itens: "parafusos, porcas e arruelas", um: "item de giro", dor: "item de maior giro acabando no balcão", tipo: "revenda" },
   ferragens: { itens: "parafusos, porcas, arruelas e fixadores de balcão", um: "parafuso", dor: "cliente de balcão que vai embora porque o item acabou", tipo: "revenda" },
   material_construcao: { itens: "parafusos, buchas e fixadores para obra", um: "parafuso", dor: "obra parada esperando o fixador", tipo: "revenda" },
   ferramentas: { itens: "parafusos, porcas e arruelas de balcão", um: "fixador de giro rápido", dor: "item de giro rápido em falta e fornecedor sem suporte", tipo: "revenda" },

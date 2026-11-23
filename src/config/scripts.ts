@@ -106,6 +106,12 @@ export function shortCompany(raw: string): string {
  * a frase simplesmente começa sem ele ("João, vou direto" → "Vou direto"); no meio da frase vira "o responsável".
  * Toda frase sai com a primeira letra maiúscula.
  */
+/** Saudação certa para a hora de Brasília: Bom dia, Boa tarde ou Boa noite. */
+export function saudacao(now: Date = new Date()): string {
+  const h = Number(new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hour12: false, timeZone: "America/Sao_Paulo" }).format(now)) % 24;
+  return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
+}
+
 export function fillScript(text: string, v: { empresa?: string | null; contato?: string | null; cidade?: string | null; meunome?: string | null }): string {
   const get = (k: "empresa" | "contato" | "cidade" | "meunome" | "empresa_completa") => {
     const raw = ((k === "empresa_completa" ? v.empresa : v[k]) ?? "").trim();
@@ -122,6 +128,7 @@ export function fillScript(text: string, v: { empresa?: string | null; contato?:
   if (!get("cidade")) out = out.replace(/,?\s+de \{cidade\}/g, "");
   if (!get("empresa")) out = out.replace(/\b(da|na|pela|a|à|para a)\s+\{empresa\}/gi, "$1 empresa");
   if (!get("meunome")) out = out.replace(/Aqui é \{meunome\}, da Fey/g, "Aqui é da Fey");
+  out = out.replace(/\{saudacao\}/g, saudacao());
   out = out.replace(/\{(empresa_completa|empresa|contato|cidade|meunome)\}/g, (_, k: string) => get(k as "empresa") || alt[k]);
   return out.replace(/(^|[.!?]\s+|\n)([a-zà-ú])/g, (_, a: string, b: string) => a + b.toUpperCase());
 }

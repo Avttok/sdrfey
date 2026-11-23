@@ -11,7 +11,7 @@ import { ScriptPlayer } from "./script-player";
 import { MOODS } from "./script-theme";
 
 const newId = (nodes: ScriptNode[]) => { let i = nodes.length + 1; while (nodes.some((n) => n.id === `p${i}`)) i++; return `p${i}`; };
-export const blankScript = (goal: ScriptGoal = "sdr"): ScriptDoc => ({ id: 0, title: "", segment: "geral", goal, summary: null, startId: "p1", global: false, mine: true, active: true, nodes: [{ id: "p1", type: "fala", title: "Abertura", say: "Bom dia! Aqui é {meunome}, da Fey. Falo com {contato} da {empresa}?", options: [{ label: "Atendeu", to: "p2", kind: "ok" }], tip: "" }, { id: "p2", type: "fim", title: "Fim", say: "Registre o resultado.", options: [], outcome: "encerrar" }] });
+export const blankScript = (goal: ScriptGoal = "sdr"): ScriptDoc => ({ id: 0, title: "", segment: "geral", goal, summary: null, startId: "p1", global: false, mine: true, active: true, nodes: [{ id: "p1", type: "fala", title: "Abertura", say: "{saudacao}! Aqui é {meunome}, da Fey. Falo com {contato} da {empresa}?", options: [{ label: "Atendeu", to: "p2", kind: "ok" }], tip: "" }, { id: "p2", type: "fim", title: "Fim", say: "Registre o resultado.", options: [], outcome: "encerrar" }] });
 
 export function ScriptEditor({ initial, isAdmin, onClose }: { initial: ScriptDoc; isAdmin: boolean; onClose: () => void }) {
   const [d, setD] = useState<ScriptDoc>(initial);
@@ -36,7 +36,7 @@ export function ScriptEditor({ initial, isAdmin, onClose }: { initial: ScriptDoc
           <label className="text-sm">Tipo de estabelecimento<select className={inputCls} value={d.segment} onChange={(e) => setD({ ...d, segment: e.target.value })}>{Object.entries(SEGMENTS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
           <label className="text-sm">Começa no passo<select className={inputCls} value={d.startId} onChange={(e) => setD({ ...d, startId: e.target.value })}>{d.nodes.map((n) => <option key={n.id} value={n.id}>{n.title || n.id}</option>)}</select></label>
         </div>
-        <p className="text-xs text-muted">Use {"{empresa}"}, {"{contato}"}, {"{cidade}"} e {"{meunome}"} nas falas: o sistema troca pelos dados do lead.</p>
+        <p className="text-xs text-muted">Use {"{empresa}"}, {"{contato}"}, {"{cidade}"} e {"{meunome}"} nas falas: o sistema troca pelos dados do lead. {"{saudacao}"} vira Bom dia, Boa tarde ou Boa noite, conforme a hora.</p>
         <div className="flex flex-wrap items-center gap-4">
           <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked={d.active} onChange={(e) => setD({ ...d, active: e.target.checked })} /> Ativo</label>
           {isAdmin && <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked={d.global} disabled={d.id !== 0} onChange={(e) => setD({ ...d, global: e.target.checked })} /> Script do time (todos veem)</label>}
