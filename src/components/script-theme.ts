@@ -1,4 +1,4 @@
-import { MapPin, BadgeCheck, Heart, Bolt, BadgeDollarSign, CalendarCheck, CarFront, CircleHelp, Cog, Crown, Ear, Factory, FileText, Flag, Handshake, Hammer, Headset, MessageCircle, PhoneCall, RotateCcw, Rocket, ShieldAlert, Sparkles, Store, Swords, Target, Truck, Wrench, Boxes, Warehouse, BrickWall, Car, PackageOpen, Bus, Tractor, Armchair, Zap, HardHat, type LucideIcon } from "lucide-react";
+import { UserPlus, MapPin, BadgeCheck, Heart, Bolt, BadgeDollarSign, CalendarCheck, CarFront, CircleHelp, Cog, Crown, Ear, Factory, FileText, Flag, Handshake, Hammer, Headset, MessageCircle, PhoneCall, RotateCcw, Rocket, ShieldAlert, Sparkles, Store, Swords, Target, Truck, Wrench, Boxes, Warehouse, BrickWall, Car, PackageOpen, Bus, Tractor, Armchair, Zap, HardHat, type LucideIcon } from "lucide-react";
 import type { ScriptGoal, ScriptMood, ScriptNode } from "@/config/scripts";
 
 /** Cada papel do passo ganha ícone e cor, como etapas de um processo. */
@@ -30,7 +30,7 @@ export const SEGMENT_ICON: Record<string, LucideIcon> = {
 };
 
 export const OUTCOME_ICON: Record<NonNullable<ScriptNode["outcome"]>, LucideIcon> = {
-  visita: CalendarCheck, cotacao: FileText, retorno: PhoneCall, venda: BadgeDollarSign, encerrar: Flag,
+  visita: CalendarCheck, cotacao: FileText, retorno: PhoneCall, venda: BadgeDollarSign, indicacao: UserPlus, encerrar: Flag,
 };
 
 export { Crown, Headset, Wrench, Boxes };

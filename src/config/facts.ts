@@ -8,7 +8,7 @@ export const FIELD_KINDS: Record<FieldKind, string> = { lista: "Escolher uma op�
 export const FIELD_GROUPS = ["Perfil de compra", "Situação", "Contato", "Telefonia", "Outros"] as const;
 
 export const FIELD_SEED: Seed[] = [
-  { key: "aplicacao", label: "Onde aplica os itens", kind: "multi", scope: "lead", groupName: "Perfil de compra", ttlDays: 365, priority: 90, options: ["Balcão e varejo", "Oficinas e frotas", "Montagem do produto final", "Manutenção das máquinas", "Manutenção da própria frota", "Serviço para clientes", "Revenda para outras empresas"] },
+  { key: "aplicacao", label: "Onde aplica os itens", kind: "multi", scope: "lead", groupName: "Perfil de compra", ttlDays: 365, priority: 90, options: ["Balcão e varejo", "Oficinas e frotas", "Montagem do produto final", "Manutenção das máquinas", "Manutenção da própria frota", "Serviço para clientes", "Revenda para outras empresas", "Indústrias e construtoras", "Reposição e estoque", "Reposição e assistência técnica", "Mais de uma aplicação"] },
   { key: "mix", label: "Mix de produtos", kind: "lista", scope: "lead", groupName: "Perfil de compra", ttlDays: 365, priority: 85, options: ["Mix variado de itens", "Poucos itens específicos", "Só um item"] },
   { key: "frequencia", label: "Frequência de compra", kind: "lista", scope: "lead", groupName: "Perfil de compra", ttlDays: 180, priority: 80, options: ["Toda semana", "Todo mês", "A cada dois ou três meses", "Só quando precisa"] },
   { key: "porte", label: "Tamanho da empresa", kind: "lista", scope: "lead", groupName: "Perfil de compra", ttlDays: 365, priority: 70, options: ["Até 5 funcionários", "6 a 20", "21 a 100", "Mais de 100"] },

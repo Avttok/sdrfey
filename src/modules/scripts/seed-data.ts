@@ -12,7 +12,7 @@ const OPT: OptRule[] = [
   { node: /^enr_mix$/, label: /^Mix variado/, key: "mix", value: "Mix variado de itens" },
   { node: /^enr_mix$/, label: /^Poucos itens/, key: "mix", value: "Poucos itens específicos" },
   { node: /^enr_mix$/, label: /^Só um item/, key: "mix", value: "Só um item" },
-  { node: /^enr_aplicacao$/, label: /^(Um pouco de tudo|Mais de uma aplicação)$/, key: "aplicacao", value: "Variada" },
+  { node: /^enr_aplicacao$/, label: /^(Um pouco de tudo|Mais de uma aplicação)$/, key: "aplicacao", value: "Mais de uma aplicação" },
   { node: /^enr_freq$/, label: /^Toda semana$/, key: "frequencia", value: "Toda semana" },
   { node: /^enr_freq$/, label: /^Todo mês$/, key: "frequencia", value: "Todo mês" },
   { node: /^enr_freq$/, label: /^A cada dois ou três meses$/, key: "frequencia", value: "A cada dois ou três meses" },
@@ -26,7 +26,8 @@ const OPT: OptRule[] = [
   { node: /^enr_quando$/, label: /^Nos próximos meses$/, key: "quando", value: "De 1 a 3 meses" },
   { node: /^enr_quando$/, label: /^Sem previsão$/, key: "quando", value: "Sem previsão" },
   { node: /^p_socio$/, label: /./, key: "decisor", value: "O dono" },
-  { node: /^p_compras$/, label: /./, key: "decisor", value: "O comprador" },
+  // comprador nem sempre decide: só vira "quem decide" quando ele mesmo diz que decide sozinho
+  { node: /^p_alcada$/, label: /^Decide sozinho/, key: "decisor", value: "O comprador" },
 ];
 const APLICACAO = /^(Balcão e varejo|Oficinas e frotas|Indústrias e construtoras|Montagem do produto final|Manutenção das máquinas|Reposição e assistência técnica|Manutenção da própria frota|Serviço para clientes|Reposição e estoque)$/;
 

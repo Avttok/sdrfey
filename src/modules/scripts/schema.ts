@@ -17,7 +17,7 @@ export const nodeSchema = z.object({
   options: z.array(z.object({ label: text(120).min(1, "Toda resposta precisa de um texto."), to: z.string().trim().max(24).nullable(), kind: z.enum(["ok", "objecao", "neutro"]), note: text(160).optional(), fact: z.object({ key: factKey, value: text(120).min(1) }).optional(), tasks: taskSchema.optional() })).max(10),
   tasks: taskSchema.optional(),
   ask: z.array(z.object({ key: factKey, q: text(120).optional() })).max(3).optional(),
-  outcome: z.enum(["visita", "cotacao", "retorno", "venda", "encerrar"]).optional(),
+  outcome: z.enum(["visita", "cotacao", "retorno", "venda", "indicacao", "encerrar"]).optional(),
 });
 
 export const scriptInput = z.object({

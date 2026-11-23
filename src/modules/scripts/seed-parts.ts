@@ -36,7 +36,7 @@ export function entrada(_nomeTo: string, itens: string, a: Alvo, tipo: Tipo): Sc
       "Sem problema! Pra eu não atrapalhar: qual o nome dessa pessoa e que horas ela costuma estar aí? Aí eu ligo direto nesse horário.",
       "Sem problema. Para não atrapalhar, qual é o nome dessa pessoa e em que horário ela costuma estar disponível? Eu ligo exatamente nessa hora.",
       "Beleza! Pra eu não atrapalhar: como é o nome dela e que horas ela costuma estar aí? Aí eu ligo bem nessa hora, combinado?",
-    ), [o("Deu o nome e o horário", "@retorno", "ok", "Retornar no horário combinado com o decisor")], "Anote nome, horário e quem informou. Na volta, abra com “a recepção me indicou este horário”.", "apoio"),
+    ), [o("Deu o nome e o horário", "@retorno", "ok", "Retornar no horário combinado com o decisor"), o("Só o nome, sem horário", "@retorno", "neutro", "Sem horário combinado: tentar de novo em outro dia e horário"), o("Não quis passar nada", "obj_nao", "objecao", "Recepção não passou nome nem horário")], "Anote nome, horário e quem informou. Na volta, abra com “a recepção me indicou este horário”.", "apoio"),
     fala("rec_email", "Pedido de e-mail", T(
       "Claro, mando sim! Só me diz pra quem eu endereço e qual o melhor e-mail. E já aproveito: te ligo depois de amanhã só pra ver se chegou, pode ser?",
       "Claro, envio sim. A quem devo endereçar e qual o melhor e-mail? Se for conveniente, ligo depois de amanhã para confirmar o recebimento.",
@@ -85,15 +85,22 @@ export function perfis(p: Perfis): ScriptNode[] {
   const { itens, alvo } = p;
   const tema = alvo.tema ?? T("sobre a reposição de parafusos e grampos", "sobre o fornecimento de parafusos e grampos", "sobre reposição de parafuso e grampo");
   const para = alvo.para ?? T("pra apresentar nossa linha", "para apresentar nossa linha", "pra mostrar nossa linha");
+  // quem atende o cliente conhece uma dor diferente em cada tipo de empresa
+  const empatia = p.tipo === "revenda"
+    ? T("Legal! Quem tá no balcão sabe: quando falta o parafuso certo, o cliente vai embora, né?", "Que bom. Quem atende no balcão sabe bem: quando falta o parafuso certo, o cliente acaba indo embora.", "Que legal! Quem tá no balcão sabe bem: faltou o parafuso certo, o cliente vai embora, né?")
+    : p.tipo === "servico"
+      ? T("Legal! Quem fala com o cliente da oficina sabe: quando falta a peça certa, o veículo fica parado e o cliente cobra, né?", "Que bom. Quem atende o cliente na oficina sabe bem: quando falta a peça certa, o veículo fica parado e o cliente cobra.", "Que legal! Quem fala com o cliente da oficina sabe bem: faltou a peça certa, o veículo fica parado e o cliente cobra, né?")
+      : T("Legal! Quem fala com o cliente sabe: quando falta material na produção, a entrega atrasa e a cobrança cai em cima, né?", "Que bom. Quem atende o cliente sabe bem: quando falta material na produção, a entrega atrasa e a cobrança chega.", "Que legal! Quem fala com o cliente sabe bem: faltou material na produção, a entrega atrasa e a cobrança cai em cima, né?");
+  const dorBalcao = p.tipo === "revenda" ? "“cliente que vai embora”" : p.tipo === "servico" ? "“veículo parado esperando peça”" : "“entrega atrasada por falta de material”";
   return [
     fala("p_socio", "Dono, sócio ou diretor", p.falas.socio, p.ok("Contato: decisor de compra (dono, sócio ou diretor)", p.next), p.tips.socio, "proposta"),
     fala("p_compras", "Compras ou comprador", p.falas.compras, p.ok("Contato: comprador", p.alcada ? "p_alcada" : p.next), p.tips.compras, "proposta"),
     fala("p_gestor", "Gerente, encarregado ou líder", p.falas.gestor, [...p.ok("Contato: gerente ou encarregado, participa da compra", p.next), o("Quem compra é outra pessoa", "pedir_decisor", "neutro", "Contato: gerente, não compra")], p.tips.gestor, "proposta"),
     fala("p_balcao", "Vendas, balcão ou atendimento", T(
-      `Legal! Quem tá no balcão sabe: quando falta o parafuso certo, o cliente vai embora, né? A gente fabrica ${itens}. Eu queria falar com ${alvo.quem} ${para.n}. Quem seria, e você consegue me passar agora?`,
-      `Que bom. Quem atende no balcão sabe bem: quando falta o parafuso certo, o cliente acaba indo embora. A Fey fabrica ${itens}. Gostaria de falar com ${alvo.quem} ${para.f}. Quem seria, e você consegue me transferir agora?`,
-      `Que legal! Quem tá no balcão sabe bem: faltou o parafuso certo, o cliente vai embora, né? A gente fabrica ${itens}. Queria falar com ${alvo.quem} ${para.s}. Quem é, e dá pra me passar agora?`,
-    ), [o("Passou a ligação", "transferido", "ok", "Balcão transferiu a ligação"), o("Deu nome e horário", "horario", "neutro"), o("Perguntou o assunto", "assunto"), o("Ele mesmo compra", p.next, "ok", "Contato: balcão que também compra"), o("Não passa", "obj_nao", "objecao", "Não passou o decisor")], "Quem atende o balcão é filtro e pode virar aliado. Não faça o pitch pra ele: peça ajuda, pergunte o nome de quem compra e qual o melhor horário. Use o problema dele (“cliente que vai embora”) para criar empatia. Agradeça pelo nome.", "ponte"),
+      `${empatia.n} A gente fabrica ${itens}. Eu queria falar com ${alvo.quem} ${para.n}. Quem seria, e você consegue me passar agora?`,
+      `${empatia.f} A Fey fabrica ${itens}. Gostaria de falar com ${alvo.quem} ${para.f}. Quem seria, e você consegue me transferir agora?`,
+      `${empatia.s} A gente fabrica ${itens}. Queria falar com ${alvo.quem} ${para.s}. Quem é, e dá pra me passar agora?`,
+    ), [o("Passou a ligação", "transferido", "ok", "Balcão transferiu a ligação"), o("Deu nome e horário", "horario", "neutro"), o("Perguntou o assunto", "assunto"), o("Ele mesmo compra", p.next, "ok", "Contato: balcão que também compra"), o("Não passa", "obj_nao", "objecao", "Não passou o decisor")], "Quem atende o balcão é filtro e pode virar aliado. Não faça o pitch pra ele: peça ajuda, pergunte o nome de quem compra e qual o melhor horário. Use o problema dele (" + dorBalcao + ") para criar empatia. Agradeça pelo nome.", "ponte"),
     fala("p_operacao", "Estoque, manutenção, oficina ou produção", T(
       "Legal! Você vê de perto o que falta e o que quebra. Me tira uma dúvida: qual fixador mais dá dor de cabeça aí, o que acaba rápido ou o que vem com defeito? Quero levar o assunto certo pra quem cuida das compras.",
       "Que bom. Você acompanha de perto o que falta e o que quebra. Uma pergunta: qual fixador mais causa transtorno aí, o que acaba rápido ou o que vem com defeito? Quero levar o assunto certo a quem cuida das compras.",
@@ -141,7 +148,7 @@ export function confirma(next: string, itens: string, tipo: Tipo): ScriptNode[] 
 
 /** 2. Enriquecedores: o que a conversa descobre sobre o lead. Cada pergunta traz um porquê e permite pular. */
 export function enriquece(last: string, tipo: Tipo, kind: "sdr" | "vendas"): ScriptNode[] {
-  const aplic = tipo === "revenda" ? [o("Balcão e varejo", "enr_freq", "ok", "Aplicação: balcão e varejo"), o("Oficinas e frotas", "enr_freq", "ok", "Aplicação: oficinas e frotas"), o("Indústrias e construtoras", "enr_freq", "ok", "Aplicação: indústrias e construtoras"), o("Um pouco de tudo", "enr_freq", "ok", "Aplicação: variada")]
+  const aplic = tipo === "revenda" ? [o("Balcão e varejo", "enr_freq", "ok", "Aplicação: balcão e varejo"), o("Oficinas e frotas", "enr_freq", "ok", "Aplicação: oficinas e frotas"), o("Indústrias e construtoras", "enr_freq", "ok", "Aplicação: indústrias e construtoras"), o("Um pouco de tudo", "enr_freq", "ok", "Aplicação: mais de uma")]
     : tipo === "producao" ? [o("Montagem do produto final", "enr_freq", "ok", "Aplicação: montagem do produto final"), o("Manutenção das máquinas", "enr_freq", "ok", "Aplicação: manutenção das máquinas"), o("Reposição e assistência técnica", "enr_freq", "ok", "Aplicação: reposição e assistência"), o("Mais de uma aplicação", "enr_freq", "ok", "Aplicação: variada")]
     : [o("Manutenção da própria frota", "enr_freq", "ok", "Aplicação: manutenção de frota"), o("Serviço para clientes", "enr_freq", "ok", "Aplicação: serviços para clientes"), o("Reposição e estoque", "enr_freq", "ok", "Aplicação: reposição e estoque"), o("Mais de uma aplicação", "enr_freq", "ok", "Aplicação: variada")];
   const skip = o("Prefere não responder", "enr_freq", "neutro");
@@ -170,7 +177,7 @@ export function enriquece(last: string, tipo: Tipo, kind: "sdr" | "vendas"): Scr
       "Quantas pessoas vocês são aí, mais ou menos? É só pra eu ter noção do tamanho da casa.",
       "Quantas pessoas trabalham aí, mais ou menos? É só para eu ter noção do porte da empresa.",
       "Quantas pessoas vocês são aí, mais ou menos? Só pra eu ter noção do tamanho da casa.",
-    ), [o("Até 5", "enr_quando", "neutro", "Funcionários: até 5"), o("De 6 a 20", "enr_quando", "ok", "Funcionários: 6 a 20"), o("De 21 a 100", "enr_quando", "ok", "Funcionários: 21 a 100"), o("Mais de 100", "enr_quando", "ok", "Funcionários: mais de 100"), o("Não soube dizer", "enr_quando")], "Última pergunta antes da proposta. A Gong viu que 11 a 14 perguntas bem dirigidas funcionam melhor que um questionário completo."),
+    ), [o("Até 5", "enr_quando", "neutro", "Funcionários: até 5"), o("De 6 a 20", "enr_quando", "ok", "Funcionários: 6 a 20"), o("De 21 a 100", "enr_quando", "ok", "Funcionários: 21 a 100"), o("Mais de 100", "enr_quando", "ok", "Funcionários: mais de 100"), o("Não soube dizer", "enr_quando")], "Pergunta leve de perfil, sem cara de formulário. A Gong viu que 11 a 14 perguntas bem dirigidas funcionam melhor que um questionário completo."),
     fala("enr_quando", "Quando precisa", T(
       "E a próxima reposição, quando vocês costumam precisar? Aí eu já deixo tudo pronto no tempo certo.",
       "E quando costuma ser a próxima reposição? Assim eu já deixo tudo pronto no tempo certo.",
@@ -263,9 +270,9 @@ export function objecoes(back: string, foco: "visita" | "venda"): ScriptNode[] {
       "Que bom ouvir isso, e eu não quero mexer no que tá funcionando! Só uma pergunta: se o fornecedor atual ficasse sem um item de giro ou atrasasse uma entrega, vocês teriam uma segunda opção na manga? Eu seria só essa reserva, sem trocar ninguém.",
     ), [ok("Topou ter uma segunda opção", "Satisfeito com o atual, aceitou a Fey como reserva"), nao("Satisfeito com o fornecedor atual"), outra], "Ninguém troca de fornecedor que funciona: posicione a Fey como seguro, não como substituta. Josh Braun: pergunte se faz sentido, sem pressão. Se não, deixe a porta aberta e registre."),
     fala("obj_distribuidor", "Compra por distribuidor", T(
-      "Que legal, então vocês já conhecem a Fey! Comprando direto da fábrica a condição melhora e o prazo fica mais firme. Qual distribuidor vocês usam hoje? Posso mostrar como ficaria comprando direto, só pra você comparar.",
-      "Que bom, então vocês já conhecem a Fey. Comprando direto da fábrica, a condição melhora e o prazo fica mais firme. Qual distribuidor vocês usam hoje? Posso mostrar como ficaria comprando direto, apenas para comparação.",
-      "Que legal, então vocês já conhecem a Fey! Comprando direto da fábrica a condição melhora e o prazo fica mais firme. Qual distribuidor vocês usam hoje? Posso mostrar como ficaria comprando direto, só pra você comparar.",
+      "Que legal, então vocês já têm um distribuidor de confiança! Comprando direto da fábrica a condição melhora e o prazo fica mais firme. Qual distribuidor vocês usam hoje? Posso mostrar como ficaria comprando direto, só pra você comparar.",
+      "Que bom, então vocês já têm um distribuidor de confiança. Comprando direto da fábrica, a condição melhora e o prazo fica mais firme. Qual distribuidor vocês usam hoje? Posso mostrar como ficaria comprando direto, apenas para comparação.",
+      "Que legal, então vocês já têm um distribuidor de confiança! Comprando direto da fábrica a condição melhora e o prazo fica mais firme. Qual distribuidor vocês usam hoje? Posso mostrar como ficaria comprando direto, só pra você comparar.",
     ), [ok("Informou o distribuidor e quer ver", "Compra por distribuidor (anotar qual)"), o("Prefere manter o distribuidor", "@encerrar", "objecao", "Prefere manter o distribuidor"), outra], "Anote qual é o distribuidor. Não force: se ele gosta do distribuidor, deixe a porta aberta."),
     fala("obj_concorrente", "Concorrente mais barato", T(
       "Faz sentido comparar! Só que preço de etiqueta não conta a história toda: pesa a durabilidade e o retrabalho que o item dá. A gente fabrica linha premium e, com os 25% de desconto, a conta por item fica bem competitiva. Posso montar uma comparação com o que você já compra?",
@@ -308,9 +315,9 @@ export function objecoes(back: string, foco: "visita" | "venda"): ScriptNode[] {
       "Combinado, eu volto a ligar! Só me ajuda a pegar a hora certa: o que precisaria acontecer pra esse assunto virar prioridade? O estoque baixar, uma obra nova, um item faltando? E em que mês você me recomenda ligar?",
     ), [o("Deu uma data ou um gatilho", "@retorno", "ok", "Retornar na data ou gatilho combinado"), nao("Sem previsão de interesse")], "“Me liga no próximo trimestre” vale ouro quando vem com uma data ou um gatilho: anote os dois. Sem isso, é uma forma educada de dizer “não”."),
     fala("obj_verba", "Sem verba no momento", T(
-      "Entendo, e respeito. Posso só perguntar: o assunto não vale resolver agora, ou é só o caixa do momento? É que a primeira compra já entra com 25% de desconto, e a gente pode deixar tudo pronto pra quando for a hora.",
-      "Entendo e respeito. Posso perguntar: o assunto não vale ser resolvido agora, ou é apenas uma questão do caixa neste momento? A primeira compra já tem 25% de desconto, e podemos deixar tudo preparado para a hora certa.",
-      "Entendi, e respeito! Posso só perguntar: o assunto não vale resolver agora, ou é só o caixa do momento? É que a primeira compra já entra com 25% de desconto, e a gente deixa tudo pronto pra quando for a hora.",
+      "Entendo, e respeito. Posso só perguntar: o assunto não vale resolver agora, ou é só o caixa do momento? É que o pedido já entra com 25% de desconto, e a gente pode deixar tudo pronto pra quando for a hora.",
+      "Entendo e respeito. Posso perguntar: o assunto não vale ser resolvido agora, ou é apenas uma questão do caixa neste momento? O pedido já tem 25% de desconto, e podemos deixar tudo preparado para a hora certa.",
+      "Entendi, e respeito! Posso só perguntar: o assunto não vale resolver agora, ou é só o caixa do momento? É que o pedido já entra com 25% de desconto, e a gente deixa tudo pronto pra quando for a hora.",
     ), [o("É só o momento: combinou retorno", "@retorno", "ok", "Sem verba agora: retornar quando o caixa permitir"), nao("Sem verba e sem interesse")], "Separe “não tenho dinheiro” de “não vejo valor” antes de insistir (Rework): se o problema não vale resolver, o orçamento nem entra na conversa. Não ofereça desconto extra por pressão."),
     fala("obj_pensar_geral", "Vai pensar", T(
       "Claro, decisão a gente pensa mesmo. Pra eu te ajudar: o que você ainda precisa ver, o preço, o prazo ou a garantia? Posso te ligar daqui a dois dias, de manhã ou à tarde?",

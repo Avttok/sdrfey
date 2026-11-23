@@ -14,9 +14,9 @@ export function visita(): { nodes: ScriptNode[]; startId: string } {
     ), [o("Disse quem é", "v_confirma", "ok"), o("Perguntou que visita é essa", "v_lembra"), o("A visita já aconteceu", "v_pos", "ok"), o("Pessoa errada ou o contato não está", "v_horario", "neutro"), o("Está sem tempo agora", "v_horario", "objecao"), o("Caixa postal, URA ou ninguém atendeu", "v_wa")],
     "Abra pelo assunto: quem combinou a visita lembra rápido. Se a recepção atender, peça pela pessoa que marcou e diga que é sobre a visita combinada."+" Escreva o nome no campo “Conversando atualmente com”: o roteiro passa a chamar a pessoa por ele.", "abertura"),
     fala("v_confirma", "Confirmar a visita", T(
-      "Que bom falar com você! Tô ligando só pra confirmar a visita que a gente combinou: o representante da Fey vai passar aí pra apresentar nossas linhas e entender o que vocês mais usam. Continua bom pra vocês?",
-      "Que bom falar com você. Estou ligando para confirmar a visita combinada: o representante da Fey irá até a empresa para apresentar nossas linhas e entender o que vocês mais utilizam. Continua conveniente para vocês?",
-      "Que bom falar com você! Tô ligando só pra confirmar a visita que a gente marcou: o representante da Fey vai passar aí pra mostrar nossas linhas e saber o que vocês mais usam. Continua bom pra vocês?",
+      "Que bom falar com você! Tô ligando só pra confirmar a visita que a gente combinou com o representante da Fey, pra apresentar nossas linhas e entender o que vocês mais usam. Continua bom pra vocês?",
+      "Que bom falar com você. Estou ligando para confirmar a visita combinada com o representante da Fey, para apresentar nossas linhas e entender o que vocês mais utilizam. Continua conveniente para vocês?",
+      "Que bom falar com você! Tô ligando só pra confirmar a visita que a gente marcou com o representante da Fey, pra mostrar nossas linhas e saber o que vocês mais usam. Continua bom pra vocês?",
     ), [o("Confirmou", "v_prep", "ok", "Visita confirmada pelo cliente"), o("Quer remarcar", "v_remarca", "neutro"), o("Não lembra da visita", "v_lembra"), o("Cancelou", "v_cancela", "objecao")],
     "Confirme com uma pergunta simples, que se responde com sim ou não. Visita confirmada de véspera falta bem menos.", "confirma"),
     fala("v_lembra", "Lembrar o combinado", T(
@@ -26,9 +26,9 @@ export function visita(): { nodes: ScriptNode[]; startId: string } {
     ), [o("Lembrou e confirmou", "v_prep", "ok", "Visita confirmada pelo cliente"), o("Quer remarcar", "v_remarca", "neutro"), o("Não tem interesse", "v_cancela", "objecao")],
     "Nunca insista em uma visita de quem não lembra de ter marcado. Explique o que é, quanto tempo leva e que não compromete.", "pergunta"),
     fala("v_prep", "Preparar a visita", T(
-      "Perfeito! Pra visita render: quem vai receber o representante, você mesmo ou alguém de compras? E se puder deixar à mão o que vocês mais compram hoje, ele já chega com a sugestão certa. Vou te mandar a confirmação por WhatsApp, por escrito, pra ninguém esquecer.",
-      "Perfeito. Para a visita ser proveitosa: quem receberá o representante, você ou alguém de compras? Se possível, deixe à mão os itens que mais compram, assim ele traz a sugestão adequada. Vou enviar a confirmação por escrito, por WhatsApp ou e-mail.",
-      "Show! Pra visita render: quem vai receber o representante, você ou alguém de compras? Se puder deixar à mão o que vocês mais compram, ele já chega com a sugestão certa. Vou te mandar a confirmação no WhatsApp, por escrito, pra ninguém esquecer.",
+      "Perfeito! Pra visita render: quem vai conversar com o representante, você mesmo ou alguém de compras? E se puder deixar à mão o que vocês mais compram hoje, ele já traz a sugestão certa. Vou te mandar a confirmação por WhatsApp, por escrito, pra ninguém esquecer.",
+      "Perfeito. Para a visita ser proveitosa: quem conversará com o representante, você ou alguém de compras? Se possível, deixe à mão os itens que mais compram, assim ele traz a sugestão adequada. Vou enviar a confirmação por escrito, por WhatsApp ou e-mail.",
+      "Show! Pra visita render: quem vai conversar com o representante, você ou alguém de compras? Se puder deixar à mão o que vocês mais compram, ele já traz a sugestão certa. Vou te mandar a confirmação no WhatsApp, por escrito, pra ninguém esquecer.",
     ), [o("Passou quem recebe e o canal", "@confirmada", "ok", "Visita confirmada: quem recebe e canal da confirmação anotados"), o("Pediu para mandar só por e-mail", "@confirmada", "ok", "Confirmação da visita por e-mail")],
     "Combine QUEM recebe e o canal da confirmação. Anote nome e telefone de quem vai receber e passe tudo ao representante.", "fechamento"),
     fala("v_remarca", "Remarcar a visita", T(

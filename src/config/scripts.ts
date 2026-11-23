@@ -32,7 +32,7 @@ export type ScriptNode = {
   /** Só para fim: o que fazer a seguir. */
   /** Pergunta extra de dados: o vendedor escolhe/digita o que o cliente disse e isso grava no lead. */
   ask?: { key: string; /** pergunta curta para o vendedor (se faltar, usa o nome do campo) */ q?: string }[];
-  outcome?: "visita" | "cotacao" | "retorno" | "venda" | "encerrar";
+  outcome?: "visita" | "cotacao" | "retorno" | "venda" | "indicacao" | "encerrar";
 };
 export type ScriptDoc = { id: number; title: string; segment: string; goal: ScriptGoal; summary: string | null; nodes: ScriptNode[]; startId: string; global: boolean; mine: boolean; active: boolean };
 
@@ -77,6 +77,7 @@ export const OUTCOMES: Record<NonNullable<ScriptNode["outcome"]>, { label: strin
   cotacao: { label: "Enviar a cotação", hint: "Monte e envie a cotação ainda hoje." },
   retorno: { label: "Combinar um retorno", hint: "Anote o dia e o horário combinados na observação." },
   venda: { label: "Fechar a venda", hint: "Confirme condições e abra o pedido." },
+  indicacao: { label: "Indicação recebida", hint: "Cadastre a indicação (nome e telefone) e ligue para a empresa indicada." },
   encerrar: { label: "Encerrar a conversa", hint: "Agradeça, registre o motivo e passe para o próximo." },
 };
 
