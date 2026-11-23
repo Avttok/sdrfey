@@ -202,7 +202,7 @@ export function PhoneDock() {
               <span className="grid size-10 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/20">{live ? <PhoneCall size={19} aria-hidden className="script-shake" /> : <Phone size={19} aria-hidden />}</span>
               <div className="min-w-0 flex-1">
                 <p className="font-bold leading-tight">{live ? "Em chamada" : ended ? "Ligação encerrada" : "Telefone"}</p>
-                <p className="flex items-center gap-1.5 truncate text-xs text-white/80"><span className={`size-1.5 rounded-full ${vocall.state === "online" || live ? "bg-emerald-300" : vocall.state === "connecting" ? "animate-pulse bg-amber-300" : "bg-white/50"}`} />{live ? label : vocall.state === "connecting" ? "Conectando ao VocallPhone…" : "VocallPhone · pronto"}</p>
+                <p className="flex items-center gap-1.5 truncate text-xs text-white/80"><span className={`size-1.5 rounded-full ${vocall.health.status === "down" && !live ? "bg-red-400" : vocall.state === "online" || live || vocall.health.status === "ok" ? "bg-emerald-300" : vocall.state === "connecting" || vocall.health.status === "checking" ? "animate-pulse bg-amber-300" : "bg-white/50"}`} />{live ? label : vocall.state === "connecting" || vocall.health.status === "checking" ? "Verificando o VocallPhone…" : vocall.health.status === "down" ? "VocallPhone sem resposta" : vocall.health.status === "ok" ? "VocallPhone · operante" : "VocallPhone · não verificado"}</p>
               </div>
               <button type="button" onClick={() => setOpen(false)} aria-label="Fechar" className="grid size-8 place-items-center rounded-lg text-white/80 hover:bg-white/15"><X size={16} aria-hidden /></button>
             </div>
@@ -279,9 +279,11 @@ export function PhoneDock() {
           {!inCall && shownTab === "dial" && (
             <footer className="space-y-1.5 border-t border-line bg-panel p-3">
               {blocked && <p className="flex items-center gap-1.5 text-xs font-semibold text-danger"><Ban size={13} aria-hidden /> A EOX bloqueou a discagem deste cliente. Vai pedir confirmação.</p>}
+              {vocall.health.status === "down" && <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{vocall.health.reason ?? "O VocallPhone não respondeu."} Se o app estiver aberto, clique em Verificar; o sistema entra de novo do zero a cada ligação.</p>}
               <button type="button" onClick={() => void dialTo(digits)} disabled={digits.length < 8 || dialing} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40" style={{ background: "linear-gradient(135deg,#16a34a,#15803d)" }}>
                 {dialing ? <Loader2 size={20} className="animate-spin" aria-hidden /> : <Phone size={20} aria-hidden />} {dialing ? "Ligando…" : "Ligar"}
               </button>
+              <button type="button" onClick={() => void vocall.check().then((ok) => toast(ok ? "ok" : "warn", ok ? "VocallPhone operante: o ramal respondeu." : "VocallPhone sem resposta."))} disabled={vocall.health.status === "checking" || dialing} className="flex min-h-8 w-full items-center justify-center gap-1.5 rounded-lg text-xs font-semibold text-muted hover:text-ink disabled:opacity-50">{vocall.health.status === "checking" ? <Loader2 size={13} className="animate-spin" aria-hidden /> : <PhoneCall size={13} aria-hidden />} Verificar o VocallPhone</button>
             </footer>
           )}
         </section>
