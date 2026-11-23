@@ -53,7 +53,7 @@ export function GoalsForm({ global, people, canGlobal, editableIds, showGlobal =
         {KINDS.map(({ k, title, sub, Icon }) => (
           <section key={k} className={`${panelCls} p-5 transition-opacity ${g[k].on ? "" : "opacity-60"}`}>
             <div className="flex items-start gap-3">
-              <span className="flex size-10 items-center justify-center rounded-xl" style={{ background: "color-mix(in srgb, var(--accent) 16%, transparent)", color: "var(--accent)" }}><Icon size={20} aria-hidden /></span>
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-grad text-on-accent shadow-sm"><Icon size={20} aria-hidden /></span>
               <div className="flex-1"><h2 className="display text-xl">{title}</h2><p className="text-sm text-muted">{sub}. Vale para quem não tem meta própria.</p></div>
               <Switch on={g[k].on} disabled={!canEdit} label={`${title} ativa`} onChange={(on) => setG({ ...g, [k]: { ...g[k], on } })} />
             </div>

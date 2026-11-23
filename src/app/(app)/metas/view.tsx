@@ -1,5 +1,6 @@
 import { metricUsers, visibleUsers } from "@/modules/auth/visibility";
-import { Handshake, Headset, Target } from "lucide-react";
+import { CheckCheck, Handshake, Headset, Target, Users } from "lucide-react";
+import { GoalsHero } from "@/components/goal-ui";
 import { MetasShell, type MetasTab } from "@/components/metas-shell";
 import { SdrOverview } from "@/components/goals-overview";
 import { PeriodFilter } from "@/components/period-filter";
@@ -64,6 +65,9 @@ export async function MetasView({ searchParams, kind }: { searchParams: Promise<
   const monthName = new Date(yy, mm - 1, 1).toLocaleDateString("pt-BR", { month: "long" });
   const pacesOf = (v: { m: { actual: Record<string, number> }; targets: Record<string, number> }) => Object.fromEntries(SELLER_METRICS.map((m) => [m.key, sellerPace(v.m.actual[m.key], v.targets[m.key], mctx)]));
   const both = showSdr && showSellers;
+  void both;
+  const ranked = [...views].filter((v) => !v.allOff && v.overall > 0).sort((a, b) => b.overall - a.overall).map((v) => v.u.id);
+  const rankOf = (id: number) => (ranked.length > 1 ? ranked.indexOf(id) + 1 || undefined : undefined);
 
   const sdrData = async () => {
     const [list, done, sched, calls, conv] = await Promise.all([
@@ -112,11 +116,14 @@ export async function MetasView({ searchParams, kind }: { searchParams: Promise<
       key: "vendas", label: "Vendas", icon: <Handshake size={16} aria-hidden />, sub: "Metas mensais, cada uma com o seu peso.",
       view: (
         <div className="space-y-4">
+          <GoalsHero eyebrow={`Metas · vendas · ${monthName}`} title={counted.length === 0 ? "Sem metas ligadas" : avg >= 100 ? "Meta do mês batida!" : `${avg}% da meta do mês`}
+            text={counted.length === 0 ? "Ligue as metas na aba Editar metas." : `${isThisMonth ? `Restam ${Math.max(0, workdays(todayStr, mctx.last))} dias úteis` : "Mês encerrado"}. Cada meta tem o seu peso na nota geral.`}
+            pct={avg} chips={[{ icon: <CheckCheck size={13} aria-hidden />, label: `${counted.filter((v) => v.overall >= 100).length} de ${counted.length} na meta` }, { icon: <Users size={13} aria-hidden />, label: `${counted.length} ${counted.length === 1 ? "vendedor" : "vendedores"}` }]} />
           {manage && counted.length > 0 && <SellerTeamTiles rows={counted.map((v) => ({ actual: v.m.actual, targets: v.targets, enabled: v.enabled, overall: v.overall }))} monthLabel={views[0]?.m.monthLabel ?? ""} />}
-          {mine && <SellerGoalPanel wide={views.length === 1} paces={isThisMonth ? pacesOf(mine) : undefined} actual={mine.m.actual} targets={mine.targets} weights={mine.weights} enabled={mine.enabled} allOff={mine.allOff} bonusReais={mine.m.bonusReais} bonusSales={mine.m.bonusSales} monthLabel={mine.m.monthLabel} />}
+          {mine && <SellerGoalPanel pos={rankOf(mine.u.id)} wide={views.length === 1} paces={isThisMonth ? pacesOf(mine) : undefined} actual={mine.m.actual} targets={mine.targets} weights={mine.weights} enabled={mine.enabled} allOff={mine.allOff} bonusReais={mine.m.bonusReais} bonusSales={mine.m.bonusSales} monthLabel={mine.m.monthLabel} />}
           {manage && views.filter((v) => v.u.id !== me.id).length > 0 && (
             <div className="panel-grid">
-              {views.filter((v) => v.u.id !== me.id).map((v) => <SellerGoalPanel key={v.u.id} wide={views.length === 1} paces={isThisMonth ? pacesOf(v) : undefined} compact name={v.u.name} hex={bubbleHex(v.u.accent, v.u.id, v.u.roles)} actual={v.m.actual} targets={v.targets} weights={v.weights} enabled={v.enabled} allOff={v.allOff} bonusReais={v.m.bonusReais} bonusSales={v.m.bonusSales} monthLabel={v.m.monthLabel} />)}
+              {[...views].filter((v) => v.u.id !== me.id).sort((a, b) => b.overall - a.overall).map((v) => <SellerGoalPanel key={v.u.id} pos={rankOf(v.u.id)} wide={views.length === 1} paces={isThisMonth ? pacesOf(v) : undefined} compact name={v.u.name} hex={bubbleHex(v.u.accent, v.u.id, v.u.roles)} actual={v.m.actual} targets={v.targets} weights={v.weights} enabled={v.enabled} allOff={v.allOff} bonusReais={v.m.bonusReais} bonusSales={v.m.bonusSales} monthLabel={v.m.monthLabel} />)}
             </div>
           )}
         </div>

@@ -179,7 +179,7 @@ export function ScriptPlayer({ script, vars, extra, onOutcome, onNote, onRun, fl
                 <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider" style={{ color: mood.hex }}><Volume2 size={12} aria-hidden /> Diga ao lead</p>
                 <p className="whitespace-pre-line text-lg font-medium leading-relaxed sm:text-xl">{fillScript(sayOf(node, tone), vars)}</p>
               </div>
-              {node.tip && <p className="flex items-start gap-2 rounded-xl border border-dashed border-line bg-sunk/60 px-3 py-2 text-sm"><Lightbulb size={16} aria-hidden className="mt-0.5 shrink-0 text-warn" /><span><b className="text-warn">Dica só para você</b> (não é para falar): {node.tip}</span></p>}
+              {node.tip && <p className="flex items-start gap-2 rounded-xl border border-dashed border-line bg-sunk/60 px-3 py-2 text-sm"><Lightbulb size={16} aria-hidden className="mt-0.5 shrink-0 text-warn" /><span><b className="text-warn">Dica só para você</b>: {node.tip}</span></p>}
               {extra?.(node.id, pick)}
             </>
           )}

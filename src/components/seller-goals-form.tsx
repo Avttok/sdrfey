@@ -1,5 +1,6 @@
 "use client";
 
+import { Target } from "lucide-react";
 import { useState } from "react";
 import { useRun } from "@/components/use-run";
 import { btnPrimary, inputCls, panelCls } from "@/components/ui";
@@ -33,9 +34,10 @@ export function SellerGoalsForm({ global, people, canGlobal, editableIds, showGl
   const n = (v: string) => (v === "" ? 0 : Number(v));
   return (
     <section className={`${panelCls} space-y-5 p-5`}>
-      <div>
-        <h2 className="display text-xl">{showGlobal ? "Metas dos vendedores" : "Ajustar minhas metas de vendas"}</h2>
-        <p className="text-sm text-muted">{showGlobal ? `Metas mensais. O peso diz o quanto cada métrica influencia a meta geral (a soma das ligadas precisa dar 100%). Bônus: R$ ${SALE_BONUS_REAIS} por venda, valendo só a primeira de cada cliente.` : "Deixe vazio para seguir a meta padrão da equipe (mostrada em cinza)."}</p>
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-grad text-on-accent shadow-sm"><Target size={20} aria-hidden /></span>
+        <div className="min-w-0"><h2 className="display text-xl">{showGlobal ? "Metas dos vendedores" : "Ajustar minhas metas de vendas"}</h2>
+        <p className="text-sm text-muted">{showGlobal ? `Metas mensais. O peso diz o quanto cada métrica influencia a meta geral (a soma das ligadas precisa dar 100%). Bônus: R$ ${SALE_BONUS_REAIS} por venda, valendo só a primeira de cada cliente.` : "Deixe vazio para seguir a meta padrão da equipe (mostrada em cinza)."}</p></div>
       </div>
       <p className="text-xs text-muted">Metas mensais · <b className="text-ink">{W} dias úteis</b> em {monthLabel}. O diário é só projeção.</p>
       {showGlobal && <div className="overflow-x-auto">
