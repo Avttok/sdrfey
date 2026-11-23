@@ -7,7 +7,7 @@ import { NEXT, ONLINE, PARES, SEG, T, fala, fim, o, type Alvo } from "./seed-cor
 import { confirma, enriquece, entrada, minimo, objecoes, perfis } from "./seed-parts";
 
 /** Muda quando os textos de fábrica são reescritos: os scripts do time que ninguém editou são atualizados. */
-export const SEED_VERSION = 17;
+export const SEED_VERSION = 18;
 
 type Seg = (typeof SEG)[string];
 
@@ -20,9 +20,9 @@ function sdr(s: Seg): { nodes: ScriptNode[]; startId: string } {
   const decisor = (note: string, to: string) => [o("Topou ouvir", to, "ok", note), o("Já tem fornecedor", "obj_fornecedor", "objecao"), o("Pediu e-mail ou WhatsApp", "obj_enviar", "objecao"), o("Está sem tempo agora", "obj_tempo", "objecao"), o("Sem interesse", "obj_nao", "objecao")];
   const nodes: ScriptNode[] = [
     fala("abertura", "Abertura", T(
-      "{saudacao}! Aqui é {meunome}, da Fey, uma metalúrgica de fixadores. Estou ligando para a área de compras. Com quem eu falo, por favor?",
-      "{saudacao}! Aqui é {meunome}, da Fey, metalúrgica de fixadores. Entro em contato com a área de compras. Com quem tenho o prazer de falar?",
-      "{saudacao}! Aqui é {meunome}, da Fey, a metalúrgica de fixadores. Tô ligando pra área de compras. Com quem eu falo?",
+      "{saudacao}, tudo bem? Aqui é {meunome}, da Fey, uma metalúrgica de fixadores. Estou ligando para a área de compras. Com quem eu falo, por favor?",
+      "{saudacao}, tudo bem? Aqui é {meunome}, da Fey, metalúrgica de fixadores. Entro em contato com a área de compras. Com quem tenho o prazer de falar?",
+      "{saudacao}, tudo bem? Aqui é {meunome}, da Fey, a metalúrgica de fixadores. Tô ligando pra área de compras. Com quem eu falo?",
     ), [o("Disse quem é", "nome", "ok"), o("Vai transferir a ligação", "transferido", "ok"), o("Perguntou o assunto", "assunto"), o("Pessoa errada ou não trabalha mais aqui", "quem", "objecao"), o("Está sem tempo agora", "obj_tempo", "objecao"), o("Caixa postal, URA ou ninguém atendeu", "sem_resp"), o("Não é essa empresa", "@encerrar", "objecao", "Telefone não pertence à empresa")], "Abertura neutra de propósito: você não sabe quem atendeu (dono, balcão, recepção…), então só se identifica, diz a área e pergunta o nome. O pitch vem depois, quando souber a função da pessoa. A Gong mediu que abrir com o motivo e candura rende cerca de 11% de sucesso; evite “como vai o dia?” e “estou atrapalhando?”.", "abertura"),
     ...entrada("conf_empresa", s.itens, alvo, s.tipo),
     ...confirma("pitch", s.itens, s.tipo),
@@ -95,9 +95,9 @@ function vendas(s: Seg): { nodes: ScriptNode[]; startId: string } {
   const decisor = (note: string, to: string) => [o("Topou conversar", to, "ok", note), o("Pediu a tabela de preços", "tabela"), o("Já tem fornecedor fechado", "obj_fornecedor", "objecao"), o("Está sem tempo agora", "obj_tempo", "objecao"), o("Sem interesse", "obj_nao", "objecao")];
   const nodes: ScriptNode[] = [
     fala("abertura", "Abertura", T(
-      `{saudacao}! Aqui é {meunome}, da Fey, uma metalúrgica de fixadores. Estou ligando para falar da reposição de ${s.itens} com quem cuida das compras. Com quem eu falo, por favor?`,
-      `{saudacao}! Aqui é {meunome}, da Fey, metalúrgica de fixadores. Entro em contato para tratar da reposição de ${s.itens} com quem cuida das compras. Com quem tenho o prazer de falar?`,
-      `{saudacao}! Aqui é {meunome}, da Fey, a metalúrgica de fixadores. Tô ligando pra falar da reposição de ${s.itens} com quem cuida das compras. Com quem eu falo?`,
+      `{saudacao}, tudo bem? Aqui é {meunome}, da Fey, uma metalúrgica de fixadores. Estou ligando para falar da reposição de ${s.itens} com quem cuida das compras. Com quem eu falo, por favor?`,
+      `{saudacao}, tudo bem? Aqui é {meunome}, da Fey, metalúrgica de fixadores. Entro em contato para tratar da reposição de ${s.itens} com quem cuida das compras. Com quem tenho o prazer de falar?`,
+      `{saudacao}, tudo bem? Aqui é {meunome}, da Fey, a metalúrgica de fixadores. Tô ligando pra falar da reposição de ${s.itens} com quem cuida das compras. Com quem eu falo?`,
     ), [o("Disse quem é", "nome", "ok"), o("Vai transferir a ligação", "transferido", "ok"), o("Perguntou o assunto", "assunto"), o("Pessoa errada ou não trabalha mais aqui", "quem", "objecao"), o("Está sem tempo agora", "obj_tempo", "objecao"), o("Caixa postal, URA ou ninguém atendeu", "sem_resp")], "Aqui o objetivo é cotar e vender, mas você ainda não sabe quem atendeu: abra neutro, pegue o nome e a função, e só então consulte. Seja consultivo: você quer ajudar a resolver a reposição, não empurrar produto.", "abertura"),
     ...entrada("papel", s.itens, alvo, s.tipo),
     ...perfis({
@@ -164,9 +164,9 @@ function retorno(s: Seg): { nodes: ScriptNode[]; startId: string } {
   const decisor = (note: string, _to: string) => [o("Já viu e está analisando", "duvidas", "ok", note), o("Ainda não viu", "reenviar"), o("Quer fechar", "fechar", "ok"), o("Achou caro", "obj_preco", "objecao"), o("Fechou com outro", "motivo", "objecao"), o("Outra dúvida ou objeção", "obj_menu", "objecao")];
   const nodes: ScriptNode[] = [
     fala("abertura", "Abertura", T(
-      "{saudacao}! Aqui é {meunome}, da Fey. Estou retornando a cotação que enviei pra {empresa}. Com quem eu falo, por favor?",
-      "{saudacao}! Aqui é {meunome}, da Fey. Entro em contato para retomar a cotação enviada à {empresa}. Com quem tenho o prazer de falar?",
-      "{saudacao}! Aqui é {meunome}, da Fey. Tô retomando a cotação que mandei pra {empresa}. Com quem eu falo?",
+      "{saudacao}, tudo bem? Aqui é {meunome}, da Fey. Estou retornando a cotação que enviei pra {empresa}. Com quem eu falo, por favor?",
+      "{saudacao}, tudo bem? Aqui é {meunome}, da Fey. Entro em contato para retomar a cotação enviada à {empresa}. Com quem tenho o prazer de falar?",
+      "{saudacao}, tudo bem? Aqui é {meunome}, da Fey. Tô retomando a cotação que mandei pra {empresa}. Com quem eu falo?",
     ), [o("Disse quem é", "nome", "ok"), o("Vai transferir a ligação", "transferido", "ok"), o("Perguntou o assunto", "assunto"), o("Pessoa errada ou não trabalha mais aqui", "quem", "objecao"), o("Caixa postal, URA ou ninguém atendeu", "sem_resp")], "Ligue em até dois dias úteis depois do envio, no horário combinado. Quem cumpre o que prometeu ganha confiança. Mesmo esperando o contato certo, abra perguntando com quem fala: pode ser outra pessoa.", "abertura"),
     ...entrada("papel", s.itens, alvo, s.tipo),
     ...perfis({
@@ -203,9 +203,9 @@ function retorno(s: Seg): { nodes: ScriptNode[]; startId: string } {
       "Que bom! Vou confirmar com você: itens, quantidades, forma de pagamento e endereço de entrega. Se estiver tudo certo, já abro o pedido agora.",
     ), [o("Confirmou tudo", "@venda", "ok", "Pedido confirmado na ligação"), o("Faltou ajustar algo", "duvidas", "neutro")], "Repita itens, valores e prazo em voz alta antes de abrir o pedido.", "fechamento"),
     fala("prazo", "Combinar o retorno", T(
-      "Sem pressa! Quando você acha que consegue me dar uma resposta? Eu anoto e te ligo exatamente nesse dia.",
-      "Sem pressa. Quando acredita que poderá me dar uma resposta? Anoto e ligo exatamente nesse dia.",
-      "Sem pressa! Quando você acha que dá pra me responder? Eu anoto e te ligo bem nesse dia.",
+      "Sem pressa! Quando você acha que consegue me dar uma resposta? Eu anoto e te ligo exatamente nesse dia, e já te mando um resumo por escrito pra você ter em mãos.",
+      "Sem pressa. Quando acredita que poderá me dar uma resposta? Anoto e ligo exatamente nesse dia, e envio antes um resumo por escrito.",
+      "Sem pressa! Quando você acha que dá pra me responder? Eu anoto e te ligo bem nesse dia, e já te mando um resumo por escrito, pra ter em mãos.",
     ), [o("Deu uma data", "@retorno", "ok", "Retornar na data combinada"), o("Já tentei várias vezes sem resposta", "ret_ultima", "neutro")], undefined, "apoio"),
     fala("ret_ultima", "Última tentativa", T(
       "Pelo que vejo, talvez o momento não seja esse, e tudo bem. Vou deixar a cotação com você e não vou te incomodar mais por enquanto. Se mudar alguma coisa, é só me chamar neste número. Posso te procurar de novo daqui a um mês?",
@@ -229,9 +229,9 @@ function fidelizar(s: Seg): { nodes: ScriptNode[]; startId: string } {
   const bom = T("Que bom falar com você, tudo bem? Não estou ligando pra vender nada agora: queria saber como estão as coisas com a Fey e se posso ajudar em alguma coisa. Posso te contar rapidinho por que liguei?", "Que bom falar com você. Não ligo para vender nada agora: gostaria de saber como estão as coisas com a Fey e se posso ajudar em algo. Posso explicar rapidamente o motivo do contato?", "Que bom falar com você! Não tô ligando pra vender nada agora: queria saber como andam as coisas com a Fey e se posso ajudar em algo. Posso te contar rapidinho por que liguei?");
   const nodes: ScriptNode[] = [
     fala("abertura", "Abertura", T(
-      "{saudacao}! Aqui é {meunome}, da Fey. Não estou ligando pra vender nada agora: só queria saber como estão as coisas com a gente. Com quem eu falo, por favor?",
-      "{saudacao}! Aqui é {meunome}, da Fey. Não entro em contato para vender nada agora: apenas para saber como estão as coisas conosco. Com quem tenho o prazer de falar?",
-      "{saudacao}! Aqui é {meunome}, da Fey. Não tô ligando pra vender nada agora: só queria saber como andam as coisas com a gente. Com quem eu falo?",
+      "{saudacao}, tudo bem? Aqui é {meunome}, da Fey. Não estou ligando pra vender nada agora: só queria saber como estão as coisas com a gente. Com quem eu falo, por favor?",
+      "{saudacao}, tudo bem? Aqui é {meunome}, da Fey. Não entro em contato para vender nada agora: apenas para saber como estão as coisas conosco. Com quem tenho o prazer de falar?",
+      "{saudacao}, tudo bem? Aqui é {meunome}, da Fey. Não tô ligando pra vender nada agora: só queria saber como andam as coisas com a gente. Com quem eu falo?",
     ), [o("Disse quem é", "nome", "ok"), o("Vai transferir a ligação", "transferido", "ok"), o("Perguntou o assunto", "assunto"), o("Pessoa errada ou não trabalha mais aqui", "quem", "objecao"), o("Está sem tempo agora", "obj_tempo", "objecao"), o("Caixa postal, URA ou ninguém atendeu", "sem_resp")], "Cliente que compra precisa sentir que é lembrado, e não só cobrado. Abra com interesse sincero e pegue o nome: quem comprou pode já ter saído da empresa.", "fideliza"),
     ...entrada("papel", s.itens, alvo, s.tipo),
     ...perfis({
@@ -314,9 +314,9 @@ function reativar(s: Seg): { nodes: ScriptNode[]; startId: string } {
   );
   const nodes: ScriptNode[] = [
     fala("abertura", "Abertura", T(
-      "{saudacao}! Aqui é {meunome}, da Fey. Estou retomando o contato com empresas que têm cadastro com a gente, só pra saber como estão. Com quem eu falo, por favor?",
-      "{saudacao}! Aqui é {meunome}, da Fey. Estou retomando o contato com empresas cadastradas conosco, apenas para saber como estão. Com quem tenho o prazer de falar?",
-      "{saudacao}! Aqui é {meunome}, da Fey. Tô retomando o contato com empresas que têm cadastro com a gente, só pra saber como andam. Com quem eu falo?",
+      "{saudacao}, tudo bem? Aqui é {meunome}, da Fey. Estou retomando o contato com empresas que têm cadastro com a gente, só pra saber como estão. Com quem eu falo, por favor?",
+      "{saudacao}, tudo bem? Aqui é {meunome}, da Fey. Estou retomando o contato com empresas cadastradas conosco, apenas para saber como estão. Com quem tenho o prazer de falar?",
+      "{saudacao}, tudo bem? Aqui é {meunome}, da Fey. Tô retomando o contato com empresas que têm cadastro com a gente, só pra saber como andam. Com quem eu falo?",
     ), [o("Disse quem é", "nome", "ok"), o("Vai transferir a ligação", "transferido", "ok"), o("Perguntou o assunto", "assunto"), o("Pessoa errada ou não trabalha mais aqui", "quem", "objecao"), o("Está sem tempo agora", "obj_tempo", "objecao"), o("Caixa postal, URA ou ninguém atendeu", "sem_resp")], "Cliente inativo pode ter comprado há anos, uma vez só ou nunca ter comprado. Não presuma nada: abra leve, sem cobrar, e pegue o nome. Quem cadastrou pode já ter saído da empresa.", "abertura"),
     ...entrada("papel", s.itens, alvo, s.tipo),
     ...perfis({
@@ -342,9 +342,9 @@ function reativar(s: Seg): { nodes: ScriptNode[]; startId: string } {
       "Pelo que tá aqui, a {empresa} tem cadastro com a Fey. Você lembra se já comprou ou pediu cotação com a gente?",
     ), [o("Já comprou com a Fey", "reat_motivo", "ok", "Reativação: já foi cliente"), o("Só pediu cotação", "reat_motivo", "neutro", "Reativação: só pediu cotação antes"), o("Só tem cadastro, nunca comprou", "reat_apresenta", "neutro", "Reativação: só cadastro, nunca comprou"), o("Não lembra", "reat_apresenta", "neutro", "Reativação: não lembra do histórico"), o("Não conhece a Fey", "reat_apresenta", "neutro", "Reativação: não conhece a Fey")], "Não afirme que ele comprou: o cadastro pode vir de uma consulta antiga ou de uma lista. Pergunte e deixe a pessoa lembrar. Se ela não lembrar, siga sem constrangimento.", "pergunta"),
     fala("reat_motivo", "Entender o que mudou", T(
-      "Entendi! E o que aconteceu de lá pra cá com a compra de fixadores: foi preço, prazo, algum problema com o produto, ou a necessidade mudou?",
-      "Entendi. E o que ocorreu desde então em relação à compra de fixadores: preço, prazo, algum problema com o produto, ou a necessidade mudou?",
-      "Entendi! E o que rolou de lá pra cá com a compra de fixadores: foi preço, prazo, algum problema com o produto, ou a necessidade mudou?",
+      "Entendi! E o que aconteceu de lá pra cá: foi algo no nosso atendimento ou na entrega, o preço, a necessidade mudou ou vocês acharam outro fornecedor?",
+      "Entendi. E o que ocorreu desde então: foi algo no nosso atendimento ou na entrega, o preço, a necessidade mudou ou a empresa encontrou outro fornecedor?",
+      "Entendi! E o que rolou de lá pra cá: foi algo no nosso atendimento ou na entrega, o preço, a necessidade mudou ou vocês acharam outro fornecedor?",
     ), [o("Foi preço", "obj_preco", "objecao", "Motivo da pausa: preço"), o("Foi prazo ou entrega", "obj_prazo", "objecao", "Motivo da pausa: prazo de entrega"), o("Teve problema com produto", "reat_tecnica", "objecao", "Motivo da pausa: problema com produto"), o("Passou a comprar de outro", "obj_concorrente", "objecao", "Motivo da pausa: comprando de outro fornecedor"), o("Necessidade mudou ou não lembra", "reat_hoje", "neutro")], "Escute sem defender a Fey. Queixa de preço, prazo ou produto é informação valiosa: rotule (“parece que o prazo te incomodou”) e anote o motivo na observação.", "pergunta"),
     fala("reat_tecnica", "Problema com o produto", T(
       "Poxa, sinto muito por isso. Pode me explicar o que aconteceu e em qual aplicação? Assim eu levo pro nosso time técnico e te retorno ainda hoje, sem enrolação.",
