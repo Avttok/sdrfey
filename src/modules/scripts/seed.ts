@@ -1,5 +1,6 @@
 import { visita } from "./seed-visita";
 import { sql } from "drizzle-orm";
+import { after } from "next/server";
 import { db, scripts } from "@/db";
 import type { ScriptGoal, ScriptNode } from "@/config/scripts";
 import type { ScriptTask } from "@/config/tasks";
@@ -474,19 +475,30 @@ export function buildAll() {
  * os que ninguém editou na tela são atualizados; os editados pelo Adm ficam como estão.
  */
 let checkedAt = 0;
+/** Grava (e, se a versão mudou, atualiza) os roteiros de fábrica numa transação só. O trava-aviso evita que várias instâncias façam o mesmo trabalho ao mesmo tempo. */
+async function syncGlobalScripts(v: number): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [{ ok }] = await tx.execute<{ ok: boolean }>(sql`select pg_try_advisory_xact_lock(7201) as ok`);
+    if (!ok) return; // outra instância já está cuidando disso
+    for (const b of buildAll()) {
+      const title = `${GOALS[b.goal].label.split(" (")[0]} · ${SEGMENTS[b.segment]}`;
+      await tx.insert(scripts).values({ seedKey: b.key, ownerId: null, title, segment: b.segment, goal: b.goal, summary: GOALS[b.goal].hint, nodes: b.nodes, startId: b.startId }).onConflictDoNothing();
+      if (v < SEED_VERSION) await tx.execute(sql`update scripts set title = ${title}, summary = ${GOALS[b.goal].hint}, nodes = ${JSON.stringify(b.nodes)}::jsonb, start_id = ${b.startId} where seed_key = ${b.key} and updated_at <= created_at + interval '2 seconds'`);
+    }
+    await tx.execute(sql`insert into settings (key, value) values ('scripts_seed_v', ${String(SEED_VERSION)}::jsonb) on conflict (key) do update set value = excluded.value, updated_at = now()`);
+  });
+}
+
 export async function ensureGlobalScripts(): Promise<void> {
   if (Date.now() - checkedAt < 600_000) return; // já conferido há pouco neste servidor: poupa duas idas ao banco por visita
   const [{ n }] = await db.execute<{ n: number }>(sql`select count(*)::int as n from scripts where seed_key is not null`);
   const [{ v }] = await db.execute<{ v: number }>(sql`select coalesce((select (value #>> '{}')::int from settings where key = 'scripts_seed_v'), 0) as v`);
   const expected = (Object.keys(GOALS) as ScriptGoal[]).reduce((a, g) => a + segmentsOf(g).length, 0);
   if (n >= expected && v >= SEED_VERSION) { checkedAt = Date.now(); return; }
-  for (const b of buildAll()) {
-    const title = `${GOALS[b.goal].label.split(" (")[0]} · ${SEGMENTS[b.segment]}`;
-    await db.insert(scripts).values({ seedKey: b.key, ownerId: null, title, segment: b.segment, goal: b.goal, summary: GOALS[b.goal].hint, nodes: b.nodes, startId: b.startId }).onConflictDoNothing();
-    if (v < SEED_VERSION) await db.execute(sql`update scripts set title = ${title}, summary = ${GOALS[b.goal].hint}, nodes = ${JSON.stringify(b.nodes)}::jsonb, start_id = ${b.startId} where seed_key = ${b.key} and updated_at <= created_at + interval '2 seconds'`);
-  }
-  await db.execute(sql`insert into settings (key, value) values ('scripts_seed_v', ${String(SEED_VERSION)}::jsonb) on conflict (key) do update set value = excluded.value, updated_at = now()`);
   checkedAt = Date.now();
+  if (n < expected) { await syncGlobalScripts(v); return; } // faltam roteiros: precisa existir antes de seguir
+  // Só a versão dos textos mudou: a pessoa não espera. Atualiza depois de responder (os roteiros antigos servem até lá).
+  try { after(() => syncGlobalScripts(v).catch(() => { checkedAt = 0; })); } catch { await syncGlobalScripts(v); }
 }
 
 /** Restaura os roteiros de fábrica. "unedited" só atualiza os que ninguém editou; "all" sobrescreve também os editados (o texto antigo se perde). */

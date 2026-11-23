@@ -31,16 +31,25 @@ import { eggHolders } from "@/modules/achievements/stats";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  const [settings, badges] = await Promise.all([getSettings(), navBadges(user).catch(() => ({}))]);
-  const gold = await goldStatus(user, settings).catch(() => ({ reached: false, label: "", done: 0, qty: 0 }));
+  // tudo o que não depende de outra consulta sai junto: cada ida ao banco custa e, em fila, a soma pesa em toda tela
+  const [settings, badges, termOverrides, av, eggs, tagRows, vocallRaw] = await Promise.all([
+    getSettings(),
+    navBadges(user).catch(() => ({})),
+    getTermOverrides(),
+    db.select({ id: users.id, name: users.name, avatar: users.avatar }).from(users).where(isNotNull(users.avatar)),
+    eggHolders().catch(() => [] as number[]),
+    db.select({ label: tags.label, key: tags.key, group: tags.groupKey, icon: tags.icon }).from(tags),
+    settingValue(VOCALL_KEY),
+  ]);
+  const vocall = parseVocall(vocallRaw);
+  const [gold, vocallMe] = await Promise.all([
+    goldStatus(user, settings).catch(() => ({ reached: false, label: "", done: 0, qty: 0 })),
+    vocall.on && vocall.host ? db.select({ a: users.vocallAgentId, r: users.vocallRamal }).from(users).where(eq(users.id, user.id)) : Promise.resolve([] as { a: string | null; r: string | null }[]),
+  ]);
   const groupNav = settings.nav_group === 1;
-  const termOverrides = await getTermOverrides();
-  const av = await db.select({ id: users.id, name: users.name, avatar: users.avatar }).from(users).where(isNotNull(users.avatar));
-  const avatars = { byId: Object.fromEntries(av.map((a) => [a.id, a.avatar!])), byName: Object.fromEntries(av.map((a) => [a.name, a.avatar!])), eggs: await eggHolders().catch(() => [] as number[]), me: user.id };
-  const tagRows = await db.select({ label: tags.label, key: tags.key, group: tags.groupKey, icon: tags.icon }).from(tags);
+  const avatars = { byId: Object.fromEntries(av.map((a) => [a.id, a.avatar!])), byName: Object.fromEntries(av.map((a) => [a.name, a.avatar!])), eggs, me: user.id };
   const tagIcons = Object.fromEntries(tagRows.map((t) => [t.label.toUpperCase(), tagIconKey(t.icon, t.key, t.group)]));
-  const vocall = parseVocall(await settingValue(VOCALL_KEY));
-  const [me] = vocall.on && vocall.host ? await db.select({ a: users.vocallAgentId, r: users.vocallRamal }).from(users).where(eq(users.id, user.id)) : [];
+  const [me] = vocallMe;
   const dialer = vocall.on && vocall.host && me?.a && me?.r ? { cfg: { host: vocall.host, port: vocall.port, secure: vocall.secure, dac: vocall.dac, senha: vocall.senha, prefix: vocall.prefix }, agentId: me.a, ramal: me.r } : null;
   const shell = (children: React.ReactNode) => (dialer ? <VocallProvider cfg={dialer.cfg} agentId={dialer.agentId} ramal={dialer.ramal}>{children}</VocallProvider> : <>{children}</>);
   const perm = (k: string) => user.isAdmin || !!user.permissions[k];
