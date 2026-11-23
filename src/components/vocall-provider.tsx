@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { VocallConfig } from "@/modules/vocall/config";
 import { hintLastCall } from "@/lib/touch-bus";
 import { PhoneDock } from "@/components/phone-dock";
-import { qualificationUrl, type EoxRef } from "@/modules/vocall/eox";
+import { qualificationLink, type EoxRef } from "@/modules/vocall/eox";
 
 export type VocallState = "off" | "idle" | "connecting" | "online" | "error";
 export type VocallCall = { telefone: string; empresa: string | null; estado: string | null; since: number; /** Momento em que a chamada acabou (congela o cronômetro). */ endedAt?: number; /** Formulário de Atendimento da EOX para qualificar esta ligação. */ qualUrl?: string | null; /** Procurando a qualificação pendente na central. */ qualLooking?: boolean };
@@ -27,7 +27,7 @@ const GONE_MS = 8_000;        // sem nada a qualificar, o aviso de "encerrada" s
  * A conexão NÃO fica aberta: abre quando a pessoa clica em ligar, entra com o agente e o ramal, manda "discar",
  * acompanha o andamento e fecha assim que a chamada termina (ou se algo não andar).
  */
-export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<VocallConfig, "host" | "port" | "secure" | "dac" | "senha" | "prefix">; agentId: string; ramal: string; children: React.ReactNode }) {
+export function VocallProvider({ cfg, agentId, ramal, eoxBase, children }: { /** Endereço da EOX: de onde sai o link da qualificação. */ eoxBase?: string; cfg: Pick<VocallConfig, "host" | "port" | "secure" | "dac" | "senha" | "prefix">; agentId: string; ramal: string; children: React.ReactNode }) {
   const [state, setState] = useState<VocallState>("idle");
   const [call, setCall] = useState<VocallCall | null>(null);
   const eoxRef = useRef<EoxRef | null>(null);
@@ -64,21 +64,28 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
     timers.current.clear = setTimeout(() => setCall(null), ms);
   }, []);
 
-  /** Pergunta à central qual ligação espera qualificação e monta o link do Atendimento da EOX. A conexão é cortada em seguida. */
-  const askQual = useCallback(async () => {
+  /**
+   * A central avisou que há (ou não) qualificação. Com o id (sourceuuid) em mãos o link da EOX sai direto; sem ele, pergunta ao
+   * qualificacao.php. "Desconhecido" = a EOX decidiu que não há qualificação: não mostra nada. A conexão é cortada em seguida.
+   */
+  const askQual = useCallback(async (knownId?: string) => {
     clearTimeout(timers.current.qual);
-    setCall((c) => (c ? { ...c, qualLooking: true } : c));
-    let url: string | null = null;
-    try {
-      const r = await fetch("/api/vocall/qualificacao", { method: "POST", cache: "no-store" });
-      const j = (await r.json()) as { id: string | null };
-      if (j.id && /^\d+$/.test(j.id) && !noQual.current && eoxRef.current?.origin) url = qualificationUrl(eoxRef.current, j.id);
-    } catch { /* sem link: o painel só avisa que acabou */ }
+    setCall((c) => (c ? { ...c, qualLooking: !knownId } : c));
+    let id: string | null = knownId && /^\d+$/.test(knownId) ? knownId : null;
+    if (!id && !noQual.current) {
+      try {
+        const r = await fetch("/api/vocall/qualificacao", { method: "POST", cache: "no-store" });
+        const j = (await r.json()) as { id: string | null };
+        if (j.id && /^\d+$/.test(j.id)) id = j.id;
+      } catch { /* sem link: o painel só avisa que acabou */ }
+    }
+    const origin = eoxRef.current?.origin || eoxBase || "";
+    const url = id && !noQual.current && origin ? qualificationLink(origin, eoxRef.current, id) : null;
     hangup("idle");
     if (!alive.current) return;
     setCall((c) => (c ? { ...c, qualUrl: url, qualLooking: false } : c));
     dismissIn(url ? QUAL_KEEP_MS : GONE_MS);
-  }, [hangup, dismissIn]);
+  }, [hangup, dismissIn, eoxBase]);
 
   const finish = useCallback((estado: string) => {
     if (!hinted.current) { hinted.current = true; const a = answeredAt.current; hintLastCall(a != null, a != null ? Math.round((Date.now() - a) / 1000) : null); }
@@ -121,11 +128,15 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
         setCall((c) => ({ telefone: String(d.telefone ?? c?.telefone ?? ""), empresa: (d.cliente && typeof d.cliente === "object" ? d.cliente.label : null) ?? c?.empresa ?? dialLabel.current, estado: d.estado ?? null, since: c && c.telefone === d.telefone ? c.since : Date.now() }));
         if (d.estado === "Finalizado") finish("Finalizado");
       } else if (m.action === "retorno_qualificacao") {
+        // a EOX respondeu: id numérico = há qualificação (é o sourceuuid); "Desconhecido" = não há
         const id = String((m.data as { id_qualificacao_pendente?: unknown } | undefined)?.id_qualificacao_pendente ?? "");
-        if (!/^\d+$/.test(id)) { noQual.current = true; setCall((c) => (c ? { ...c, qualUrl: null } : c)); }
+        clearTimeout(timers.current.idle);
+        if (/^\d+$/.test(id)) void askQual(id); else { noQual.current = true; void askQual(); }
       } else if (m.action === "aguardando_qualificacao") {
         clearTimeout(timers.current.idle);
-        void askQual();
+        // espera a resposta da EOX (retorno_qualificacao); se não vier em 3 s, pergunta direto à central
+        clearTimeout(timers.current.qual);
+        timers.current.qual = setTimeout(() => void askQual(), 3_000);
       }
     };
     sock.onerror = () => { clearTimeout(giveUp); if (ws.current === sock) hangup("error"); };

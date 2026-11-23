@@ -79,10 +79,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
   useBusyWhile(pending);
   const { ask, dialog } = useConfirm(pending);
   const [step, setStep] = useState(0);
-  const callWs = useRef<HTMLDivElement>(null);
-  // ao chegar na ligação, o espaço de trabalho sobe até o topo da tela: roteiro e ficha à vista, sem rolar
-  useEffect(() => { if (step !== 3 || !window.matchMedia("(min-width:1024px)").matches) return; const t = setTimeout(() => callWs.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 200); return () => clearTimeout(t); }, [step]);
-  const [used, setUsed] = useState<Set<string>>(new Set());
+    const [used, setUsed] = useState<Set<string>>(new Set());
   const [temperature, setTemperature] = useState<string | null>(lead.tags.find((t) => t.groupKey === "temperatura")?.key ?? null);
   const [qualification, setQualification] = useState<"qualificado" | "desqualificado" | null>((lead.tags.find((t) => t.groupKey === "qualificacao")?.key as never) ?? null);
   const [situations, setSituations] = useState<Set<string>>(new Set(lead.tags.filter((t) => t.groupKey === "situacao").map((t) => t.key)));
@@ -474,8 +471,8 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
           <section className="space-y-4">
             <StepTitle i={3} />
             {/* Espaço de trabalho: tudo da ligação cabe numa tela, sem subir nem descer. À esquerda a ficha e os contatos; à direita o roteiro. */}
-            <div ref={callWs} className="grid scroll-mt-20 gap-4 lg:h-[calc(100dvh-10.5rem)] lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]">
-              <div className="order-2 min-h-0 space-y-3 lg:order-1 lg:overflow-y-auto lg:pr-1">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,27rem)_minmax(0,1fr)] lg:items-start">
+              <div className="order-2 space-y-3 lg:order-1">
             <ul className="grid gap-2">
               {goodPhones.map((p) => {
                 const who = p.personId ? allPeople.find((x) => x.id === p.personId) : null;
@@ -506,11 +503,9 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                 <ProductHints recos={recos} />
                 <UsedToggle on={used.has("ligacao")} onClick={() => toggleUsed("ligacao")} label="Ligação feita" Icon={Phone} color="#8b5cf6" />
               </div>
-              <div className="order-1 flex min-h-0 flex-col overflow-hidden rounded-3xl border-2 border-accent/40 bg-panel shadow-md lg:order-2">
-                <div className="bg-grad px-4 py-2 text-on-accent">
-                  <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider"><ScrollText size={14} aria-hidden /> Roteiro da ligação <span className="font-normal normal-case tracking-normal opacity-90">· leia a fala, escute e toque no que o lead respondeu</span></p>
-                </div>
-                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
+              <div className="order-1 space-y-3 lg:order-2">
+                <p className="flex items-center gap-2 px-1 text-xs font-bold uppercase tracking-wider text-accent"><ScrollText size={14} aria-hidden /> Roteiro da ligação <span className="font-normal normal-case tracking-normal text-muted">· leia a fala, escute e toque no que o lead respondeu</span></p>
+                <div className="space-y-3">
                 {scripts.length > 0
                   ? <ScriptPicker facts={facts} scripts={scripts} goal={scriptGoal ?? (sales ? "vendas" : "sdr")} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} extra={(nid, pick) => (nid === "abertura" || nid === "nome" || nid === "transferido") ? (
                   <TalkingTo value={spoken ?? callPerson?.name ?? ""} people={allPeople} knownId={allPeople.find((x) => x.name.trim().toLowerCase() === talkingTo.toLowerCase())?.id ?? null} leadId={lead.id}

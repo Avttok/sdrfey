@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { NavBusy } from "@/components/nav-busy";
 import { Presence } from "@/components/presence";
 import { ToastProvider } from "@/components/toast";
+import { eoxBaseUrl } from "@/modules/eox/sync";
 import { TouchHost } from "@/components/touch-host";
 import { AppHeader, SideBarFor } from "@/components/app-header";
 import { navBadges } from "@/modules/deals/queries";
@@ -43,6 +44,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     settingValue(VOCALL_KEY),
   ]);
   const vocall = parseVocall(vocallRaw);
+  const eoxBase = vocall.on ? await eoxBaseUrl().catch(() => "") : "";
   const [gold, vocallMe] = await Promise.all([
     goldStatus(user, settings).catch(() => ({ reached: false, label: "", done: 0, qty: 0 })),
     vocall.on && vocall.host ? db.select({ a: users.vocallAgentId, r: users.vocallRamal }).from(users).where(eq(users.id, user.id)) : Promise.resolve([] as { a: string | null; r: string | null }[]),
@@ -52,7 +54,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const tagIcons = Object.fromEntries(tagRows.map((t) => [t.label.toUpperCase(), tagIconKey(t.icon, t.key, t.group)]));
   const [me] = vocallMe;
   const dialer = vocall.on && vocall.host && me?.a && me?.r ? { cfg: { host: vocall.host, port: vocall.port, secure: vocall.secure, dac: vocall.dac, senha: vocall.senha, prefix: vocall.prefix }, agentId: me.a, ramal: me.r } : null;
-  const shell = (children: React.ReactNode) => (dialer ? <VocallProvider cfg={dialer.cfg} agentId={dialer.agentId} ramal={dialer.ramal}>{children}</VocallProvider> : <>{children}</>);
+  const shell = (children: React.ReactNode) => (dialer ? <VocallProvider cfg={dialer.cfg} agentId={dialer.agentId} ramal={dialer.ramal} eoxBase={eoxBase}>{children}</VocallProvider> : <>{children}</>);
   const perm = (k: string) => user.isAdmin || !!user.permissions[k];
   const quick: QuickKey[] = [
     ...(perm("tab.negociacoes") && (user.roles.includes("seller") || user.permissions["deals.team"]) ? ["new-deal" as const] : []),

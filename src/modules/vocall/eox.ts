@@ -23,3 +23,13 @@ export function qualificationUrl(ref: EoxRef, pendingId: string): string {
   const q = new URLSearchParams({ module: "Atendimentos", view: "Edit", sourceuuid: pendingId, parent_id: contact ? "" : ref.crmid, campanha: "undefined", origem_atendimento: "Telefone Ativo", contact_id: contact ? ref.crmid : "0" });
   return `${ref.origin}/index.php?${q.toString().replace(/\+/g, "%20")}`;
 }
+
+/**
+ * Link da qualificação quando a central avisou que existe uma (id_qualificacao_pendente = sourceuuid).
+ * Sem cadastro conhecido a EOX abre o formulário sem empresa (parent_id vazio, nunca "undefined").
+ */
+export function qualificationLink(origin: string, ref: Pick<EoxRef, "crmid" | "setype"> | null, pendingId: string): string {
+  const contact = ref?.setype === "Contacts";
+  const q = new URLSearchParams({ module: "Atendimentos", view: "Edit", sourceuuid: pendingId, parent_id: ref && !contact ? ref.crmid : "", campanha: "undefined", origem_atendimento: "Telefone Ativo", contact_id: ref && contact ? ref.crmid : "0" });
+  return `${origin}/index.php?${q.toString().replace(/\+/g, "%20")}`;
+}

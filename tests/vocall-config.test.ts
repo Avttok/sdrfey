@@ -30,3 +30,12 @@ describe("link de qualificação da EOX", () => {
     expect(qualificationUrl({ crmid: "77", setype: "Contacts", origin: "https://e.com" }, "9")).toContain("parent_id=&campanha=undefined&origem_atendimento=Telefone%20Ativo&contact_id=77");
   });
 });
+
+describe("qualificationLink", () => {
+  it("usa o Código EOX como parent_id e nunca escreve undefined", async () => {
+    const { qualificationLink } = await import("@/modules/vocall/eox");
+    expect(qualificationLink("https://e.com", { crmid: "1366554", setype: "Accounts" }, "544210")).toBe("https://e.com/index.php?module=Atendimentos&view=Edit&sourceuuid=544210&parent_id=1366554&campanha=undefined&origem_atendimento=Telefone%20Ativo&contact_id=0");
+    expect(qualificationLink("https://e.com", null, "9")).toContain("parent_id=&");
+    expect(qualificationLink("https://e.com", null, "9")).not.toContain("parent_id=undefined");
+  });
+});

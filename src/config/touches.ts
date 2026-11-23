@@ -20,7 +20,7 @@ export const CHANNELS: Record<TouchChannel, { label: string; verb: string; quest
       { key: "respondeu", label: "Respondeu", reached: true, tone: "ok" },
       { key: "recebida", label: "Recebida, sem resposta", hint: "Chegou (visto/entregue)", tone: "info" },
       { key: "ignorada", label: "Ignorada", hint: "Sem visualização nem resposta", tone: "warn" },
-      { key: "sem_whatsapp", label: "Sem WhatsApp", hint: "Marca o número como inválido", wrong: true, tone: "bad" },
+      { key: "sem_whatsapp", label: "Sem WhatsApp", hint: "Só registra: o número continua valendo para ligar", tone: "bad" },
     ],
   },
   email: {

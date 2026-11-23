@@ -1,8 +1,7 @@
 "use client";
 
 import { FactAsk, FactConflict, type FactsApi } from "@/components/lead-facts";
-import { ArrowLeft, Crosshair, Ear, Flame, Lightbulb, Mic, RotateCcw, ShieldAlert, NotebookPen, ShieldCheck, Sparkles, ThumbsUp, ChevronRight, Trophy, Volume2 } from "lucide-react";
-import { createPortal } from "react-dom";
+import { ArrowLeft, Ear, Flame, Lightbulb, Mic, RotateCcw, ShieldAlert, NotebookPen, ShieldCheck, Sparkles, ThumbsUp, ChevronRight, Trophy, Volume2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fillScript, sayOf, shortCompany, KIND_LABEL, moodOf, postureOf, OUTCOMES, TONE_KEYS, TONES, type ScriptDoc, type ScriptKind, type ScriptTone } from "@/config/scripts";
 import { btnGhost } from "@/components/ui";
@@ -80,12 +79,6 @@ export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, on
   }, [node, by, onNote, facts]);
 
   const root = useRef<HTMLDivElement>(null);
-  const [follow, setFollow] = useState(false);
-  useEffect(() => { try { setFollow(localStorage.getItem("script_follow") === "1"); } catch { /* sem armazenamento */ } }, []);
-  /** Leva o roteiro para o meio da tela, para acompanhar a ligação sem ajustar a rolagem. */
-  const center = useCallback(() => { root.current?.scrollIntoView({ block: "center", behavior: "smooth" }); }, []);
-  const toggleFollow = () => { const v = !follow; setFollow(v); try { localStorage.setItem("script_follow", v ? "1" : "0"); } catch { /* sem armazenamento */ } if (v) center(); };
-  useEffect(() => { if (follow) center(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [trail.length, follow]);
   useEffect(() => {
     if (ended) return;
     const key = (e: KeyboardEvent) => {
@@ -94,26 +87,17 @@ export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, on
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const n = Number(e.key);
       if (n >= 1 && n <= 9) pick(n - 1);
-      if (e.key === "c" || e.key === "C") center();
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [ended, pick, center]);
+  }, [ended, pick]);
 
   const success = ended && node.outcome && node.outcome !== "encerrar";
   const OutIcon = node.outcome ? OUTCOME_ICON[node.outcome] : Trophy;
 
-  const [host, setHost] = useState<HTMLElement | null>(null);
-  useEffect(() => setHost(document.getElementById("quick-slot")), []);
   return (
     <div ref={root} className="space-y-4 max-sm:pr-7">
       {facts ? <FactConflict facts={facts} /> : null}
-      {floatingCenter && !ended && host && createPortal(
-        <button type="button" onClick={center} aria-label="Centralizar o roteiro na tela (atalho: C)" title="Leva o roteiro para o meio da tela (atalho: C)"
-          className="relative grid size-12 place-items-center rounded-full border border-line bg-panel text-accent shadow-xl transition hover:scale-105 hover:border-accent active:scale-95">
-          <Crosshair size={20} aria-hidden /><span className="sr-only">Centralizar</span>
-          {follow && <span aria-hidden className="absolute -right-0.5 -top-0.5 size-3 animate-pulse rounded-full bg-accent ring-2 ring-panel" title="Seguindo sozinho" />}
-        </button>, host)}
       {/* Quem é o lead: nome completo bem pequeno, nome falado em destaque */}
       {vars.empresa && (
         <div className="flex flex-wrap items-end justify-between lg:hidden gap-x-4 gap-y-1 px-1">
@@ -133,8 +117,6 @@ export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, on
         </div>
         <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
           {vars.contatoCompleto && <span className="hidden items-center gap-1 rounded-full bg-sunk px-2.5 py-1 lg:inline-flex" title="Com quem você fala"><Mic size={13} aria-hidden /> Falando com <b>{vars.contatoCompleto}</b></span>}
-          <button type="button" onClick={center} title="Leva o roteiro para o meio da tela (atalho: C)" className="inline-flex items-center gap-1 rounded-full border border-line bg-panel px-2.5 py-1 transition hover:border-accent hover:text-accent"><Crosshair size={13} aria-hidden /> Centralizar</button>
-          <button type="button" role="switch" aria-checked={follow} onClick={toggleFollow} title="Centraliza sozinho a cada passo do roteiro" className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 transition ${follow ? "border-accent bg-grad-soft text-accent" : "border-line bg-panel text-muted hover:text-ink"}`}>{follow ? "Seguindo" : "Seguir"}</button>
           <span className="inline-flex items-center gap-1 rounded-full bg-sunk px-2.5 py-1" title="Etapa da conversa"><Seg size={13} aria-hidden /> Etapa {trail.length}</span>
           <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1" style={{ ...tint("#22c55e", 16, 40), border: "1px solid" }} title="Bons sinais do lead"><Flame size={13} aria-hidden style={{ color: "#16a34a" }} /> {good}</span>
           <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1" style={{ ...tint("#f97316", 16, 40), border: "1px solid" }} title="Objeções enfrentadas"><ShieldCheck size={13} aria-hidden style={{ color: "#ea580c" }} /> {hurdles}</span>
