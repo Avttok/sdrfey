@@ -23,7 +23,7 @@ describe.skipIf(!HAS_DB)("sorteio e atendimento (banco real)", () => {
     await db.delete(leads).where(like(leads.company, "ZZTESTE%"));
     const rows = await db
       .insert(leads)
-      .values(Array.from({ length: 6 }, (_, i) => ({ cnpj: `9999999900${String(i).padStart(4, "0")}`, company: `ZZTESTE ${i}`, isTest: true })))
+      .values(Array.from({ length: 16 }, (_, i) => ({ cnpj: `9999999900${String(i).padStart(4, "0")}`, company: `ZZTESTE ${i}`, isTest: true })))
       .returning({ id: leads.id });
     ids = rows.map((r) => r.id);
     // cada teste começa sem lead preso
