@@ -199,6 +199,21 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
     runTimer.current = setTimeout(() => { void saveScriptRunAction(lead.id, { ...r, isTest: lead.isTest }, sales ? "vendas" : "sdr").catch(() => {}); }, r.finished ? 100 : 1200);
   };
   /** Respostas do roteiro que trazem anotação entram na observação, sem repetir. */
+  /** Cada transferência traz uma pessoa nova: o campo esvazia para o nome dela e o de quem falou antes fica na observação. Voltar um passo devolve o nome. */
+  const beforeTransfer = useRef<{ name: string; id: number | null }[]>([]);
+  const onScriptStep = (nodeId: string, path: string[]) => {
+    const n = path.filter((x) => x === "transferido").length; // quantas pessoas já foram passadas na linha
+    const stack = beforeTransfer.current;
+    if (nodeId === "transferido" && stack.length < n) {
+      const prev = (spoken ?? callPerson?.name ?? "").trim();
+      stack.push({ name: prev, id: talkingId });
+      if (prev) addNote(`Falou antes com ${prev}`);
+      setSpoken(""); setTalkingId(null);
+    } else if (stack.length > n) {
+      const b = stack[n]; stack.length = n;
+      setSpoken(b.name || null); setTalkingId(b.id);
+    }
+  };
   const addNote = (t: string) => setNote((c) => (c.includes(t) ? c : `${c ? `${c.replace(/\s+$/, "")}\n` : ""}• ${t}`));
   const mail = tpl && (emailTo || goodEmails[0]?.value) ? mailtoLink(emailTo || goodEmails[0].value, renderTemplate(tpl.subject, vars), renderTemplate(tpl.body, vars)) : null;
 
@@ -441,11 +456,11 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
                 </div>
                 <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
                 {scripts.length > 0
-                  ? <ScriptPicker scripts={scripts} goal={scriptGoal ?? (sales ? "vendas" : "sdr")} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} extra={(nid, pick) => (nid === "nome" || nid === "transferido") ? (
+                  ? <ScriptPicker scripts={scripts} goal={scriptGoal ?? (sales ? "vendas" : "sdr")} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} extra={(nid, pick) => (nid === "abertura" || nid === "nome" || nid === "transferido") ? (
                   <TalkingTo value={spoken ?? callPerson?.name ?? ""} people={allPeople} knownId={allPeople.find((x) => x.name.trim().toLowerCase() === talkingTo.toLowerCase())?.id ?? null} leadId={lead.id}
                   onChange={(v) => { setSpoken(v); const m = allPeople.find((x) => x.name.trim().toLowerCase() === v.trim().toLowerCase()); if (m) setTalkingId(m.id); }}
                   onEnter={() => pick(0)} onSaved={(p) => { setExtraPeople((l) => [...l.filter((x) => x.id !== p.id), p]); setTalkingId(p.id); setSpoken(null); }} />
-                ) : null} vars={{ empresa: vars.empresa, contato: vars.contato, contatoCompleto: talkingTo || null, cidade: vars.cidade, meunome: vars.meu_nome }} onNote={addNote} onRun={keepRun} endExtra={lead.isTest ? undefined : ({ runId }) => <RunTasks runId={runId} area={sales ? "vendas" : "sdr"} />} />
+                ) : null} vars={{ empresa: vars.empresa, contato: vars.contato, contatoCompleto: talkingTo || null, cidade: vars.cidade, meunome: vars.meu_nome }} onNote={addNote} onRun={keepRun} onStep={onScriptStep} endExtra={lead.isTest ? undefined : ({ runId }) => <RunTasks runId={runId} area={sales ? "vendas" : "sdr"} />} />
                   : <p className="text-sm text-muted">Ainda não há roteiros. O Adm pode criar em Scripts.</p>}
                 </div>
               </div>

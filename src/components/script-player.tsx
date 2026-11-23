@@ -23,13 +23,14 @@ const CONFETTI = ["#f59e0b", "#22c55e", "#0ea5e9", "#8b5cf6", "#f43f5e"];
  * O roteiro da ligação. O balão mostra EXATAMENTE o que você diz ao lead (com o nome dele já no lugar);
  * a dica é só para você (não se fala). Depois toque no que o lead respondeu e o roteiro avança.
  */
-export function ScriptPlayer({ script, vars, extra, onOutcome, onNote, onRun, endExtra, floatingCenter = false }: { /** painel no fim da ligação (ex.: as tarefas que ela gerou); recebe o código da ligação */ endExtra?: (ctx: { runId: string }) => React.ReactNode; /** botão flutuante "Centralizar" acima do chat (só nas etapas dos shufflers) */ floatingCenter?: boolean; script: ScriptDoc; vars: ScriptVars; /** painel extra no passo atual (ex.: o campo do nome de quem fala); recebe `pick` para escolher uma resposta */ extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; onOutcome?: (o: NonNullable<ScriptDoc["nodes"][number]["outcome"]>) => void; /** chamado com a anotação sugerida quando o operador escolhe uma resposta que tem nota */ onNote?: (note: string) => void; /** chamado a cada resposta escolhida, com o retrato do andamento (para guardar no lead) */ onRun?: (run: ScriptRun) => void }) {
+export function ScriptPlayer({ script, vars, extra, onOutcome, onNote, onRun, onStep, endExtra, floatingCenter = false }: { /** avisa a cada passo novo, com o caminho percorrido (para o painel acompanhar quem está na linha) */ onStep?: (nodeId: string, path: string[]) => void; /** painel no fim da ligação (ex.: as tarefas que ela gerou); recebe o código da ligação */ endExtra?: (ctx: { runId: string }) => React.ReactNode; /** botão flutuante "Centralizar" acima do chat (só nas etapas dos shufflers) */ floatingCenter?: boolean; script: ScriptDoc; vars: ScriptVars; /** painel extra no passo atual (ex.: o campo do nome de quem fala); recebe `pick` para escolher uma resposta */ extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; onOutcome?: (o: NonNullable<ScriptDoc["nodes"][number]["outcome"]>) => void; /** chamado com a anotação sugerida quando o operador escolhe uma resposta que tem nota */ onNote?: (note: string) => void; /** chamado a cada resposta escolhida, com o retrato do andamento (para guardar no lead) */ onRun?: (run: ScriptRun) => void }) {
   const by = useMemo(() => new Map(script.nodes.map((n) => [n.id, n])), [script]);
   const [trail, setTrail] = useState<{ id: string; kind?: ScriptKind; via?: string }[]>([{ id: script.startId }]);
   useEffect(() => setTrail([{ id: script.startId }]), [script.id, script.startId]);
   const node = by.get(trail[trail.length - 1].id) ?? script.nodes[0];
   const ended = node.type === "fim";
   useEffect(() => { if (ended && node.outcome) onOutcome?.(node.outcome); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [node.id]);
+  useEffect(() => { onStep?.(node.id, trail.map((t) => t.id)); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [trail]);
   const steps = trail.length - 1;
   const good = trail.filter((t) => t.kind === "ok").length;
   const hurdles = trail.filter((t) => t.kind === "objecao").length;

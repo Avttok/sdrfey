@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
+import { TalkingTo } from "@/components/talking-to";
+import type { CapturedPerson } from "@/modules/leads/capture";
 import { CalendarCheck, Copy, ExternalLink, FileText, MapPin, Phone, ScrollText } from "lucide-react";
 import { callNumber, copy } from "@/components/attend-flow";
 import { PageHead } from "@/components/page-head";
@@ -30,7 +32,25 @@ export function LeadCall({ lead, scripts, goal, area, myName, deal, visit }: {
   const [talkingId, setTalkingId] = useState<number | null>(null);
   const [notes, setNotes] = useState<string[]>([]);
   const phones = lead.channels.filter((c) => c.kind === "phone" && !c.wrong);
-  const person = (talkingId ? lead.people.find((p) => p.id === talkingId) : null) ?? lead.people[0] ?? null;
+  const [extraPeople, setExtraPeople] = useState<CapturedPerson[]>([]);
+  const allPeople = [...lead.people.map((p) => ({ id: p.id, name: p.name })), ...extraPeople.filter((x) => !lead.people.some((p) => p.id === x.id)).map((p) => ({ id: p.id, name: p.name }))];
+  const [spoken, setSpoken] = useState<string | null>(null);
+  const person = (talkingId ? allPeople.find((p) => p.id === talkingId) : null) ?? allPeople[0] ?? null;
+  const talkingTo = (spoken ?? person?.name ?? "").trim();
+  /** Cada transferência traz uma pessoa nova: o campo esvazia; voltar um passo devolve o nome. */
+  const beforeTransfer = useRef<{ name: string; id: number | null }[]>([]);
+  const onStep = (nodeId: string, path: string[]) => {
+    const n = path.filter((x) => x === "transferido").length;
+    const stack = beforeTransfer.current;
+    if (nodeId === "transferido" && stack.length < n) {
+      stack.push({ name: talkingTo, id: talkingId });
+      if (talkingTo) setNotes((l) => (l.includes(`Falou antes com ${talkingTo}`) ? l : [...l, `Falou antes com ${talkingTo}`]));
+      setSpoken(""); setTalkingId(null);
+    } else if (stack.length > n) {
+      const b = stack[n]; stack.length = n;
+      setSpoken(b.name || null); setTalkingId(b.id);
+    }
+  };
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const keep = (r: Run) => {
     if (timer.current) clearTimeout(timer.current);
@@ -90,7 +110,12 @@ export function LeadCall({ lead, scripts, goal, area, myName, deal, visit }: {
           <div className="bg-grad px-4 py-2 text-on-accent"><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider"><ScrollText size={14} aria-hidden /> Roteiro da ligação</p></div>
           <div className="space-y-3 p-3 sm:p-4">
             {scripts.length > 0
-              ? <ScriptPicker scripts={scripts} goal={goal} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} vars={{ empresa: name, contato: person?.name.split(/\s+/)[0], contatoCompleto: person?.name ?? null, cidade: lead.city, meunome: myName.split(" ")[0] }}
+              ? <ScriptPicker scripts={scripts} goal={goal} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} extra={(nid, pick) => (nid === "abertura" || nid === "nome" || nid === "transferido") ? (
+                    <TalkingTo value={spoken ?? person?.name ?? ""} people={allPeople} knownId={allPeople.find((x) => x.name.trim().toLowerCase() === talkingTo.toLowerCase())?.id ?? null} leadId={lead.id}
+                      onChange={(v) => { setSpoken(v); const m = allPeople.find((x) => x.name.trim().toLowerCase() === v.trim().toLowerCase()); if (m) setTalkingId(m.id); }}
+                      onEnter={() => pick(0)} onSaved={(p) => { setExtraPeople((l) => [...l.filter((x) => x.id !== p.id), p]); setTalkingId(p.id); setSpoken(null); }} />
+                  ) : null} onStep={onStep}
+                  vars={{ empresa: name, contato: talkingTo.split(/\s+/)[0] || undefined, contatoCompleto: talkingTo || null, cidade: lead.city, meunome: myName.split(" ")[0] }}
                   onNote={(t) => setNotes((l) => (l.includes(t) ? l : [...l, t]))} onRun={keep} endExtra={({ runId }) => <RunTasks runId={runId} area={area} />} />
               : <p className="text-sm text-muted">Nenhum script disponível ainda.</p>}
           </div>

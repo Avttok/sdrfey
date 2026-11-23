@@ -12,7 +12,7 @@ export function visita(): { nodes: ScriptNode[]; startId: string } {
       "{saudacao}, tudo bem? Aqui é {meunome}, da Fey. Estou ligando a respeito da visita combinada com a {empresa}. Com quem eu falo, por favor?",
       "{saudacao}, tudo bem? Aqui é {meunome}, da Fey. Tô ligando por causa da visita que a gente marcou com a {empresa}. Com quem eu falo?",
     ), [o("Disse quem é", "v_confirma", "ok"), o("Perguntou que visita é essa", "v_lembra"), o("A visita já aconteceu", "v_pos", "ok"), o("Pessoa errada ou o contato não está", "v_horario", "neutro"), o("Está sem tempo agora", "v_horario", "objecao"), o("Caixa postal, URA ou ninguém atendeu", "v_wa")],
-    "Abra pelo assunto: quem combinou a visita lembra rápido. Se a recepção atender, peça pela pessoa que marcou e diga que é sobre a visita combinada.", "abertura"),
+    "Abra pelo assunto: quem combinou a visita lembra rápido. Se a recepção atender, peça pela pessoa que marcou e diga que é sobre a visita combinada."+" Escreva o nome no campo “Conversando atualmente com”: o roteiro passa a chamar a pessoa por ele.", "abertura"),
     fala("v_confirma", "Confirmar a visita", T(
       "Que bom falar com você! Tô ligando só pra confirmar a visita que a gente combinou: o representante da Fey vai passar aí pra apresentar nossas linhas e entender o que vocês mais usam. Continua bom pra vocês?",
       "Que bom falar com você. Estou ligando para confirmar a visita combinada: o representante da Fey irá até a empresa para apresentar nossas linhas e entender o que vocês mais utilizam. Continua conveniente para vocês?",

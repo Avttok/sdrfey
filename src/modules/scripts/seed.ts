@@ -9,7 +9,7 @@ import { NEXT, ONLINE, PARES, SEG, T, fala, fim, o, type Alvo } from "./seed-cor
 import { confirma, enriquece, entrada, minimo, objecoes, perfis } from "./seed-parts";
 
 /** Muda quando os textos de fábrica são reescritos: os scripts do time que ninguém editou são atualizados. */
-export const SEED_VERSION = 20;
+export const SEED_VERSION = 21;
 
 type Seg = (typeof SEG)[string];
 
@@ -25,24 +25,24 @@ function sdr(s: Seg): { nodes: ScriptNode[]; startId: string } {
       "{saudacao}, tudo bem? Aqui é {meunome}, da Fey, uma metalúrgica de fixadores. Eu tô ligando pra área de compras. Com quem eu falo?",
       "{saudacao}, tudo bem? Aqui é {meunome}, da Fey, metalúrgica de fixadores. Estou ligando para a área de compras. Com quem eu falo, por favor?",
       "{saudacao}, tudo bem? Aqui é {meunome}, da Fey, a metalúrgica de fixadores. Tô ligando pra área de compras. Com quem eu falo?",
-    ), [o("Disse quem é", "nome", "ok"), o("Vai transferir a ligação", "transferido", "ok"), o("Perguntou o assunto", "assunto"), o("Pessoa errada ou não trabalha mais aqui", "quem", "objecao"), o("Está sem tempo agora", "obj_tempo", "objecao"), o("Caixa postal, URA ou ninguém atendeu", "sem_resp"), o("Não é essa empresa", "@encerrar", "objecao", "Telefone não pertence à empresa")], "Abertura neutra de propósito: você não sabe quem atendeu (dono, balcão, recepção…), então só se identifica, diz a área e pergunta o nome. O pitch vem depois, quando souber a função da pessoa. A Gong mediu que abrir com o motivo e candura rende cerca de 11% de sucesso; evite “como vai o dia?” e “estou atrapalhando?”.", "abertura"),
+    ), [o("Disse quem é", "conf_empresa", "ok"), o("Prefere não dizer o nome", "conf_empresa", "neutro"), o("Vai transferir a ligação", "transferido", "ok"), o("Perguntou o assunto", "assunto"), o("Pessoa errada ou não trabalha mais aqui", "quem", "objecao"), o("Está sem tempo agora", "obj_tempo", "objecao"), o("Caixa postal, URA ou ninguém atendeu", "sem_resp"), o("Não é essa empresa", "@encerrar", "objecao", "Telefone não pertence à empresa")], "Abertura neutra de propósito: você não sabe quem atendeu (dono, balcão, recepção…), então só se identifica, diz a área e pergunta o nome. O pitch vem depois, quando souber a função da pessoa. Evite “como vai o dia?” e “estou atrapalhando?”. Escreva o nome no campo “Conversando atualmente com”: o roteiro passa a chamar a pessoa por ele.", "abertura"),
     ...entrada("conf_empresa", s.itens, alvo, s.tipo),
     ...confirma("pitch", s.itens, s.tipo),
     ...perfis({
       itens: s.itens, dor: s.dor, tipo: s.tipo, alvo, next: "conf_segmento", alcada: true, ok: decisor,
       falas: {
         socio: T(
-          `Que bom falar direto com quem decide! Vou direto ao ponto, que seu tempo vale ouro. A gente é uma metalúrgica e fabrica ${s.itens}. Atendemos ${PARES[s.tipo]}, e queria ver se faz sentido te mostrar nossa linha pra {empresa}. Eu te explico em trinta segundos e você decide se vale a pena continuar. Pode ser?`,
-          `Que bom falar diretamente com quem decide. Serei breve, pois seu tempo é valioso. A Fey é uma metalúrgica e fabrica ${s.itens}. Atendemos ${PARES[s.tipo]} e gostaria de avaliar se faz sentido apresentar nossa linha à {empresa}. Posso explicar em trinta segundos, e você decide se vale continuar?`,
-          `Que bom falar direto com quem decide! Vou direto ao ponto, que o seu tempo é curto. A gente é uma metalúrgica e fabrica ${s.itens}. Atendemos ${PARES[s.tipo]}, e queria ver se faz sentido mostrar nossa linha pra {empresa}. Te explico em trinta segundos e você decide se vale seguir. Pode ser?`),
+          `Que bom falar direto com quem decide! Vou direto ao ponto, que seu tempo vale ouro. A gente fabrica ${s.itens}. Atendemos ${PARES[s.tipo]}, e queria ver se faz sentido te mostrar nossa linha pra {empresa}. Eu te explico em trinta segundos e você decide se vale a pena continuar. Pode ser?`,
+          `Que bom falar diretamente com quem decide. Serei breve, pois seu tempo é valioso. A Fey fabrica ${s.itens}. Atendemos ${PARES[s.tipo]} e gostaria de avaliar se faz sentido apresentar nossa linha à {empresa}. Posso explicar em trinta segundos, e você decide se vale continuar?`,
+          `Que bom falar direto com quem decide! Vou direto ao ponto, que o seu tempo é curto. A gente fabrica ${s.itens}. Atendemos ${PARES[s.tipo]}, e queria ver se faz sentido mostrar nossa linha pra {empresa}. Te explico em trinta segundos e você decide se vale seguir. Pode ser?`),
         compras: T(
-          `Então eu tô falando com a pessoa certa! A gente é uma metalúrgica e fabrica ${s.itens}. Tô ligando pra apresentar a Fey como mais uma opção na sua lista de fornecedores, com fabricação própria e prazo firme. Posso te fazer duas perguntas rápidas sobre como vocês compram hoje, pra ver se faz sentido?`,
-          `Então estou falando com a pessoa certa. A Fey é uma metalúrgica e fabrica ${s.itens}. Estou ligando para apresentar a Fey como mais uma opção na sua lista de fornecedores, com fabricação própria e prazo firme. Posso fazer duas perguntas rápidas sobre como a empresa compra hoje, para avaliarmos se faz sentido?`,
-          `Então eu tô falando com a pessoa certa! A gente é uma metalúrgica e fabrica ${s.itens}. Tô ligando pra mostrar a Fey como mais uma opção na sua lista de fornecedores, com fabricação própria e prazo firme. Posso te fazer duas perguntinhas sobre como vocês compram hoje, pra ver se faz sentido?`),
+          `Então eu tô falando com a pessoa certa! A gente fabrica ${s.itens}. Tô ligando pra apresentar a Fey como mais uma opção na sua lista de fornecedores, com fabricação própria e prazo firme. Posso te fazer umas perguntas rápidas sobre como vocês compram hoje, pra ver se faz sentido?`,
+          `Então estou falando com a pessoa certa. A Fey fabrica ${s.itens}. Estou ligando para apresentar a Fey como mais uma opção na sua lista de fornecedores, com fabricação própria e prazo firme. Posso fazer umas perguntas rápidas sobre como a empresa compra hoje, para avaliarmos se faz sentido?`,
+          `Então eu tô falando com a pessoa certa! A gente fabrica ${s.itens}. Tô ligando pra mostrar a Fey como mais uma opção na sua lista de fornecedores, com fabricação própria e prazo firme. Posso te fazer umas perguntinhas sobre como vocês compram hoje, pra ver se faz sentido?`),
         gestor: T(
-          `Boa! Quem vive o dia a dia sabe o que pesa. A gente é uma metalúrgica e fabrica ${s.itens}. Tô ligando porque ajudamos ${PARES[s.tipo]} a evitar ${s.dor}. Me conta: quando falta ou quebra um fixador aí, o que acontece? E você participa da escolha do fornecedor?`,
-          `Ótimo. Quem vive o dia a dia sabe o que pesa. A Fey é uma metalúrgica e fabrica ${s.itens}. Estou ligando porque ajudamos ${PARES[s.tipo]} a evitar ${s.dor}. Poderia me contar: quando falta ou quebra um fixador, o que acontece? E você participa da escolha do fornecedor?`,
-          `Boa! Quem tá no dia a dia sabe o que pesa. A gente é uma metalúrgica e fabrica ${s.itens}. Tô ligando porque ajudamos ${PARES[s.tipo]} a evitar ${s.dor}. Me conta: quando falta ou quebra um fixador aí, o que rola? E você participa da escolha do fornecedor?`),
+          `Boa! Quem vive o dia a dia sabe o que pesa. A gente fabrica ${s.itens}. Tô ligando porque ajudamos ${PARES[s.tipo]} a evitar ${s.dor}. Me conta: quando falta ou quebra um fixador aí, o que acontece? E você participa da escolha do fornecedor?`,
+          `Ótimo. Quem vive o dia a dia sabe o que pesa. A Fey fabrica ${s.itens}. Estou ligando porque ajudamos ${PARES[s.tipo]} a evitar ${s.dor}. Poderia me contar: quando falta ou quebra um fixador, o que acontece? E você participa da escolha do fornecedor?`,
+          `Boa! Quem tá no dia a dia sabe o que pesa. A gente fabrica ${s.itens}. Tô ligando porque ajudamos ${PARES[s.tipo]} a evitar ${s.dor}. Me conta: quando falta ou quebra um fixador aí, o que rola? E você participa da escolha do fornecedor?`),
       },
       tips: {
         socio: "Dono e sócio valorizam tempo, margem e risco: fale curto, vá ao ponto e respeite os trinta segundos prometidos. Não aceite “manda por e-mail” de primeira: ofereça a conversa de vinte minutos. Tom firme e cordial, de igual para igual.",
@@ -66,10 +66,10 @@ function sdr(s: Seg): { nodes: ScriptNode[]; startId: string } {
       "Entendi! E se vocês tivessem um fornecedor que entrega no prazo e nunca deixa faltar o item de giro, isso faria diferença pra vocês?",
     ), [o("Mudaria bastante", "contrato", "ok", "Vê valor em prazo firme e item de giro"), o("Ajudaria um pouco", "contrato", "neutro"), o("Já está resolvido", "contrato", "neutro", "Diz ter o assunto resolvido")], "Ganho (SPIN): é ele quem diz o valor, não você. Se ele descreve o benefício, o “sim” da reunião fica fácil.", "pergunta"),
     fala("contrato", "Pedir licença para perguntar", T(
-      "Beleza! Posso te fazer umas perguntinhas rápidas, só pra ver se a Fey serve mesmo pra vocês? Se não servir, eu mesmo te falo, combinado?",
-      "Perfeito. Posso fazer algumas perguntas rápidas, só para avaliar se a Fey atende de fato às necessidades de vocês? Se não atender, eu mesmo aviso, combinado?",
-      "Beleza! Posso te fazer umas perguntinhas rápidas, só pra ver se a Fey serve mesmo pra vocês? Se não servir, eu mesmo te falo, fechado?",
-    ), [o("Pode perguntar", "enr_conhece", "ok"), o("Está com pouco tempo", "obj_tempo", "objecao")], "Contrato inicial (Sandler): alinha a expectativa e tira a pressão. Dar permissão para dizer “não” aumenta o “sim”.", "ponte"),
+      "Beleza! Então deixa eu entender melhor como funciona aí, só pra ver se a Fey serve mesmo pra vocês. Se não servir, eu mesmo te falo, combinado?",
+      "Perfeito. Então gostaria de entender melhor como funciona aí, só para avaliar se a Fey atende de fato às necessidades de vocês. Se não atender, eu mesmo aviso, combinado?",
+      "Beleza! Então deixa eu entender melhor como funciona aí, só pra ver se a Fey serve mesmo pra vocês. Se não servir, eu mesmo te falo, fechado?",
+    ), [o("Pode seguir", "enr_conhece", "ok"), o("Está com pouco tempo", "obj_tempo", "objecao")], "Contrato inicial (Sandler): alinha a expectativa e tira a pressão. Dar permissão para dizer “não” aumenta o “sim”.", "ponte"),
     ...enriquece("conf_minimo", s.tipo, "sdr"),
     minimo("visita"),
     fala("visita", "Marcar a conversa", T(
@@ -100,23 +100,23 @@ function vendas(s: Seg): { nodes: ScriptNode[]; startId: string } {
       `{saudacao}, tudo bem? Aqui é {meunome}, da Fey, uma metalúrgica de fixadores. Eu tô ligando pra falar da reposição de ${s.itens} com quem cuida das compras. Com quem eu falo?`,
       `{saudacao}, tudo bem? Aqui é {meunome}, da Fey, metalúrgica de fixadores. Estou ligando para falar da reposição de ${s.itens} com quem cuida das compras. Com quem eu falo, por favor?`,
       `{saudacao}, tudo bem? Aqui é {meunome}, da Fey, a metalúrgica de fixadores. Tô ligando pra falar da reposição de ${s.itens} com quem cuida das compras. Com quem eu falo?`,
-    ), [o("Disse quem é", "nome", "ok"), o("Vai transferir a ligação", "transferido", "ok"), o("Perguntou o assunto", "assunto"), o("Pessoa errada ou não trabalha mais aqui", "quem", "objecao"), o("Está sem tempo agora", "obj_tempo", "objecao"), o("Caixa postal, URA ou ninguém atendeu", "sem_resp")], "Aqui o objetivo é cotar e vender, mas você ainda não sabe quem atendeu: abra neutro, pegue o nome e a função, e só então consulte. Seja consultivo: você quer ajudar a resolver a reposição, não empurrar produto.", "abertura"),
+    ), [o("Disse quem é", "papel", "ok"), o("Prefere não dizer o nome", "papel", "neutro"), o("Vai transferir a ligação", "transferido", "ok"), o("Perguntou o assunto", "assunto"), o("Pessoa errada ou não trabalha mais aqui", "quem", "objecao"), o("Está sem tempo agora", "obj_tempo", "objecao"), o("Caixa postal, URA ou ninguém atendeu", "sem_resp")], "Aqui o objetivo é cotar e vender, mas você ainda não sabe quem atendeu: abra neutro, pegue o nome e a função, e só então consulte. Seja consultivo: você quer ajudar a resolver a reposição, não empurrar produto. Escreva o nome no campo “Conversando atualmente com”: o roteiro passa a chamar a pessoa por ele.", "abertura"),
     ...entrada("papel", s.itens, alvo, s.tipo),
     ...perfis({
       itens: s.itens, dor: s.dor, tipo: s.tipo, alvo, next: "desc_itens", alcada: false, ok: decisor,
       falas: {
         socio: T(
-          `Que bom falar com quem decide! A gente é uma metalúrgica e fabrica ${s.itens}. Tô ligando pra ajudar na reposição da {empresa}: com duas perguntas rápidas eu já monto uma cotação certa. Pode ser agora?`,
-          `Que bom falar com quem decide. A Fey é uma metalúrgica e fabrica ${s.itens}. Estou ligando para ajudar na reposição da {empresa}: com duas perguntas rápidas, já monto uma cotação adequada. Pode ser agora?`,
-          `Que bom falar com quem decide! A gente é uma metalúrgica e fabrica ${s.itens}. Tô ligando pra ajudar na reposição da {empresa}: com duas perguntinhas eu já monto uma cotação certinha. Pode ser agora?`),
+          `Que bom falar com quem decide! A gente fabrica ${s.itens}. Tô ligando pra ajudar na reposição da {empresa}: com umas perguntas rápidas eu já monto uma cotação certa. Pode ser agora?`,
+          `Que bom falar com quem decide. A Fey fabrica ${s.itens}. Estou ligando para ajudar na reposição da {empresa}: com umas perguntas rápidas, já monto uma cotação adequada. Pode ser agora?`,
+          `Que bom falar com quem decide! A gente fabrica ${s.itens}. Tô ligando pra ajudar na reposição da {empresa}: com umas perguntinhas eu já monto uma cotação certinha. Pode ser agora?`),
         compras: T(
-          `Perfeito, então é com você mesmo! A gente é uma metalúrgica e fabrica ${s.itens}. Quero te ajudar com a reposição: com duas perguntas eu já monto uma cotação certa, com prazo firme. Pode ser agora?`,
-          `Perfeito, então é com você. A Fey é uma metalúrgica e fabrica ${s.itens}. Gostaria de ajudar na reposição: com duas perguntas, já monto uma cotação adequada, com prazo firme. Pode ser agora?`,
-          `Perfeito, então é com você mesmo! A gente é uma metalúrgica e fabrica ${s.itens}. Quero te ajudar com a reposição: com duas perguntinhas eu já monto uma cotação certinha, com prazo firme. Pode ser agora?`),
+          `Perfeito, então é com você mesmo! A gente fabrica ${s.itens}. Quero te ajudar com a reposição: com duas perguntas eu já monto uma cotação certa, com prazo firme. Pode ser agora?`,
+          `Perfeito, então é com você. A Fey fabrica ${s.itens}. Gostaria de ajudar na reposição: com umas perguntas, já monto uma cotação adequada, com prazo firme. Pode ser agora?`,
+          `Perfeito, então é com você mesmo! A gente fabrica ${s.itens}. Quero te ajudar com a reposição: com umas perguntinhas eu já monto uma cotação certinha, com prazo firme. Pode ser agora?`),
         gestor: T(
-          `Boa! Quem vive o dia a dia sabe o que falta. A gente é uma metalúrgica e fabrica ${s.itens}. Queria ajudar com a reposição: o que mais acaba ou atrasa aí? E você participa da compra?`,
-          `Ótimo. Quem vive o dia a dia sabe o que falta. A Fey é uma metalúrgica e fabrica ${s.itens}. Gostaria de ajudar na reposição: o que mais acaba ou atrasa? E você participa da compra?`,
-          `Boa! Quem tá no dia a dia sabe o que falta. A gente é uma metalúrgica e fabrica ${s.itens}. Queria ajudar com a reposição: o que mais acaba ou atrasa aí? E você participa da compra?`),
+          `Boa! Quem vive o dia a dia sabe o que falta. A gente fabrica ${s.itens}. Queria ajudar com a reposição: o que mais acaba ou atrasa aí? E você participa da compra?`,
+          `Ótimo. Quem vive o dia a dia sabe o que falta. A Fey fabrica ${s.itens}. Gostaria de ajudar na reposição: o que mais acaba ou atrasa? E você participa da compra?`,
+          `Boa! Quem tá no dia a dia sabe o que falta. A gente fabrica ${s.itens}. Queria ajudar com a reposição: o que mais acaba ou atrasa aí? E você participa da compra?`),
       },
       tips: {
         socio: "Dono quer resolver rápido e ter número: ofereça cotação ainda hoje e fale de prazo e valor. Seja direto.",
@@ -128,12 +128,12 @@ function vendas(s: Seg): { nodes: ScriptNode[]; startId: string } {
       "Show! Pra eu montar uma cotação certinha pra {empresa}: quais itens vocês mais compram e mais ou menos quanto por mês? Se você tiver a lista dos de maior giro, já ajuda bastante.",
       "Ótimo. Para montar uma cotação adequada para a {empresa}: quais itens a empresa mais compra e, aproximadamente, quanto por mês? Se tiver a lista dos de maior giro, já ajuda bastante.",
       "Show! Pra eu montar uma cotação certinha pra {empresa}: quais itens vocês mais compram e mais ou menos quanto por mês? Se tiver a lista dos de maior giro à mão, já ajuda demais.",
-    ), [o("Passou itens e quantidades", "enr_mix", "ok", "Passou itens e quantidades para a cotação"), o("Pediu a tabela de preços", "tabela"), o("Já tem fornecedor fechado", "obj_fornecedor", "objecao"), o("Outra dúvida ou objeção", "obj_menu", "objecao")], "Anote itens e quantidades: é isso que vira a cotação. Reaja ao que ele disser antes da próxima pergunta.", "pergunta"),
+    ), [o("Passou itens e quantidades", "enr_aplicacao", "ok", "Passou itens e quantidades para a cotação"), o("Pediu a tabela de preços", "tabela"), o("Já tem fornecedor fechado", "obj_fornecedor", "objecao"), o("Outra dúvida ou objeção", "obj_menu", "objecao")], "Anote itens e quantidades: é isso que vira a cotação. Reaja ao que ele disser antes da próxima pergunta.", "pergunta"),
     fala("tabela", "Só a tabela", T(
       "Posso mandar a tabela, sim! Só que, sem saber o que vocês compram, ela vira um catálogo enorme e pouco útil. Se você me disser os três itens de maior giro, eu te devolvo o valor com desconto ainda hoje. Pode ser?",
       "Posso enviar a tabela, sim. Porém, sem saber o que a empresa compra, ela se torna um catálogo extenso e pouco útil. Se me informar os três itens de maior giro, devolvo o valor com desconto ainda hoje. Pode ser?",
       "Mando a tabela sim! Só que, sem saber o que vocês compram, ela vira um catálogo enorme que não ajuda. Se você me disser os três itens de maior giro, eu te devolvo o valor com desconto ainda hoje. Pode ser?",
-    ), [o("Passou os itens", "enr_mix", "ok"), o("Quer só a tabela mesmo", "@cotacao", "neutro", "Pediu somente a tabela")], undefined, "proposta"),
+    ), [o("Passou os itens", "enr_aplicacao", "ok"), o("Quer só a tabela mesmo", "@cotacao", "neutro", "Pediu somente a tabela")], undefined, "proposta"),
     ...enriquece("conf_minimo", s.tipo, "vendas"),
     minimo("proposta"),
     fala("proposta", "Apresentar a proposta", T(
@@ -169,14 +169,14 @@ function retorno(s: Seg): { nodes: ScriptNode[]; startId: string } {
       "{saudacao}, tudo bem? Aqui é {meunome}, da Fey. Tô ligando por causa da cotação que enviei pra {empresa}. Com quem eu falo?",
       "{saudacao}, tudo bem? Aqui é {meunome}, da Fey. Estou ligando a respeito da cotação enviada à {empresa}. Com quem eu falo, por favor?",
       "{saudacao}, tudo bem? Aqui é {meunome}, da Fey. Tô ligando por causa da cotação que mandei pra {empresa}. Com quem eu falo?",
-    ), [o("Disse quem é", "nome", "ok"), o("Vai transferir a ligação", "transferido", "ok"), o("Perguntou o assunto", "assunto"), o("Pessoa errada ou não trabalha mais aqui", "quem", "objecao"), o("Caixa postal, URA ou ninguém atendeu", "sem_resp")], "Ligue em até dois dias úteis depois do envio, no horário combinado. Quem cumpre o que prometeu ganha confiança. Mesmo esperando o contato certo, abra perguntando com quem fala: pode ser outra pessoa.", "abertura"),
+    ), [o("Disse quem é", "papel", "ok"), o("Prefere não dizer o nome", "papel", "neutro"), o("Vai transferir a ligação", "transferido", "ok"), o("Perguntou o assunto", "assunto"), o("Pessoa errada ou não trabalha mais aqui", "quem", "objecao"), o("Caixa postal, URA ou ninguém atendeu", "sem_resp")], "Ligue em até dois dias úteis depois do envio, no horário combinado. Quem cumpre o que prometeu ganha confiança. Mesmo esperando o contato certo, abra perguntando com quem fala: pode ser outra pessoa. Escreva o nome no campo “Conversando atualmente com”: o roteiro passa a chamar a pessoa por ele.", "abertura"),
     ...entrada("papel", s.itens, alvo, s.tipo),
     ...perfis({
       itens: s.itens, dor: s.dor, tipo: s.tipo, alvo, next: "duvidas", alcada: false, ok: decisor,
       falas: {
-        socio: T("Que bom falar com você! Tô ligando por causa da cotação que enviei pra {empresa}, como a gente combinou. Você já conseguiu dar uma olhada?", "Que bom falar com você. Estou ligando a respeito da cotação enviada à {empresa}, conforme combinamos. Você já teve oportunidade de analisar?", "Que bom falar com você! Tô ligando por causa da cotação que mandei pra {empresa}, como a gente combinou. Já deu pra dar uma olhada?"),
-        compras: T("Perfeito, então é com você! Tô ligando por causa da cotação que enviei pra {empresa}, como a gente combinou. Você já conseguiu dar uma olhada?", "Perfeito, então é com você. Estou ligando a respeito da cotação enviada à {empresa}, conforme combinamos. Você já teve oportunidade de analisar?", "Perfeito, então é com você mesmo! Tô ligando por causa da cotação que mandei pra {empresa}, como a gente combinou. Já deu pra dar uma olhada?"),
-        gestor: T("Boa! Tô ligando por causa da cotação que enviei pra {empresa}. Você participa dessa decisão? Já deu pra olhar?", "Ótimo. Estou ligando a respeito da cotação enviada à {empresa}. Você participa dessa decisão? Já teve oportunidade de analisar?", "Boa! Tô ligando por causa da cotação que mandei pra {empresa}. Você entra nessa decisão? Já deu pra olhar?"),
+        socio: T("Que bom falar com você! É sobre a cotação que a Fey enviou pra {empresa}: você já conseguiu dar uma olhada?", "Que bom falar com você. É sobre a cotação que a Fey enviou à {empresa}: você já teve oportunidade de analisar?", "Que bom falar com você! É sobre a cotação que a Fey mandou pra {empresa}: já deu pra dar uma olhada?"),
+        compras: T("Perfeito, então é com você! É sobre a cotação que a Fey enviou pra {empresa}: você já conseguiu dar uma olhada?", "Perfeito, então é com você. É sobre a cotação que a Fey enviou à {empresa}: você já teve oportunidade de analisar?", "Perfeito, então é com você mesmo! É sobre a cotação que a Fey mandou pra {empresa}: já deu pra dar uma olhada?"),
+        gestor: T("Boa! É sobre a cotação que a Fey enviou pra {empresa}. Você participa dessa decisão? Já deu pra olhar?", "Ótimo. É sobre a cotação que a Fey enviou à {empresa}. Você participa dessa decisão? Já teve oportunidade de analisar?", "Boa! É sobre a cotação que a Fey mandou pra {empresa}. Você entra nessa decisão? Já deu pra olhar?"),
       },
       tips: {
         socio: "Quem decide quer ir ao ponto: pergunte se viu e qual a decisão. Se disser que está tudo certo, vá direto ao fechamento.",
@@ -228,20 +228,20 @@ function retorno(s: Seg): { nodes: ScriptNode[]; startId: string } {
 function fidelizar(s: Seg): { nodes: ScriptNode[]; startId: string } {
   const alvo: Alvo = { quem: "quem cuida das compras com a Fey", para: T("pra saber como têm sido os pedidos", "para saber como têm sido os pedidos", "pra saber como têm sido os pedidos"), tema: T("só pra saber como estão as coisas com a Fey", "apenas para saber como estão as coisas com a Fey", "só pra saber como andam as coisas com a Fey"), gk: T("A empresa já compra com a gente, e eu tô ligando só pra saber como estão as coisas.", "A empresa já é cliente, e estou ligando apenas para saber como estão as coisas.", "A empresa já compra com a gente, e eu tô ligando só pra saber como andam as coisas."), fecha: T("É coisa rápida. Quem cuida disso consegue falar agora?", "É um assunto breve. Quem cuida disso poderia me atender agora?", "É rapidinho. Dá pra chamar quem cuida disso?"), motivo: T("Tô ligando só pra saber como estão as coisas com a gente.", "Estou ligando apenas para saber como está o relacionamento com a Fey.", "Tô ligando só pra saber como andam as coisas com a gente.") };
   const decisor = (note: string, to: string) => [o("Atendeu e quer conversar", to, "ok", note), o("Está sem tempo agora", "obj_tempo", "objecao")];
-  const bom = T("Que bom falar com você, tudo bem? Não é ligação de venda: eu queria saber como estão as coisas com a Fey e se posso ajudar em alguma coisa. Posso te contar rapidinho por que liguei?", "Que bom falar com você. Não é uma ligação de venda: gostaria de saber como estão as coisas com a Fey e se posso ajudar em algo. Posso explicar rapidamente o motivo do contato?", "Que bom falar com você! Não é ligação de venda, viu? Eu queria saber como andam as coisas com a Fey e se posso ajudar em algo. Posso te contar rapidinho por que liguei?");
+  const bom = T("Que bom falar com você! É só pra saber como estão as coisas com a Fey e ver se posso ajudar em alguma coisa.", "Que bom falar com você. É apenas para saber como estão as coisas com a Fey e verificar se posso ajudar em algo.", "Que bom falar com você! É só pra saber como andam as coisas com a Fey e ver se posso ajudar em algo.");
   const nodes: ScriptNode[] = [
     fala("abertura", "Abertura", T(
       "{saudacao}, tudo bem? Aqui é {meunome}, da Fey. Não é venda, não: só queria saber como andam as coisas com a gente. Com quem eu falo?",
       "{saudacao}, tudo bem? Aqui é {meunome}, da Fey. Não estou ligando para vender: gostaria apenas de saber como estão as coisas conosco. Com quem eu falo, por favor?",
       "{saudacao}, tudo bem? Aqui é {meunome}, da Fey. Não é venda, viu? Só queria saber como andam as coisas com a gente. Com quem eu falo?",
-    ), [o("Disse quem é", "nome", "ok"), o("Vai transferir a ligação", "transferido", "ok"), o("Perguntou o assunto", "assunto"), o("Pessoa errada ou não trabalha mais aqui", "quem", "objecao"), o("Está sem tempo agora", "obj_tempo", "objecao"), o("Caixa postal, URA ou ninguém atendeu", "sem_resp")], "Cliente que compra precisa sentir que é lembrado, e não só cobrado. Abra com interesse sincero e pegue o nome: quem comprou pode já ter saído da empresa.", "fideliza"),
+    ), [o("Disse quem é", "papel", "ok"), o("Prefere não dizer o nome", "papel", "neutro"), o("Vai transferir a ligação", "transferido", "ok"), o("Perguntou o assunto", "assunto"), o("Pessoa errada ou não trabalha mais aqui", "quem", "objecao"), o("Está sem tempo agora", "obj_tempo", "objecao"), o("Caixa postal, URA ou ninguém atendeu", "sem_resp")], "Cliente que compra precisa sentir que é lembrado, e não só cobrado. Abra com interesse sincero e pegue o nome: quem comprou pode já ter saído da empresa. Escreva o nome no campo “Conversando atualmente com”: o roteiro passa a chamar a pessoa por ele.", "fideliza"),
     ...entrada("papel", s.itens, alvo, s.tipo),
     ...perfis({
       itens: s.itens, dor: s.dor, tipo: s.tipo, alvo, next: "fid_continua", alcada: false, ok: decisor,
       falas: {
         socio: bom,
         compras: bom,
-        gestor: T("Que bom falar com você! Queria saber como estão as coisas com a Fey, principalmente a entrega e o produto. Você acompanha isso aí?", "Que bom falar com você. Gostaria de saber como estão as coisas com a Fey, principalmente a entrega e o produto. Você acompanha isso?", "Que bom falar com você! Queria saber como andam as coisas com a Fey, principalmente a entrega e o produto. Você acompanha isso aí?"),
+        gestor: T("Que bom falar com você! É só pra saber como estão as coisas com a Fey, principalmente a entrega e o produto. Você acompanha isso aí?", "Que bom falar com você. É apenas para saber como estão as coisas com a Fey, principalmente a entrega e o produto. Você acompanha isso?", "Que bom falar com você! É só pra saber como andam as coisas com a Fey, principalmente a entrega e o produto. Você acompanha isso aí?"),
       },
       tips: {
         socio: "Cliente antigo gosta de ser lembrado pelo dono da fábrica: tom caloroso, sem pressa de vender.",
@@ -250,9 +250,9 @@ function fidelizar(s: Seg): { nodes: ScriptNode[]; startId: string } {
       },
     }),
     fala("fid_continua", "Continua comprando?", T(
-      "Que bom falar com você! Me conta: vocês continuam comprando com a Fey? Como tem sido com os produtos e com a entrega?",
-      "Que bom falar com você. Poderia me contar: vocês continuam comprando com a Fey? Como tem sido a experiência com os produtos e com a entrega?",
-      "Que bom falar com você! Me conta: vocês seguem comprando com a Fey? Como tem sido com os produtos e com a entrega?",
+      "Então me conta: vocês continuam comprando com a Fey? Como tem sido com os produtos e com a entrega?",
+      "Então poderia me contar: vocês continuam comprando com a Fey? Como tem sido a experiência com os produtos e com a entrega?",
+      "Então me conta: vocês seguem comprando com a Fey? Como tem sido com os produtos e com a entrega?",
     ), [o("Sim, segue comprando normalmente", "fid_nps", "ok", "Continua comprando com a Fey"), o("Está comprando menos que antes", "fid_motivo", "neutro", "Reduziu as compras"), o("Parou de comprar", "fid_motivo", "objecao", "Parou de comprar"), o("Está comprando de outro fornecedor", "obj_concorrente", "objecao", "Comprando de outro fornecedor")], "Escute com atenção. Queixa bem recebida vira fidelidade; rotule o que ouvir: “parece que o prazo te incomodou”.", "fideliza"),
     fala("fid_nps", "Nota de 0 a 10", T(
       "Que bom! Uma pergunta rápida: de 0 a 10, o quanto você indicaria a Fey pra outra empresa? E o que faria essa nota subir?",
@@ -310,16 +310,16 @@ function reativar(s: Seg): { nodes: ScriptNode[]; startId: string } {
   };
   const decisor = (note: string, to: string) => [o("Topou conversar", to, "ok", note), o("Pediu e-mail ou WhatsApp", "obj_enviar", "objecao"), o("Está sem tempo agora", "obj_tempo", "objecao"), o("Sem interesse", "obj_nao", "objecao")];
   const bom = T(
-    "Que bom falar com você! Aqui é da Fey: a {empresa} tem cadastro com a gente e faz um tempo que a gente não se fala. Queria retomar o contato e saber como vocês estão com fixadores hoje. Posso te contar rapidinho por que liguei?",
-    "Que bom falar com você. Sou da Fey: a {empresa} possui cadastro conosco e há algum tempo não conversamos. Gostaria de retomar o contato e entender como a empresa está hoje em relação a fixadores. Posso explicar rapidamente o motivo da ligação?",
-    "Que bom falar com você! Aqui é da Fey: a {empresa} tem cadastro com a gente e faz um tempinho que a gente não se fala. Queria retomar o papo e saber como vocês estão com fixador hoje. Posso te contar rapidinho por que liguei?",
+    "Que bom falar com você! Faz um tempo que a gente não se fala, e eu queria retomar o contato com a {empresa}.",
+    "Que bom falar com você. Faz algum tempo que não conversamos, e gostaria de retomar o contato com a {empresa}.",
+    "Que bom falar com você! Faz um tempinho que a gente não se fala, e eu queria retomar o papo com a {empresa}.",
   );
   const nodes: ScriptNode[] = [
     fala("abertura", "Abertura", T(
       "{saudacao}, tudo bem? Aqui é {meunome}, da Fey. Tô retomando o contato com empresas que têm cadastro com a gente, só pra saber como estão. Com quem eu falo?",
       "{saudacao}, tudo bem? Aqui é {meunome}, da Fey. Estou retomando o contato com empresas cadastradas conosco, apenas para saber como estão. Com quem eu falo, por favor?",
       "{saudacao}, tudo bem? Aqui é {meunome}, da Fey. Tô retomando o papo com empresas que têm cadastro com a gente, só pra saber como andam. Com quem eu falo?",
-    ), [o("Disse quem é", "nome", "ok"), o("Vai transferir a ligação", "transferido", "ok"), o("Perguntou o assunto", "assunto"), o("Pessoa errada ou não trabalha mais aqui", "quem", "objecao"), o("Está sem tempo agora", "obj_tempo", "objecao"), o("Caixa postal, URA ou ninguém atendeu", "sem_resp")], "Cliente inativo pode ter comprado há anos, uma vez só ou nunca ter comprado. Não presuma nada: abra leve, sem cobrar, e pegue o nome. Quem cadastrou pode já ter saído da empresa.", "abertura"),
+    ), [o("Disse quem é", "papel", "ok"), o("Prefere não dizer o nome", "papel", "neutro"), o("Vai transferir a ligação", "transferido", "ok"), o("Perguntou o assunto", "assunto"), o("Pessoa errada ou não trabalha mais aqui", "quem", "objecao"), o("Está sem tempo agora", "obj_tempo", "objecao"), o("Caixa postal, URA ou ninguém atendeu", "sem_resp")], "Cliente inativo pode ter comprado há anos, uma vez só ou nunca ter comprado. Não presuma nada: abra leve, sem cobrar, e pegue o nome. Quem cadastrou pode já ter saído da empresa. Escreva o nome no campo “Conversando atualmente com”: o roteiro passa a chamar a pessoa por ele.", "abertura"),
     ...entrada("papel", s.itens, alvo, s.tipo),
     ...perfis({
       itens: s.itens, dor: s.dor, tipo: s.tipo, alvo, next: "reat_historico", alcada: false, ok: decisor,
@@ -327,9 +327,9 @@ function reativar(s: Seg): { nodes: ScriptNode[]; startId: string } {
         socio: bom,
         compras: bom,
         gestor: T(
-          "Que bom falar com você! A {empresa} tem cadastro com a Fey e faz um tempo que não conversamos. Queria retomar o contato. Você acompanha a compra de fixadores aí?",
-          "Que bom falar com você. A {empresa} possui cadastro com a Fey e há algum tempo não conversamos. Gostaria de retomar o contato. Você acompanha a compra de fixadores?",
-          "Que bom falar com você! A {empresa} tem cadastro com a Fey e faz um tempinho que a gente não se fala. Queria retomar o contato. Você acompanha a compra de fixadores aí?",
+          "Que bom falar com você! Faz um tempo que a gente não se fala, e eu queria retomar o contato. Você acompanha a compra de fixadores aí?",
+          "Que bom falar com você. Faz algum tempo que não conversamos, e gostaria de retomar o contato. Você acompanha a compra de fixadores?",
+          "Que bom falar com você! Faz um tempinho que a gente não se fala, e eu queria retomar o papo. Você acompanha a compra de fixador aí?",
         ),
       },
       tips: {

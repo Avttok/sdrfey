@@ -34,7 +34,7 @@ export function TalkingTo({ value, people, knownId, leadId, onChange, onEnter, o
         )}
         {typed && knownId != null && <span className="inline-flex items-center gap-1 text-xs font-medium text-ok"><Check size={14} aria-hidden /> já está no lead</span>}
       </label>
-      <p className="mt-1.5 text-xs text-muted">{typed ? <>O roteiro passa a chamar a pessoa de <b className="text-ink">{typed.split(/\s+/)[0]}</b>.</> : "Escreva o nome e aperte Enter (ou toque em “Disse ou confirmou o nome”). As próximas perguntas já usam o nome."}</p>
+      <p className="mt-1.5 text-xs text-muted">{typed ? <>O roteiro passa a chamar a pessoa de <b className="text-ink">{typed.split(/\s+/)[0]}</b>.</> : "Escreva o nome e aperte Enter (ou toque em “Disse quem é” / “Disse o nome”). As próximas perguntas já usam o nome."}</p>
     </section>
   );
 }

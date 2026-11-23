@@ -16,15 +16,24 @@ describe("scripts de fábrica: limites do editor", () => {
   it("sem termos de jogo nos textos", () => {
     for (const b of buildAll()) for (const n of b.nodes) expect(`${n.title} ${n.say} ${n.tip ?? ""}`, `${b.key}:${n.id}`).not.toMatch(/\bjog(o|ar)\b|\bmiss[aã]o\b/i);
   });
-  it("scripts de ligação a frio perguntam e usam o nome de quem fala", () => {
+  it("a abertura pergunta o nome e a resposta segue direto (sem perguntar o nome de novo)", () => {
     for (const b of buildAll()) {
       const ids = new Set(b.nodes.map((n) => n.id));
       if (!ids.has("secretaria")) continue; // retorno de cotação já conhece a pessoa
-      const nome = b.nodes.find((n) => n.id === "nome");
-      expect(nome, b.key).toBeTruthy();
-      expect(nome!.say).toContain("[[contato?");
+      expect(ids.has("nome"), `${b.key}: sem passo "nome" repetindo a pergunta`).toBe(false);
       const abertura = b.nodes.find((n) => n.id === "abertura")!;
-      expect(abertura.options.some((o) => o.to === "nome"), b.key).toBe(true);
+      const disse = abertura.options.find((o) => /disse quem/i.test(o.label));
+      expect(disse, b.key).toBeTruthy();
+      expect(["conf_empresa", "papel"]).toContain(disse!.to);
+      // quem recebe a ligação transferida é outra pessoa: o passo pergunta o nome dela
+      const tr = b.nodes.find((n) => n.id === "transferido")!;
+      expect(tr.say, b.key).toMatch(/com quem eu falo/i);
+    }
+  });
+  it("nenhum passo pede de novo o nome (ou a função) de quem já respondeu", () => {
+    for (const b of buildAll()) for (const n of b.nodes) {
+      if (["abertura", "transferido"].includes(n.id)) continue;
+      expect(`${n.say} ${n.v?.formal ?? ""} ${n.v?.solto ?? ""}`, `${b.key}:${n.id}`).not.toMatch(/com quem (eu )?falo|qual é o seu nome|como é o seu nome/i);
     }
   });
 });

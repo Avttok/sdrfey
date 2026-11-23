@@ -3,10 +3,10 @@ import { FEY, FIRST, NEXT, ONLINE, PAR, PARES, T, cat, fala, o, type Alvo, type 
 
 /**
  * Entrada da ligação, pensada para quem atendeu poder ser QUALQUER pessoa (dono, comprador, balcão, financeiro, recepção…).
- * Passos: abertura neutra (feita no objetivo) → nome → função da pessoa → caminho próprio de cada perfil.
+ * Passos: abertura neutra (feita no objetivo; ela já pergunta o nome, e o nome vai no campo “Conversando atualmente com”) → função da pessoa → caminho próprio de cada perfil. Cada pessoa que atende (portaria, recepção, comprador…) entra pelo passo “Transferiram a ligação”, que pergunta o nome da nova pessoa.
  * Recepção, pessoa errada, transferência, caixa postal e WhatsApp também ficam aqui.
  */
-export function entrada(nomeTo: string, itens: string, a: Alvo, tipo: Tipo): ScriptNode[] {
+export function entrada(_nomeTo: string, itens: string, a: Alvo, tipo: Tipo): ScriptNode[] {
   const m = a.motivo;
   const tema = a.tema ?? T("sobre a reposição de parafusos e grampos", "sobre o fornecimento de parafusos e grampos", "sobre reposição de parafuso e grampo");
   const gk = a.gk ?? T(`Atendemos ${PARES[tipo]}, e é por isso que estou ligando.`, `Atendemos ${PARES[tipo]}, e esse é o motivo do contato.`, `Atende ${PARES[tipo]}, por isso estou ligando.`);
@@ -21,9 +21,9 @@ export function entrada(nomeTo: string, itens: string, a: Alvo, tipo: Tipo): Scr
     ), [o("Vai passar a ligação", "transferido", "ok", "Recepção transferiu a ligação"), o("Perguntou qual é o assunto", "assunto"), o("O responsável não está", "horario"), o("Pediu para mandar e-mail", "rec_email"), o("Disse que não precisam", "obj_nao", "objecao")],
     "Peça ajuda, não permissão. A recepção não decide, mas abre ou fecha a porta: seja cordial, use o nome dela e nunca minta sobre quem você é nem invente projeto ou indicação. Pergunta aberta (“quem seria?”) funciona melhor que “posso falar com o responsável?”. Nunca use a palavra “barreira” em voz alta.", "ponte"),
     fala("assunto", "Dizer o assunto", T(
-      `Claro! A Fey é uma metalúrgica e fabrica ${itens}. ${m.n} ${fecha.n}`,
-      `Com certeza. A Fey é uma metalúrgica e fabrica ${itens}. ${m.f} ${fecha.f}`,
-      `Claro! A Fey é uma metalúrgica, a gente fabrica ${itens}. ${m.s} ${fecha.s}`,
+      `Claro! A gente fabrica ${itens}. ${m.n} ${fecha.n}`,
+      `Com certeza. Fabricamos ${itens}. ${m.f} ${fecha.f}`,
+      `Claro! A gente fabrica ${itens}. ${m.s} ${fecha.s}`,
     ), [o("Passou a ligação", "transferido", "ok", "Recepção transferiu a ligação"), o("Perguntou quem é a Fey", "gk_quem"), o("Anotou um recado", "horario"), o("Pediu para mandar e-mail", "rec_email"), o("Recusou", "obj_nao", "objecao")],
     "Um motivo curto, honesto e sem jargão. Quem entende o assunto passa a ligação com mais facilidade. Não conte o pitch inteiro: a recepção não é quem decide.", "ponte"),
     fala("gk_quem", "Quem é a Fey", T(
@@ -43,10 +43,10 @@ export function entrada(nomeTo: string, itens: string, a: Alvo, tipo: Tipo): Scr
       "Claro, mando sim! Pra quem eu endereço e qual o melhor e-mail? E já te aviso: depois de amanhã eu ligo só pra ver se chegou, pode ser?",
     ), [o("Passou nome e e-mail", "@retorno", "ok", "Enviar apresentação ao responsável de compras e ligar em 2 dias"), o("Só o e-mail geral da empresa", "@retorno", "neutro", "E-mail geral: pouca chance de chegar ao decisor, ligar de novo"), o("Não passa", "obj_nao", "objecao")], "E-mail para a caixa geral quase nunca chega ao decisor: sempre peça o NOME de quem vai ler e combine o dia da ligação. Se a pessoa recusar tudo, ofereça deixar um recado de trinta segundos para o responsável.", "apoio"),
     fala("transferido", "Transferiram a ligação", T(
-      "{saudacao}! Aqui é {meunome}, da Fey. A pessoa que me atendeu me passou pra você, por causa das compras de fixadores. Com quem eu falo?",
-      "{saudacao}! Aqui é {meunome}, da Fey. Me encaminharam até você por causa das compras de fixadores. Com quem eu falo, por favor?",
-      "Oi! Aqui é {meunome}, da Fey. A pessoa que me atendeu me passou pra você, por causa das compras de fixadores. Quem tá falando?",
-    ), [o("Disse o nome", "papel", "ok", "Chegou a outra pessoa por transferência"), o("Perguntou o assunto", "assunto"), o("Sem tempo agora", "obj_tempo", "objecao")], "Pessoa nova, conversa nova: reapresente-se em uma frase, diga quem passou a ligação (isso dá legitimidade) e pergunte o nome. Escreva o nome no campo “Conversando atualmente com”.", "ponte"),
+      "{saudacao}! Aqui é {meunome}, da Fey, uma metalúrgica de fixadores. A pessoa que me atendeu me passou pra você, por causa das compras. Com quem eu falo?",
+      "{saudacao}! Aqui é {meunome}, da Fey, metalúrgica de fixadores. Me encaminharam até você por causa das compras. Com quem eu falo, por favor?",
+      "Oi! Aqui é {meunome}, da Fey, a metalúrgica de fixadores. A pessoa que me atendeu me passou pra você, por causa das compras. Com quem eu falo?",
+    ), [o("Disse o nome", "papel", "ok", "Chegou a outra pessoa por transferência"), o("Perguntou o assunto", "assunto"), o("Sem tempo agora", "obj_tempo", "objecao")], "Pessoa nova, conversa nova: reapresente-se em uma frase, diga quem passou a ligação (isso dá legitimidade) e pergunte o nome. Escreva o nome no campo “Conversando atualmente com”: o campo esvazia sozinho para a nova pessoa, e o nome de quem falou antes fica registrado na ligação.", "ponte"),
     fala("quem", "Pessoa errada", T(
       `Ih, desculpa o engano, e obrigado pela paciência! Quem é ${pessoa} aí na {empresa}? Dá pra falar direto com ela?`,
       `Desculpe o engano, e obrigado pela paciência. Poderia me dizer quem é ${pessoa} na {empresa}? Assim eu falo direto com ela.`,
@@ -62,11 +62,6 @@ export function entrada(nomeTo: string, itens: string, a: Alvo, tipo: Tipo): Scr
       `Envie no WhatsApp, logo depois da ligação: “{saudacao}, tudo bem? Aqui é {meunome}, da Fey, metalúrgica de fixadores. Tentei contato por telefone ${tema.f}. Posso ligar em outro momento ou, se preferir, me diga por aqui o melhor horário. Obrigado!”`,
       `Mande no WhatsApp, logo depois da ligação: “Oi, tudo bem? Aqui é {meunome}, da Fey, a metalúrgica de fixadores. Tentei te ligar agora há pouco, é ${tema.s}. Se quiser, me fala aqui o melhor horário que eu te ligo. Valeu!”`,
     ), [o("Mensagem enviada", "@retorno", "ok", "Recado na caixa postal e mensagem de WhatsApp enviados"), o("Não tem WhatsApp", "@retorno", "neutro", "Sem WhatsApp: tentar outro horário")], "Mensagem curta, sem anexo e sem preço na primeira vez: o objetivo é abrir a conversa. Quem vê duas tentativas (ligação e mensagem) lembra do nome. No Brasil o WhatsApp é o canal mais natural: mensagem curta, sem áudio longo e sem mandar o mesmo texto de novo. Se não responder, tente de novo em 2 a 3 dias com outro enfoque (apresentação, depois um exemplo, depois um convite fácil de recusar).", "apoio"),
-    fala("nome", "Com quem você fala", T(
-      "[[contato?Só pra confirmar: eu tô falando com {contato}, né?|Prazer! Como é o seu nome? Quero anotar certinho.]]",
-      "[[contato?Só para confirmar: estou falando com {contato}, certo?|Muito prazer! Qual é o seu nome, por favor? Quero registrar direitinho.]]",
-      "[[contato?Só pra confirmar: é com {contato} que eu falo, né?|Prazer! Qual é o seu nome? Quero anotar direitinho.]]",
-    ), [o("Disse ou confirmou o nome", nomeTo, "ok", "Nome de quem atendeu anotado"), o("Prefere não dizer o nome", nomeTo, "neutro")], "Escreva o nome no campo “Conversando atualmente com”, logo abaixo: daí em diante as perguntas passam a chamar a pessoa pelo nome, o que aproxima e prende a atenção. Se o nome já aparecer lá, só confirme.", "ponte"),
     fala("pedir_decisor", "Pedir ajuda para chegar ao decisor", T(
       `Entendi, obrigado por me contar! Você pode me ajudar? Eu preciso falar com ${a.quem}. Quem é essa pessoa e qual o melhor jeito de falar com ela?`,
       `Entendi, obrigado pela informação. Poderia me ajudar? Preciso falar com ${a.quem}. Quem é essa pessoa e qual a melhor forma de falar com ela?`,
@@ -95,9 +90,9 @@ export function perfis(p: Perfis): ScriptNode[] {
     fala("p_compras", "Compras ou comprador", p.falas.compras, p.ok("Contato: comprador", p.alcada ? "p_alcada" : p.next), p.tips.compras, "proposta"),
     fala("p_gestor", "Gerente, encarregado ou líder", p.falas.gestor, [...p.ok("Contato: gerente ou encarregado, participa da compra", p.next), o("Quem compra é outra pessoa", "pedir_decisor", "neutro", "Contato: gerente, não compra")], p.tips.gestor, "proposta"),
     fala("p_balcao", "Vendas, balcão ou atendimento", T(
-      `Legal! Quem tá no balcão sabe: quando falta o parafuso certo, o cliente vai embora, né? A Fey é uma metalúrgica e fabrica ${itens}. Eu queria falar com ${alvo.quem} ${para.n}. Quem seria, e você consegue me passar agora?`,
-      `Que bom. Quem atende no balcão sabe bem: quando falta o parafuso certo, o cliente acaba indo embora. A Fey é uma metalúrgica e fabrica ${itens}. Gostaria de falar com ${alvo.quem} ${para.f}. Quem seria, e você consegue me transferir agora?`,
-      `Que legal! Quem tá no balcão sabe bem: faltou o parafuso certo, o cliente vai embora, né? A Fey é uma metalúrgica, a gente fabrica ${itens}. Queria falar com ${alvo.quem} ${para.s}. Quem é, e dá pra me passar agora?`,
+      `Legal! Quem tá no balcão sabe: quando falta o parafuso certo, o cliente vai embora, né? A gente fabrica ${itens}. Eu queria falar com ${alvo.quem} ${para.n}. Quem seria, e você consegue me passar agora?`,
+      `Que bom. Quem atende no balcão sabe bem: quando falta o parafuso certo, o cliente acaba indo embora. A Fey fabrica ${itens}. Gostaria de falar com ${alvo.quem} ${para.f}. Quem seria, e você consegue me transferir agora?`,
+      `Que legal! Quem tá no balcão sabe bem: faltou o parafuso certo, o cliente vai embora, né? A gente fabrica ${itens}. Queria falar com ${alvo.quem} ${para.s}. Quem é, e dá pra me passar agora?`,
     ), [o("Passou a ligação", "transferido", "ok", "Balcão transferiu a ligação"), o("Deu nome e horário", "horario", "neutro"), o("Perguntou o assunto", "assunto"), o("Ele mesmo compra", p.next, "ok", "Contato: balcão que também compra"), o("Não passa", "obj_nao", "objecao", "Não passou o decisor")], "Quem atende o balcão é filtro e pode virar aliado. Não faça o pitch pra ele: peça ajuda, pergunte o nome de quem compra e qual o melhor horário. Use o problema dele (“cliente que vai embora”) para criar empatia. Agradeça pelo nome.", "ponte"),
     fala("p_operacao", "Estoque, manutenção, oficina ou produção", T(
       "Legal! Você vê de perto o que falta e o que quebra. Me tira uma dúvida: qual fixador mais dá dor de cabeça aí, o que acaba rápido ou o que vem com defeito? Quero levar o assunto certo pra quem cuida das compras.",
@@ -156,15 +151,15 @@ export function enriquece(last: string, tipo: Tipo, kind: "sdr" | "vendas"): Scr
       "Uma curiosidade: você já conhecia a Fey? Já comprou da empresa, direto ou por algum distribuidor?",
       "Me tira uma curiosidade: você já conhecia a Fey? Já comprou da gente, direto ou por algum distribuidor?",
     ), [o("É ou já foi cliente da Fey", "enr_mix", "ok", "Já é ou foi cliente Fey"), o("Compra Fey por um distribuidor", "enr_mix", "neutro", "Compra Fey por distribuidor (anotar qual)"), o("Compra de um concorrente", "enr_mix", "neutro", "Compra de concorrente (anotar qual)"), o("Não conhece a Fey", "enr_mix", "neutro", "Não conhece a Fey"), o("Prefere não responder", "enr_mix")], "Descubra de quem compra hoje (distribuidor ou concorrente) sem soar como interrogatório, e anote o nome. Se ele já conhece, pergunte o que achou. Pare para ouvir antes da próxima pergunta.")] : []),
-    fala("enr_mix", "Quais produtos compra", T(
+    ...(kind === "sdr" ? [fala("enr_mix", "Quais produtos compra", T(
       "E o que vocês mais compram hoje? É um mix de vários itens ou uns bem específicos? É pra eu não te mandar nada que não sirva.",
       "E o que a empresa mais compra hoje? Um mix de vários itens ou alguns específicos? É para eu não enviar nada que não seja útil.",
       "E o que vocês mais compram hoje? É um mix de vários itens ou uns específicos? É pra eu não te mandar nada que não sirva.",
-    ), [o("Mix variado de itens", "enr_aplicacao", "ok", "Compra mix variado"), o("Poucos itens específicos", "enr_aplicacao", "ok", "Compra poucos itens específicos"), o("Só um item", "enr_aplicacao", "neutro", "Compra um item só"), o("Não soube dizer", "enr_aplicacao")], "Deixe falar. Anote os itens e como é o mix: isso vira a cotação do vendedor. “Me conta mais” é a melhor pergunta de continuação (Sandler)."),
+    ), [o("Mix variado de itens", "enr_aplicacao", "ok", "Compra mix variado"), o("Poucos itens específicos", "enr_aplicacao", "ok", "Compra poucos itens específicos"), o("Só um item", "enr_aplicacao", "neutro", "Compra um item só"), o("Não soube dizer", "enr_aplicacao")], "Deixe falar. Anote os itens e como é o mix: isso vira a cotação do vendedor. “Me conta mais” é a melhor pergunta de continuação (Sandler).")] : []),
     fala("enr_aplicacao", "Onde aplica", T(
-      "Entendi! E onde isso entra no dia a dia de vocês? É que a aplicação muda qual parafuso ou grampo é o ideal.",
-      "Entendi. E em que aplicação isso entra no dia a dia? A aplicação define qual parafuso ou grampo é o ideal.",
-      "Entendi! E onde isso entra no dia a dia de vocês? Porque, dependendo da aplicação, muda qual parafuso ou grampo é o melhor.",
+      "Entendi! E dentro disso, onde esses itens entram mais no dia a dia? É que a aplicação muda qual parafuso ou grampo é o ideal.",
+      "Entendi. E dentro disso, em que aplicação esses itens entram mais? A aplicação define qual parafuso ou grampo é o ideal.",
+      "Entendi! E dentro disso, onde esses itens entram mais no dia a dia? Porque, dependendo da aplicação, muda qual parafuso ou grampo é o melhor.",
     ), [...aplic, skip]),
     fala("enr_freq", "Frequência de compra", T(
       "E de quanto em quanto tempo vocês repõem isso? Toda semana, todo mês, ou só quando falta?",
