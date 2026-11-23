@@ -1,4 +1,4 @@
-import { Merge, Brain, Activity, BookA, Archive, Megaphone, Coins, Clock, DatabaseZap, Download, Eraser, ScrollText, Truck, Handshake, KeyRound, PhoneCall, Mail, PanelTop, Settings2, Tags, Upload, Users, type LucideIcon } from "lucide-react";
+import { Merge, Brain, Activity, BookA, Archive, Megaphone, Coins, Clock, DatabaseZap, Download, Eraser, ScrollText, Truck, Handshake, KeyRound, PhoneCall, Link2, Mail, PanelTop, Settings2, Tags, Upload, Users, type LucideIcon } from "lucide-react";
 
 export type AdminItem = { href: string; label: string; hint: string; icon: LucideIcon };
 export type AdminSection = { id: string; title: string; hue: string; items: AdminItem[] };
@@ -29,6 +29,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   ] },
   { id: "sistema", title: "Sistema", hue: "#ec4899", items: [
     { href: "/admin/ligacoes", label: "Ligações (VocallPhone)", hint: "Botão Ligar direto do sistema", icon: PhoneCall },
+    { href: "/admin/eox", label: "Integração com a EOX", hint: "Preencher sozinho o link do cadastro de cada lead", icon: Link2 },
     { href: "/admin/glossario", label: "Glossário", hint: "Nomes do sistema e troca de termos", icon: BookA },
     { href: "/admin/barra", label: "Barra de menus", hint: "Ordem do menu para todos", icon: PanelTop },
     { href: "/admin/parametros", label: "Parâmetros", hint: "SDR: sorteio · Vendas: avisos das negociações · Segurança", icon: Settings2 },
