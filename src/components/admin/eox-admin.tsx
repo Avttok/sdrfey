@@ -8,14 +8,17 @@ import { saveEoxConfigAction, syncEoxNowAction, testEoxAction } from "@/modules/
 import type { EoxConfig } from "@/modules/eox/config";
 import type { EoxSyncState } from "@/modules/eox/sync";
 
-export function EoxAdmin({ initial, hasKey, sync, coverage }: { initial: EoxConfig; hasKey: boolean; sync: EoxSyncState; coverage: { total: number; without: number } }) {
+export function EoxAdmin({ initial, hasKey: hadKey, sync, coverage }: { initial: EoxConfig; hasKey: boolean; sync: EoxSyncState; coverage: { total: number; without: number } }) {
   const [c, setC] = useState(initial);
+  // o que está salvo agora (a chave nunca volta do servidor: só sabemos se existe)
+  const [base, setBase] = useState(initial);
+  const [hasKey, setHasKey] = useState(hadKey);
   const [fields, setFields] = useState<{ name: string; label: string }[] | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState<"test" | "sync" | null>(null);
   const { run, pending } = useRun();
   const set = <K extends keyof EoxConfig>(k: K, v: EoxConfig[K]) => setC({ ...c, [k]: v });
-  const dirty = JSON.stringify(c) !== JSON.stringify(initial);
+  const dirty = JSON.stringify(c) !== JSON.stringify(base);
   const cand = (fields ?? []).filter((f) => /cnpj|cpf|documento/i.test(`${f.label} ${f.name}`));
 
   return (
@@ -33,7 +36,7 @@ export function EoxAdmin({ initial, hasKey, sync, coverage }: { initial: EoxConf
           <label className="text-sm">Campo do CNPJ<input className={inputCls} value={c.cnpjField} onChange={(e) => set("cnpjField", e.target.value)} placeholder="Ex.: cf_850" /><span className="text-xs text-muted">Use “Testar conexão” para listar os campos e escolher.</span></label>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" className={btnPrimary} disabled={pending || !dirty} onClick={() => run(() => saveEoxConfigAction(c))}><Save size={15} aria-hidden /> Salvar</button>
+          <button type="button" className={btnPrimary} disabled={pending || !dirty} onClick={() => run(() => saveEoxConfigAction(c), undefined, () => { const saved = { ...c, accessKey: "" }; setBase(saved); setC(saved); setHasKey(hasKey || !!c.accessKey); })}><Save size={15} aria-hidden /> Salvar</button>
           <button type="button" className={btnGhost} disabled={busy !== null || dirty} onClick={async () => { setBusy("test"); const r = await testEoxAction(); setBusy(null); setMsg({ ok: r.ok, text: r.message ?? "" }); setFields(r.fields ?? null); }}>{busy === "test" ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <PlugZap size={14} aria-hidden />} Testar conexão</button>
         </div>
         {dirty && <p className="text-xs text-muted">Salve antes de testar.</p>}
@@ -51,7 +54,7 @@ export function EoxAdmin({ initial, hasKey, sync, coverage }: { initial: EoxConf
       <section className={`${panelCls} space-y-3 p-5`}>
         <h2 className="font-semibold">Sincronização</h2>
         <p className="text-sm text-muted">Roda sozinha todo dia de manhã e também na hora em que alguém liga para um lead sem link. Hoje <b>{coverage.total - coverage.without}</b> de <b>{coverage.total}</b> leads têm o link da EOX.{sync.at && <> Última rodada: {new Date(sync.at).toLocaleString("pt-BR")} ({sync.lastLinked} novos, {sync.lastScanned} cadastros lidos).</>}</p>
-        <button type="button" className={btnGhost} disabled={busy !== null || !initial.on || dirty} onClick={async () => { setBusy("sync"); const r = await syncEoxNowAction(); setBusy(null); setMsg({ ok: r.ok, text: r.message ?? "" }); }}>{busy === "sync" ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <RefreshCw size={14} aria-hidden />} Sincronizar agora</button>
+        <button type="button" className={btnGhost} disabled={busy !== null || !base.on || dirty} onClick={async () => { setBusy("sync"); const r = await syncEoxNowAction(); setBusy(null); setMsg({ ok: r.ok, text: r.message ?? "" }); }}>{busy === "sync" ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <RefreshCw size={14} aria-hidden />} Sincronizar agora</button>
       </section>
     </div>
   );
