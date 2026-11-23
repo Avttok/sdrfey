@@ -1,5 +1,6 @@
 "use client";
 
+import { parseEoxUrl } from "@/modules/vocall/eox";
 import { Timer, UserRound, Flag, Ban, Building2, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Send, Plus, RotateCcw, History, SkipForward, ScrollText, Square, TriangleAlert, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -61,10 +62,12 @@ function Elapsed({ since }: { since: number }) {
  * "Ligar": se a pessoa tem agente/ramal configurados, pede a chamada ao VocallPhone (como o clique no número da EOX).
  * Sem isso, ou se o app não confirmar, copia o número já pronto para colar no VocallPhone e dar Enter. No celular abre o discador.
  */
-export const callNumber = async (digits: string, label: string | null, toast: ReturnType<typeof useToast>, vocall: ReturnType<typeof useVocall>) => {
+export const callNumber = async (digits: string, label: string | null, toast: ReturnType<typeof useToast>, vocall: ReturnType<typeof useVocall>, eoxUrl?: string | null) => {
   if (vocall.configured) {
-    toast("info", "Pedindo a ligação ao VocallPhone…");
-    if (await vocall.dial(digits, label)) { toast("ok", "Ligando pelo VocallPhone."); return; }
+    const eox = parseEoxUrl(eoxUrl);
+    // sem o cadastro da EOX a ligação funciona, mas o formulário de Atendimento da EOX abre em branco
+    toast("info", eox ? "Pedindo a ligação ao VocallPhone…" : "Este lead não tem o link da EOX: a ligação sai, mas o Atendimento na EOX não vai abrir. Cole o link no cadastro.");
+    if (await vocall.dial(digits, label, eox)) { toast("ok", "Ligando pelo VocallPhone."); return; }
     toast("warn", "O VocallPhone não confirmou. Número copiado: cole no app e dê Enter.");
   } else toast("info", "Número copiado. No VocallPhone, cole (Ctrl+V) e dê Enter.");
   try { await navigator.clipboard.writeText(digits); } catch { toast("warn", "Não consegui copiar. Selecione o número e copie manualmente."); }
@@ -443,7 +446,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                       <span className="figure block text-lg leading-tight">{fmtPhone(p.value)}</span>
                       <span className="block truncate text-xs text-muted">{who ? <><UserRound size={11} aria-hidden className="mr-0.5 inline" />{who.name}{who.roleTitle ? ` · ${who.roleTitle}` : ""}</> : "Sem contato indexado"}</span>
                     </button>
-                    <button type="button" className={btnPrimary} onClick={() => { setCallId(p.id); void callNumber(p.value, lead.tradeName ?? lead.company, toast, vocall); setUsed(new Set(used).add("ligacao")); }}><Phone size={15} aria-hidden /> Ligar</button>
+                    <button type="button" className={btnPrimary} onClick={() => { setCallId(p.id); void callNumber(p.value, lead.tradeName ?? lead.company, toast, vocall, lead.eoxUrl); setUsed(new Set(used).add("ligacao")); }}><Phone size={15} aria-hidden /> Ligar</button>
                     <button type="button" className={btnGhost} aria-label="Copiar número" onClick={() => { void copy(p.value, toast); setUsed(new Set(used).add("ligacao")); }}><Copy size={15} aria-hidden /> Copiar</button>
                   </li>
                 );

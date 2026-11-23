@@ -3,12 +3,13 @@
 import { PhoneCall, PhoneOff } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { VocallConfig } from "@/modules/vocall/config";
+import type { EoxRef } from "@/modules/vocall/eox";
 
 type Qual = { id: string; telefone: string | null; empresa: string | null; atendida: boolean };
 
 export type VocallState = "off" | "idle" | "connecting" | "online" | "error";
 export type VocallCall = { telefone: string; empresa: string | null; estado: string | null; since: number };
-type Ctx = { configured: boolean; state: VocallState; call: VocallCall | null; /** Liga: conecta ao VocallAgent só agora, pede a chamada e resolve true quando o VocallPhone confirma; false se não conectou ou não confirmou (aí vale copiar e colar no app). A conexão é cortada quando a chamada termina. */ dial: (phone: string, label?: string | null) => Promise<boolean> };
+type Ctx = { configured: boolean; state: VocallState; call: VocallCall | null; /** Liga: conecta ao VocallAgent só agora, pede a chamada e resolve true quando o VocallPhone confirma; false se não conectou ou não confirmou (aí vale copiar e colar no app). A conexão é cortada quando a chamada termina. */ dial: (phone: string, label?: string | null, eox?: EoxRef | null) => Promise<boolean> };
 const VocallCtx = createContext<Ctx>({ configured: false, state: "off", call: null, dial: async () => false });
 export const useVocall = () => useContext(VocallCtx);
 
@@ -146,7 +147,7 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
     return () => { alive.current = false; window.removeEventListener("pagehide", bye); hangup("idle"); clearTimeout(timers.current.clear); };
   }, [hangup, host, port, secure, dac, senha, agentId, ramal]);
 
-  const dial = useCallback(async (phone: string, label?: string | null) => {
+  const dial = useCallback(async (phone: string, label?: string | null, eox?: EoxRef | null) => {
     const digits = phone.replace(/\D/g, "");
     if (digits.length < 8) return false;
     const s = await connect();
@@ -157,7 +158,7 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
       callWait.current.push(waiter);
       // o VocallPhone não confirmou: tira da fila e não deixa a conexão aberta à toa
       timer = setTimeout(() => { const i = callWait.current.indexOf(waiter); if (i >= 0) { callWait.current.splice(i, 1); resolve(false); hangup("idle"); } }, CONFIRM_MS);
-      s.send(JSON.stringify({ action: "discar", data: { telefone: `${prefix}${digits}`, cliente: { label: (label ?? "").replace(/\|/g, "").slice(0, 80) } } }));
+      s.send(JSON.stringify({ action: "discar", data: { telefone: `${prefix}${digits}`, cliente: { label: (label ?? "").replace(/\|/g, "").slice(0, 80), ...(eox ? { setype: eox.setype, crmid: eox.crmid, ...(eox.setype !== "Contacts" ? { id_contato: 0 } : {}) } : {}) } } }));
     });
   }, [connect, hangup, prefix]);
 

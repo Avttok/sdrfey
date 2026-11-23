@@ -19,3 +19,13 @@ describe("qualificação da ligação", () => {
     expect(q).toEqual([{ label: "Atendida", texto: "Atendida" }]);
   });
 });
+
+import { parseEoxUrl } from "@/modules/vocall/eox";
+describe("link da EOX", () => {
+  it("tira o cadastro do link", () => {
+    expect(parseEoxUrl("https://fey.vocallcontact.com.br/index.php?module=Accounts&view=Detail&record=1293925")).toEqual({ crmid: "1293925", setype: "Accounts" });
+    expect(parseEoxUrl("index.php?module=Contacts&record=77&x=1")).toEqual({ crmid: "77", setype: "Contacts" });
+    expect(parseEoxUrl("https://exemplo.com/sem-record")).toBeNull();
+    expect(parseEoxUrl(null)).toBeNull();
+  });
+});
