@@ -4,7 +4,9 @@ import { CheckCircle2, Coins, Lock, Trophy } from "lucide-react";
 import { useState } from "react";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, panelCls } from "@/components/ui";
-import { ACHIEVEMENT_BY_KEY, type Achievement, type AchievementGroup } from "@/config/achievements";
+import { ACHIEVEMENT_BY_KEY, RARITY_BY_KEY, rarityOf, type Achievement, type AchievementGroup } from "@/config/achievements";
+import { AVATARS } from "@/config/avatars";
+import { BANNERS, bannerStyle } from "@/config/banners";
 import { achievementCoins } from "@/config/shop";
 import { setAchievementAction } from "@/modules/achievements/actions";
 
@@ -15,16 +17,37 @@ type Row = Achievement & Omit<AchievementRow, "key"> & { reward: number; receive
 
 const nf = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
 
+/** Cosméticos de perfil que esta conquista libera. */
+function Unlocks({ k, earned }: { k: string; earned: boolean }) {
+  const r = RARITY_BY_KEY.get(rarityOf(k))!;
+  const banners = BANNERS.filter((b) => b.unlock === k), avatars = AVATARS.filter((a) => a.unlock === k);
+  return (
+    <div className="space-y-2">
+      <p className="text-xs"><span className="rounded-full px-2 py-0.5 font-bold uppercase tracking-wide" style={{ color: r.color, background: `color-mix(in srgb, ${r.color} 16%, transparent)` }}>{r.label}</span></p>
+      {(banners.length > 0 || avatars.length > 0) && (
+        <div className="rounded-xl border border-line p-3">
+          <p className="mb-2 text-xs font-semibold text-muted">{earned ? "Você liberou (escolha em Minha conta)" : "Libera para o seu perfil"}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            {avatars.map((a) => { const I = a.icon; return <span key={a.key} title={`Ícone: ${a.label}`} className={`grid size-10 place-items-center rounded-xl bg-grad text-on-accent ${earned ? "" : "opacity-50 grayscale"}`}><I size={18} aria-hidden /></span>; })}
+            {banners.map((b) => <span key={b.key} title={`Banner: ${b.label}`} className={`block h-10 w-20 rounded-lg ring-1 ring-line ${earned ? "" : "opacity-50 grayscale"}`} style={bannerStyle(b.key)} />)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Medalha redonda: acesa quando ganha, apagada com cadeado quando não. */
 export function Medal({ a, size = 56, onClick, active }: { a: Row; size?: number; onClick?: () => void; active?: boolean }) {
   const I = a.icon;
   return (
-    <button type="button" onClick={onClick} aria-label={a.name} aria-pressed={active} className={`medal group flex flex-col items-center gap-1.5 rounded-2xl px-1 py-2 text-center transition hover:-translate-y-0.5 ${active ? "bg-sunk" : ""}`} style={{ ["--cor" as string]: a.color }}>
+    <button type="button" onClick={onClick} aria-label={a.name} aria-pressed={active} className={`medal group flex flex-col items-center gap-1.5 rounded-2xl px-1 py-2 text-center transition hover:-translate-y-0.5 ${active ? "bg-sunk" : ""}`} style={{ ["--cor" as string]: a.color, ["--rar" as string]: RARITY_BY_KEY.get(rarityOf(a.key))!.color }}>
       <span className="medal-disc relative grid place-items-center rounded-full border-2 transition" data-on={a.earned} style={{ width: size, height: size }}>
         <I size={size * 0.42} aria-hidden />
         {!a.earned && <span className="absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full border border-line bg-panel text-muted"><Lock size={11} aria-hidden /></span>}
       </span>
       <span className={`line-clamp-2 text-[11px] font-semibold leading-tight ${a.earned ? "" : "text-muted"}`}>{a.name}</span>
+      <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--rar)" }}>{RARITY_BY_KEY.get(rarityOf(a.key))!.label}</span>
       <span className={`figure inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${a.received ? "bg-ok/15 text-ok" : "bg-sunk text-muted"}`} title={a.received ? "Moedas já recebidas" : "Moedas que paga ao ser conquistada"}>{a.received ? <CheckCircle2 size={10} aria-hidden /> : <Coins size={10} aria-hidden />}{a.received ? `+${a.received}` : a.reward}</span>
     </button>
   );
@@ -80,6 +103,7 @@ export function AchievementsView({ rows: raw, groups, who, adminFor, paid = {} }
               <>
                 <div className="flex items-center gap-3"><Medal a={cur} size={64} /><div className="min-w-0"><h2 className="display text-lg leading-tight">{cur.name}</h2><p className="text-xs text-muted">{cur.group}</p></div></div>
                 <p className="text-sm">{cur.desc}</p>
+                <Unlocks k={cur.key} earned={cur.earned} />
                 <div>
                   <div className="h-2 overflow-hidden rounded-full bg-sunk"><div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, (cur.value / cur.goal) * 100)}%`, background: cur.color }} /></div>
                   <p className="mt-1 text-xs text-muted"><b className="figure text-ink">{nf(Math.min(cur.value, cur.goal))}</b> de {nf(cur.goal)} {cur.unit}{cur.manual === "granted" ? " · dada pelo Adm" : cur.manual === "blocked" ? " · bloqueada pelo Adm" : ""}</p>

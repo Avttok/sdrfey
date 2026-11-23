@@ -484,3 +484,7 @@ html[data-copy-guard="on"] input, html[data-copy-guard="on"] textarea, html[data
 
 /* Painéis flutuantes (janelas, menus e listas) sempre desfocam o que está atrás: nada de ler o fundo através deles. */
 [role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"] { -webkit-backdrop-filter: blur(28px) saturate(1.4); backdrop-filter: blur(28px) saturate(1.4); }
+
+/* Anel de raridade nas medalhas (Comum, Raro, Lendário, Mítico) */
+.medal-disc { outline: 2px solid color-mix(in srgb, var(--rar, transparent) 35%, transparent); outline-offset: 3px; }
+.medal-disc[data-on="true"] { outline-color: var(--rar, transparent); }

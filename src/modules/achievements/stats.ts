@@ -69,3 +69,9 @@ export async function eggHolders(): Promise<number[]> {
       and not exists (select 1 from achievement_overrides o where o.user_id = u.id and o.key = 'egg' and not o.granted)`);
   return rows.map((r) => Number(r.id));
 }
+
+/** Chaves das conquistas que a pessoa tem (vale também o que o Adm deu na mão). Libera os cosméticos de perfil. */
+export async function earnedKeysOf(uid: number, roles: readonly string[]): Promise<string[]> {
+  const { list } = await achievementsOf(uid, roles);
+  return list.filter((a) => a.earned).map((a) => a.key);
+}

@@ -6,8 +6,9 @@ import { db, users } from "@/db";
 import { NAV } from "@/config/nav";
 import { isFontKey } from "@/config/fonts";
 import { isChoosableAccent } from "@/config/theme";
-import { AVATAR_BY_KEY } from "@/config/avatars";
-import { BANNER_BY_KEY } from "@/config/banners";
+import { AVATAR_BY_KEY, avatarOpen } from "@/config/avatars";
+import { BANNER_BY_KEY, bannerOpen } from "@/config/banners";
+import { earnedKeysOf } from "@/modules/achievements/stats";
 import { logAudit } from "@/modules/audit/log";
 import { requireUser } from "@/modules/auth/guard";
 
@@ -15,6 +16,8 @@ import { requireUser } from "@/modules/auth/guard";
 export async function setAvatarAction(key: string | null): Promise<{ ok: boolean; message?: string }> {
   const me = await requireUser();
   const next = key && AVATAR_BY_KEY.has(key) ? key : null;
+  const av = next ? AVATAR_BY_KEY.get(next) : null;
+  if (av?.unlock && next !== me.avatar && !avatarOpen(av, await earnedKeysOf(me.id, me.roles))) return { ok: false, message: "Esse ícone é liberado por uma conquista. Veja em Conquistas." };
   await db.update(users).set({ avatar: next }).where(eq(users.id, me.id));
   await logAudit(db, { userId: me.id, entity: "user", action: "alterou", field: "ícone de perfil", oldValue: me.avatar, newValue: next });
   revalidatePath("/", "layout");
@@ -24,6 +27,8 @@ export async function setAvatarAction(key: string | null): Promise<{ ok: boolean
 export async function setBannerAction(key: string | null): Promise<{ ok: boolean; message?: string }> {
   const me = await requireUser();
   const next = key && BANNER_BY_KEY.has(key) ? key : null;
+  const bn = next ? BANNER_BY_KEY.get(next) : null;
+  if (bn?.unlock && next !== me.banner && !bannerOpen(bn, await earnedKeysOf(me.id, me.roles))) return { ok: false, message: "Esse banner é liberado por uma conquista. Veja em Conquistas." };
   await db.update(users).set({ banner: next }).where(eq(users.id, me.id));
   await logAudit(db, { userId: me.id, entity: "user", action: "alterou", field: "banner do perfil", oldValue: me.banner, newValue: next });
   revalidatePath("/", "layout");

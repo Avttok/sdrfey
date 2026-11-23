@@ -90,3 +90,40 @@ export function groupsFor(roles: readonly string[]): AchievementGroup[] {
   out.push("Geral");
   return out;
 }
+
+/* ───── Raridade ───── */
+export type Rarity = "comum" | "raro" | "lendario" | "mitico";
+export const RARITIES: { key: Rarity; label: string; color: string; order: number }[] = [
+  { key: "comum", label: "Comum", color: "#94A3B8", order: 0 },
+  { key: "raro", label: "Raro", color: "#3B82F6", order: 1 },
+  { key: "lendario", label: "Lendário", color: "#F59E0B", order: 2 },
+  { key: "mitico", label: "Mítico", color: "#D946EF", order: 3 },
+];
+export const RARITY_BY_KEY = new Map(RARITIES.map((r) => [r.key, r]));
+
+/** Ajustes à mão (o resto sai da posição da conquista na sua série: quanto mais alta a meta, mais rara). */
+const RARITY_OVERRIDE: Record<string, Rarity> = { egg: "mitico", acc_730: "mitico", bill_200: "mitico", seq_20: "mitico", cash_1m: "mitico", big_100k: "mitico", att_5000: "mitico" };
+
+const rarityMap = (() => {
+  const bySeries = new Map<string, Achievement[]>();
+  for (const a of ACHIEVEMENTS) bySeries.set(a.stat, [...(bySeries.get(a.stat) ?? []), a]);
+  const out = new Map<string, Rarity>();
+  for (const list of bySeries.values()) {
+    const s = [...list].sort((a, b) => a.goal - b.goal);
+    const n = s.length;
+    s.forEach((a, i) => {
+      let r: Rarity;
+      if (n === 1) r = "comum";
+      else if (i === 0) r = "comum";
+      else if (i === n - 1) r = n >= 5 ? "mitico" : n >= 3 ? "lendario" : "raro";
+      else if (i === n - 2 && n >= 5) r = "lendario";
+      else r = i / (n - 1) >= 0.5 ? "raro" : "comum";
+      out.set(a.key, r);
+    });
+  }
+  for (const [k, v] of Object.entries(RARITY_OVERRIDE)) out.set(k, v);
+  return out;
+})();
+
+/** Raridade de uma conquista: Comum, Raro, Lendário ou Mítico. */
+export const rarityOf = (key: string): Rarity => rarityMap.get(key) ?? "comum";

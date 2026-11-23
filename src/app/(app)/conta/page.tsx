@@ -12,6 +12,7 @@ import { RoleBadge } from "@/components/role-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { btnGhost, panelCls } from "@/components/ui";
 import { CHOOSABLE_ACCENTS, resolveAccent, swatchBg } from "@/config/theme";
+import { earnedKeysOf } from "@/modules/achievements/stats";
 import { requireUser } from "@/modules/auth/guard";
 import { setAccentAction } from "@/modules/users/actions";
 
@@ -20,6 +21,7 @@ export const metadata: Metadata = { title: "Minha conta" };
 export default async function AccountPage() {
   const user = await requireUser();
   const current = resolveAccent(user.accent, user.shownRoles);
+  const earned = await earnedKeysOf(user.id, user.roles);
 
   return (
     <div className="space-y-6">
@@ -38,8 +40,8 @@ export default async function AccountPage() {
         <section className={`${panelCls} p-6`}>
           <h2 className="display mb-5 text-xl">Aparência</h2>
 
-          <div className="mb-6"><BannerPicker current={user.banner} /></div>
-          <div className="mb-6"><AvatarPicker current={user.avatar} initials={user.name.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase()} /></div>
+          <div className="mb-6"><BannerPicker current={user.banner} earned={earned} /></div>
+          <div className="mb-6"><AvatarPicker earned={earned} current={user.avatar} initials={user.name.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase()} /></div>
 
           <div className="mb-6"><MyNavLayout current={user.navLayout} /></div>
 
