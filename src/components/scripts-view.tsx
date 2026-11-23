@@ -5,13 +5,14 @@ import { useState } from "react";
 import { GOALS, SEGMENTS, type ScriptDoc, type ScriptGoal } from "@/config/scripts";
 import { useConfirm } from "@/components/confirm-dialog";
 import { btnGhost, btnPrimary, panelCls } from "@/components/ui";
+import type { FieldDefView } from "@/config/facts";
 import { useRun } from "@/components/use-run";
 import { deleteScriptAction, duplicateScriptAction } from "@/modules/scripts/actions";
 import { blankScript, ScriptEditor } from "./script-editor";
 import { ScriptPlayer } from "./script-player";
 import { GOAL_THEME, SEGMENT_ICON, tint } from "./script-theme";
 
-export function ScriptsView({ scripts, isAdmin, myName }: { scripts: ScriptDoc[]; isAdmin: boolean; myName: string }) {
+export function ScriptsView({ fields = [], scripts, isAdmin, myName }: { fields?: FieldDefView[]; scripts: ScriptDoc[]; isAdmin: boolean; myName: string }) {
   const [goal, setGoal] = useState<ScriptGoal | "todos">("todos");
   const [mode, setMode] = useState<{ t: "list" } | { t: "play"; s: ScriptDoc } | { t: "edit"; s: ScriptDoc }>({ t: "list" });
   const { run, pending } = useRun();
@@ -19,7 +20,7 @@ export function ScriptsView({ scripts, isAdmin, myName }: { scripts: ScriptDoc[]
   const shown = scripts.filter((s) => goal === "todos" || s.goal === goal);
   const canEdit = (s: ScriptDoc) => s.mine || (isAdmin && s.global);
 
-  if (mode.t === "edit") return <ScriptEditor initial={mode.s} isAdmin={isAdmin} onClose={() => setMode({ t: "list" })} />;
+  if (mode.t === "edit") return <ScriptEditor fields={fields} initial={mode.s} isAdmin={isAdmin} onClose={() => setMode({ t: "list" })} />;
   if (mode.t === "play") return (
     <div className="space-y-3">
       <button type="button" className={btnGhost} onClick={() => setMode({ t: "list" })}>← Todos os scripts</button>

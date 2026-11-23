@@ -1,3 +1,4 @@
+import { withData } from "./seed-data";
 import { visita } from "./seed-visita";
 import { sql } from "drizzle-orm";
 import { after } from "next/server";
@@ -9,7 +10,7 @@ import { NEXT, ONLINE, PARES, SEG, T, fala, fim, o, type Alvo } from "./seed-cor
 import { confirma, enriquece, entrada, minimo, objecoes, perfis } from "./seed-parts";
 
 /** Muda quando os textos de fábrica são reescritos: os scripts do time que ninguém editou são atualizados. */
-export const SEED_VERSION = 21;
+export const SEED_VERSION = 22;
 
 type Seg = (typeof SEG)[string];
 
@@ -457,7 +458,7 @@ function close(_goal: ScriptGoal, nodes: ScriptNode[], startId: string) {
     used.add(k);
     return { ...x, to: ends[k].id };
   }) }));
-  return { nodes: withTasks([...fixed, ...[...used].map((k) => ends[k])]), startId };
+  return { nodes: withTasks(withData([...fixed, ...[...used].map((k) => ends[k])])), startId };
 }
 
 /** Todos os scripts de fábrica (para o banco e para os testes). */

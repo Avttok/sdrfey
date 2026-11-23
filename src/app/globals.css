@@ -488,3 +488,8 @@ html[data-copy-guard="on"] input, html[data-copy-guard="on"] textarea, html[data
 /* Anel de raridade nas medalhas (Comum, Raro, Lendário, Mítico) */
 .medal-disc { outline: 2px solid color-mix(in srgb, var(--rar, transparent) 35%, transparent); outline-offset: 3px; }
 .medal-disc[data-on="true"] { outline-color: var(--rar, transparent); }
+
+/* Botão "Ligar com roteiro": a ação principal do sistema ganha um brilho que respira (parado para quem pede menos movimento) */
+@keyframes roteiro-glow { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); } 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 0%, transparent); } }
+.roteiro-cta { animation: roteiro-glow 2.8s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .roteiro-cta { animation: none; } }

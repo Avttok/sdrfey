@@ -5,7 +5,8 @@
 import { readFileSync } from "node:fs";
 import { sql as dsql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
-import { db, sql, cities, emailTemplates, settings, tagGroups, tags, users } from "../src/db";
+import { FIELD_SEED } from "../src/config/facts";
+import { db, sql, cities, fieldDefs, emailTemplates, settings, tagGroups, tags, users } from "../src/db";
 import { DEFAULT_TEMPLATE } from "../src/modules/email/render";
 import { SEED_USERS } from "../src/config/seed-users";
 import { SETTINGS_SEED, TAG_GROUPS_SEED } from "../src/config/tags";
@@ -20,6 +21,9 @@ async function main() {
 
   await migrate(db, { migrationsFolder: "./drizzle" });
   console.log("✔ migrações aplicadas");
+
+  // campos que o atendimento preenche (os de fábrica nunca sobrescrevem o que o Adm editou)
+  for (const f of FIELD_SEED) await db.insert(fieldDefs).values({ key: f.key, label: f.label, kind: f.kind, options: f.options, scope: f.scope, groupName: f.groupName, ttlDays: f.ttlDays, priority: f.priority }).onConflictDoNothing();
 
   // grupos e tags
   for (const [gi, g] of TAG_GROUPS_SEED.entries()) {

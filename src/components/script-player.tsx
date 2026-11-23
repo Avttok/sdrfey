@@ -1,5 +1,6 @@
 "use client";
 
+import { FactAsk, FactConflict, type FactsApi } from "@/components/lead-facts";
 import { ArrowLeft, Crosshair, Ear, Flame, Lightbulb, Mic, RotateCcw, ShieldAlert, NotebookPen, ShieldCheck, Sparkles, ThumbsUp, ChevronRight, Trophy, Volume2 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -23,7 +24,7 @@ const CONFETTI = ["#f59e0b", "#22c55e", "#0ea5e9", "#8b5cf6", "#f43f5e"];
  * O roteiro da ligação. O balão mostra EXATAMENTE o que você diz ao lead (com o nome dele já no lugar);
  * a dica é só para você (não se fala). Depois toque no que o lead respondeu e o roteiro avança.
  */
-export function ScriptPlayer({ script, vars, extra, onOutcome, onNote, onRun, onStep, endExtra, floatingCenter = false }: { /** avisa a cada passo novo, com o caminho percorrido (para o painel acompanhar quem está na linha) */ onStep?: (nodeId: string, path: string[]) => void; /** painel no fim da ligação (ex.: as tarefas que ela gerou); recebe o código da ligação */ endExtra?: (ctx: { runId: string }) => React.ReactNode; /** botão flutuante "Centralizar" acima do chat (só nas etapas dos shufflers) */ floatingCenter?: boolean; script: ScriptDoc; vars: ScriptVars; /** painel extra no passo atual (ex.: o campo do nome de quem fala); recebe `pick` para escolher uma resposta */ extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; onOutcome?: (o: NonNullable<ScriptDoc["nodes"][number]["outcome"]>) => void; /** chamado com a anotação sugerida quando o operador escolhe uma resposta que tem nota */ onNote?: (note: string) => void; /** chamado a cada resposta escolhida, com o retrato do andamento (para guardar no lead) */ onRun?: (run: ScriptRun) => void }) {
+export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, onRun, onStep, endExtra, floatingCenter = false }: { /** Dados do lead: perguntas do roteiro e respostas que gravam no lead. */ facts?: FactsApi; /** avisa a cada passo novo, com o caminho percorrido (para o painel acompanhar quem está na linha) */ onStep?: (nodeId: string, path: string[]) => void; /** painel no fim da ligação (ex.: as tarefas que ela gerou); recebe o código da ligação */ endExtra?: (ctx: { runId: string }) => React.ReactNode; /** botão flutuante "Centralizar" acima do chat (só nas etapas dos shufflers) */ floatingCenter?: boolean; script: ScriptDoc; vars: ScriptVars; /** painel extra no passo atual (ex.: o campo do nome de quem fala); recebe `pick` para escolher uma resposta */ extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; onOutcome?: (o: NonNullable<ScriptDoc["nodes"][number]["outcome"]>) => void; /** chamado com a anotação sugerida quando o operador escolhe uma resposta que tem nota */ onNote?: (note: string) => void; /** chamado a cada resposta escolhida, com o retrato do andamento (para guardar no lead) */ onRun?: (run: ScriptRun) => void }) {
   const by = useMemo(() => new Map(script.nodes.map((n) => [n.id, n])), [script]);
   const [trail, setTrail] = useState<{ id: string; kind?: ScriptKind; via?: string }[]>([{ id: script.startId }]);
   useEffect(() => setTrail([{ id: script.startId }]), [script.id, script.startId]);
@@ -73,9 +74,10 @@ export function ScriptPlayer({ script, vars, extra, onOutcome, onNote, onRun, on
   const pick = useCallback((i: number) => {
     const op = node.options[i];
     if (!op?.to || !by.has(op.to)) return;
+    if (op.fact && facts) void facts.record(op.fact.key, op.fact.value);
     if (op.note) { onNote?.(op.note); setNoted((l) => (l.includes(op.note!) ? l : [...l, op.note!])); }
     setTrail((t) => [...t, { id: op.to!, kind: op.kind, via: op.label }]);
-  }, [node, by, onNote]);
+  }, [node, by, onNote, facts]);
 
   const root = useRef<HTMLDivElement>(null);
   const [follow, setFollow] = useState(false);
@@ -105,6 +107,7 @@ export function ScriptPlayer({ script, vars, extra, onOutcome, onNote, onRun, on
   useEffect(() => setHost(document.getElementById("quick-slot")), []);
   return (
     <div ref={root} className="space-y-4 max-sm:pr-7">
+      {facts ? <FactConflict facts={facts} /> : null}
       {floatingCenter && !ended && host && createPortal(
         <button type="button" onClick={center} aria-label="Centralizar o roteiro na tela (atalho: C)" title="Leva o roteiro para o meio da tela (atalho: C)"
           className="relative inline-flex h-12 items-center gap-2 rounded-full border border-line bg-panel pl-3.5 pr-4 text-sm font-semibold text-accent shadow-xl transition hover:scale-105 hover:border-accent active:scale-95">
@@ -200,6 +203,7 @@ export function ScriptPlayer({ script, vars, extra, onOutcome, onNote, onRun, on
                 <p className="whitespace-pre-line text-lg font-medium leading-relaxed sm:text-xl">{fillScript(sayOf(node, tone), vars)}</p>
               </div>
               {node.tip && <p className="flex items-start gap-2 rounded-xl border border-dashed border-line bg-sunk/60 px-3 py-2 text-sm"><Lightbulb size={16} aria-hidden className="mt-0.5 shrink-0 text-warn" /><span><b className="text-warn">Dica só para você</b>: {node.tip}</span></p>}
+              {facts && node.ask?.length ? <FactAsk facts={facts} ask={node.ask} nodeId={node.id} /> : null}
               {extra?.(node.id, pick)}
             </>
           )}

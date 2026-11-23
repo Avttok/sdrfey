@@ -8,6 +8,8 @@ import { CalendarCheck, Copy, ExternalLink, FileText, MapPin, Phone, ScrollText 
 import { callNumber, copy } from "@/components/attend-flow";
 import { PageHead } from "@/components/page-head";
 import { RunTasks } from "@/components/run-tasks";
+import { LeadKnowledge, ReviewToggle, useLeadFacts } from "@/components/lead-facts";
+import type { Knowledge } from "@/modules/facts/queries";
 import { ScriptPicker } from "@/components/script-picker";
 import { useToast } from "@/components/toast";
 import { useVocall } from "@/components/vocall-provider";
@@ -22,8 +24,8 @@ import { saveScriptRunAction, type ScriptRunInput } from "@/modules/scripts/runs
 type Run = Omit<ScriptRunInput, "isTest">;
 
 /** Roteiro de ligação com um lead, em qualquer momento: os dados ficam ao lado e o resultado vira tarefa. */
-export function LeadCall({ lead, scripts, goal, area, myName, deal, visit }: {
-  lead: LeadView; scripts: ScriptDoc[]; goal: ScriptGoal; area: "sdr" | "vendas"; myName: string;
+export function LeadCall({ knowledge, lead, scripts, goal, area, myName, deal, visit }: {
+  knowledge: Knowledge; lead: LeadView; scripts: ScriptDoc[]; goal: ScriptGoal; area: "sdr" | "vendas"; myName: string;
   deal: { stage: string; quote: string | null; valueCents: number | null; nextAt: string | null; nextNote: string | null } | null;
   visit: { date: string | null; rep: string | null } | null;
 }) {
@@ -37,6 +39,7 @@ export function LeadCall({ lead, scripts, goal, area, myName, deal, visit }: {
   const [spoken, setSpoken] = useState<string | null>(null);
   const person = (talkingId ? allPeople.find((p) => p.id === talkingId) : null) ?? allPeople[0] ?? null;
   const talkingTo = (spoken ?? person?.name ?? "").trim();
+  const facts = useLeadFacts({ leadId: lead.id, defs: knowledge.defs, initial: knowledge.facts, isTest: false, personId: person?.id ?? null });
   /** Cada transferência traz uma pessoa nova: o campo esvazia; voltar um passo devolve o nome. */
   const beforeTransfer = useRef<{ name: string; id: number | null }[]>([]);
   const onStep = (nodeId: string, path: string[]) => {
@@ -110,7 +113,7 @@ export function LeadCall({ lead, scripts, goal, area, myName, deal, visit }: {
           <div className="bg-grad px-4 py-2 text-on-accent"><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider"><ScrollText size={14} aria-hidden /> Roteiro da ligação</p></div>
           <div className="space-y-3 p-3 sm:p-4">
             {scripts.length > 0
-              ? <ScriptPicker scripts={scripts} goal={goal} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} extra={(nid, pick) => (nid === "abertura" || nid === "nome" || nid === "transferido") ? (
+              ? <ScriptPicker facts={facts} scripts={scripts} goal={goal} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} extra={(nid, pick) => (nid === "abertura" || nid === "nome" || nid === "transferido") ? (
                     <TalkingTo value={spoken ?? person?.name ?? ""} people={allPeople} knownId={allPeople.find((x) => x.name.trim().toLowerCase() === talkingTo.toLowerCase())?.id ?? null} leadId={lead.id}
                       onChange={(v) => { setSpoken(v); const m = allPeople.find((x) => x.name.trim().toLowerCase() === v.trim().toLowerCase()); if (m) setTalkingId(m.id); }}
                       onEnter={() => pick(0)} onSaved={(p) => { setExtraPeople((l) => [...l.filter((x) => x.id !== p.id), p]); setTalkingId(p.id); setSpoken(null); }} />
@@ -118,6 +121,8 @@ export function LeadCall({ lead, scripts, goal, area, myName, deal, visit }: {
                   vars={{ empresa: name, contato: talkingTo.split(/\s+/)[0] || undefined, contatoCompleto: talkingTo || null, cidade: lead.city, meunome: myName.split(" ")[0] }}
                   onNote={(t) => setNotes((l) => (l.includes(t) ? l : [...l, t]))} onRun={keep} endExtra={({ runId }) => <RunTasks runId={runId} area={area} />} />
               : <p className="text-sm text-muted">Nenhum script disponível ainda.</p>}
+            <div className="flex flex-wrap items-center gap-2"><ReviewToggle facts={facts} /></div>
+            <LeadKnowledge facts={facts} units={knowledge.units} goalIsSales={area === "vendas"} />
           </div>
         </section>
       </div>

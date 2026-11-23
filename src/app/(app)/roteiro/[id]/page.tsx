@@ -1,3 +1,4 @@
+import { loadKnowledge } from "@/modules/facts/queries";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { sql } from "drizzle-orm";
@@ -39,7 +40,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     select stage, quote_number, value_cents, next_action_at, next_action_note from deals where lead_id = ${id} and stage not in ('ganho','perdido') and not is_test order by id desc limit 1`);
   const [visit] = await db.execute<{ visit_date: string | null; rep_name: string | null }>(sql`
     select visit_date::text, rep_name from visits where lead_id = ${id} and canceled_at is null order by id desc limit 1`);
-  return <LeadCall lead={lead} scripts={scripts} goal={goal} area={area} myName={me.name}
+  return <LeadCall knowledge={await loadKnowledge(id)} lead={lead} scripts={scripts} goal={goal} area={area} myName={me.name}
     deal={deal ? { stage: deal.stage, quote: deal.quote_number, valueCents: deal.value_cents, nextAt: deal.next_action_at ? new Date(deal.next_action_at).toISOString() : null, nextNote: deal.next_action_note } : null}
     visit={visit ? { date: visit.visit_date, rep: visit.rep_name } : null} />;
 }

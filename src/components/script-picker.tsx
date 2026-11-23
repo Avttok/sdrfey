@@ -1,5 +1,6 @@
 "use client";
 
+import type { FactsApi } from "@/components/lead-facts";
 import { ChevronDown, FileText, Hand, Star, Wand2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GOALS, SEGMENTS, type ScriptDoc, type ScriptGoal } from "@/config/scripts";
@@ -9,7 +10,7 @@ import { ScriptPlayer, type ScriptRun, type ScriptVars } from "./script-player";
 import { GOAL_THEME, SEGMENT_ICON, tint } from "./script-theme";
 
 /** Escolha da fase (prospecção, venda, retorno) e do tipo de cliente, em botões com ícone; depois roda o roteiro. Shuffler e página Scripts. */
-export function ScriptPicker({ scripts, vars, goal, segmentHint, extra, onNote, onRun, onStep, endExtra }: { onStep?: (nodeId: string, path: string[]) => void; endExtra?: (ctx: { runId: string }) => React.ReactNode; scripts: ScriptDoc[]; vars: ScriptVars; extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; goal?: ScriptGoal; segmentHint?: string | null; onNote?: (note: string) => void; onRun?: (run: ScriptRun) => void }) {
+export function ScriptPicker({ facts, scripts, vars, goal, segmentHint, extra, onNote, onRun, onStep, endExtra }: { facts?: FactsApi; onStep?: (nodeId: string, path: string[]) => void; endExtra?: (ctx: { runId: string }) => React.ReactNode; scripts: ScriptDoc[]; vars: ScriptVars; extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; goal?: ScriptGoal; segmentHint?: string | null; onNote?: (note: string) => void; onRun?: (run: ScriptRun) => void }) {
   const [g, setG] = useState<ScriptGoal>(goal ?? "sdr");
   useEffect(() => { if (goal) setG(goal); }, [goal]); // outro lead pode pedir outra categoria
   /** Scripts que chegaram sem os passos (para a tela abrir rápido) e foram buscados ao escolher. */
@@ -62,7 +63,7 @@ export function ScriptPicker({ scripts, vars, goal, segmentHint, extra, onNote, 
           );
         })}
       </HScroll></div>}
-      {current && needs !== null ? <p className="rounded-xl bg-sunk px-3 py-6 text-center text-sm text-muted" role="status">{failed ? "Não consegui carregar este roteiro. Escolha outro ou tente de novo." : "Carregando o roteiro…"}</p> : current ? <ScriptPlayer script={current} vars={vars} extra={extra} onNote={onNote} onRun={onRun} onStep={onStep} endExtra={endExtra} floatingCenter /> : <p className="text-sm text-muted">Sem script para esta fase.</p>}
+      {current && needs !== null ? <p className="rounded-xl bg-sunk px-3 py-6 text-center text-sm text-muted" role="status">{failed ? "Não consegui carregar este roteiro. Escolha outro ou tente de novo." : "Carregando o roteiro…"}</p> : current ? <ScriptPlayer facts={facts} script={current} vars={vars} extra={extra} onNote={onNote} onRun={onRun} onStep={onStep} endExtra={endExtra} floatingCenter /> : <p className="text-sm text-muted">Sem script para esta fase.</p>}
     </div>
   );
 }

@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { ScrollText } from "lucide-react";
-import { btnGhost } from "@/components/ui";
+import { Play } from "lucide-react";
 
-/** Atalho "Roteiro": abre a ligação com roteiro para este lead, de qualquer tela onde ele apareça. */
+/**
+ * Atalho "Roteiro": abre a ligação com roteiro para este lead, de qualquer tela onde ele apareça.
+ * É a ação principal do sistema, então ganha cor, ícone de play e um brilho discreto (`roteiro-cta`).
+ */
 export function RoteiroLink({ leadId, area, compact = false, className }: { leadId: number; area?: "sdr" | "vendas"; compact?: boolean; className?: string }) {
   const href = `/roteiro/${leadId}${area ? `?area=${area}` : ""}`;
-  if (compact) return <Link prefetch={false} href={href} title="Ligar com roteiro" aria-label="Ligar com roteiro" className={className ?? "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold text-accent hover:bg-accent/10"}><ScrollText size={13} aria-hidden /> Roteiro</Link>;
-  return <Link prefetch={false} href={href} className={className ?? `${btnGhost} !min-h-9 !px-3.5 !text-sm`}><ScrollText size={15} aria-hidden /> Ligar com roteiro</Link>;
+  if (compact) return <Link prefetch={false} href={href} title="Ligar com roteiro" aria-label="Ligar com roteiro" className={`roteiro-cta inline-flex items-center gap-1.5 rounded-full bg-grad px-3 py-1 text-xs font-bold text-on-accent shadow-sm transition hover:brightness-110 active:scale-95 ${className ?? ""}`}><Play size={12} fill="currentColor" aria-hidden /> Roteiro</Link>;
+  return <Link prefetch={false} href={href} className={`roteiro-cta inline-flex min-h-10 items-center gap-2 rounded-xl bg-grad px-4 py-2 text-sm font-bold text-on-accent shadow-md transition hover:brightness-110 active:scale-95 ${className ?? ""}`}><Play size={15} fill="currentColor" aria-hidden /> Ligar com roteiro</Link>;
 }

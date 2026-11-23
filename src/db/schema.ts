@@ -336,6 +336,15 @@ export const leadPeople = pgTable(
     roleTitle: text("role_title"),
     extension: text("extension"),
     notes: text("notes"),
+    /** Papel na compra: portaria, secretaria, comprador, decisor, outro. */
+    roleKind: text("role_kind"),
+    /** Como e quando prefere ser contatado (aprendido nas ligações). */
+    preferredChannel: text("preferred_channel"),
+    bestTime: text("best_time"),
+    /** ativo | saiu (não trabalha mais lá) | invalido (número ou e-mail errado). */
+    status: text("status").notNull().default("ativo"),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    source: text("source").notNull().default("manual"),
     createdAt: now(),
   },
   (t) => [index("lead_people_lead_idx").on(t.leadId), index("lead_people_name_trgm").using("gin", sql`${t.name} gin_trgm_ops`)],
@@ -954,3 +963,83 @@ export const tasks = pgTable(
     uniqueIndex("tasks_run_key_uq").on(t.runId, t.runKey),
   ],
 );
+
+
+/* ───────────── Dados que o roteiro coleta ───────────── */
+
+/** Catálogo dos campos que o atendimento pode preencher (o Adm cria, edita e aprova sugestões). */
+export const fieldDefs = pgTable("field_defs", {
+  key: text("key").primaryKey(),
+  label: text("label").notNull(),
+  /** lista | multi | texto | numero | simnao */
+  kind: text("kind").notNull().default("lista"),
+  options: jsonb("options").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  /** lead = vale para a empresa; person = vale para o contato com quem se falou. */
+  scope: text("scope").notNull().default("lead"),
+  groupName: text("group_name").notNull().default("Perfil de compra"),
+  /** Depois de quantos dias o dado fica "velho" e vale confirmar de novo. Nulo = não vence. */
+  ttlDays: integer("ttl_days"),
+  /** Quanto maior, mais cedo o sistema pergunta. Recalculado pela inteligência. */
+  priority: integer("priority").notNull().default(50),
+  active: boolean("active").notNull().default(true),
+  /** system = de fábrica; admin = criado pelo Adm; sugestao = nasceu de uma sugestão aprovada. */
+  origin: text("origin").notNull().default("system"),
+  createdAt: now(),
+});
+
+/** Cada resposta guardada: só uma é a atual (current) por lead, pessoa e campo; as outras viram histórico. */
+export const leadFacts = pgTable(
+  "lead_facts",
+  {
+    id: serial("id").primaryKey(),
+    leadId: integer("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
+    personId: integer("person_id").references(() => leadPeople.id, { onDelete: "cascade" }),
+    key: text("key").notNull().references(() => fieldDefs.key, { onDelete: "cascade", onUpdate: "cascade" }),
+    value: text("value").notNull(),
+    /** 1 = informado, 2 = confirmado, 3 = confirmado em várias ligações. */
+    confidence: integer("confidence").notNull().default(1),
+    current: boolean("current").notNull().default(true),
+    source: text("source").notNull().default("roteiro"),
+    runId: text("run_id"),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: now(),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("lead_facts_current_uq").on(t.leadId, sql`coalesce(${t.personId}, 0)`, t.key).where(sql`${t.current}`),
+    index("lead_facts_lead_idx").on(t.leadId, t.current),
+    index("lead_facts_key_idx").on(t.key),
+  ],
+);
+
+/** Cada vez que uma pergunta foi feita, respondida, pulada, corrigida… (alimenta a inteligência). */
+export const fieldEvents = pgTable(
+  "field_events",
+  {
+    id: serial("id").primaryKey(),
+    key: text("key").notNull(),
+    leadId: integer("lead_id").references(() => leads.id, { onDelete: "cascade" }),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    /** asked | answered | skipped | unknown | confirmed | changed */
+    event: text("event").notNull(),
+    isTest: boolean("is_test").notNull().default(false),
+    createdAt: now(),
+  },
+  (t) => [index("field_events_key_idx").on(t.key, t.event, t.createdAt)],
+);
+
+/** Campos que o sistema propõe criar (a partir do que os vendedores escrevem). O Adm aprova ou recusa. */
+export const fieldSuggestions = pgTable("field_suggestions", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  label: text("label").notNull(),
+  kind: text("kind").notNull().default("simnao"),
+  options: jsonb("options").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  scope: text("scope").notNull().default("lead"),
+  /** Quantos leads diferentes citaram isso e alguns trechos reais. */
+  evidence: integer("evidence").notNull().default(0),
+  examples: jsonb("examples").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  /** pendente | aprovada | recusada */
+  status: text("status").notNull().default("pendente"),
+  createdAt: now(),
+});

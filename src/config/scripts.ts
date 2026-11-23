@@ -1,7 +1,7 @@
 /** Scripts de ligação: tipos e listas usados pelo editor, pelo player e pelo servidor (sem banco, o navegador também usa). */
 export type ScriptKind = "ok" | "objecao" | "neutro";
 import type { ScriptTask } from "@/config/tasks";
-export type ScriptOption = { /** Tarefas que esta resposta gera (ligar daqui a 2 dias, enviar e-mail…). Vazio = nenhuma, e ela dispensa o padrão do passo final. */ tasks?: ScriptTask[]; label: string; /** id do próximo passo; vazio = termina aqui. */ to: string | null; kind: ScriptKind; /** Anotação que esta resposta gera para a observação do lead (ex.: "Contato: decisor de compra"). */ note?: string };
+export type ScriptOption = { /** Dado que esta resposta grava no lead (campo do catálogo + valor). */ fact?: { key: string; value: string }; /** Tarefas que esta resposta gera (ligar daqui a 2 dias, enviar e-mail…). Vazio = nenhuma, e ela dispensa o padrão do passo final. */ tasks?: ScriptTask[]; label: string; /** id do próximo passo; vazio = termina aqui. */ to: string | null; kind: ScriptKind; /** Anotação que esta resposta gera para a observação do lead (ex.: "Contato: decisor de compra"). */ note?: string };
 /** O "papel" do passo na conversa: define ícone e cor na ligação. */
 export type ScriptMood = "abertura" | "ponte" | "confirma" | "pergunta" | "proposta" | "objecao" | "fideliza" | "fechamento" | "apoio";
 /** O jeito de falar: o caminho da conversa é o mesmo, muda o tom das frases. */
@@ -30,6 +30,8 @@ export type ScriptNode = {
   /** Tarefas padrão de um passo final (quando nenhuma resposta do caminho declarou as suas). */
   tasks?: ScriptTask[];
   /** Só para fim: o que fazer a seguir. */
+  /** Pergunta extra de dados: o vendedor escolhe/digita o que o cliente disse e isso grava no lead. */
+  ask?: { key: string; /** pergunta curta para o vendedor (se faltar, usa o nome do campo) */ q?: string }[];
   outcome?: "visita" | "cotacao" | "retorno" | "venda" | "encerrar";
 };
 export type ScriptDoc = { id: number; title: string; segment: string; goal: ScriptGoal; summary: string | null; nodes: ScriptNode[]; startId: string; global: boolean; mine: boolean; active: boolean };

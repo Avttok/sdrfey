@@ -1,5 +1,6 @@
 "use client";
 
+import type { FieldDefView } from "@/config/facts";
 import { AlertTriangle, ArrowDown, ArrowUp, ListChecks, Plus, Save, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { GOALS, MOOD_KEYS, moodOf, OUTCOMES, SEGMENTS, type ScriptDoc, type ScriptGoal, type ScriptNode } from "@/config/scripts";
@@ -34,7 +35,7 @@ function TasksField({ tasks, onChange, label }: { tasks: ScriptTask[] | undefine
 
 export const blankScript = (goal: ScriptGoal = "sdr"): ScriptDoc => ({ id: 0, title: "", segment: "geral", goal, summary: null, startId: "p1", global: false, mine: true, active: true, nodes: [{ id: "p1", type: "fala", title: "Abertura", say: "{saudacao}! Aqui é {meunome}, da Fey. Falo com {contato} da {empresa}?", options: [{ label: "Atendeu", to: "p2", kind: "ok" }], tip: "" }, { id: "p2", type: "fim", title: "Fim", say: "Registre o resultado.", options: [], outcome: "encerrar" }] });
 
-export function ScriptEditor({ initial, isAdmin, onClose }: { initial: ScriptDoc; isAdmin: boolean; onClose: () => void }) {
+export function ScriptEditor({ fields = [], initial, isAdmin, onClose }: { fields?: FieldDefView[]; initial: ScriptDoc; isAdmin: boolean; onClose: () => void }) {
   const [d, setD] = useState<ScriptDoc>(initial);
   const [test, setTest] = useState(false);
   const { run, pending } = useRun();
@@ -91,6 +92,8 @@ export function ScriptEditor({ initial, isAdmin, onClose }: { initial: ScriptDoc
               </div>
             ) : (
               <div className="space-y-1.5">
+                {fields.length > 0 && <div className="space-y-1 rounded-lg border border-dashed border-line p-2"><p className="text-xs font-semibold text-muted">Perguntas de dados neste passo (o vendedor anota e fica no lead)</p>
+                  <div className="flex flex-wrap gap-1.5">{fields.map((f) => { const on = !!n.ask?.some((a) => a.key === f.key); return <button key={f.key} type="button" aria-pressed={on} onClick={() => { const cur = n.ask ?? []; const next = on ? cur.filter((a) => a.key !== f.key) : cur.length >= 3 ? cur : [...cur, { key: f.key }]; setNode(i, { ask: next.length ? next : undefined }); }} className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition ${on ? "border-accent bg-accent/15 text-accent" : "border-line text-muted hover:text-ink"}`}>{f.label}</button>; })}</div></div>}
                 <p className="text-xs font-semibold text-muted">Respostas que o lead pode dar</p>
                 {n.options.map((o, k) => (
                   <div key={k} className="flex flex-wrap items-center gap-1.5">
@@ -100,6 +103,10 @@ export function ScriptEditor({ initial, isAdmin, onClose }: { initial: ScriptDoc
                     <input aria-label="Anotação automática" title="Texto que vai para a observação do atendimento quando esta resposta é escolhida" placeholder="Anotar na observação (opcional)" className={`${inputCls} !w-full sm:!w-56`} value={o.note ?? ""} maxLength={160} onChange={(e) => setNode(i, { options: n.options.map((x, j) => (j === k ? { ...x, note: e.target.value || undefined } : x)) })} />
                     <button type="button" aria-label="Remover resposta" className={`${btnGhost} text-danger`} onClick={() => setNode(i, { options: n.options.filter((_, j) => j !== k) })}><X size={14} /></button>
                     <div className="w-full pl-2"><TasksField label="Tarefas que esta resposta gera" tasks={o.tasks} onChange={(t) => setNode(i, { options: n.options.map((x, j) => (j === k ? { ...x, tasks: t } : x)) })} /></div>
+                    {fields.length > 0 && <div className="flex w-full flex-wrap items-center gap-1.5 pl-2 text-xs"><span className="font-semibold text-muted">Grava no lead:</span>
+                      <select aria-label="Campo que esta resposta grava" className={`${inputCls} !w-auto !min-h-8`} value={o.fact?.key ?? ""} onChange={(e) => { const d = fields.find((f) => f.key === e.target.value); setNode(i, { options: n.options.map((x, j) => (j === k ? { ...x, fact: d ? { key: d.key, value: d.options[0] ?? "Sim" } : undefined } : x)) }); }}><option value="">Nenhum campo</option>{fields.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}</select>
+                      {o.fact && (() => { const d = fields.find((f) => f.key === o.fact!.key); const set = (v: string) => setNode(i, { options: n.options.map((x, j) => (j === k ? { ...x, fact: { key: o.fact!.key, value: v } } : x)) }); return d && (d.kind === "lista" || d.kind === "multi") ? <select aria-label="Valor gravado" className={`${inputCls} !w-auto !min-h-8`} value={o.fact.value} onChange={(e) => set(e.target.value)}>{d.options.map((v) => <option key={v}>{v}</option>)}</select> : d?.kind === "simnao" ? <select aria-label="Valor gravado" className={`${inputCls} !w-auto !min-h-8`} value={o.fact.value} onChange={(e) => set(e.target.value)}><option>Sim</option><option>Não</option></select> : <input aria-label="Valor gravado" className={`${inputCls} !w-auto !min-h-8`} maxLength={120} value={o.fact.value} onChange={(e) => set(e.target.value)} />; })()}
+                    </div>}
                   </div>
                 ))}
                 {n.options.length < 10 && <button type="button" className={btnGhost} onClick={() => setNode(i, { options: [...n.options, { label: "", to: null, kind: "neutro" }] })}><Plus size={14} aria-hidden /> Resposta</button>}
