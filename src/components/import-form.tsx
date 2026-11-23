@@ -55,7 +55,7 @@ function StepTitle({ n, children, done }: { n: number; children: React.ReactNode
 export function ImportForm() {
   const toast = useToast();
   const [kind, setKind] = useState<"leads" | "reps">("leads");
-  const [leadKind, setLeadKind] = useState<"prospect" | "inativo">("prospect");
+  const [leadKind, setLeadKind] = useState<"prospect" | "inativo" | "global">("prospect");
   const [mode, setMode] = useState<"novos" | "nutrir" | "ambos">("ambos");
   const [file, setFile] = useState<File | null>(null);
   const [prev, setPrev] = useState<ImportPreview | null>(null);
@@ -69,6 +69,7 @@ export function ImportForm() {
   const current = KINDS.find((k) => k.key === kind)!;
 
   const check = (f?: File, m: typeof mode = mode) => start(async () => { const d = fd(f); d.set("mode", m); const r = await previewImportAction(d); setAck(false); setPrev(r); if (!r.ok) toast("bad", r.message); });
+  const changeKind = (k: typeof leadKind) => { setLeadKind(k); if (k === "global") { setMode("nutrir"); if (file && prev?.ok) check(undefined, "nutrir"); } };
   const changeMode = (m: typeof mode) => { setMode(m); if (file && prev?.ok) check(undefined, m); };
   const apply = () => start(async () => {
     const r = await applyImportAction(fd());
@@ -98,11 +99,12 @@ export function ImportForm() {
         </div>
         {kind === "leads" && (
           <div role="radiogroup" aria-label="Tipo dos leads" className="mt-3 inline-flex rounded-xl border border-line bg-sunk/50 p-1">
-            {([["prospect", "Novos (Shuffler Prospecção)"], ["inativo", "Inativos (Shuffler Vendas)"]] as const).map(([k, l]) => (
-              <button key={k} type="button" role="radio" aria-checked={leadKind === k} onClick={() => setLeadKind(k)} className={`min-h-9 rounded-lg px-4 text-sm font-medium transition ${leadKind === k ? "bg-grad text-on-accent shadow-sm" : "text-muted hover:text-ink"}`}>{l}</button>
+            {([["prospect", "Novos (Shuffler Prospecção)"], ["inativo", "Inativos (Shuffler Vendas)"], ["global", "Todos (SDR e Vendas) · só enriquecer"]] as const).map(([k, l]) => (
+              <button key={k} type="button" role="radio" aria-checked={leadKind === k} onClick={() => changeKind(k)} className={`min-h-9 rounded-lg px-4 text-sm font-medium transition ${leadKind === k ? "bg-grad text-on-accent shadow-sm" : "text-muted hover:text-ink"}`}>{l}</button>
             ))}
           </div>
         )}
+        {kind === "leads" && leadKind === "global" && <p className="mt-2 max-w-2xl text-sm text-muted">Completa os leads que já existem, estejam no Shuffler Prospecção ou no Vendas (telefone, e-mail, contato, tags, Id EOX e Id Salesforce). Ninguém novo é criado e nenhum dado existente é trocado.</p>}
         <div className="mt-4"><ImportExample {...EXAMPLES[kind]} fileName={EXAMPLES[kind].file} guide={kind === "leads" ? LEAD_GUIDE : REP_GUIDE} /></div>
       </section>
 
@@ -132,7 +134,7 @@ export function ImportForm() {
                   ["novos", "Importar só os novos", "Os que já estão no sistema ficam exatamente como estão (sem duplicar).", PlusCircle, `${nf.format(prev.fresh)} novos · ${nf.format(prev.existing)} ignorados`],
                   ["nutrir", "Só enriquecer os atuais", "Ninguém novo entra: só completa telefone, e-mail, contato e tags de quem já existe.", Sparkles, `${nf.format(prev.enrich)} enriquecidos · ${nf.format(prev.fresh)} não entram`],
                 ] as const).map(([k, t, d, I, c]) => (
-                  <button key={k} type="button" role="radio" aria-checked={mode === k} disabled={pending} onClick={() => changeMode(k)}
+                  <button key={k} type="button" role="radio" aria-checked={mode === k} disabled={pending || (leadKind === "global" && k !== "nutrir")} onClick={() => changeMode(k)}
                     className={`relative flex flex-col items-start gap-1.5 rounded-2xl border-2 p-4 text-left transition hover:-translate-y-0.5 ${mode === k ? "border-accent bg-grad-soft shadow-lg" : "border-line bg-panel hover:border-accent/50"}`}>
                     <span className="flex w-full items-center justify-between"><span className={`grid size-10 place-items-center rounded-xl ${mode === k ? "bg-grad text-on-accent" : "bg-sunk text-muted"}`}><I size={20} aria-hidden /></span>{mode === k && <span className="grid size-6 place-items-center rounded-full bg-accent text-on-accent"><Check size={14} aria-hidden /></span>}</span>
                     <span className="font-bold">{t}</span><span className="text-xs text-muted">{d}</span><span className="figure mt-1 rounded-full bg-sunk px-2.5 py-1 text-xs font-semibold">{c}</span>

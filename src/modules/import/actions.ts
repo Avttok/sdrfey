@@ -23,7 +23,9 @@ export type ImportPreview =
 export type ImportResult = { ok: boolean; message: string; details?: string[] };
 
 
-const modeOf = (formData: FormData): ImportMode => { const m = formData.get("mode"); return m === "novos" || m === "nutrir" ? m : "ambos"; };
+/** "Global" (SDR e Vendas) só enriquece: quem já existe, em qualquer um dos dois Shufflers; ninguém novo entra, porque não há como saber para qual Shuffler iria. */
+const isGlobal = (formData: FormData) => formData.get("leadKind") === "global";
+const modeOf = (formData: FormData): ImportMode => { if (isGlobal(formData)) return "nutrir"; const m = formData.get("mode"); return m === "novos" || m === "nutrir" ? m : "ambos"; };
 
 async function readFile(formData: FormData) {
   const file = formData.get("file");
