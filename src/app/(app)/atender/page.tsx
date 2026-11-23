@@ -16,6 +16,7 @@ import { activeList } from "@/modules/lists/queries";
 import { recosForLead } from "@/modules/recommendations/data";
 import { listScriptsFor } from "@/modules/scripts/list";
 import { guessSegment } from "@/config/scripts";
+import { suggestGoal } from "@/modules/scripts/goal";
 import { getActiveTemplates, getLeadView, getTagCatalog } from "@/modules/leads/view";
 
 export const metadata: Metadata = { title: "Shuffler Prospecção" };
@@ -48,13 +49,13 @@ export default async function AttendPage() {
   const goals = effectiveGoals(me, settings);
   const needExtra = goals.calls.on || goals.converted.on;
   // o que sobra também roda junto: cada ida ao banco em fila soma o tempo de rede
-  const [extraRows, available, al, myScripts] = await Promise.all([
+  const [extraRows, available, al, picked] = await Promise.all([
     needExtra ? db.execute<{ calls: number; converted: number }>(sql`select
       (select count(*) from interactions i where i.user_id = ${me.id} and not i.is_test and i.channel = 'ligacao' and i.at >= ${today})::int as calls,
       (select count(*) from deals d where d.sdr_id = ${me.id} and not d.is_test and d.created_at >= ${today})::int as converted`) : Promise.resolve([]),
     lead ? Promise.resolve(true) : hasAvailable(me.id, { skipRelease: true }),
     !lead && (me.permissions["tab.lista_flow"] || me.isAdmin) ? activeList(me.id, "sdr") : Promise.resolve(null),
-    lead ? listScriptsFor(me.id, "sdr", guessSegment(lead.tradeName, lead.company, lead.info?.activity)) : Promise.resolve([]),
+    lead ? suggestGoal(lead.id, "sdr").then(async (g) => ({ g, list: await listScriptsFor(me.id, g, guessSegment(lead.tradeName, lead.company, lead.info?.activity)) })) : Promise.resolve({ g: "sdr" as const, list: [] }),
   ]);
   const extra = { calls: extraRows[0]?.calls ?? 0, converted: extraRows[0]?.converted ?? 0 };
 
@@ -72,5 +73,5 @@ export default async function AttendPage() {
   }
 
   const previous = prev ? { by: prev.name ?? "Outra pessoa", at: new Date(prev.at).toISOString(), channels: prev.channels ?? [], note: prev.note } : null;
-  return <AttendFlow recos={recos} scripts={myScripts} autoEnrichOn={settings.auto_enrich === 1} lead={lead} catalog={catalog!} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={previous} doneToday={done?.n ?? 0} scheduledToday={sched?.n ?? 0} goals={goals} sellers={sellers} queue={{ on: settings.seller_queue_on === 1, nextId }} />;
+  return <AttendFlow scriptGoal={picked.g} recos={recos} scripts={picked.list} autoEnrichOn={settings.auto_enrich === 1} lead={lead} catalog={catalog!} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={previous} doneToday={done?.n ?? 0} scheduledToday={sched?.n ?? 0} goals={goals} sellers={sellers} queue={{ on: settings.seller_queue_on === 1, nextId }} />;
 }

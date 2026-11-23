@@ -17,7 +17,7 @@ import type { ScriptRun } from "@/components/script-player";
 import { TalkingTo } from "@/components/talking-to";
 import { LiveContacts } from "@/components/live-contacts";
 import type { CapturedChannel, CapturedPerson } from "@/modules/leads/capture";
-import { guessSegment, type ScriptDoc } from "@/config/scripts";
+import { guessSegment, type ScriptDoc, type ScriptGoal } from "@/config/scripts";
 import { LeadInfoPanel } from "@/components/lead-info-panel";
 import { TagChip } from "@/components/tag-chip";
 import { DestPicker, FinalActions, FlashTag, SellerQueue, TagDeck, VisitFields } from "@/components/attend-final";
@@ -78,7 +78,7 @@ const copy = async (text: string, toast: ReturnType<typeof useToast>) => {
   }
 };
 
-export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myName, showMap, previous, doneToday, scheduledToday, goals, sellers, sales, queue, scripts = [], recos = [] }: { /** Produtos para oferecer, por tipo de cliente. */ recos?: Reco[]; /** Scripts de ligação que a pessoa pode usar (do time e dela). */ scripts?: ScriptDoc[]; /** Fila de distribuição aos vendedores: ligada? e quem é o próximo. */ queue?: { on: boolean; nextId: number | null }; /** Consulta automática de CNPJ ligada pelo Adm: o shuffler não consulta sozinho. */ autoEnrichOn?: boolean; /** Modo vendedor (lead inativo): mesmo fluxo, destinos diferentes no fim. */ sales?: { shuffleId: number }; sellers: { id: number; name: string }[]; lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; previous: PreviousAttendance | null; doneToday: number; scheduledToday: number; goals: Goals }) {
+export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myName, showMap, previous, doneToday, scheduledToday, goals, sellers, sales, queue, scripts = [], recos = [], scriptGoal }: { /** Categoria do roteiro que combina com a situação do lead. */ scriptGoal?: ScriptGoal; /** Produtos para oferecer, por tipo de cliente. */ recos?: Reco[]; /** Scripts de ligação que a pessoa pode usar (do time e dela). */ scripts?: ScriptDoc[]; /** Fila de distribuição aos vendedores: ligada? e quem é o próximo. */ queue?: { on: boolean; nextId: number | null }; /** Consulta automática de CNPJ ligada pelo Adm: o shuffler não consulta sozinho. */ autoEnrichOn?: boolean; /** Modo vendedor (lead inativo): mesmo fluxo, destinos diferentes no fim. */ sales?: { shuffleId: number }; sellers: { id: number; name: string }[]; lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; previous: PreviousAttendance | null; doneToday: number; scheduledToday: number; goals: Goals }) {
   const toast = useToast();
   const vocall = useVocall();
   const [pending, start] = useTransition();
@@ -441,7 +441,7 @@ export function AttendFlow({ autoEnrichOn = false, lead, catalog, templates, myN
                 </div>
                 <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
                 {scripts.length > 0
-                  ? <ScriptPicker scripts={scripts} goal={sales ? "vendas" : "sdr"} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} extra={(nid, pick) => (nid === "nome" || nid === "transferido") ? (
+                  ? <ScriptPicker scripts={scripts} goal={scriptGoal ?? (sales ? "vendas" : "sdr")} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} extra={(nid, pick) => (nid === "nome" || nid === "transferido") ? (
                   <TalkingTo value={spoken ?? callPerson?.name ?? ""} people={allPeople} knownId={allPeople.find((x) => x.name.trim().toLowerCase() === talkingTo.toLowerCase())?.id ?? null} leadId={lead.id}
                   onChange={(v) => { setSpoken(v); const m = allPeople.find((x) => x.name.trim().toLowerCase() === v.trim().toLowerCase()); if (m) setTalkingId(m.id); }}
                   onEnter={() => pick(0)} onSaved={(p) => { setExtraPeople((l) => [...l.filter((x) => x.id !== p.id), p]); setTalkingId(p.id); setSpoken(null); }} />

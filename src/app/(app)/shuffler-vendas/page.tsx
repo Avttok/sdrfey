@@ -10,6 +10,7 @@ import { effectiveGoals } from "@/modules/settings/goals";
 import { startSalesListAction } from "@/modules/lists/actions";
 import { activeList } from "@/modules/lists/queries";
 import { recosForLead } from "@/modules/recommendations/data";
+import { suggestGoal } from "@/modules/scripts/goal";
 import { listScriptsFor } from "@/modules/scripts/list";
 import { guessSegment } from "@/config/scripts";
 import { getActiveTemplates, getLeadView, getTagCatalog } from "@/modules/leads/view";
@@ -25,7 +26,8 @@ export default async function SalesShufflePage() {
   if (open) {
     // mesmo fluxo do SDR (perfil, e-mail, WhatsApp, ligação, finalizar), só que com os destinos do vendedor
     const [lead, catalog, templates, settings, recos] = await Promise.all([getLeadView(open.leadId), getTagCatalog(), getActiveTemplates(me.id), getSettings(), recosForLead(open.leadId).catch(() => [])]);
-    if (lead) return <AttendFlow recos={recos} scripts={await listScriptsFor(me.id, "vendas", guessSegment(lead.tradeName, lead.company, lead.info?.activity))} autoEnrichOn={settings.auto_enrich === 1} sales={{ shuffleId: open.id }} lead={lead} catalog={catalog} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={null} doneToday={0} scheduledToday={0} goals={effectiveGoals(me, settings)} sellers={[]} />;
+    const scriptGoal = await suggestGoal(open.leadId, "vendas");
+    if (lead) return <AttendFlow scriptGoal={scriptGoal} recos={recos} scripts={await listScriptsFor(me.id, scriptGoal, guessSegment(lead.tradeName, lead.company, lead.info?.activity))} autoEnrichOn={settings.auto_enrich === 1} sales={{ shuffleId: open.id }} lead={lead} catalog={catalog} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={null} doneToday={0} scheduledToday={0} goals={effectiveGoals(me, settings)} sellers={[]} />;
   }
 
   const today = sql`(date_trunc('day', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo')`;

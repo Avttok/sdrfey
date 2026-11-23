@@ -11,6 +11,7 @@ import { GOAL_THEME, SEGMENT_ICON, tint } from "./script-theme";
 /** Escolha da fase (prospecção, venda, retorno) e do tipo de cliente, em botões com ícone; depois roda o roteiro. Shuffler e página Scripts. */
 export function ScriptPicker({ scripts, vars, goal, segmentHint, extra, onNote, onRun, endExtra }: { endExtra?: (ctx: { runId: string }) => React.ReactNode; scripts: ScriptDoc[]; vars: ScriptVars; extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; goal?: ScriptGoal; segmentHint?: string | null; onNote?: (note: string) => void; onRun?: (run: ScriptRun) => void }) {
   const [g, setG] = useState<ScriptGoal>(goal ?? "sdr");
+  useEffect(() => { if (goal) setG(goal); }, [goal]); // outro lead pode pedir outra categoria
   /** Scripts que chegaram sem os passos (para a tela abrir rápido) e foram buscados ao escolher. */
   const [full, setFull] = useState<Record<number, ScriptDoc>>({});
   const list = useMemo(() => scripts.filter((s) => s.goal === g).map((s) => full[s.id] ?? s), [scripts, g, full]);
