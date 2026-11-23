@@ -1,3 +1,4 @@
+import { leadTouches } from "@/modules/touches/queries";
 import { eoxBaseUrl, eoxProfileUrl } from "@/modules/eox/sync";
 import { and, asc, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { bubbleHex } from "@/config/theme";
@@ -23,12 +24,13 @@ export async function getTagCatalog(): Promise<TagCatalog> {
 export async function getLeadView(leadId: number) {
   const [lead] = await db.select().from(leads).where(eq(leads.id, leadId));
   if (!lead) return null;
-  const [tagRows, channels, people, visitRows, rep] = await Promise.all([
+  const [tagRows, channels, people, visitRows, rep, touches] = await Promise.all([
     db.select({ id: tags.id, groupKey: tags.groupKey, key: tags.key, label: tags.label, color: tags.color }).from(leadTags).innerJoin(tags, eq(tags.id, leadTags.tagId)).innerJoin(tagGroups, eq(tagGroups.key, tags.groupKey)).where(and(eq(leadTags.leadId, leadId), eq(tags.active, true))).orderBy(asc(tagGroups.sort), asc(tags.sort), asc(tags.label)),
     db.select().from(leadChannels).where(eq(leadChannels.leadId, leadId)).orderBy(asc(leadChannels.id)),
     db.select().from(leadPeople).where(eq(leadPeople.leadId, leadId)).orderBy(asc(leadPeople.id)),
     db.select({ id: visits.id, code: visits.code, createdAt: visits.createdAt, visitDate: visits.visitDate, link: visits.link, repName: visits.repName, repSap: visits.repSap, repCity: visits.repCity, repKm: visits.repKm, kind: visits.kind, sellerName: sql<string | null>`(select name from users su where su.id = ${visits.sellerId})`, userId: visits.userId, canceledAt: visits.canceledAt, status: visits.status, confirmedAt: visits.confirmedAt, by: users.name, byId: users.id, byAccent: users.accent, byRoles: users.roles }).from(visits).leftJoin(users, eq(users.id, visits.userId)).where(eq(visits.leadId, leadId)).orderBy(desc(visits.id)),
     nearestRep(lead.city, lead.uf),
+    leadTouches(leadId),
   ]);
   const info = mergeInfo(parseBrasilApi(lead.brasilApiData), parseReceitaWs(lead.receitaWsData));
   return {
@@ -60,6 +62,7 @@ export async function getLeadView(leadId: number) {
     info,
     brasilApi: lead.brasilApiData ?? null,
     receitaWs: lead.receitaWsData ?? null,
+    touches,
     tags: tagRows,
     channels: channels.map((c) => ({ id: c.id, personId: c.personId, kind: c.kind, value: c.value, label: c.label, origin: c.origin, wrong: c.wrong })),
     people: people.map((p) => ({ id: p.id, name: p.name, roleTitle: p.roleTitle, extension: p.extension, status: p.status })),

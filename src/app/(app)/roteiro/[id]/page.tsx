@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 const GOALS: ScriptGoal[] = ["sdr", "vendas", "retorno", "fidelizar", "reativar", "visita"];
 
 /** Roteiro de ligação com qualquer lead, fora do shuffler: para acertar cotação, fechar pedido, confirmar visita… */
-export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ area?: string; goal?: string }> }) {
+export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ area?: string; goal?: string; evento?: string }> }) {
   const me = await requireUser();
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
@@ -40,7 +40,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     select stage, quote_number, value_cents, next_action_at, next_action_note from deals where lead_id = ${id} and stage not in ('ganho','perdido') and not is_test order by id desc limit 1`);
   const [visit] = await db.execute<{ visit_date: string | null; rep_name: string | null }>(sql`
     select visit_date::text, rep_name from visits where lead_id = ${id} and canceled_at is null order by id desc limit 1`);
-  return <LeadCall knowledge={await loadKnowledge(id)} lead={lead} scripts={scripts} goal={goal} area={area} myName={me.name}
+  const eventId = /^\d{1,9}$/.test(sp.evento ?? "") ? Number(sp.evento) : null;
+  return <LeadCall eventId={eventId} knowledge={await loadKnowledge(id)} lead={lead} scripts={scripts} goal={goal} area={area} myName={me.name}
     deal={deal ? { stage: deal.stage, quote: deal.quote_number, valueCents: deal.value_cents, nextAt: deal.next_action_at ? new Date(deal.next_action_at).toISOString() : null, nextNote: deal.next_action_note } : null}
     visit={visit ? { date: visit.visit_date, rep: visit.rep_name } : null} />;
 }

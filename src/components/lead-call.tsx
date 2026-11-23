@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TalkingTo } from "@/components/talking-to";
 import type { CapturedPerson } from "@/modules/leads/capture";
 import { CalendarCheck, Copy, ExternalLink, FileText, MapPin, Phone, ScrollText } from "lucide-react";
@@ -21,12 +21,14 @@ import type { DealStage } from "@/db/schema";
 import { fmtCnpj, fmtDate, fmtDateTime, fmtPhone } from "@/lib/format";
 import type { LeadView } from "@/modules/leads/view";
 import { saveScriptRunAction, type ScriptRunInput } from "@/modules/scripts/runs";
+import { attachRunAction } from "@/modules/touches/actions";
+import { Timer } from "@/components/call-ui";
 
 type Run = Omit<ScriptRunInput, "isTest">;
 
 /** Roteiro de ligação com um lead, em qualquer momento: os dados ficam ao lado e o resultado vira tarefa. */
-export function LeadCall({ knowledge, lead, scripts, goal, area, myName, deal, visit }: {
-  knowledge: Knowledge; lead: LeadView; scripts: ScriptDoc[]; goal: ScriptGoal; area: "sdr" | "vendas"; myName: string;
+export function LeadCall({ eventId, knowledge, lead, scripts, goal, area, myName, deal, visit }: {
+  eventId?: number | null; knowledge: Knowledge; lead: LeadView; scripts: ScriptDoc[]; goal: ScriptGoal; area: "sdr" | "vendas"; myName: string;
   deal: { stage: string; quote: string | null; valueCents: number | null; nextAt: string | null; nextNote: string | null } | null;
   visit: { date: string | null; rep: string | null } | null;
 }) {
@@ -40,6 +42,13 @@ export function LeadCall({ knowledge, lead, scripts, goal, area, myName, deal, v
   const [spoken, setSpoken] = useState<string | null>(null);
   const person = (talkingId ? allPeople.find((p) => p.id === talkingId) : null) ?? allPeople[0] ?? null;
   const talkingTo = (spoken ?? person?.name ?? "").trim();
+  // a ligação do VocallPhone acompanha o roteiro: o número discado indica com quem se fala
+  const live = vocall.configured ? vocall.call : null;
+  const liveDigits = live ? live.telefone.replace(/\D/g, "").replace(vocall.prefix ? new RegExp(`^${vocall.prefix.replace(/\D/g, "")}`) : /^$/, "") : "";
+  const liveChannel = liveDigits ? lead.channels.find((c) => c.kind === "phone" && c.value.replace(/\D/g, "").slice(-8) === liveDigits.slice(-8)) : null;
+  const livePersonId = liveChannel?.personId ?? null;
+  const lastLive = useRef<string>("");
+  useEffect(() => { if (livePersonId && lastLive.current !== liveDigits) { lastLive.current = liveDigits; setTalkingId(livePersonId); setSpoken(null); } }, [livePersonId, liveDigits]);
   const facts = useLeadFacts({ leadId: lead.id, defs: knowledge.defs, initial: knowledge.facts, isTest: false, personId: person?.id ?? null });
   /** Cada transferência traz uma pessoa nova: o campo esvazia; voltar um passo devolve o nome. */
   const beforeTransfer = useRef<{ name: string; id: number | null }[]>([]);
@@ -56,14 +65,23 @@ export function LeadCall({ knowledge, lead, scripts, goal, area, myName, deal, v
     }
   };
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const attached = useRef(false);
   const keep = (r: Run) => {
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => { void saveScriptRunAction(lead.id, r, area).catch(() => {}); }, r.finished ? 100 : 1200);
+    timer.current = setTimeout(() => { void saveScriptRunAction(lead.id, r, area).catch(() => {}); if (eventId && !attached.current) { attached.current = true; void attachRunAction(eventId, r.runId).catch(() => {}); } }, r.finished ? 100 : 1200);
   };
   const name = lead.tradeName ?? lead.company;
   const stage = deal ? STAGE_META[deal.stage as DealStage] : null;
   return (
     <div className="space-y-4">
+      {live && liveChannel && (
+        <div role="status" className={`flex flex-wrap items-center gap-3 rounded-2xl border px-4 py-2.5 text-sm ${live.endedAt ? "border-line bg-panel" : "border-ok/40 bg-ok/10"}`}>
+          <Phone size={16} className={live.endedAt ? "text-muted" : "text-ok"} aria-hidden />
+          <span className="font-semibold">{live.endedAt ? "Ligação encerrada" : "Em chamada"} · {fmtPhone(liveDigits)}{person ? ` · ${person.name}` : ""}</span>
+          <Timer since={live.since} endedAt={live.endedAt} />
+          {live.endedAt && live.qualUrl && <a href={live.qualUrl} target="_blank" rel="noopener noreferrer" className={`${btnGhost} ml-auto !min-h-9 !px-3`}><ExternalLink size={14} aria-hidden /> Qualificar na EOX</a>}
+        </div>
+      )}
       <PageHead icon={ScrollText} title="Roteiro com o lead" subtitle="Ligue para este cliente com o roteiro à frente. Ao terminar, o que ficou combinado vira tarefa." />
       <div className="grid gap-4 lg:grid-cols-[22rem_1fr]">
         <aside className="space-y-3">
@@ -91,7 +109,7 @@ export function LeadCall({ knowledge, lead, scripts, goal, area, myName, deal, v
             <ul className="space-y-2">{phones.map((p) => (
               <li key={p.id} className="flex items-center gap-2 rounded-xl bg-sunk p-2">
                 <span className="min-w-0 flex-1 truncate font-semibold">{fmtPhone(p.value)}</span>
-                <button type="button" className={`${btnGhost} !min-h-9 !px-3`} onClick={() => { const pe = p.personId ? lead.people.find((x) => x.id === p.personId) : null; if (pe) setTalkingId(pe.id); void callNumber(p.value.replace(/\D/g, ""), pe?.name ?? name, toast, vocall, lead); }}><Phone size={15} aria-hidden /> Ligar</button>
+                <button type="button" className={`${btnGhost} !min-h-9 !px-3`} onClick={() => { const pe = p.personId ? lead.people.find((x) => x.id === p.personId) : null; if (pe) setTalkingId(pe.id); void callNumber(p.value.replace(/\D/g, ""), pe?.name ?? name, toast, vocall, lead, pe?.id ?? null); }}><Phone size={15} aria-hidden /> Ligar</button>
                 <button type="button" aria-label="Copiar número" className={`${btnGhost} !min-h-9 !px-2.5`} onClick={() => void copy(p.value, toast)}><Copy size={15} aria-hidden /></button>
               </li>))}</ul>
           </section>

@@ -9,7 +9,7 @@ import { roleKindOf } from "@/modules/facts/contacts";
 import type { EoxCompany } from "./planilha";
 
 export type EoxBatchResult =
-  | { ok: true; found: number; missing: number; created: number; ids: number; codes: number; filled: number; info: number; phones: number; emails: number; people: number }
+  | { ok: true; missingRows: { cnpj: string; company: string; code: string | null }[]; found: number; missing: number; created: number; ids: number; codes: number; filled: number; info: number; phones: number; emails: number; people: number }
   | { ok: false; message: string };
 
 const MAX_BATCH = 400;
@@ -50,7 +50,8 @@ export async function importEoxBatchAction(input: EoxCompany[], apply: boolean, 
     res.people += (c.people ?? []).length;
   }
   if (create) res.created = absent.length;
-  if (!apply) return { ok: true, ...res };
+  const missingRows = absent.slice(0, 400).map((c) => ({ cnpj: c.cnpj, company: c.company, code: c.code }));
+  if (!apply) return { ok: true, missingRows, ...res };
 
   await db.transaction(async (tx) => {
     const now = new Date();
@@ -141,7 +142,7 @@ export async function importEoxBatchAction(input: EoxCompany[], apply: boolean, 
     await logAudit(tx, { userId: me.id, entity: "import", action: "importou planilha da EOX", field: batchLabel.slice(0, 80), newValue: `${todo.length} leads; Id ${res.ids}, código ${res.codes}, retrato ${res.info}, contatos ${res.people}${create ? `, criados ${res.created}` : ""}` });
   });
   revalidatePath("/leads");
-  return { ok: true, ...res };
+  return { ok: true, missingRows, ...res };
 }
 
 /** Abre o registro da importação (para poder desfazer depois). Devolve o número do lote. */

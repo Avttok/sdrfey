@@ -1,6 +1,7 @@
 "use client";
 
 import { callNumber } from "@/components/call-number";
+import { trackTouch } from "@/lib/touch-bus";
 import { Timer, UserRound, Flag, Ban, Building2, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Send, Plus, RotateCcw, History, SkipForward, ScrollText, Square, TriangleAlert, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -220,6 +221,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
   const copyAndOpen = async () => {
     await copyFormatted();
     const to = emailTo || goodEmails[0]?.value;
+    if (to) void trackTouch({ leadId: lead.id, channel: "email", target: to, label: lead.tradeName ?? lead.company });
     if (tpl && to) window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(renderTemplate(tpl.subject, vars))}`;
   };
 
@@ -388,7 +390,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                 <div className="flex flex-wrap gap-2">
                   <button type="button" className={btnPrimary} onClick={copyAndOpen}><Send size={16} aria-hidden /> Copiar e abrir e-mail</button>
                   <button type="button" className={btnGhost} onClick={copyFormatted}><Copy size={16} aria-hidden /> Só copiar</button>
-                  {mail && <a href={mail} onClick={() => setUsed(new Set(used).add("email"))} className={btnGhost}><ExternalLink size={16} aria-hidden /> Abrir com texto simples</a>}
+                  {mail && <a href={mail} onClick={() => { setUsed(new Set(used).add("email")); const to = emailTo || goodEmails[0]?.value; if (to) void trackTouch({ leadId: lead.id, channel: "email", target: to, label: lead.tradeName ?? lead.company }); }} className={btnGhost}><ExternalLink size={16} aria-hidden /> Abrir com texto simples</a>}
                 </div>
                 <p className="text-xs text-muted">“Copiar e abrir e-mail” copia o corpo formatado (negrito, cores e imagens) e abre o e-mail com destinatário e assunto prontos: é só colar com Ctrl+V.</p>
               </>
@@ -404,7 +406,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
               {goodPhones.map((p) => (
                 <li key={p.id} className="lift flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-sunk/60 px-4 py-3"><span aria-hidden className="grid size-10 place-items-center rounded-xl bg-ok/15 text-ok"><MessageCircle size={18} /></span>
                   <span className="flex-1"><CopyVal text={p.value}><span className="figure text-lg">{fmtPhone(p.value)}</span></CopyVal></span>
-                  <a href={chatproUrl(p.value)} target="_blank" rel="noreferrer" onClick={() => setUsed(new Set(used).add("whatsapp"))} className={btnPrimary}><MessageCircle size={16} aria-hidden /> Abrir no ChatPro</a>
+                  <a href={chatproUrl(p.value)} target="_blank" rel="noreferrer" onClick={() => { setUsed(new Set(used).add("whatsapp")); void trackTouch({ leadId: lead.id, channel: "whatsapp", target: p.value, label: lead.tradeName ?? lead.company, personId: p.personId ?? null }); }} className={btnPrimary}><MessageCircle size={16} aria-hidden /> Abrir no ChatPro</a>
                 </li>
               ))}
               {goodPhones.length === 0 && <li className="text-sm text-muted">Sem telefone válido.</li>}
@@ -430,7 +432,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                       <span className="figure block text-lg leading-tight">{fmtPhone(p.value)}</span>
                       <span className="block truncate text-xs text-muted">{who ? <><UserRound size={11} aria-hidden className="mr-0.5 inline" />{who.name}{who.roleTitle ? ` · ${who.roleTitle}` : ""}</> : "Sem contato indexado"}</span>
                     </button>
-                    <button type="button" className={btnPrimary} onClick={() => { setCallId(p.id); void callNumber(p.value, lead.tradeName ?? lead.company, toast, vocall, lead); setUsed(new Set(used).add("ligacao")); }}><Phone size={15} aria-hidden /> Ligar</button>
+                    <button type="button" className={btnPrimary} onClick={() => { setCallId(p.id); void callNumber(p.value, lead.tradeName ?? lead.company, toast, vocall, lead, p.personId ?? null); setUsed(new Set(used).add("ligacao")); }}><Phone size={15} aria-hidden /> Ligar</button>
                     <button type="button" className={btnGhost} aria-label="Copiar número" onClick={() => { void copy(p.value, toast); setUsed(new Set(used).add("ligacao")); }}><Copy size={15} aria-hidden /> Copiar</button>
                   </li>
                 );

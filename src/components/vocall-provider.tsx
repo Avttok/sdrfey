@@ -4,6 +4,7 @@ import { ExternalLink, Loader2, PhoneCall, PhoneOff, X } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { VocallConfig } from "@/modules/vocall/config";
 import { estadoLabel, Timer } from "@/components/call-ui";
+import { hintLastCall } from "@/lib/touch-bus";
 import { PhoneDock } from "@/components/phone-dock";
 import { qualificationUrl, type EoxRef } from "@/modules/vocall/eox";
 
@@ -39,6 +40,9 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
   const loginWait = useRef<((ok: boolean) => void)[]>([]);
   const callWait = useRef<((ok: boolean) => void)[]>([]);
   const alive = useRef(true);
+  /** Quando a chamada foi atendida (para saber duração) e se o painel de resultado já foi avisado. */
+  const answeredAt = useRef<number | null>(null);
+  const hinted = useRef(true);
   const { host, port, secure, dac, senha, prefix } = cfg;
 
   /** Corta a conexão e solta quem estava esperando. Pode ser chamada quantas vezes quiser. */
@@ -75,6 +79,7 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
   }, [hangup, dismissIn]);
 
   const finish = useCallback((estado: string) => {
+    if (!hinted.current) { hinted.current = true; const a = answeredAt.current; hintLastCall(a != null, a != null ? Math.round((Date.now() - a) / 1000) : null); }
     // a chamada acabou: o cronômetro para; a central costuma pedir a qualificação logo em seguida
     setCall((c) => (c ? { ...c, estado, endedAt: c.endedAt ?? Date.now() } : c));
     clearTimeout(timers.current.clear);
@@ -108,6 +113,7 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
         clearTimeout(timers.current.idle); timers.current.idle = setTimeout(() => hangup("idle"), IDLE_MS);
       } else if (m.action === "chamada" && m.data) {
         const d = m.data as { telefone?: string; estado?: string; cliente?: { label?: string } | false };
+        if (/^atendid/i.test(d.estado ?? "") && !answeredAt.current) answeredAt.current = Date.now();
         clearTimeout(timers.current.idle); clearTimeout(timers.current.clear);
         callWait.current.splice(0).forEach((r) => r(true));
         setCall((c) => ({ telefone: String(d.telefone ?? c?.telefone ?? ""), empresa: (d.cliente && typeof d.cliente === "object" ? d.cliente.label : null) ?? c?.empresa ?? null, estado: d.estado ?? null, since: c && c.telefone === d.telefone ? c.since : Date.now() }));
@@ -137,7 +143,7 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
   }, [hangup, host, port, secure, dac, senha, agentId, ramal]);
 
   const dial = useCallback(async (phone: string, label?: string | null, eox?: EoxRef | null) => {
-    eoxRef.current = eox ?? null;
+    eoxRef.current = eox ?? null; answeredAt.current = null; hinted.current = false;
     const digits = phone.replace(/\D/g, "");
     if (digits.length < 8) return false;
     const s = await connect();

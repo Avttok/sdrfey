@@ -9,7 +9,7 @@ import { ClientHistoryView } from "@/components/deals/client-history";
 import { SectionCard } from "@/components/section-card";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
-import { chatproUrl, fmtPhone } from "@/lib/format";
+import { MailAction, PhoneActions } from "@/components/channel-actions";
 import type { ClientHistory } from "@/modules/deals/history";
 import { finishSalesShuffleAction, openDealFromShuffleAction, startSalesShuffleAction } from "@/modules/sales/actions";
 
@@ -37,12 +37,9 @@ export function SalesShuffleFlow({ shuffleId, h }: { shuffleId: number; h: Clien
               <p className="text-xs font-medium text-muted">Telefones</p>
               {l.phones.length === 0 && <p className="text-muted">Nenhum telefone.</p>}
               {l.phones.map((p) => (
-                <p key={p} className="flex flex-wrap items-center gap-2">
-                  <a href={`tel:+55${p}`} className="figure font-medium hover:text-accent">{fmtPhone(p)}</a>
-                  <a href={chatproUrl(p)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full bg-ok/15 px-2 py-0.5 text-xs font-semibold text-ok hover:brightness-110"><MessageCircle size={12} aria-hidden /> WhatsApp</a>
-                </p>
+                <p key={p}><PhoneActions lead={{ id: l.id, eoxUrl: l.eoxUrl }} value={p} label={l.tradeName ?? l.company} /></p>
               ))}
-              {l.email && <p className="flex items-center gap-2 pt-1"><Mail size={14} className="text-muted" aria-hidden /><a href={`mailto:${l.email}`} className="truncate hover:text-accent">{l.email}</a></p>}
+              {l.email && <p className="pt-1"><MailAction leadId={l.id} email={l.email} label={l.tradeName ?? l.company} /></p>}
             </div>
             <div className="grid grid-cols-2 content-start gap-2">
               <div className="col-span-2"><ClientIds leadId={l.id} eoxId={l.eoxId} eoxCode={l.eoxCode} sfId={l.sfId} eoxUrl={l.eoxUrl} canEdit={false} /></div>

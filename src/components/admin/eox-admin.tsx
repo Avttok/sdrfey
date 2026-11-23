@@ -1,14 +1,13 @@
 "use client";
 
-import { Loader2, PlugZap, RefreshCw, Save } from "lucide-react";
+import { Loader2, PlugZap, Save } from "lucide-react";
 import { useState } from "react";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { useRun } from "@/components/use-run";
-import { saveEoxConfigAction, syncEoxNowAction, testEoxAction } from "@/modules/eox/actions";
+import { saveEoxConfigAction, testEoxAction } from "@/modules/eox/actions";
 import type { EoxConfig } from "@/modules/eox/config";
-import type { EoxSyncState } from "@/modules/eox/sync";
 
-export function EoxAdmin({ initial, hasKey: hadKey, sync, coverage }: { initial: EoxConfig; hasKey: boolean; sync: EoxSyncState; coverage: { total: number; without: number } }) {
+export function EoxConnection({ initial, hasKey: hadKey }: { initial: EoxConfig; hasKey: boolean }) {
   const [c, setC] = useState(initial);
   // o que está salvo agora (a chave nunca volta do servidor: só sabemos se existe)
   const [base, setBase] = useState(initial);
@@ -25,7 +24,7 @@ export function EoxAdmin({ initial, hasKey: hadKey, sync, coverage }: { initial:
     <div className="space-y-4">
       <section className={`${panelCls} space-y-4 p-5`}>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="min-w-0 flex-1"><h2 className="font-semibold">Buscar o cadastro de cada lead na EOX</h2><p className="text-sm text-muted">O sistema procura o CNPJ de cada lead na EOX e guarda o link do cadastro no lead. É isso que faz o Atendimento da EOX abrir depois da ligação. Nunca troca um link que já foi preenchido.</p></div>
+          <div className="min-w-0 flex-1"><h2 className="font-semibold">Conexão com a EOX</h2><p className="text-sm text-muted">Usuário e chave da API da EOX. Com ela, o sistema acha o cadastro de cada lead (Código EOX), em lotes ou na hora da ligação.</p></div>
           <button type="button" role="switch" aria-checked={c.on} aria-label="Integração com a EOX" onClick={() => set("on", !c.on)} className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${c.on ? "bg-ok" : "bg-line"}`}><span className={`absolute top-0.5 size-6 rounded-full bg-white shadow transition-all ${c.on ? "left-[1.5rem]" : "left-0.5"}`} /></button>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -57,11 +56,6 @@ export function EoxAdmin({ initial, hasKey: hadKey, sync, coverage }: { initial:
         )}
       </section>
 
-      <section className={`${panelCls} space-y-3 p-5`}>
-        <h2 className="font-semibold">Sincronização</h2>
-        <p className="text-sm text-muted">Roda sozinha todo dia de manhã e também na hora em que alguém liga para um lead sem link. Hoje <b>{coverage.total - coverage.without}</b> de <b>{coverage.total}</b> leads têm o link da EOX.{sync.at && <> Última rodada: {new Date(sync.at).toLocaleString("pt-BR")} ({sync.lastLinked} novos, {sync.lastScanned} cadastros lidos).</>}</p>
-        <button type="button" className={btnGhost} disabled={busy !== null || !base.on || dirty} onClick={async () => { setBusy("sync"); const r = await syncEoxNowAction(); setBusy(null); setMsg({ ok: r.ok, text: r.message ?? "" }); }}>{busy === "sync" ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <RefreshCw size={14} aria-hidden />} Sincronizar agora</button>
-      </section>
     </div>
   );
 }

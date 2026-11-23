@@ -49,7 +49,7 @@ const clean = (v: unknown): string => String(v ?? "").trim().replace(/\s+/g, " "
 const nameKey = (v: unknown): string => stripAccents(clean(v)).toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim();
 const digitsOrNull = (v: unknown): string | null => { const d = onlyDigits(v); return d && d !== "0" ? d : null; };
 
-export type Parsed = { companies: EoxCompany[]; skipped: number; withoutCnpj: number; linkedRecords: number; ambiguous: number; people: number; };
+export type Parsed = { companies: EoxCompany[]; skipped: number; withoutCnpj: number; linkedRecords: number; ambiguous: number; people: number; duplicates: number; withCode: number; blocked: number; customers: number; contactsOrphan: number; contactsTotal: number };
 
 /** Junta Empresas (+ Contatos, se houver). O Id do registro vem dos Contatos, ligado pelo nome da empresa quando só há uma com aquele nome. */
 export function parseEoxSheets(empresas: { headers: string[]; rows: Row[] }, contatos?: { headers: string[]; rows: Row[] } | null): Parsed {
@@ -63,7 +63,8 @@ export function parseEoxSheets(empresas: { headers: string[]; rows: Row[] }, con
 
   const out: EoxCompany[] = [];
   const byName = new Map<string, EoxCompany[]>();
-  let skipped = 0, withoutCnpj = 0;
+  let skipped = 0, withoutCnpj = 0, duplicates = 0;
+  const byCnpj = new Map<string, EoxCompany>();
   for (const r of empresas.rows) {
     const cnpj = normalizeCnpj(r[cCnpj]).cnpj;
     if (!cnpj) { r[cCnpj] ? withoutCnpj++ : skipped++; continue; }
@@ -79,12 +80,22 @@ export function parseEoxSheets(empresas: { headers: string[]; rows: Row[] }, con
       city: clean((r[cCity!] ?? "")) || null, uf: clean((r[cUf!] ?? "")).toUpperCase().slice(0, 2) || null,
       isCustomer: info["Tipo"] === "Customer", info, people: [],
     };
+    // o mesmo CNPJ em duas linhas (filial repetida, cadastro duplicado): junta numa só, o primeiro valor vale
+    const dup = byCnpj.get(cnpj);
+    if (dup) {
+      duplicates++;
+      dup.code ??= co.code; dup.email ??= co.email; dup.tradeName ??= co.tradeName; dup.address ??= co.address; dup.neighborhood ??= co.neighborhood; dup.zip ??= co.zip; dup.city ??= co.city; dup.uf ??= co.uf;
+      for (const p of co.phones) if (!dup.phones.includes(p)) dup.phones.push(p);
+      for (const [k2, v] of Object.entries(co.info)) dup.info[k2] ??= v;
+      continue;
+    }
+    byCnpj.set(cnpj, co);
     out.push(co);
     const k = nameKey(co.company);
     if (k) byName.set(k, [...(byName.get(k) ?? []), co]);
   }
 
-  let linkedRecords = 0, ambiguous = 0, people = 0;
+  let linkedRecords = 0, ambiguous = 0, people = 0, contactsOrphan = 0;
   if (contatos) {
     const c = pick(contatos.headers);
     const kRec = c("idEmpresa"), kCompany = c("Nome Empresa"), kName = c("Nome");
@@ -96,7 +107,7 @@ export function parseEoxSheets(empresas: { headers: string[]; rows: Row[] }, con
       if (!id || !k) continue;
       (recs.get(k) ?? recs.set(k, new Set()).get(k)!).add(id);
       const list = byName.get(k);
-      if (list?.length !== 1 || !kName) continue;
+      if (list?.length !== 1 || !kName) { contactsOrphan++; continue; }
       const nm = clean(r[kName]);
       if (!nm) continue;
       const phones: string[] = [];
@@ -112,7 +123,7 @@ export function parseEoxSheets(empresas: { headers: string[]; rows: Row[] }, con
       if (list.length === 1 && ids.size === 1) { list[0].recordId = [...ids][0]; linkedRecords++; } else ambiguous++;
     }
   }
-  return { companies: out, skipped, withoutCnpj, linkedRecords, ambiguous, people };
+  return { companies: out, skipped, withoutCnpj, linkedRecords, ambiguous, people, duplicates, withCode: out.filter((c) => c.code).length, blocked: out.filter((c) => isBlocked(c.info)).length, customers: out.filter((c) => c.isCustomer).length, contactsOrphan, contactsTotal: contatos?.rows.length ?? 0 };
 }
 
 /** "R$ 1.234,56" → 1234.56 (ou null). */

@@ -5,6 +5,7 @@ import { RoteiroLink } from "@/components/roteiro-link";
 
 import { ClientIds } from "@/components/client-ids";
 import { EoxInfoCard } from "@/components/eox-info";
+import { StatLine, TouchTimeline } from "@/components/touch-timeline";
 import { ArrowLeft, Ban, CalendarCheck, Copy, ExternalLink, Handshake, Link2, MapPin, Pencil, Phone, Plus, Tag, Trash2, RotateCcw, UnlockKeyhole, Users } from "lucide-react";
 import Link from "next/link";
 import { SectionCard } from "@/components/section-card";
@@ -102,11 +103,13 @@ export function LeadEditor({ kpis, records, afterLeft, afterRight, lead, catalog
       <SectionCard icon={Link2} title="Na EOX"><EoxInfoCard info={lead.eoxInfo} syncedAt={lead.eoxSyncedAt} /></SectionCard>
       <SectionCard icon={Link2} title="Ids do cliente"><ClientIds leadId={lead.id} eoxId={lead.eoxId} eoxCode={lead.eoxCode} sfId={lead.sfId} eoxUrl={lead.eoxUrl} /></SectionCard>
 
+      <SectionCard icon={Phone} title="Contatos feitos"><TouchTimeline rows={lead.touches.rows} /></SectionCard>
+
       <SectionCard icon={Phone} title="Contatos">
         <ul className="space-y-1.5">
           {lead.channels.map((c) => (
             <li key={c.id} className={`flex items-center gap-2 rounded-lg bg-sunk px-3 py-2 text-sm ${c.wrong ? "line-through opacity-60" : ""}`}>
-              <span className="flex-1 break-all">{c.kind === "phone" ? fmtPhone(c.value) : c.value} <span className="text-xs text-muted">{c.origin !== "import" ? c.origin : ""}</span></span>
+              <span className="flex-1 break-all">{c.kind === "phone" ? fmtPhone(c.value) : c.value} <span className="text-xs text-muted">{c.origin !== "import" ? c.origin : ""}</span><br />{lead.touches.stats.filter((x) => x.target === (c.kind === "phone" ? c.value.replace(/\D/g, "") : c.value.toLowerCase()) && (c.kind === "email") === (x.channel === "email")).map((x) => <span key={x.channel} className="mr-2"><StatLine stat={x} /></span>)}</span>
               <button type="button" aria-label="Copiar" onClick={() => copy(c.value)}><Copy size={15} /></button>
               {canEdit && <><button type="button" aria-label="Marcar como errado" onClick={() => run(() => markWrongAction(lead.id, c.id, !c.wrong))}><Ban size={15} /></button>
               <button type="button" aria-label="Remover" onClick={() => ask({ title: "Remover este contato?", body: `${c.kind === "phone" ? fmtPhone(c.value) : c.value} será removido do cadastro do lead.`, label: "Sim, remover", icon: Trash2, onConfirm: () => run(() => removeChannelAction(lead.id, c.id), "Contato removido.") })}><Trash2 size={15} /></button></>}

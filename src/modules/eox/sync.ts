@@ -124,3 +124,56 @@ export async function ensureEoxId(leadId: number, userId: number | null): Promis
     return rec;
   } catch { return null; }
 }
+
+export type EoxStep = { ok: boolean; message: string; phase: "direct" | "scan"; linked: number; checked: number; done: boolean; remaining: number; total: number };
+
+/** Quantos leads (reais) ainda não têm Código EOX, e quantos são no total. */
+export async function eoxRemaining(): Promise<{ remaining: number; total: number }> {
+  const [r] = await db.execute<{ remaining: number; total: number }>(sql`select count(*) filter (where eox_id is null)::int as remaining, count(*)::int as total from leads where is_test = false`);
+  return { remaining: Number(r?.remaining ?? 0), total: Number(r?.total ?? 0) };
+}
+
+/**
+ * Um passo da varredura da base inteira (chamado em loop pela tela, ou pelo cron). Retoma de onde parou.
+ *  - direct: pergunta à EOX por cada lead sem Código EOX (ID EOX e depois CNPJ);
+ *  - scan: lê os cadastros da EOX de 100 em 100 e liga pelos CNPJs/IDs que já temos.
+ */
+export async function eoxStep(phase: "direct" | "scan", opts: { budgetMs?: number; userId?: number | null; restart?: boolean } = {}): Promise<EoxStep> {
+  const cfg = await loadEox();
+  const stat = await eoxRemaining();
+  const base = { phase, linked: 0, checked: 0, done: false, ...stat };
+  if (!eoxReady(cfg)) return { ...base, ok: false, message: "Integração com a EOX desligada ou incompleta." };
+  let s: EoxSession;
+  try { s = await eoxLogin(cfg); } catch (e) { return { ...base, ok: false, message: `Não entrei na EOX: ${(e as Error).message}` }; }
+  const st = await loadSyncState();
+  const deadline = Date.now() + (opts.budgetMs ?? 20_000);
+  let linked = 0, checked = 0, done = false;
+  try {
+    if (phase === "direct") {
+      const t = await lookupMissingIds(db, s, deadline, opts.restart ? 0 : st.cursor, opts.userId ?? null);
+      linked = t.linked; checked = t.checked; done = t.done;
+      await db.insert(settings).values({ key: EOX_SYNC_KEY, value: { ...st, cursor: t.cursor, at: new Date().toISOString() } }).onConflictDoUpdate({ target: settings.key, set: { value: { ...st, cursor: t.cursor, at: new Date().toISOString() }, updatedAt: new Date() } });
+    } else {
+      let offset = opts.restart ? 0 : st.offset;
+      while (Date.now() < deadline) {
+        const { rows, end } = await eoxAccountsPage(s, offset);
+        checked += rows.length; offset += 100;
+        const m = new Map<string, string>(), mc = new Map<string, string>();
+        for (const r of rows) {
+          if (r.cnpj) { const p = m.get(r.cnpj); if (!p || Number(r.record) > Number(p)) m.set(r.cnpj, r.record); }
+          if (r.code) { const p = mc.get(r.code); if (!p || Number(r.record) > Number(p)) mc.set(r.code, r.record); }
+        }
+        linked += await linkLeads(db, m, mc, opts.userId ?? null);
+        // quem já tem o Código mas não tem o ID EOX recebe o ID que a EOX informa
+        const codes = rows.filter((r) => r.code);
+        if (codes.length) await db.execute(sql`update leads l set eox_code = v.code from (values ${sql.join(codes.map((r) => sql`(${r.record}::text, ${r.code}::text)`), sql`, `)}) as v(rec, code) where l.eox_id = v.rec and l.eox_code is null`);
+        if (end) { done = true; offset = 0; break; }
+      }
+      const v = { ...st, offset, at: new Date().toISOString(), round: st.round + (done ? 1 : 0) };
+      await db.insert(settings).values({ key: EOX_SYNC_KEY, value: v }).onConflictDoUpdate({ target: settings.key, set: { value: v, updatedAt: new Date() } });
+    }
+  } catch (e) { return { ...base, ok: false, linked, checked, message: `A EOX parou de responder: ${(e as Error).message}` }; }
+  invalidateSettings();
+  const after = await eoxRemaining();
+  return { ok: true, phase, linked, checked, done, ...after, message: done ? "Varredura completa." : "Continua…" };
+}

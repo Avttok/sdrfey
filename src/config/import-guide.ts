@@ -91,3 +91,30 @@ export const CARRIER_GUIDE: GuideCol[] = [
   { col: "CONTATO", what: "Nome ou telefone da transportadora.", alias: ["TELEFONE", "FONE"] },
   { col: "OBS", what: "Texto livre, como dia de coleta.", alias: ["OBSERVACAO", "OBSERVACOES"] },
 ];
+
+/** Planilha de Empresas exportada da EOX (Admin → Integração com a EOX → Importar). */
+export const EOX_EMPRESAS_GUIDE: GuideCol[] = [
+  { col: "CNPJ", required: true, what: "Liga a linha ao lead. Linhas sem CNPJ válido são ignoradas.", format: "00.000.000/0001-91" },
+  { col: "EMPRESA", required: true, what: "Nome da empresa. Também liga os Contatos à empresa (pelo nome, quando só há uma com aquele nome)." },
+  { col: "IdEOX", what: "ID EOX: número que acha o cadastro no site da EOX (ex.: 117805). Não serve para ligar nem qualificar.", alias: ["ID EOX"], format: "117805" },
+  { col: "Telefone", what: "Telefones da empresa (também lê Outro Telefone, Telefone Alternativo e WhatsApp).", format: "(47) 99999-0000" },
+  { col: "Email", what: "E-mail da empresa.", alias: ["Email Alternativo"] },
+  { col: "Nome Fantasia", what: "Entra se o lead ainda não tem (ou sempre, se marcar “sobrescrever”)." },
+  { col: "Endereço / Número / Bairro / CEP / Cidade / Estado Faturamento", what: "Endereço de faturamento. Completa o que está vazio no lead." },
+  { col: "Tipo", what: "Customer = cliente da Fey; Prospect = ainda não comprou. Aparece no retrato da EOX e define Vendas × Prospecção em leads criados.", values: ["Customer", "Prospect", "Lead"] },
+  { col: "Discagens bloqueadas", what: "Sim = a EOX proíbe ligar. O Ligar pergunta antes e o sorteio pula o lead.", values: ["Sim", "Não"] },
+  { col: "Motivo bloqueio", what: "Por que a discagem foi bloqueada." },
+  { col: "Código Vendedor / Descrição Vendedor / Responsável", what: "Quem cuida do cliente na EOX." },
+  { col: "Classificação ABC, Segmento, Porte, Avaliação", what: "Retrato do cliente na EOX." },
+  { col: "Data/Valor Último Pedido e Faturamento, Ticket Médio, Recompra Média, Dias Venda, Situação Financeira, Saldo Devedor…", what: "Retrato de compras e financeiro, mostrado na ficha do lead e no telefone." },
+];
+
+/** Planilha de Contatos exportada da EOX. */
+export const EOX_CONTATOS_GUIDE: GuideCol[] = [
+  { col: "idEmpresa", required: true, what: "Código EOX: número do perfil da empresa (o record= do link). É o que o sistema usa para ligar e qualificar.", format: "1293925" },
+  { col: "Nome Empresa", required: true, what: "Liga o contato à empresa da planilha de Empresas, pelo nome." },
+  { col: "Nome", what: "Pessoa. Vira um contato do lead, sem duplicar." },
+  { col: "Cargo", what: "Define o papel na compra (portaria, secretaria, comprador, dono…)." },
+  { col: "Celular / Telefone Escritório / Residencial / Alternativo", what: "Telefones da pessoa. Quando você liga para o número, o telefone mostra quem costuma atender.", format: "(47) 99999-0000" },
+  { col: "Email", what: "E-mail da pessoa." },
+];

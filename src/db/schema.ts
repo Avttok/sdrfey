@@ -414,6 +414,35 @@ export const interactions = pgTable(
   (t) => [index("interactions_at_idx").on(t.at), index("interactions_user_idx").on(t.userId), index("interactions_lead_idx").on(t.leadId, t.at)],
 );
 
+/**
+ * Cada tentativa de contato (ligação, WhatsApp, e-mail) com um número ou e-mail específico, e como terminou.
+ * Nasce "em aberto" quando a pessoa liga/envia; o resultado é perguntado logo depois (ou depois, pela ficha).
+ */
+export const contactEvents = pgTable(
+  "contact_events",
+  {
+    id: serial("id").primaryKey(),
+    leadId: integer("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    /** Com quem se falou (ou para quem foi), quando se sabe. */
+    personId: integer("person_id").references(() => leadPeople.id, { onDelete: "set null" }),
+    channel: text("channel").$type<"call" | "whatsapp" | "email">().notNull(),
+    /** Telefone só com dígitos, ou e-mail em minúsculas. */
+    target: text("target").notNull(),
+    /** Nulo = ainda não registrado. Valores em config/touches. */
+    outcome: text("outcome"),
+    note: text("note"),
+    /** Duração da ligação em segundos (quando o VocallPhone informa). */
+    durationSec: integer("duration_sec"),
+    /** Ligação do roteiro (script_runs.run_id) usada nesse contato. */
+    runId: text("run_id"),
+    isTest: boolean("is_test").notNull().default(false),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (t) => [index("contact_events_lead_idx").on(t.leadId, t.at), index("contact_events_user_idx").on(t.userId, t.at), index("contact_events_open_idx").on(t.userId).where(sql`outcome is null`)],
+);
+
 /** Uma passada do usuário por um lead: base do tempo médio e da meta. */
 export const attendanceSessions = pgTable(
   "attendance_sessions",

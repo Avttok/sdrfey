@@ -14,7 +14,8 @@ import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { DEAL_EVENT_LABEL, fmtBRL, OPEN_STAGES, STAGE_META } from "@/config/deals";
 import type { DealStage } from "@/db/schema";
-import { chatproUrl, fmtDateTime, fmtPhone } from "@/lib/format";
+import { MailAction, PhoneActions } from "@/components/channel-actions";
+import { fmtDateTime } from "@/lib/format";
 import { claimDealAction, closeDealAction, logContactAction, reassignDealAction, reopenDealAction, saveDealDataAction, deleteDealAction, resetDealAction, returnDealToSdrAction, setDealColorAction, setStageAction } from "@/modules/deals/actions";
 import { QuoteCard, QuoteEditor, QuoteValues, type QuoteView } from "./quote-card";
 import { useRouter } from "next/navigation";
@@ -89,12 +90,9 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, icmsPct
               <p className="text-xs font-medium text-muted">Telefones</p>
               {list.length === 0 && <p className="text-muted">Nenhum telefone.</p>}
               {list.map((p) => (
-                <p key={p} className="flex flex-wrap items-center gap-2">
-                  <a href={`tel:+55${p}`} className="figure font-medium hover:text-accent">{fmtPhone(p)}</a>
-                  <a href={chatproUrl(p)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full bg-ok/15 px-2 py-0.5 text-xs font-semibold text-ok hover:brightness-110"><MessageCircle size={12} aria-hidden /> WhatsApp</a>
-                </p>
+                <p key={p}><PhoneActions lead={{ id: deal.leadId, eoxUrl: deal.eoxUrl }} value={p} label={deal.company} /></p>
               ))}
-              {deal.email && <p className="flex items-center gap-2 pt-1"><Mail size={14} className="text-muted" aria-hidden /><a href={`mailto:${deal.email}`} className="truncate hover:text-accent">{deal.email}</a></p>}
+              {deal.email && <p className="pt-1"><MailAction leadId={deal.leadId} email={deal.email} label={deal.company} /></p>}
             </div>
             <div className="space-y-1.5">
               <p className="text-xs font-medium text-muted">Ids do cliente</p>
