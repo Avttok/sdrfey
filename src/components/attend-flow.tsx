@@ -1,7 +1,7 @@
 "use client";
 
 import { callNumber } from "@/components/call-number";
-import { flushTouches, queuedTouches, trackTouch, type TouchDone } from "@/lib/touch-bus";
+import { flushTouches, pendingTouches, trackTouch, useTouchScope, type TouchDone } from "@/lib/touch-bus";
 import { Timer, UserRound, Flag, Ban, Building2, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Send, Plus, RotateCcw, History, SkipForward, ScrollText, Square, TriangleAlert, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -209,15 +209,36 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
     if (miss.length === 0) { toggle(used, key, setUsed); return; }
     const total = targetsOf(key).length;
     const what = key === "email" ? "e-mails" : key === "whatsapp" ? "WhatsApps" : "números";
-    toast("warn", queuedTouches(lead.id, ch) ? `Responda como foi cada contato. Faltam ${miss.length} de ${total} ${what}.` : `Faltam ${miss.length} de ${total} ${what} para marcar.`);
+    toast("warn", pendingTouches(lead.id, ch) ? `Responda como foi cada contato. Faltam ${miss.length} de ${total} ${what}.` : `Faltam ${miss.length} de ${total} ${what} para marcar.`);
   };
+  /** Canal que cada etapa do shuffler cuida (E-mail, WhatsApp, Ligação); a de Finalizar aceita os três (tags dos meios de contato). */
+  const STEP_CHANNEL: Record<number, "email" | "whatsapp" | "call" | undefined> = { 1: "email", 2: "whatsapp", 3: "call" };
+  useTouchScope(lead.id, step === 4 ? ["email", "whatsapp", "call"] : STEP_CHANNEL[step] ? [STEP_CHANNEL[step]!] : []);
+  /** Etapa para onde a pessoa quis ir, esperando responder as perguntas pendentes. */
+  const advanceTo = useRef<number | null>(null);
+  useEffect(() => {
+    const f = () => {
+      const to = advanceTo.current; const ch = STEP_CHANNEL[step];
+      if (to == null || !ch || pendingTouches(lead.id, ch) > 0) return;
+      advanceTo.current = null; setTimeout(() => goRef.current(to), 0);
+    };
+    window.addEventListener("fey:touch-change", f);
+    return () => window.removeEventListener("fey:touch-change", f);
+  }); // eslint-disable-line react-hooks/exhaustive-deps
+  const goRef = useRef<(n: number) => void>(() => {});
   const go = (n: number) => {
     if (step === 0 && n > 0) void startedAction(lead.id);
-    if (n > step) { flushTouches(lead.id, "whatsapp"); flushTouches(lead.id, "email"); flushTouches(lead.id, "call"); } // ao avançar, pergunta o resultado do que foi enviado
+    if (n > step) {
+      // ao avançar, pergunta o resultado do que foi enviado nesta etapa; só segue quando responder ou pular
+      const ch = STEP_CHANNEL[step];
+      if (ch) { flushTouches(lead.id, ch, true); if (pendingTouches(lead.id, ch) > 0) { advanceTo.current = n; return; } }
+    }
+    advanceTo.current = null;
     const to = Math.min(Math.max(n, 0), STEPS.length - 1);
     dir.current = to >= step ? "fwd" : "back";
     setStep(to);
   };
+  goRef.current = go;
 
   const tpl = templates.find((t) => t.id === tplId);
   /** Telefone em uso na ligação: se ele tem um contato indexado, o roteiro fala com essa pessoa. */
@@ -534,7 +555,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
         )}
       </div>
 
-      <div className="sticky bottom-3 z-40 flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-panel/90 p-3 shadow-lg backdrop-blur lg:px-[5.5rem]">
+      <div className="sticky bottom-3 z-40 flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-panel/90 p-3 shadow-lg backdrop-blur lg:mx-[4.75rem]">
         <button type="button" className={`${btnPrimary} !bg-grad-danger !text-white`} disabled={pending} onClick={() => run(() => leave(releaseThis))}><Square size={15} aria-hidden /> Parar</button>
         <button type="button" className={btnGhost} disabled={pending} title="Esconde este lead só de você por 24 h e não conta na meta" onClick={() => ask({ title: "Pular este lead?", body: "Ele fica escondido só de você por 24 h e não conta na meta. Você recebe o próximo.", label: "Sim, pular", tone: "warn", icon: SkipForward, onConfirm: seek })}><SkipForward size={16} aria-hidden /> Pular lead</button>
         <span className="flex-1" />
