@@ -7,7 +7,7 @@ import { useRun } from "@/components/use-run";
 import { fmtDateTime } from "@/lib/format";
 import { undoImportBatchAction, type BatchRow } from "@/modules/import/history";
 
-const KIND: Record<string, string> = { leads: "Leads novos", inativos: "Leads inativos", reps: "Representantes", deals: "Negociações", carriers: "Transportadoras" };
+const KIND: Record<string, string> = { leads: "Leads novos", inativos: "Leads inativos", reps: "Representantes", deals: "Negociações", carriers: "Transportadoras", eox: "Planilhas da EOX" };
 
 export function ImportHistory({ rows }: { rows: BatchRow[] }) {
   const { run, pending } = useRun();
@@ -21,8 +21,8 @@ export function ImportHistory({ rows }: { rows: BatchRow[] }) {
             <li key={r.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-sm">
               <div className="min-w-0 flex-1"><p className="truncate font-medium">{r.fileName}</p><p className="text-xs text-muted">{KIND[r.kind] ?? r.kind} · {r.user ?? "—"} · {fmtDateTime(new Date(r.at))}</p></div>
               <p className="figure text-xs text-muted">{r.total.toLocaleString("pt-BR")} no arquivo · <b className="text-ink">{r.inserted.toLocaleString("pt-BR")}</b> entraram · {r.skipped.toLocaleString("pt-BR")} pulados</p>
-              {r.undoneAt ? <span className="rounded-full bg-sunk px-2.5 py-1 text-xs text-muted">Desfeito · {r.undoneCount} apagados</span>
-                : r.canUndo ? <button type="button" className={btnGhost} disabled={pending} onClick={() => ask({ title: "Desfazer esta importação?", body: `Apaga os leads criados por ${r.fileName} que ninguém trabalhou ainda${r.touched ? ` (${r.touched} já foram trabalhados e ficam)` : ""}. Não dá para refazer.`, label: "Sim, desfazer", icon: Undo2, tone: "warn", onConfirm: () => run(() => undoImportBatchAction(r.id)) })}><Undo2 size={14} aria-hidden /> Desfazer</button> : null}
+              {r.undoneAt ? <span className="rounded-full bg-sunk px-2.5 py-1 text-xs text-muted">Desfeito · {r.undoneCount} {r.kind === "eox" ? "leads revertidos" : "apagados"}</span>
+                : r.canUndo ? <button type="button" className={btnGhost} disabled={pending} onClick={() => ask({ title: "Desfazer esta importação?", body: r.kind === "eox" ? `Os leads alterados por ${r.fileName} voltam ao que eram antes (Ids, endereço, telefones, retrato da EOX e contatos importados). Leads criados que ninguém trabalhou são apagados.` : `Apaga os leads criados por ${r.fileName} que ninguém trabalhou ainda${r.touched ? ` (${r.touched} já foram trabalhados e ficam)` : ""}. Não dá para refazer.`, label: "Sim, desfazer", icon: Undo2, tone: "warn", onConfirm: () => run(() => undoImportBatchAction(r.id)) })}><Undo2 size={14} aria-hidden /> Desfazer</button> : null}
             </li>
           ))}
         </ul>

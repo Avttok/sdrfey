@@ -16,7 +16,8 @@ export const callNumber = async (digits: string, label: string | null, toast: Re
     let url = lead?.eoxUrl ?? null;
     if (!url && lead) url = await ensureEoxLinkAction(lead.id).catch(() => null);
     const eox = parseEoxUrl(url);
-    toast("info", eox ? "Pedindo a ligação ao VocallPhone…" : "Este lead não tem o Id da EOX: a ligação sai, mas o Atendimento na EOX não vai abrir.");
+    if (!eox && !window.confirm("Este lead não tem Código EOX, então a ligação NÃO gera qualificação.\n\nLigar mesmo assim?")) return;
+    toast("info", eox ? "Pedindo a ligação ao VocallPhone…" : "Ligando sem Código EOX: não vai gerar qualificação.");
     if (await vocall.dial(digits, label, eox)) { toast("ok", "Ligando pelo VocallPhone."); return; }
     toast("warn", "O VocallPhone não confirmou. Número copiado: cole no app e dê Enter.");
   } else toast("info", "Número copiado. No VocallPhone, cole (Ctrl+V) e dê Enter.");

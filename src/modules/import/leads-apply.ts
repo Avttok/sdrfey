@@ -1,5 +1,5 @@
 import { inArray, sql } from "drizzle-orm";
-import { db, leadChannels, leadPeople, leads, leadTags, tagGroups, tags, users, type Db } from "@/db";
+import { importUndo, db, leadChannels, leadPeople, leads, leadTags, tagGroups, tags, users, type Db } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import type { LeadDraft, TagRef } from "./leads-parse";
 import { stripAccents } from "./normalize";
@@ -174,12 +174,14 @@ type EnrichPlan = {
   channels: (typeof leadChannels.$inferInsert)[];
   people: (typeof leadPeople.$inferInsert)[];
   tagLinks: (typeof leadTags.$inferInsert)[];
+  /** Como cada campo estava antes (para desfazer a importação). */
+  befores: { id: number; before: Record<string, unknown> }[];
   audits: Parameters<typeof logAudit>[1] & unknown[];
 };
 
 /** Só LÊ: descobre o que cada lead que já existe receberia da planilha. Nada é gravado aqui (serve à simulação e à importação). */
 async function planEnrich(q: Q, drafts: LeadDraft[], opts: { importedBy: number | null; sourceName: string }): Promise<EnrichPlan> {
-  const plan: EnrichPlan = { touched: 0, fills: [], channels: [], people: [], tagLinks: [], audits: [] };
+  const plan: EnrichPlan = { touched: 0, fills: [], channels: [], people: [], tagLinks: [], befores: [], audits: [] };
   const tagRows = await q.select().from(tags);
   const tagId = new Map(tagRows.map((t) => [`${t.groupKey}:${t.key}`, t.id]));
   const norm = (x: string) => stripAccents(x).trim().toUpperCase();
@@ -199,8 +201,8 @@ async function planEnrich(q: Q, drafts: LeadDraft[], opts: { importedBy: number 
       const fill: Partial<typeof leads.$inferInsert> = {};
       const added: string[] = [];
       if (d.sapCode && !l.sapCode) { fill.sapCode = d.sapCode; added.push("Código SAP"); }
-      if (d.eoxId && !l.eoxId) { fill.eoxId = d.eoxId; added.push("Id EOX"); }
-      if (d.eoxCode && !l.eoxCode) { fill.eoxCode = d.eoxCode; added.push("Código EOX"); }
+      if (d.eoxId && !l.eoxId) { fill.eoxId = d.eoxId; added.push("Código EOX"); }
+      if (d.eoxCode && !l.eoxCode) { fill.eoxCode = d.eoxCode; added.push("ID EOX"); }
       if (d.sfId && !l.sfId) { fill.sfId = d.sfId; added.push("Id Salesforce"); }
       if (d.contactName && !l.contactName) { fill.contactName = d.contactName; added.push("Contato"); }
       if (d.roleTitle && !l.roleTitle) { fill.roleTitle = d.roleTitle; added.push("Cargo"); }
@@ -217,7 +219,7 @@ async function planEnrich(q: Q, drafts: LeadDraft[], opts: { importedBy: number 
       for (const k of links) tagKeys.add(`${l.id}|${k.tagId}`);
       if (links.length) { plan.tagLinks.push(...links); added.push(`${links.length} tag(s)`); }
       if (!added.length) continue;
-      if (Object.keys(fill).length) plan.fills.push({ id: l.id, fill });
+      if (Object.keys(fill).length) { plan.fills.push({ id: l.id, fill }); plan.befores.push({ id: l.id, before: Object.fromEntries(Object.keys(fill).map((k) => [k, (l as Record<string, unknown>)[k] ?? null])) }); }
       plan.audits.push({ userId: opts.importedBy, leadId: l.id, entity: "lead" as const, action: "completado pela importação", field: added.join(", "), meta: { arquivo: opts.sourceName } });
       plan.touched++;
     }
@@ -228,7 +230,7 @@ async function planEnrich(q: Q, drafts: LeadDraft[], opts: { importedBy: number 
 const FILL_COLS: Record<string, string> = { sapCode: "sap_code", eoxId: "eox_id", eoxCode: "eox_code", sfId: "sf_id", contactName: "contact_name", roleTitle: "role_title", email: "email", notes: "notes", legacyVisit: "legacy_visit", company: "company" };
 
 /** Grava o plano em poucas consultas grandes (uma por coluna e por lote), em vez de uma por lead. */
-async function enrichExisting(tx: Parameters<Parameters<Db["transaction"]>[0]>[0], drafts: LeadDraft[], opts: { importedBy: number | null; sourceName: string }): Promise<number> {
+async function enrichExisting(tx: Parameters<Parameters<Db["transaction"]>[0]>[0], drafts: LeadDraft[], opts: { importedBy: number | null; sourceName: string; batchId?: number }): Promise<number> {
   const plan = await planEnrich(tx, drafts, opts);
   for (const [key, col] of Object.entries(FILL_COLS)) {
     const rows = plan.fills.flatMap((f) => { const v = (f.fill as Record<string, unknown>)[key]; return typeof v === "string" ? [{ id: f.id, v }] : []; });
@@ -236,9 +238,12 @@ async function enrichExisting(tx: Parameters<Parameters<Db["transaction"]>[0]>[0
   }
   const ph = plan.fills.flatMap((f) => (f.fill.phones ? [{ id: f.id, v: JSON.stringify(f.fill.phones) }] : []));
   for (const part of chunk(ph, 500)) await tx.execute(sql`update leads set phones = (select coalesce(array_agg(x), '{}') from jsonb_array_elements_text(v.val::jsonb) x), updated_at = now() from (values ${sql.join(part.map((r) => sql`(${r.id}::int, ${r.v}::text)`), sql`, `)}) as v(id, val) where leads.id = v.id`);
-  for (const rows of chunk(plan.channels, 2000)) await tx.insert(leadChannels).values(rows).onConflictDoNothing();
-  for (const rows of chunk(plan.people, 2000)) await tx.insert(leadPeople).values(rows);
-  for (const rows of chunk(plan.tagLinks, 2000)) await tx.insert(leadTags).values(rows);
+  const bid = opts.batchId;
+  const note = async (kind: "lead_fill" | "channel" | "person" | "tag_link", rows: { refId: number; before?: unknown }[]) => { for (const part of chunk(rows, 2000)) if (bid && part.length) await tx.insert(importUndo).values(part.map((r) => ({ batchId: bid, kind, refId: r.refId, before: (r.before ?? null) as never }))); };
+  await note("lead_fill", plan.befores.map((b) => ({ refId: b.id, before: b.before })));
+  for (const rows of chunk(plan.channels, 2000)) await note("channel", (await tx.insert(leadChannels).values(rows).onConflictDoNothing().returning({ id: leadChannels.id })).map((r) => ({ refId: r.id })));
+  for (const rows of chunk(plan.people, 2000)) await note("person", (await tx.insert(leadPeople).values(rows).returning({ id: leadPeople.id })).map((r) => ({ refId: r.id })));
+  for (const rows of chunk(plan.tagLinks, 2000)) { await tx.insert(leadTags).values(rows); await note("tag_link", rows.map((r) => ({ refId: r.leadId, before: { tagId: r.tagId } }))); }
   for (const rows of chunk(plan.audits as Parameters<typeof logAudit>[1][] as never[], 1000)) await logAudit(tx, rows as never);
   return plan.touched;
 }

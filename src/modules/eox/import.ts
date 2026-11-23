@@ -1,8 +1,8 @@
 "use server";
 
-import { inArray, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { db, leadChannels, leadPeople, leads } from "@/db";
+import { db, importBatches, importUndo, leadChannels, leadPeople, leads } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { requireAdmin } from "@/modules/auth/guard";
 import { roleKindOf } from "@/modules/facts/contacts";
@@ -21,7 +21,7 @@ const txt = (v: unknown, max = 300): string | null => { const s = String(v ?? ""
  * o "retrato da EOX" (tipo, vendedor, bloqueio de discagem, compras…) é sempre atualizado, porque a EOX é a fonte.
  * Com `apply` falso só conta (prévia). Com `create`, empresas que ainda não são leads viram leads.
  */
-export async function importEoxBatchAction(input: EoxCompany[], apply: boolean, create: boolean, batchLabel: string): Promise<EoxBatchResult> {
+export async function importEoxBatchAction(input: EoxCompany[], apply: boolean, create: boolean, batchLabel: string, batchId: number | null = null): Promise<EoxBatchResult> {
   const me = await requireAdmin();
   if (!Array.isArray(input) || input.length === 0) return { ok: false, message: "Lote vazio." };
   if (input.length > MAX_BATCH) return { ok: false, message: `Lote grande demais (máximo ${MAX_BATCH}).` };
@@ -29,7 +29,7 @@ export async function importEoxBatchAction(input: EoxCompany[], apply: boolean, 
   const res = { found: 0, missing: 0, created: 0, ids: 0, codes: 0, filled: 0, info: 0, phones: 0, emails: 0, people: 0 };
 
   const existing = await db
-    .select({ id: leads.id, cnpj: leads.cnpj, eoxId: leads.eoxId, eoxCode: leads.eoxCode, tradeName: leads.tradeName, address: leads.address, neighborhood: leads.neighborhood, zip: leads.zip, city: leads.city, uf: leads.uf, email: leads.email, phones: leads.phones })
+    .select({ id: leads.id, cnpj: leads.cnpj, eoxId: leads.eoxId, eoxCode: leads.eoxCode, tradeName: leads.tradeName, address: leads.address, neighborhood: leads.neighborhood, zip: leads.zip, city: leads.city, uf: leads.uf, email: leads.email, phones: leads.phones, eoxInfo: leads.eoxInfo, eoxSyncedAt: leads.eoxSyncedAt })
     .from(leads).where(inArray(leads.cnpj, rows.map((r) => r.cnpj)));
   const byCnpj = new Map(existing.map((l) => [l.cnpj, l]));
   const todo = rows.filter((r) => byCnpj.has(r.cnpj));
@@ -53,18 +53,21 @@ export async function importEoxBatchAction(input: EoxCompany[], apply: boolean, 
 
   await db.transaction(async (tx) => {
     const now = new Date();
+    const journal = async (kind: "lead_before" | "lead_created" | "person" | "channel" | "channel_link", rows: { refId: number; before?: unknown }[]) => { if (batchId && rows.length) await tx.insert(importUndo).values(rows.map((r) => ({ batchId, kind, refId: r.refId, before: (r.before ?? null) as never }))); };
+    await journal("lead_before", todo.map((c) => { const l = byCnpj.get(c.cnpj)!; return { refId: l.id, before: { eoxId: l.eoxId, eoxCode: l.eoxCode, tradeName: l.tradeName, address: l.address, neighborhood: l.neighborhood, zip: l.zip, city: l.city, uf: l.uf, email: l.email, phones: l.phones, eoxInfo: l.eoxInfo, eoxSyncedAt: l.eoxSyncedAt } }; }));
     if (create && absent.length) {
       const ins = await tx.insert(leads).values(absent.map((c) => ({
         cnpj: c.cnpj, company: txt(c.company) ?? c.cnpj, tradeName: txt(c.tradeName), phones: c.phones, email: c.email, address: txt(c.address), neighborhood: txt(c.neighborhood), zip: txt(c.zip, 20), city: txt(c.city, 80), uf: txt(c.uf, 2),
-        eoxId: txt(c.recordId, 20), eoxCode: txt(c.code, 20), eoxInfo: c.info ?? null, eoxSyncedAt: now, source: `EOX · ${batchLabel}`.slice(0, 120),
+        eoxId: txt(c.recordId, 20), eoxCode: txt(c.code, 20), eoxInfo: c.info ?? null, eoxSyncedAt: now, source: `EOX · ${batchLabel}`.slice(0, 120), importBatchId: batchId,
         kind: c.isCustomer ? ("inativo" as const) : ("prospect" as const),
       }))).onConflictDoNothing().returning({ id: leads.id, cnpj: leads.cnpj, phones: leads.phones, email: leads.email });
       for (const l of ins) {
         const c = absent.find((a) => a.cnpj === l.cnpj)!;
-        byCnpj.set(l.cnpj, { id: l.id, cnpj: l.cnpj, eoxId: c.recordId, eoxCode: c.code, tradeName: c.tradeName, address: c.address, neighborhood: c.neighborhood, zip: c.zip, city: c.city, uf: c.uf, email: c.email, phones: [] });
+        byCnpj.set(l.cnpj, { id: l.id, cnpj: l.cnpj, eoxId: c.recordId, eoxCode: c.code, tradeName: c.tradeName, address: c.address, neighborhood: c.neighborhood, zip: c.zip, city: c.city, uf: c.uf, email: c.email, phones: [], eoxInfo: null, eoxSyncedAt: null });
         todo.push(c);
       }
       res.created = ins.length;
+      await journal("lead_created", ins.map((l) => ({ refId: l.id })));
     }
     if (!todo.length) return;
 
@@ -90,7 +93,7 @@ export async function importEoxBatchAction(input: EoxCompany[], apply: boolean, 
         const id = byCnpj.get(c.cnpj)!.id;
         return [...c.phones.map((p) => ({ leadId: id, kind: "phone" as const, value: p })), ...(c.email ? [{ leadId: id, kind: "email" as const, value: c.email }] : [])].map((x) => ({ ...x, origin: "import" as const }));
       });
-      if (ch.length) await tx.insert(leadChannels).values(ch).onConflictDoNothing();
+      if (ch.length) await journal("channel", (await tx.insert(leadChannels).values(ch).onConflictDoNothing().returning({ id: leadChannels.id })).map((r) => ({ refId: r.id })));
       const withPhones = part.filter((c) => c.phones.length);
       if (withPhones.length) {
         const vals = withPhones.map((c) => sql`(${byCnpj.get(c.cnpj)!.id}::int, ARRAY[${sql.join(c.phones.map((x) => sql`${x}`), sql`, `)}]::text[])`);
@@ -113,6 +116,7 @@ export async function importEoxBatchAction(input: EoxCompany[], apply: boolean, 
       }
       if (toAdd.length) {
         const made = await tx.insert(leadPeople).values(toAdd).returning({ id: leadPeople.id, leadId: leadPeople.leadId, name: leadPeople.name });
+        await journal("person", made.map((m) => ({ refId: m.id })));
         for (const m of made) known.set(`${m.leadId}:${m.name.toLowerCase()}`, m.id);
       }
       const chans: { leadId: number; personId: number; kind: "phone" | "email"; value: string; origin: "import" }[] = [];
@@ -123,11 +127,65 @@ export async function importEoxBatchAction(input: EoxCompany[], apply: boolean, 
         for (const ph of p.phones) chans.push({ leadId, personId, kind: "phone", value: ph, origin: "import" });
         if (p.email) chans.push({ leadId, personId, kind: "email", value: p.email, origin: "import" });
       }
-      if (chans.length) await tx.insert(leadChannels).values(chans).onConflictDoUpdate({ target: [leadChannels.leadId, leadChannels.kind, leadChannels.value], set: { personId: sql`coalesce(${leadChannels.personId}, excluded.person_id)` } });
+      if (chans.length) {
+        await journal("channel", (await tx.insert(leadChannels).values(chans).onConflictDoNothing().returning({ id: leadChannels.id })).map((r) => ({ refId: r.id })));
+        // canal que já existia sem pessoa (ex.: telefone da empresa que também é do contato) ganha a pessoa
+        const vals = chans.map((c) => sql`(${c.leadId}::int, ${c.kind}::text, ${c.value}::text, ${c.personId}::int)`);
+        const linked = await tx.execute<{ id: number }>(sql`update lead_channels c set person_id = v.pid from (values ${sql.join(vals, sql`, `)}) as v(lid, k, val, pid) where c.lead_id = v.lid and c.kind = v.k and c.value = v.val and c.person_id is null returning c.id`);
+        await journal("channel_link", linked.map((r) => ({ refId: Number(r.id) })));
+      }
     }
 
     await logAudit(tx, { userId: me.id, entity: "import", action: "importou planilha da EOX", field: batchLabel.slice(0, 80), newValue: `${todo.length} leads; Id ${res.ids}, código ${res.codes}, retrato ${res.info}, contatos ${res.people}${create ? `, criados ${res.created}` : ""}` });
   });
   revalidatePath("/leads");
   return { ok: true, ...res };
+}
+
+/** Abre o registro da importação (para poder desfazer depois). Devolve o número do lote. */
+export async function beginEoxImportAction(label: string, total: number): Promise<{ ok: true; batchId: number } | { ok: false; message: string }> {
+  const me = await requireAdmin();
+  const [b] = await db.insert(importBatches).values({ kind: "eox", fileName: String(label).slice(0, 200) || "planilha EOX", userId: me.id, total: Math.max(0, Math.floor(total) || 0) }).returning({ id: importBatches.id });
+  return { ok: true, batchId: b.id };
+}
+
+/** Fecha o lote com os números finais. */
+export async function finishEoxImportAction(batchId: number, changed: number, skipped: number): Promise<void> {
+  await requireAdmin();
+  await db.update(importBatches).set({ inserted: Math.max(0, Math.floor(changed) || 0), skipped: Math.max(0, Math.floor(skipped) || 0) }).where(eq(importBatches.id, batchId));
+}
+
+/** Desfaz uma importação da EOX: volta os leads ao que eram e apaga o que ela criou (leads novos só se ninguém trabalhou). */
+export async function undoEoxImportAction(batchId: number): Promise<{ ok: boolean; message: string }> {
+  const me = await requireAdmin();
+  const [b] = await db.select().from(importBatches).where(eq(importBatches.id, batchId));
+  if (!b || b.kind !== "eox") return { ok: false, message: "Importação não encontrada." };
+  if (b.undoneAt) return { ok: false, message: "Esta importação já foi desfeita." };
+  const out = { restored: 0, removedLeads: 0, keptLeads: 0 };
+  await db.transaction(async (tx) => {
+    const rows = await tx.select().from(importUndo).where(eq(importUndo.batchId, batchId));
+    const ids = (k: string) => rows.filter((r) => r.kind === k).map((r) => r.refId);
+    for (const part of chunk(ids("channel_link"), 500)) await tx.update(leadChannels).set({ personId: null }).where(inArray(leadChannels.id, part));
+    for (const part of chunk(ids("channel"), 500)) await tx.delete(leadChannels).where(inArray(leadChannels.id, part));
+    for (const part of chunk(ids("person"), 500)) await tx.delete(leadPeople).where(inArray(leadPeople.id, part));
+    const created = new Set(ids("lead_created"));
+    for (const r of rows.filter((x) => x.kind === "lead_before" && !created.has(x.refId))) {
+      const v = (r.before ?? {}) as Record<string, unknown>;
+      const upd = await tx.update(leads).set({
+        eoxId: (v.eoxId as string | null) ?? null, eoxCode: (v.eoxCode as string | null) ?? null, tradeName: (v.tradeName as string | null) ?? null, address: (v.address as string | null) ?? null,
+        neighborhood: (v.neighborhood as string | null) ?? null, zip: (v.zip as string | null) ?? null, city: (v.city as string | null) ?? null, uf: (v.uf as string | null) ?? null, email: (v.email as string | null) ?? null,
+        phones: (v.phones as string[] | undefined) ?? [], eoxInfo: (v.eoxInfo as Record<string, string> | null) ?? null, eoxSyncedAt: v.eoxSyncedAt ? new Date(String(v.eoxSyncedAt)) : null,
+      }).where(eq(leads.id, r.refId)).returning({ id: leads.id });
+      out.restored += upd.length;
+    }
+    if (created.size) {
+      const gone = await tx.execute<{ id: number }>(sql`delete from leads l where l.id in (${sql.join([...created].map((i) => sql`${i}`), sql`, `)}) and not (l.times_served > 0 or l.times_worked > 0 or l.locked_by is not null
+        or exists (select 1 from deals d where d.lead_id = l.id) or exists (select 1 from visits v where v.lead_id = l.id) or exists (select 1 from attendance_sessions a where a.lead_id = l.id) or exists (select 1 from interactions i where i.lead_id = l.id)) returning l.id`);
+      out.removedLeads = gone.length; out.keptLeads = created.size - gone.length;
+    }
+    await tx.update(importBatches).set({ undoneAt: new Date(), undoneCount: out.restored + out.removedLeads }).where(eq(importBatches.id, batchId));
+    await logAudit(tx, { userId: me.id, entity: "import", action: "desfez a importação da EOX", field: b.fileName, newValue: `${out.restored} leads voltaram ao que eram, ${out.removedLeads} leads criados apagados` });
+  });
+  revalidatePath("/leads"); revalidatePath("/admin/importar"); revalidatePath("/admin/eox");
+  return { ok: true, message: `${out.restored} lead(s) voltaram ao que eram${out.removedLeads ? `, ${out.removedLeads} criado(s) apagado(s)` : ""}${out.keptLeads ? `; ${out.keptLeads} criado(s) ficaram porque já foram trabalhados` : ""}.` };
 }

@@ -3,9 +3,11 @@
 import { useRef, useState } from "react";
 import { FileSpreadsheet, Loader2, Play, Search } from "lucide-react";
 import { decodeCsv, parseCsv } from "@/modules/import/csv";
-import { importEoxBatchAction, type EoxBatchResult } from "@/modules/eox/import";
+import { beginEoxImportAction, finishEoxImportAction, importEoxBatchAction, type EoxBatchResult } from "@/modules/eox/import";
 import { parseEoxSheets, type Parsed } from "@/modules/eox/planilha";
 import { useToast } from "@/components/toast";
+import { syncEoxNowAction } from "@/modules/eox/actions";
+import { useRouter } from "next/navigation";
 
 type Totals = { found: number; missing: number; created: number; ids: number; codes: number; filled: number; info: number; phones: number; emails: number; people: number };
 const ZERO: Totals = { found: 0, missing: 0, created: 0, ids: 0, codes: 0, filled: 0, info: 0, phones: 0, emails: 0, people: 0 };
@@ -14,6 +16,7 @@ const BATCH = 300;
 /** Importa as planilhas de Empresas e Contatos exportadas da EOX. Lê no navegador e envia em lotes pequenos. */
 export function EoxImport() {
   const toast = useToast();
+  const router = useRouter();
   const emp = useRef<HTMLInputElement>(null), con = useRef<HTMLInputElement>(null);
   const [parsed, setParsed] = useState<Parsed | null>(null);
   const [label, setLabel] = useState("");
@@ -41,19 +44,28 @@ export function EoxImport() {
   async function run(p: Parsed, apply: boolean) {
     const sum = { ...ZERO };
     setProgress(0);
+    let batchId: number | null = null;
+    if (apply) { const b = await beginEoxImportAction(label || "planilha EOX", p.companies.length); if (!b.ok) throw new Error(b.message); batchId = b.batchId; }
     for (let i = 0; i < p.companies.length; i += BATCH) {
-      const r: EoxBatchResult = await importEoxBatchAction(p.companies.slice(i, i + BATCH), apply, create, label || "planilha");
+      const r: EoxBatchResult = await importEoxBatchAction(p.companies.slice(i, i + BATCH), apply, create, label || "planilha", batchId);
       if (!r.ok) throw new Error(r.message);
       for (const k of Object.keys(sum) as (keyof Totals)[]) sum[k] += r[k];
       setProgress(Math.min(100, Math.round(((i + BATCH) / p.companies.length) * 100)));
     }
+    if (batchId) await finishEoxImportAction(batchId, sum.found + sum.created, sum.missing);
     setTotals(sum);
   }
 
   async function save() {
     if (!parsed) return;
     setBusy("apply");
-    try { await run(parsed, true); setApplied(true); toast("ok", "Planilha da EOX importada."); }
+    try {
+      await run(parsed, true); setApplied(true); toast("ok", "Planilha importada. Dá para desfazer no histórico abaixo.");
+      router.refresh();
+      // completa já o Código EOX que a planilha não trouxe, perguntando à EOX (só se a integração estiver ligada)
+      const s = await syncEoxNowAction(); toast(s.ok ? "info" : "warn", s.message ?? "");
+      router.refresh();
+    }
     catch (err) { toast("bad", (err as Error).message); }
     finally { setBusy(null); }
   }
@@ -62,7 +74,7 @@ export function EoxImport() {
   return (
     <section className="space-y-4 rounded-xl border border-line bg-surface p-4">
       <div className="flex items-center gap-2"><FileSpreadsheet className="size-5 text-brand" /><h2 className="font-semibold">Importar planilhas da EOX</h2></div>
-      <p className="text-sm text-muted">Exporte <b>Empresas</b> e <b>Contatos</b> da EOX e escolha os dois arquivos. Só completa o que está vazio (Código, Registro, endereço, telefones, e-mails, contatos) e atualiza o <b>retrato da EOX</b> de cada lead (tipo, vendedor, discagem bloqueada, últimas compras…). O Registro vem dos Contatos, ligado pelo nome da empresa.</p>
+      <p className="text-sm text-muted">Exporte <b>Empresas</b> e <b>Contatos</b> da EOX e escolha os dois arquivos. Só completa o que está vazio (ID EOX, Código EOX, endereço, telefones, e-mails, contatos) e atualiza o <b>retrato da EOX</b> de cada lead (tipo, vendedor, discagem bloqueada, últimas compras…). O Código EOX (o do perfil) vem dos Contatos, ligado pelo nome da empresa.</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1 text-sm">Empresas (obrigatório)<input ref={emp} type="file" accept=".csv,text/csv" className="block w-full text-sm" /></label>
         <label className="space-y-1 text-sm">Contatos (opcional)<input ref={con} type="file" accept=".csv,text/csv" className="block w-full text-sm" /></label>
@@ -79,7 +91,7 @@ export function EoxImport() {
           <div className="text-sm font-medium">{applied ? "Gravado:" : "Prévia (nada foi gravado):"}</div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {stat(totals.found, "já são leads")}{stat(create ? totals.created : totals.missing, create ? "leads criados" : "não existem (ignoradas)")}
-            {stat(totals.codes, "Códigos EOX novos")}{stat(totals.ids, "Registros EOX novos")}
+            {stat(totals.codes, "ID EOX novos")}{stat(totals.ids, "Códigos EOX novos")}
             {stat(totals.info, "retratos da EOX")}{stat(totals.filled, "leads com dados completados")}
             {stat(totals.phones, "telefones novos")}{stat(totals.people, "contatos")}
           </div>

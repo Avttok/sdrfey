@@ -819,7 +819,7 @@ export const chatMentions = pgTable(
 /** Histórico de importações de CSV (leads, representantes e negociações). Só os lotes de leads podem ser desfeitos. */
 export const importBatches = pgTable("import_batches", {
   id: serial("id").primaryKey(),
-  kind: text("kind").$type<"leads" | "inativos" | "reps" | "deals" | "carriers">().notNull(),
+  kind: text("kind").$type<"leads" | "inativos" | "reps" | "deals" | "carriers" | "eox">().notNull(),
   fileName: text("file_name").notNull(),
   userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
   total: integer("total").notNull().default(0),
@@ -829,6 +829,16 @@ export const importBatches = pgTable("import_batches", {
   undoneCount: integer("undone_count"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Diário para desfazer importações que alteram leads que já existiam (ex.: planilhas da EOX): guarda como cada coisa estava antes. */
+export const importUndo = pgTable("import_undo", {
+  id: serial("id").primaryKey(),
+  batchId: integer("batch_id").notNull().references(() => importBatches.id, { onDelete: "cascade" }),
+  /** lead_before = valores antigos de um lead; lead_created = lead criado; person = pessoa criada; channel = canal criado; channel_link = canal que ganhou pessoa. */
+  kind: text("kind").$type<"lead_before" | "lead_created" | "person" | "channel" | "channel_link" | "lead_fill" | "tag_link">().notNull(),
+  refId: integer("ref_id").notNull(),
+  before: jsonb("before"),
+}, (t) => [index("import_undo_batch_idx").on(t.batchId)]);
 
 /** Listas de leads montadas no Lista Flow. Uma ativa por pessoa e área: o Shuffler mostra o botão "Sortear da lista". */
 export const leadLists = pgTable("lead_lists", {

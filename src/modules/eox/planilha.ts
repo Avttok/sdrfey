@@ -54,7 +54,7 @@ export type Parsed = { companies: EoxCompany[]; skipped: number; withoutCnpj: nu
 /** Junta Empresas (+ Contatos, se houver). O Id do registro vem dos Contatos, ligado pelo nome da empresa quando só há uma com aquele nome. */
 export function parseEoxSheets(empresas: { headers: string[]; rows: Row[] }, contatos?: { headers: string[]; rows: Row[] } | null): Parsed {
   const e = pick(empresas.headers);
-  const cCnpj = e("CNPJ"), cName = e("EMPRESA"), cCode = e("IdEOX", "Código EOX", "Codigo EOX");
+  const cCnpj = e("CNPJ"), cName = e("EMPRESA"), cCode = e("IdEOX", "ID EOX");
   if (!cCnpj || !cName) throw new Error("A planilha de Empresas precisa das colunas CNPJ e EMPRESA.");
   const cFantasy = e("Nome Fantasia"), cEmail = e("Email", "Email Alternativo");
   const phoneCols = ["Telefone", "Outro Telefone", "Telefone Alternativo", "WhatsApp"].map((n) => e(n)).filter((x): x is string => !!x);

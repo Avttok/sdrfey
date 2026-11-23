@@ -1,4 +1,6 @@
 import { Link2 } from "lucide-react";
+import { ImportHistory } from "@/components/import-history";
+import { importHistory } from "@/modules/import/history";
 import { EoxImport } from "@/components/admin/eox-import";
 import { EoxAdmin } from "@/components/admin/eox-admin";
 import { PageHead } from "@/components/page-head";
@@ -9,7 +11,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export default async function Page() {
-  const [cfg, st, cov] = await Promise.all([loadEox(), loadSyncState(), eoxCoverage()]);
+  const [cfg, st, cov, hist] = await Promise.all([loadEox(), loadSyncState(), eoxCoverage(), importHistory(60)]);
   // a chave de acesso nunca sai do servidor
-  return <div className="space-y-5"><PageHead icon={Link2} size="md" title="Integração com a EOX" /><EoxAdmin initial={{ ...cfg, accessKey: "" }} hasKey={!!cfg.accessKey} sync={st} coverage={cov} /><EoxImport /></div>;
+  return <div className="space-y-5"><PageHead icon={Link2} size="md" title="Integração com a EOX" /><EoxAdmin initial={{ ...cfg, accessKey: "" }} hasKey={!!cfg.accessKey} sync={st} coverage={cov} /><EoxImport /><ImportHistory rows={hist.filter((h) => h.kind === "eox")} /></div>;
 }

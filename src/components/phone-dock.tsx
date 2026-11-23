@@ -149,7 +149,7 @@ export function PhoneDock() {
                     ? <a href={call!.qualUrl} target="_blank" rel="noopener noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-grad text-base font-bold text-on-accent shadow-lg transition hover:brightness-110 active:scale-[0.98]"><ExternalLink size={17} aria-hidden /> Qualificar na EOX</a>
                     : call!.qualLooking
                       ? <p className="flex items-center justify-center gap-2 text-sm text-muted"><Loader2 size={15} className="animate-spin" aria-hidden /> Procurando a qualificação…</p>
-                      : <p className="rounded-xl border border-dashed border-line px-3 py-2 text-center text-xs text-muted">Este número não tem Id da EOX no sistema. Qualifique pelo VocallPhone.</p>
+                      : <p className="rounded-xl border border-dashed border-line px-3 py-2 text-center text-xs text-muted">Este número não tem Código EOX no sistema, então a ligação não gera qualificação.</p>
                 )}
                 {ended && <button type="button" onClick={() => { vocall.dismiss(); setPinned(null); }} className="min-h-10 w-full rounded-xl border border-line text-sm font-semibold hover:border-accent">Nova ligação</button>}
               </div>

@@ -104,7 +104,7 @@ export function ImportForm() {
             ))}
           </div>
         )}
-        {kind === "leads" && leadKind === "global" && <p className="mt-2 max-w-2xl text-sm text-muted">Completa os leads que já existem, estejam no Shuffler Prospecção ou no Vendas (telefone, e-mail, contato, tags, Id EOX e Id Salesforce). Ninguém novo é criado e nenhum dado existente é trocado.</p>}
+        {kind === "leads" && leadKind === "global" && <p className="mt-2 max-w-2xl text-sm text-muted">Completa os leads que já existem, estejam no Shuffler Prospecção ou no Vendas (telefone, e-mail, contato, tags, Código EOX, ID EOX e Id Salesforce). Ninguém novo é criado e nenhum dado existente é trocado.</p>}
         <div className="mt-4"><ImportExample {...EXAMPLES[kind]} fileName={EXAMPLES[kind].file} guide={kind === "leads" ? LEAD_GUIDE : REP_GUIDE} /></div>
       </section>
 

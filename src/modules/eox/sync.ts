@@ -25,7 +25,7 @@ export const eoxBaseUrl = async () => parseEox(await settingValue(EOX_KEY)).base
 export const eoxProfileUrl = (base: string, id: string | null | undefined) => (id ? eoxLink(base, "Accounts", id) : null);
 
 /**
- * Grava o Id da EOX (record) nos leads que ainda não têm. Acha o lead pelo CNPJ e, se não achar, pelo Código EOX.
+ * Grava o Código EOX (o record=) nos leads que ainda não têm. Acha o lead pelo CNPJ e, se não achar, pelo ID EOX.
  * Nunca troca um Id que já existe. Devolve quantos gravou.
  */
 export async function linkLeads(d: Db, byCnpj: Map<string, string>, byCode: Map<string, string>, userId: number | null): Promise<number> {
@@ -34,7 +34,7 @@ export async function linkLeads(d: Db, byCnpj: Map<string, string>, byCode: Map<
     for (const l of rows) {
       await d.transaction(async (tx) => {
         const r = await tx.update(leads).set({ eoxId: l.rec, updatedAt: new Date() }).where(and(eq(leads.id, l.id), isNull(leads.eoxId))).returning({ id: leads.id });
-        if (r.length) { n++; await logAudit(tx, { userId, leadId: l.id, entity: "lead", action: "alterou", field: "Id EOX", oldValue: null, newValue: l.rec, meta: { automatico: true } }); }
+        if (r.length) { n++; await logAudit(tx, { userId, leadId: l.id, entity: "lead", action: "alterou", field: "Código EOX", oldValue: null, newValue: l.rec, meta: { automatico: true } }); }
       });
     }
   };
@@ -50,7 +50,7 @@ export async function linkLeads(d: Db, byCnpj: Map<string, string>, byCode: Map<
 }
 
 /**
- * Busca direta: para cada lead sem Id da EOX pergunta à EOX pelo Código e, se não achar, pelo CNPJ (5 perguntas ao mesmo tempo).
+ * Busca direta: para cada lead sem Código EOX pergunta à EOX pelo ID EOX e, se não achar, pelo CNPJ (5 perguntas ao mesmo tempo).
  * Anda por ordem de lead e guarda onde parou, então leads que a EOX não conhece não são perguntados de novo na mesma rodada.
  */
 export async function lookupMissingIds(d: Db, s: EoxSession, deadline: number, cursor: number, userId: number | null): Promise<{ linked: number; checked: number; cursor: number; done: boolean }> {
@@ -109,7 +109,7 @@ export async function syncEoxLinks(opts: { budgetMs?: number; userId?: number | 
   return { ok: true, message: done ? `Rodada completa: ${linked} leads receberam o link.` : `${linked} leads receberam o link; continua de onde parou na próxima execução.`, linked, scanned, done };
 }
 
-/** Na hora de ligar: se o lead não tem Id da EOX, procura só ele (por CNPJ, depois por Código EOX) e grava. null se a EOX não tem esse cliente. */
+/** Na hora de ligar: se o lead não tem Código EOX, procura só ele (por ID EOX, depois por CNPJ) e grava. null se a EOX não tem esse cliente. */
 export async function ensureEoxId(leadId: number, userId: number | null): Promise<string | null> {
   const cfg = await loadEox();
   if (!eoxReady(cfg)) return null;

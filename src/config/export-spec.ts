@@ -31,7 +31,7 @@ export const EX_DATASETS: ExDataset[] = [
     hint: "A base de leads com contatos, Receita, internet, tags e andamento. Escolha as colunas e filtre como quiser.",
     columns: [
       c("Identificação", "cnpj", "CNPJ", "text", ["basic", "contact"]), c("Identificação", "company", "Empresa", "text", ["basic", "contact"]), c("Identificação", "trade_name", "Nome fantasia", "text", ["basic"]),
-      c("Identificação", "legal_name", "Razão social (Receita)"), c("Identificação", "sap_code", "Código SAP"), c("Identificação", "eox_id", "Id EOX"), c("Identificação", "eox_code", "Código EOX"), c("Identificação", "sf_id", "Id Salesforce"), c("Identificação", "kind", "Tipo (Novo/Inativo)", "text", ["basic"]), c("Identificação", "id", "ID interno", "int"),
+      c("Identificação", "legal_name", "Razão social (Receita)"), c("Identificação", "sap_code", "Código SAP"), c("Identificação", "eox_id", "Código EOX"), c("Identificação", "eox_code", "ID EOX"), c("Identificação", "sf_id", "Id Salesforce"), c("Identificação", "kind", "Tipo (Novo/Inativo)", "text", ["basic"]), c("Identificação", "id", "ID interno", "int"),
       c("Contato", "contact_name", "Contato", "text", ["contact"]), c("Contato", "role_title", "Cargo", "text", ["contact"]),
       c("Contato", "phones", "Telefones", "text", ["basic", "contact"]), c("Contato", "phone_main", "Telefone principal"), c("Contato", "emails", "E-mails", "text", ["basic", "contact"]), c("Contato", "email_main", "E-mail principal"),
       c("Local", "address", "Endereço"), c("Local", "neighborhood", "Bairro"), c("Local", "zip", "CEP"), c("Local", "city", "Cidade", "text", ["basic", "contact"]), c("Local", "uf", "UF", "text", ["basic", "contact"]), c("Local", "state_reg", "Inscrição estadual"),
