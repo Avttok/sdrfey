@@ -62,7 +62,7 @@ function Elapsed({ since }: { since: number }) {
  * Sem isso, ou se o app não confirmar, copia o número já pronto para colar no VocallPhone e dar Enter. No celular abre o discador.
  */
 export const callNumber = async (digits: string, label: string | null, toast: ReturnType<typeof useToast>, vocall: ReturnType<typeof useVocall>) => {
-  if (vocall.configured && vocall.state === "online") {
+  if (vocall.configured) {
     toast("info", "Pedindo a ligação ao VocallPhone…");
     if (await vocall.dial(digits, label)) { toast("ok", "Ligando pelo VocallPhone."); return; }
     toast("warn", "O VocallPhone não confirmou. Número copiado: cole no app e dê Enter.");
