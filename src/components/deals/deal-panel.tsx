@@ -1,6 +1,7 @@
 "use client";
 
 import { EoxIcon, SalesforceIcon } from "@/components/brand-icons";
+import { RoteiroLink } from "@/components/roteiro-link";
 import { Building2, History, Plus, Package, Trash2, Tags, CalendarClock, Check, ExternalLink, FileText, Link2, Mail, MessageCircle, NotebookPen, Phone, PhoneCall, RotateCcw, Trophy, Undo2, UserPlus, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -116,6 +117,7 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, icmsPct
           {deal.handoffNote && <p className="rounded-lg bg-sunk px-3 py-2 text-sm"><span className="text-xs font-medium text-muted">Recado do SDR{deal.sdrName ? ` (${deal.sdrName})` : ""}</span><br />{deal.handoffNote}</p>}
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line/70 pt-3 text-sm text-muted">
             <Link href={`/leads/${deal.leadId}`} className={`${btnGhost} !min-h-9 !px-3.5 !text-sm`}><Link2 size={15} aria-hidden /> Ver lead completo</Link>
+            <RoteiroLink leadId={deal.leadId} area="vendas" />
             <span>Vendedor: <b className="text-ink">{deal.sellerName ?? "ninguém ainda"}</b></span>
             {deal.nextActionAt && !closed ? <span>Próximo passo: <b className="text-ink">{fmtDateTime(deal.nextActionAt).slice(0, 10)}{deal.nextActionNote ? ` · ${deal.nextActionNote}` : ""}</b></span> : null}
           </div>

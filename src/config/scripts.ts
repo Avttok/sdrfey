@@ -34,13 +34,14 @@ export type ScriptNode = {
 };
 export type ScriptDoc = { id: number; title: string; segment: string; goal: ScriptGoal; summary: string | null; nodes: ScriptNode[]; startId: string; global: boolean; mine: boolean; active: boolean };
 
-export type ScriptGoal = "sdr" | "vendas" | "retorno" | "fidelizar" | "reativar";
+export type ScriptGoal = "sdr" | "vendas" | "retorno" | "fidelizar" | "reativar" | "visita";
 export const GOALS: Record<ScriptGoal, { label: string; hint: string }> = {
   sdr: { label: "Prospecção (Operador SDR)", hint: "Despertar interesse e marcar visita" },
   vendas: { label: "Venda (Vendedor SDR)", hint: "Cotar e fechar com leads inativos ou repassados" },
   retorno: { label: "Retorno de cotação", hint: "Ligar para quem recebeu cotação" },
   fidelizar: { label: "Fidelização (Televendas)", hint: "Manter o cliente comprando e tirar dúvidas" },
   reativar: { label: "Reativação (Clientes inativos)", hint: "Retomar contato com quem tem cadastro e está parado" },
+  visita: { label: "Visita (Confirmação e pós-visita)", hint: "Confirmar, lembrar ou remarcar a visita e ligar depois dela" },
 };
 
 export const SEGMENTS: Record<string, string> = {
@@ -70,7 +71,7 @@ export const SEGMENTS: Record<string, string> = {
 };
 
 export const OUTCOMES: Record<NonNullable<ScriptNode["outcome"]>, { label: string; hint: string }> = {
-  visita: { label: "Marcar a visita", hint: "Registre a visita no Salesforce e agende no sistema." },
+  visita: { label: "Visita marcada ou confirmada", hint: "Registre a visita no sistema (ou confirme a que já existe) e avise o representante." },
   cotacao: { label: "Enviar a cotação", hint: "Monte e envie a cotação ainda hoje." },
   retorno: { label: "Combinar um retorno", hint: "Anote o dia e o horário combinados na observação." },
   venda: { label: "Fechar a venda", hint: "Confirme condições e abra o pedido." },

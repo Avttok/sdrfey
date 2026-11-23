@@ -1,6 +1,7 @@
 "use client";
 
 import { AlarmClock, CalendarClock, Check, ChevronDown, ExternalLink, ListChecks, Phone, Plus, RotateCcw, Trash2, UserRound } from "lucide-react";
+import { RoteiroLink } from "@/components/roteiro-link";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
@@ -108,6 +109,7 @@ function leadLine(t: TaskRow) {
   return (
     <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-muted">
       <Link href={`/leads/${t.lead.id}`} className="inline-flex items-center gap-1 font-semibold text-ink underline-offset-2 hover:text-accent hover:underline">{t.lead.name}<ExternalLink size={12} aria-hidden /></Link>
+      <RoteiroLink leadId={t.lead.id} area={t.area} compact />
       {t.lead.city && <span>{t.lead.city}</span>}
       {t.lead.contact && <span>· {t.lead.contact}</span>}
       {t.lead.phone && t.kind === "ligar" && <a href={`tel:+55${t.lead.phone}`} className="inline-flex items-center gap-1 font-semibold text-accent"><Phone size={12} aria-hidden />{fmtPhone(t.lead.phone)}</a>}

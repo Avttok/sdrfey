@@ -59,7 +59,7 @@ function Elapsed({ since }: { since: number }) {
  * "Ligar": se a pessoa tem agente/ramal configurados, pede a chamada ao VocallPhone (como o clique no número da EOX).
  * Sem isso, ou se o app não confirmar, copia o número já pronto para colar no VocallPhone e dar Enter. No celular abre o discador.
  */
-const callNumber = async (digits: string, label: string | null, toast: ReturnType<typeof useToast>, vocall: ReturnType<typeof useVocall>) => {
+export const callNumber = async (digits: string, label: string | null, toast: ReturnType<typeof useToast>, vocall: ReturnType<typeof useVocall>) => {
   if (vocall.configured && vocall.state === "online") {
     toast("info", "Pedindo a ligação ao VocallPhone…");
     if (await vocall.dial(digits, label)) { toast("ok", "Ligando pelo VocallPhone."); return; }
@@ -69,7 +69,7 @@ const callNumber = async (digits: string, label: string | null, toast: ReturnTyp
   if (typeof navigator !== "undefined" && /Android|iPhone|iPad/i.test(navigator.userAgent)) window.location.href = `tel:+55${digits.replace(/^55/, "")}`;
 };
 
-const copy = async (text: string, toast: ReturnType<typeof useToast>) => {
+export const copy = async (text: string, toast: ReturnType<typeof useToast>) => {
   try {
     await navigator.clipboard.writeText(text);
     toast("info", `Copiado: ${text}`);

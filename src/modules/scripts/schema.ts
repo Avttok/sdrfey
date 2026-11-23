@@ -22,7 +22,7 @@ export const scriptInput = z.object({
   id: z.number().int().optional(),
   title: text(80).min(2, "Dê um nome ao script."),
   segment: z.string().refine((s) => s in SEGMENTS, "Escolha o tipo de estabelecimento."),
-  goal: z.enum(["sdr", "vendas", "retorno", "fidelizar", "reativar"]),
+  goal: z.enum(["sdr", "vendas", "retorno", "fidelizar", "reativar", "visita"]),
   summary: text(300).nullish(),
   startId: z.string(),
   nodes: z.array(nodeSchema).min(1, "O script precisa de pelo menos um passo.").max(90, "No máximo 90 passos."),

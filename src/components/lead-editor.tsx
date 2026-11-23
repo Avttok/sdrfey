@@ -1,6 +1,7 @@
 "use client";
 
 import { PersonBubble } from "@/components/person-bubble";
+import { RoteiroLink } from "@/components/roteiro-link";
 
 import { BrandLink } from "@/components/brand-icons";
 import { ArrowLeft, Ban, CalendarCheck, Copy, ExternalLink, Handshake, Link2, MapPin, Pencil, Phone, Plus, Tag, Trash2, RotateCcw, UnlockKeyhole, Users } from "lucide-react";
@@ -53,7 +54,7 @@ export function LeadEditor({ kpis, records, afterLeft, afterRight, lead, catalog
 
   return (
     <div className="space-y-5">
-      <Link href="/leads" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink"><ArrowLeft size={15} aria-hidden /> Voltar para Leads</Link>
+      <div className="flex flex-wrap items-center justify-between gap-2"><Link href="/leads" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink"><ArrowLeft size={15} aria-hidden /> Voltar para Leads</Link><RoteiroLink leadId={lead.id} /></div>
       <header className={`${panelCls} relative overflow-hidden p-5 sm:p-6`}>
         <div aria-hidden className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-accent/10 blur-2xl" />
         <div className="relative flex flex-wrap items-center gap-x-5 gap-y-4">

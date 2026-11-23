@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { RoteiroLink } from "@/components/roteiro-link";
 import { CalendarCheck, LayoutGrid, List, Check, CheckCircle2, Clock, Globe, Users, Mail, MapPin, Pencil, Phone, Save, StickyNote, UserRound, UserRoundCheck, X } from "lucide-react";
 import { useState } from "react";
 import { BrandLink, SalesforceIcon } from "@/components/brand-icons";
@@ -164,6 +165,7 @@ function VisitDialog({ v, onClose }: { v: VisitCard; onClose: () => void }) {
         {v.status !== "pendente" && <button type="button" className={btnGhost} disabled={pending} onClick={() => run(() => setVisitStatusAction(v.leadId, v.id, "pendente"), undefined, onClose)}>Voltar para aguardando</button>}
         <button type="button" className={btnGhost} onClick={() => setEditing(true)}><Pencil size={15} aria-hidden /> Editar visita</button>
         <span className="flex-1" />
+        <RoteiroLink leadId={v.leadId} area="sdr" />
         <Link href={`/leads/${v.leadId}`} className={v.canManage && !v.canceled ? btnGhost : btnPrimary}>Ir para o perfil do cliente</Link>
       </> : undefined}>
       <div className="space-y-4">

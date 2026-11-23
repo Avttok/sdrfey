@@ -6,5 +6,6 @@ describe("categoria do script conforme a situação", () => {
   it("lead inativo recebe reativação", () => { expect(goalFor("inativo", null, "vendas")).toBe("reativar"); expect(goalFor("inativo", null, "sdr")).toBe("reativar"); });
   it("com cotação enviada recebe retorno", () => { expect(goalFor("inativo", "cotacao", "vendas")).toBe("retorno"); expect(goalFor("prospect", "negociacao", "sdr")).toBe("retorno"); });
   it("negociação aberta sem cotação recebe venda", () => { expect(goalFor("prospect", "novo", "vendas")).toBe("vendas"); expect(goalFor("inativo", "contato", "vendas")).toBe("vendas"); });
+  it("visita marcada leva o SDR ao roteiro de visita, mas a cotação aberta tem prioridade", () => { expect(goalFor("prospect", null, "sdr", true)).toBe("visita"); expect(goalFor("prospect", "cotacao", "sdr", true)).toBe("retorno"); expect(goalFor("prospect", null, "vendas", true)).toBe("vendas"); });
   it("sem dados: segue a área", () => { expect(goalFor(null, null, "vendas")).toBe("vendas"); expect(goalFor(null, null, "sdr")).toBe("sdr"); });
 });

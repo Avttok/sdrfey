@@ -1,4 +1,4 @@
-import { BadgeCheck, Heart, Bolt, BadgeDollarSign, CalendarCheck, CarFront, CircleHelp, Cog, Crown, Ear, Factory, FileText, Flag, Handshake, Hammer, Headset, MessageCircle, PhoneCall, RotateCcw, Rocket, ShieldAlert, Sparkles, Store, Swords, Target, Truck, Wrench, Boxes, Warehouse, BrickWall, Car, PackageOpen, Bus, Tractor, Armchair, Zap, HardHat, type LucideIcon } from "lucide-react";
+import { MapPin, BadgeCheck, Heart, Bolt, BadgeDollarSign, CalendarCheck, CarFront, CircleHelp, Cog, Crown, Ear, Factory, FileText, Flag, Handshake, Hammer, Headset, MessageCircle, PhoneCall, RotateCcw, Rocket, ShieldAlert, Sparkles, Store, Swords, Target, Truck, Wrench, Boxes, Warehouse, BrickWall, Car, PackageOpen, Bus, Tractor, Armchair, Zap, HardHat, type LucideIcon } from "lucide-react";
 import type { ScriptGoal, ScriptMood, ScriptNode } from "@/config/scripts";
 
 /** Cada papel do passo ganha ícone e cor, como etapas de um processo. */
@@ -19,6 +19,7 @@ export const GOAL_THEME: Record<ScriptGoal, { hex: string; Icon: LucideIcon; sho
   vendas: { hex: "#f59e0b", Icon: Swords, short: "Venda", mission: "Cotar e fechar o pedido" },
   retorno: { hex: "#8b5cf6", Icon: PhoneCall, short: "Retorno", mission: "Fazer a cotação virar pedido" },
   fidelizar: { hex: "#ec4899", Icon: Heart, short: "Fidelização", mission: "Manter o cliente comprando e sem dúvidas" },
+  visita: { hex: "#6366f1", Icon: MapPin, short: "Visita", mission: "Confirmar a visita, remarcar se preciso e ligar depois dela" },
   reativar: { hex: "#14b8a6", Icon: RotateCcw, short: "Reativação", mission: "Retomar o contato com quem está parado e reabrir a conversa" },
 };
 

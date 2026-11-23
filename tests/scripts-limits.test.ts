@@ -33,6 +33,7 @@ describe("scripts de fábrica: triagem de perfil", () => {
   const ROLES = ["p_socio", "p_compras", "p_gestor", "p_balcao", "p_operacao", "p_admin", "p_assistente", "secretaria"];
   it("a abertura é neutra (não faz o pitch antes de saber quem atendeu) e a função leva a um caminho por perfil", () => {
     for (const b of buildAll()) {
+      if (b.goal === "visita") continue; // a visita parte de um contato já combinado: não há triagem de perfil
       const ab = b.nodes.find((n) => n.id === "abertura")!;
       expect(ab.say, b.key).not.toMatch(/Posso te explicar|trinta segundos|Somos uma metal/i);
       expect(ab.say, b.key).toMatch(/com quem eu falo/i);

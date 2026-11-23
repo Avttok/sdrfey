@@ -1,4 +1,5 @@
 import { visibleUsers } from "@/modules/auth/visibility";
+import { RoteiroLink } from "@/components/roteiro-link";
 import { Pagination } from "@/components/pagination";
 import { PersonBubble } from "@/components/person-bubble";
 import type { Metadata } from "next";
@@ -99,7 +100,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                 </div>
                 <div className="flex items-center justify-end gap-2">
                   {!sellerView && (l.deal_id ? <span className="rounded-full bg-accent/12 px-2.5 py-1 text-xs font-semibold text-accent">Com os vendedores</span> : !l.locked_by_name && me.permissions["tab.comecar"] && <AttendButton leadId={l.id} compact />)}
-                  <Link href={`/leads/${l.id}`} className="rounded-full px-3 py-1 text-xs font-semibold text-accent transition hover:bg-accent/10">Abrir</Link>
+                  <RoteiroLink leadId={l.id} compact className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold text-accent transition hover:bg-accent/10" /><Link href={`/leads/${l.id}`} className="rounded-full px-3 py-1 text-xs font-semibold text-accent transition hover:bg-accent/10">Abrir</Link>
                 </div>
               </li>
             );
@@ -143,7 +144,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                 </div>
                 <div className="flex items-center gap-2">
                   {!sellerView && (l.deal_id ? <span className="rounded-full bg-accent/12 px-2.5 py-1 text-xs font-semibold text-accent">Com os vendedores</span> : !l.locked_by_name && me.permissions["tab.comecar"] && <AttendButton leadId={l.id} compact />)}
-                  <Link href={`/leads/${l.id}`} className="rounded-full px-3 py-1 text-xs font-semibold text-accent transition hover:bg-accent/10">Abrir</Link>
+                  <RoteiroLink leadId={l.id} compact className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold text-accent transition hover:bg-accent/10" /><Link href={`/leads/${l.id}`} className="rounded-full px-3 py-1 text-xs font-semibold text-accent transition hover:bg-accent/10">Abrir</Link>
                 </div>
               </div>
             </li>

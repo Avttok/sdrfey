@@ -1,3 +1,4 @@
+import { visita } from "./seed-visita";
 import { sql } from "drizzle-orm";
 import { db, scripts } from "@/db";
 import type { ScriptGoal, ScriptNode } from "@/config/scripts";
@@ -7,7 +8,7 @@ import { NEXT, ONLINE, PARES, SEG, T, fala, fim, o, type Alvo } from "./seed-cor
 import { confirma, enriquece, entrada, minimo, objecoes, perfis } from "./seed-parts";
 
 /** Muda quando os textos de fábrica são reescritos: os scripts do time que ninguém editou são atualizados. */
-export const SEED_VERSION = 18;
+export const SEED_VERSION = 19;
 
 type Seg = (typeof SEG)[string];
 
@@ -417,6 +418,8 @@ const END_TASKS: Record<string, ScriptTask[]> = {
   fim_cotacao: [tk("cotacao", "Enviar a cotação", 0), LIGAR_2("Ligar para acompanhar a cotação")],
   fim_venda: [tk("pedido", "Abrir o pedido", 0)],
   fim_visita: [],
+  fim_visita_ok: [tk("whatsapp", "Mandar a confirmação da visita por escrito", 0)],
+  fim_remarcada: [tk("outro", "Avisar o representante da nova data", 0), tk("whatsapp", "Confirmar a nova data com o cliente", 0)],
   fim_encerrar: [],
 };
 function withTasks(nodes: ScriptNode[]): ScriptNode[] {
@@ -427,9 +430,12 @@ function withTasks(nodes: ScriptNode[]): ScriptNode[] {
   }));
 }
 
+/** A visita não depende do tipo de cliente: um roteiro só (Geral) serve a todos. */
+export const segmentsOf = (goal: ScriptGoal): string[] => (goal === "visita" ? ["geral"] : Object.keys(SEGMENTS));
+
 function build(goal: ScriptGoal, segment: string) {
   const s = SEG[segment] ?? SEG.geral;
-  return goal === "sdr" ? sdr(s) : goal === "vendas" ? vendas(s) : goal === "retorno" ? retorno(s) : goal === "reativar" ? reativar(s) : fidelizar(s);
+  return goal === "sdr" ? sdr(s) : goal === "vendas" ? vendas(s) : goal === "retorno" ? retorno(s) : goal === "reativar" ? reativar(s) : goal === "visita" ? visita() : fidelizar(s);
 }
 
 /** Cada final aponta para o desfecho do objetivo (um nó "fim" por resultado). Torna a árvore fechada e sem becos. */
@@ -439,6 +445,8 @@ function close(_goal: ScriptGoal, nodes: ScriptNode[], startId: string) {
     cotacao: fim("fim_cotacao", "Cotação a enviar", T("Boa! Envie a cotação ainda hoje e deixe o retorno combinado.", "Muito bem. Envie a cotação ainda hoje e deixe o retorno combinado.", "Boa! Manda a cotação ainda hoje e deixa o retorno combinado."), "cotacao"),
     venda: fim("fim_venda", "Venda fechada", T("Excelente! Confirme itens, condições e prazo, e abra o pedido.", "Excelente. Confirme itens, condições e prazo, e abra o pedido.", "Show, parabéns! Confirma itens, condições e prazo, e abre o pedido."), "venda"),
     retorno: fim("fim_retorno", "Retorno combinado", T("Combinado! Anote o dia e o horário do retorno na observação.", "Combinado. Anote o dia e o horário do retorno na observação.", "Combinado! Anota o dia e o horário do retorno na observação."), "retorno"),
+    confirmada: fim("fim_visita_ok", "Visita confirmada", T("Visita confirmada! Registre quem recebe o representante e mande a confirmação por escrito.", "Visita confirmada. Registre quem receberá o representante e envie a confirmação por escrito.", "Visita confirmada! Anota quem recebe o representante e manda a confirmação por escrito."), "visita"),
+    remarcada: fim("fim_remarcada", "Visita remarcada", T("Remarcada! Avise o representante da nova data e confirme com o cliente por escrito.", "Remarcada. Avise o representante da nova data e confirme com o cliente por escrito.", "Remarcada! Avisa o representante da nova data e confirma com o cliente por escrito."), "retorno"),
     encerrar: fim("fim_encerrar", "Conversa encerrada", T("Tudo bem, faz parte. Agradeça, registre o motivo e passe para o próximo lead.", "Tudo bem, faz parte. Agradeça pela atenção, registre o motivo e siga para o próximo lead.", "Sem estresse, faz parte! Agradece, registra o motivo e bora pro próximo lead."), "encerrar"),
   };
   const used = new Set<string>();
@@ -454,7 +462,7 @@ function close(_goal: ScriptGoal, nodes: ScriptNode[], startId: string) {
 /** Todos os scripts de fábrica (para o banco e para os testes). */
 export function buildAll() {
   const out: { key: string; goal: ScriptGoal; segment: string; nodes: ScriptNode[]; startId: string }[] = [];
-  for (const goal of Object.keys(GOALS) as ScriptGoal[]) for (const segment of Object.keys(SEGMENTS)) {
+  for (const goal of Object.keys(GOALS) as ScriptGoal[]) for (const segment of segmentsOf(goal)) {
     const b = build(goal, segment);
     out.push({ key: `${goal}:${segment}`, goal, segment, ...close(goal, b.nodes, b.startId) });
   }
@@ -470,7 +478,7 @@ export async function ensureGlobalScripts(): Promise<void> {
   if (Date.now() - checkedAt < 600_000) return; // já conferido há pouco neste servidor: poupa duas idas ao banco por visita
   const [{ n }] = await db.execute<{ n: number }>(sql`select count(*)::int as n from scripts where seed_key is not null`);
   const [{ v }] = await db.execute<{ v: number }>(sql`select coalesce((select (value #>> '{}')::int from settings where key = 'scripts_seed_v'), 0) as v`);
-  const expected = Object.keys(GOALS).length * Object.keys(SEGMENTS).length;
+  const expected = (Object.keys(GOALS) as ScriptGoal[]).reduce((a, g) => a + segmentsOf(g).length, 0);
   if (n >= expected && v >= SEED_VERSION) { checkedAt = Date.now(); return; }
   for (const b of buildAll()) {
     const title = `${GOALS[b.goal].label.split(" (")[0]} · ${SEGMENTS[b.segment]}`;
