@@ -31,6 +31,24 @@ export function ScriptPlayer({ script, vars, extra, onOutcome, onNote, onRun, on
   const ended = node.type === "fim";
   useEffect(() => { if (ended && node.outcome) onOutcome?.(node.outcome); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [node.id]);
   useEffect(() => { onStep?.(node.id, trail.map((t) => t.id)); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [trail]);
+  /** A cada passo, a fala sobe ao topo do painel de rolagem: o texto a ler fica sempre à vista, com as respostas logo abaixo. */
+  const card = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = card.current; if (!el || trail.length < 2) return;
+    const t = setTimeout(() => {
+    let sp: HTMLElement | null = el.parentElement;
+    while (sp && !(/(auto|scroll)/.test(getComputedStyle(sp).overflowY) && sp.scrollHeight > sp.clientHeight + 1)) sp = sp.parentElement;
+    if (sp && sp !== document.body && sp !== document.documentElement) {
+      const box = sp.getBoundingClientRect();
+      sp.scrollTo({ top: sp.scrollTop + el.getBoundingClientRect().top - box.top - 8, behavior: "smooth" });
+    } else {
+      // tela estreita: quem rola é a página; leva a fala para logo abaixo do menu, se ela saiu do lugar confortável
+      const top = el.getBoundingClientRect().top;
+      if (top < 70 || top > window.innerHeight * 0.55) window.scrollTo({ top: window.scrollY + top - 76, behavior: "smooth" });
+    }
+    }, 360);
+    return () => clearTimeout(t);
+  }, [trail.length]);
   const steps = trail.length - 1;
   const good = trail.filter((t) => t.kind === "ok").length;
   const hurdles = trail.filter((t) => t.kind === "objecao").length;
@@ -86,7 +104,7 @@ export function ScriptPlayer({ script, vars, extra, onOutcome, onNote, onRun, on
   const [host, setHost] = useState<HTMLElement | null>(null);
   useEffect(() => setHost(document.getElementById("quick-slot")), []);
   return (
-    <div ref={root} className="space-y-4">
+    <div ref={root} className="space-y-4 max-sm:pr-7">
       {floatingCenter && !ended && host && createPortal(
         <button type="button" onClick={center} aria-label="Centralizar o roteiro na tela (atalho: C)" title="Leva o roteiro para o meio da tela (atalho: C)"
           className="relative inline-flex h-12 items-center gap-2 rounded-full border border-line bg-panel pl-3.5 pr-4 text-sm font-semibold text-accent shadow-xl transition hover:scale-105 hover:border-accent active:scale-95">
@@ -145,7 +163,7 @@ export function ScriptPlayer({ script, vars, extra, onOutcome, onNote, onRun, on
       </div>
 
       {/* Palco */}
-      <div key={node.id} className="script-pop relative overflow-hidden rounded-3xl border-2 bg-panel" style={{ borderColor: `color-mix(in srgb, ${mood.hex} 55%, transparent)` }}>
+      <div key={node.id} ref={card} className="script-pop relative overflow-hidden rounded-3xl border-2 bg-panel" style={{ borderColor: `color-mix(in srgb, ${mood.hex} 55%, transparent)` }}>
         <div className="flex items-center gap-2.5 px-4 py-2.5 text-white" style={{ background: mood.hex }}>
           <span className="grid size-8 place-items-center rounded-full bg-white/25"><mood.Icon size={17} aria-hidden className={moodOf(node) === "objecao" ? "script-shake" : ""} /></span>
           <div className="min-w-0 flex-1 leading-tight"><p className="truncate text-sm font-bold">{node.title}</p><p className="text-[11px] opacity-90">{mood.hint}</p></div>
@@ -190,9 +208,9 @@ export function ScriptPlayer({ script, vars, extra, onOutcome, onNote, onRun, on
 
       {/* Respostas */}
       {!ended && (
-        <div className="space-y-2 lg:sticky lg:bottom-0 lg:z-10 lg:-mx-4 lg:border-t lg:border-line lg:bg-panel/95 lg:px-4 lg:pb-2 lg:pt-2.5 lg:backdrop-blur">
+        <div className="space-y-2 tall:lg:sticky tall:lg:bottom-0 tall:lg:z-10 tall:lg:-mx-4 tall:lg:max-h-[36dvh] tall:lg:overflow-y-auto tall:lg:border-t tall:lg:border-line tall:lg:bg-panel/95 tall:lg:px-4 tall:lg:pb-2 tall:lg:pt-2.5 tall:lg:backdrop-blur">
           <p className="flex items-center gap-2 text-sm font-bold"><Ear size={16} aria-hidden className="text-accent" /> O que o lead respondeu? <span className="hidden text-xs font-normal text-muted sm:inline">(toque ou use as teclas 1, 2, 3…)</span></p>
-          <div className={`grid gap-2 sm:grid-cols-2 ${node.options.length > 2 ? "lg:grid-cols-3" : ""}`}>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14.5rem),1fr))] gap-2">
             {node.options.map((op, i) => {
               const k = KIND[op.kind]; const Icon = k.Icon; const off = !op.to || !by.has(op.to);
               return (

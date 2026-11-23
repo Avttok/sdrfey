@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
+/* telas com altura suficiente para fixar o painel de respostas sem esconder a fala */
+@custom-variant tall (@media (min-height: 900px));
 
 @theme inline {
   --color-bg: var(--bg);
