@@ -28,7 +28,7 @@ export async function POST() {
     });
     const j = JSON.parse(await r.text()) as { id_qualificacao_pendente?: unknown; telefone?: unknown; atendimento?: unknown; cliente?: unknown };
     const id = j.id_qualificacao_pendente;
-    if (typeof id !== "string" && typeof id !== "number") return NextResponse.json({ id: null });
+    if ((typeof id !== "string" && typeof id !== "number") || !/^\d+$/.test(String(id))) return NextResponse.json({ id: null }); // "Desconhecido" = sem qualificação
     const cli = j.cliente && typeof j.cliente === "object" ? (j.cliente as { label?: unknown }).label : null;
     return NextResponse.json({ id: String(id), telefone: typeof j.telefone === "string" ? j.telefone : null, atendida: Number(j.atendimento) === 1, empresa: typeof cli === "string" ? cli : null }, { headers: { "Cache-Control": "no-store" } });
   } catch {

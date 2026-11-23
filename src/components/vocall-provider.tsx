@@ -41,6 +41,10 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
   /** Quando a chamada foi atendida (para saber duração) e se o painel de resultado já foi avisado. */
   const answeredAt = useRef<number | null>(null);
   const hinted = useRef(true);
+  /** A central disse que esta chamada não tem qualificação (retorno "Desconhecido"). */
+  const noQual = useRef(false);
+  /** Nome mostrado na chamada (a central não recebe mais o cliente). */
+  const dialLabel = useRef<string | null>(null);
   const { host, port, secure, dac, senha, prefix } = cfg;
 
   /** Corta a conexão e solta quem estava esperando. Pode ser chamada quantas vezes quiser. */
@@ -68,7 +72,7 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
     try {
       const r = await fetch("/api/vocall/qualificacao", { method: "POST", cache: "no-store" });
       const j = (await r.json()) as { id: string | null };
-      if (j.id && eoxRef.current?.origin) url = qualificationUrl(eoxRef.current, j.id);
+      if (j.id && /^\d+$/.test(j.id) && !noQual.current && eoxRef.current?.origin) url = qualificationUrl(eoxRef.current, j.id);
     } catch { /* sem link: o painel só avisa que acabou */ }
     hangup("idle");
     if (!alive.current) return;
@@ -114,8 +118,11 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
         if (/^atendid/i.test(d.estado ?? "") && !answeredAt.current) answeredAt.current = Date.now();
         clearTimeout(timers.current.idle); clearTimeout(timers.current.clear);
         callWait.current.splice(0).forEach((r) => r(true));
-        setCall((c) => ({ telefone: String(d.telefone ?? c?.telefone ?? ""), empresa: (d.cliente && typeof d.cliente === "object" ? d.cliente.label : null) ?? c?.empresa ?? null, estado: d.estado ?? null, since: c && c.telefone === d.telefone ? c.since : Date.now() }));
+        setCall((c) => ({ telefone: String(d.telefone ?? c?.telefone ?? ""), empresa: (d.cliente && typeof d.cliente === "object" ? d.cliente.label : null) ?? c?.empresa ?? dialLabel.current, estado: d.estado ?? null, since: c && c.telefone === d.telefone ? c.since : Date.now() }));
         if (d.estado === "Finalizado") finish("Finalizado");
+      } else if (m.action === "retorno_qualificacao") {
+        const id = String((m.data as { id_qualificacao_pendente?: unknown } | undefined)?.id_qualificacao_pendente ?? "");
+        if (!/^\d+$/.test(id)) { noQual.current = true; setCall((c) => (c ? { ...c, qualUrl: null } : c)); }
       } else if (m.action === "aguardando_qualificacao") {
         clearTimeout(timers.current.idle);
         void askQual();
@@ -142,7 +149,7 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
   }, [hangup, host, port, secure, dac, senha, agentId, ramal]);
 
   const dial = useCallback(async (phone: string, label?: string | null, eox?: EoxRef | null) => {
-    eoxRef.current = eox ?? null; answeredAt.current = null; hinted.current = false;
+    eoxRef.current = eox ?? null; answeredAt.current = null; hinted.current = false; noQual.current = false; dialLabel.current = label ?? null;
     const digits = phone.replace(/\D/g, "");
     if (digits.length < 8) return false;
     setPanel(true); // ligou: o discador abre sozinho; se a pessoa minimizar, o botão flutuante mostra a chamada
@@ -154,8 +161,9 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
       callWait.current.push(waiter);
       // o VocallPhone não confirmou: tira da fila e não deixa a conexão aberta à toa
       timer = setTimeout(() => { const i = callWait.current.indexOf(waiter); if (i >= 0) { callWait.current.splice(i, 1); resolve(false); hangup("idle"); } }, CONFIRM_MS);
-      // só o pedido de ligação: quem decide se gera qualificação é a própria EOX/central, pelo número cadastrado lá (sem forçar o cadastro por aqui)
-      s.send(JSON.stringify({ action: "discar", data: { telefone: `${prefix}${digits}`, cliente: { label: (label ?? "").replace(/\|/g, "").slice(0, 80) } } }));
+      // Só o número, como o VocallPhone faz: sem "cliente" a central não cria qualificação para número que a EOX não conhece
+      // (retorno "Desconhecido"). Com "cliente" ela criava e a EOX abria o formulário com parent_id=undefined (erro 500).
+      s.send(JSON.stringify({ action: "discar", data: { telefone: `${prefix}${digits}` } }));
     });
   }, [connect, hangup, prefix]);
 
