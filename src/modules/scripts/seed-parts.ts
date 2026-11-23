@@ -318,9 +318,9 @@ export function objecoes(back: string, foco: "visita" | "venda"): ScriptNode[] {
       "Entendo, e eu respeito! Posso só perguntar: o assunto não vale resolver agora, ou é só o caixa do momento? Pergunto porque a primeira compra já entra com 25% de desconto, e a gente pode deixar tudo pronto pra quando for a hora.",
     ), [o("É só o momento: combinou retorno", "@retorno", "ok", "Sem verba agora: retornar quando o caixa permitir"), nao("Sem verba e sem interesse")], "Separe “não tenho dinheiro” de “não vejo valor” antes de insistir (Rework): se o problema não vale resolver, o orçamento nem entra na conversa. Não ofereça desconto extra por pressão."),
     fala("obj_pensar_geral", "Vai pensar", T(
-      "Claro, é uma decisão que se pensa mesmo. Pra eu te ajudar a pensar: o que você ainda precisa ver, o preço, o prazo ou a garantia? Se quiser, a gente conversa de novo daqui a dois dias.",
-      "Claro, é uma decisão que merece reflexão. Para eu ajudar: o que ainda precisa avaliar, o preço, o prazo ou a garantia? Se preferir, retomamos a conversa em dois dias.",
-      "Claro, decisão a gente pensa mesmo! Pra eu te ajudar nessa: o que você ainda precisa ver, o preço, o prazo ou a garantia? Se quiser, a gente conversa de novo daqui a dois dias.",
+      "Claro, é uma decisão que se pensa mesmo. Pra eu te ajudar a pensar: o que você ainda precisa ver, o preço, o prazo ou a garantia? Posso te chamar daqui a dois dias, de manhã ou à tarde?",
+      "Claro, é uma decisão que merece reflexão. Para eu ajudar: o que ainda precisa avaliar, o preço, o prazo ou a garantia? Posso retomar o contato em dois dias, no período da manhã ou da tarde?",
+      "Claro, decisão a gente pensa mesmo! Pra eu te ajudar nessa: o que você ainda precisa ver, o preço, o prazo ou a garantia? Posso te chamar daqui a dois dias, de manhã ou à tarde?",
     ), [o("Disse o que falta decidir", "obj_menu", "neutro"), o("Combinou o retorno", "@retorno", "ok", "Combinado retorno em 2 dias"), nao()], "“Vou pensar” quase sempre esconde uma dúvida: descubra qual é, com calma, sem pressionar."),
     fala("obj_nao", "Sem interesse", T(
       "Tudo bem, agradeço a sinceridade! Só pra eu entender, e pra não te incomodar à toa: é porque vocês já estão bem atendidos ou porque o assunto não faz sentido pra vocês? Pergunto sem compromisso mesmo.",
