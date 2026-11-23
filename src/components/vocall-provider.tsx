@@ -1,14 +1,12 @@
 "use client";
 
-import { PhoneCall, PhoneOff } from "lucide-react";
+import { ExternalLink, Loader2, PhoneCall, PhoneOff, X } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { VocallConfig } from "@/modules/vocall/config";
-import type { EoxRef } from "@/modules/vocall/eox";
-
-type Qual = { id: string; telefone: string | null; empresa: string | null; atendida: boolean };
+import { qualificationUrl, type EoxRef } from "@/modules/vocall/eox";
 
 export type VocallState = "off" | "idle" | "connecting" | "online" | "error";
-export type VocallCall = { telefone: string; empresa: string | null; estado: string | null; since: number };
+export type VocallCall = { telefone: string; empresa: string | null; estado: string | null; since: number; /** Momento em que a chamada acabou (congela o cronômetro). */ endedAt?: number; /** Formulário de Atendimento da EOX para qualificar esta ligação. */ qualUrl?: string | null; /** Procurando a qualificação pendente na central. */ qualLooking?: boolean };
 type Ctx = { configured: boolean; state: VocallState; call: VocallCall | null; /** Liga: conecta ao VocallAgent só agora, pede a chamada e resolve true quando o VocallPhone confirma; false se não conectou ou não confirmou (aí vale copiar e colar no app). A conexão é cortada quando a chamada termina. */ dial: (phone: string, label?: string | null, eox?: EoxRef | null) => Promise<boolean> };
 const VocallCtx = createContext<Ctx>({ configured: false, state: "off", call: null, dial: async () => false });
 export const useVocall = () => useContext(VocallCtx);
@@ -19,75 +17,67 @@ const LOGIN_MS = 8_000;   // espera pela resposta do login
 const CONFIRM_MS = 6_000; // espera pela confirmação de que a chamada começou
 const IDLE_MS = 25_000;   // conectado sem nenhuma chamada: corta
 const MAX_CALL_MS = 3 * 60 * 60_000; // trava de segurança: nenhuma conexão passa disso
-const QUAL_WAIT_MS = 5_000;  // chamada terminou e a central não pediu qualificação: corta
-const QUAL_MAX_MS = 3 * 60_000; // ninguém qualificou: corta (a pendência fica na central, como na EOX)
-const QUAL_ACK_MS = 6_000;   // espera a central confirmar a qualificação enviada
+const QUAL_WAIT_MS = 6_000;  // chamada terminou e a central não pediu qualificação: corta
+const QUAL_KEEP_MS = 15 * 60_000; // o botão Qualificar fica no painel por até 15 min
+const GONE_MS = 8_000;        // sem nada a qualificar, o aviso de "encerrada" some
 
 /**
  * Fala com o servidor do VocallAgent pelo mesmo canal (WebSocket) que a página da EOX usa.
  * A conexão NÃO fica aberta: abre quando a pessoa clica em ligar, entra com o agente e o ramal, manda "discar",
  * acompanha o andamento e fecha assim que a chamada termina (ou se algo não andar).
  */
-export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<VocallConfig, "host" | "port" | "secure" | "dac" | "senha" | "prefix" | "quals">; agentId: string; ramal: string; children: React.ReactNode }) {
+export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<VocallConfig, "host" | "port" | "secure" | "dac" | "senha" | "prefix">; agentId: string; ramal: string; children: React.ReactNode }) {
   const [state, setState] = useState<VocallState>("idle");
   const [call, setCall] = useState<VocallCall | null>(null);
-  const [qual, setQual] = useState<Qual | null>(null);
-  const [sending, setSending] = useState(false);
-  const qualId = useRef<string | null>(null);
+  const eoxRef = useRef<EoxRef | null>(null);
   const ws = useRef<WebSocket | null>(null);
   const logged = useRef(false);
-  const timers = useRef<{ ping?: ReturnType<typeof setInterval>; idle?: ReturnType<typeof setTimeout>; max?: ReturnType<typeof setTimeout>; clear?: ReturnType<typeof setTimeout>; qual?: ReturnType<typeof setTimeout>; ack?: ReturnType<typeof setTimeout> }>({});
+  const timers = useRef<{ ping?: ReturnType<typeof setInterval>; idle?: ReturnType<typeof setTimeout>; max?: ReturnType<typeof setTimeout>; clear?: ReturnType<typeof setTimeout>; qual?: ReturnType<typeof setTimeout> }>({});
   const loginWait = useRef<((ok: boolean) => void)[]>([]);
   const callWait = useRef<((ok: boolean) => void)[]>([]);
   const alive = useRef(true);
-  const { host, port, secure, dac, senha, prefix, quals } = cfg;
+  const { host, port, secure, dac, senha, prefix } = cfg;
 
   /** Corta a conexão e solta quem estava esperando. Pode ser chamada quantas vezes quiser. */
   const hangup = useCallback((next: VocallState = "idle") => {
     const t = timers.current;
-    clearInterval(t.ping); clearTimeout(t.idle); clearTimeout(t.max); clearTimeout(t.qual); clearTimeout(t.ack);
-    qualId.current = null;
+    clearInterval(t.ping); clearTimeout(t.idle); clearTimeout(t.max); clearTimeout(t.qual);
     const s = ws.current; ws.current = null; logged.current = false;
     if (s) { s.onopen = s.onmessage = s.onerror = s.onclose = null; try { s.close(1000); } catch { /* já fechou */ } }
     loginWait.current.splice(0).forEach((r) => r(false));
     callWait.current.splice(0).forEach((r) => r(false));
-    if (alive.current) { setState(next); setQual(null); setSending(false); }
+    if (alive.current) setState(next);
   }, []);
 
-  const finish = useCallback((estado: string) => {
-    // a chamada acabou: mostra o aviso por 5s e corta a conexão agora
+  /** Tira o painel depois de um tempo. */
+  const dismissIn = useCallback((ms: number) => {
     clearTimeout(timers.current.clear);
-    setCall((c) => (c ? { ...c, estado } : c));
-    timers.current.clear = setTimeout(() => setCall(null), 5_000);
-    // a central costuma pedir a qualificação logo em seguida; se não pedir, não deixa aberto
-    clearTimeout(timers.current.qual);
-    if (!qualId.current) timers.current.qual = setTimeout(() => { if (!qualId.current) hangup("idle"); }, QUAL_WAIT_MS);
-  }, [hangup]);
+    timers.current.clear = setTimeout(() => setCall(null), ms);
+  }, []);
 
-  /** Pergunta à central qual ligação está esperando qualificação e abre o painel; sem pendência, corta. */
+  /** Pergunta à central qual ligação espera qualificação e monta o link do Atendimento da EOX. A conexão é cortada em seguida. */
   const askQual = useCallback(async () => {
-    clearTimeout(timers.current.qual); clearTimeout(timers.current.ack);
+    clearTimeout(timers.current.qual);
+    setCall((c) => (c ? { ...c, qualLooking: true } : c));
+    let url: string | null = null;
     try {
       const r = await fetch("/api/vocall/qualificacao", { method: "POST", cache: "no-store" });
-      const j = (await r.json()) as { id: string | null; telefone?: string | null; empresa?: string | null; atendida?: boolean };
-      if (!ws.current) return;
-      if (!j.id) return hangup("idle");
-      qualId.current = j.id;
-      setSending(false);
-      setQual({ id: j.id, telefone: j.telefone ?? null, empresa: j.empresa ?? null, atendida: j.atendida === true });
-      timers.current.qual = setTimeout(() => hangup("idle"), QUAL_MAX_MS);
-    } catch { hangup("idle"); }
-  }, [hangup]);
+      const j = (await r.json()) as { id: string | null };
+      if (j.id && eoxRef.current?.origin) url = qualificationUrl(eoxRef.current, j.id);
+    } catch { /* sem link: o painel só avisa que acabou */ }
+    hangup("idle");
+    if (!alive.current) return;
+    setCall((c) => (c ? { ...c, qualUrl: url, qualLooking: false } : c));
+    dismissIn(url ? QUAL_KEEP_MS : GONE_MS);
+  }, [hangup, dismissIn]);
 
-  /** Manda a qualificação escolhida e corta assim que a central confirmar. */
-  const qualify = useCallback((texto: string) => {
-    const s = ws.current;
-    if (!s || s.readyState !== 1 || !qualId.current) return hangup("idle");
-    s.send(JSON.stringify({ action: "qualificar", data: { id_qualificacao_pendente: qualId.current, qualificacao: texto } }));
-    setSending(true);
+  const finish = useCallback((estado: string) => {
+    // a chamada acabou: o cronômetro para; a central costuma pedir a qualificação logo em seguida
+    setCall((c) => (c ? { ...c, estado, endedAt: c.endedAt ?? Date.now() } : c));
+    clearTimeout(timers.current.clear);
     clearTimeout(timers.current.qual);
-    timers.current.ack = setTimeout(() => hangup("idle"), QUAL_ACK_MS);
-  }, [hangup]);
+    timers.current.qual = setTimeout(() => void askQual(), QUAL_WAIT_MS); // se ela não pedir, procura mesmo assim e corta
+  }, [askQual]);
 
   /** Garante uma conexão com login feito. Devolve o socket pronto ou null. */
   const connect = useCallback((): Promise<WebSocket | null> => new Promise((resolve) => {
@@ -122,10 +112,6 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
       } else if (m.action === "aguardando_qualificacao") {
         clearTimeout(timers.current.idle);
         void askQual();
-      } else if (m.action === "retorno_qualificacao") {
-        // confirmou; se ainda sobrou outra ligação sem qualificar, pede a próxima, senão corta
-        clearTimeout(timers.current.ack); qualId.current = null; setQual(null); setSending(false);
-        if (Number((m.data as { pendentes?: unknown } | undefined)?.pendentes) > 0) void askQual(); else hangup("idle");
       }
     };
     sock.onerror = () => { clearTimeout(giveUp); if (ws.current === sock) hangup("error"); };
@@ -133,11 +119,11 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
       clearTimeout(giveUp);
       if (ws.current !== sock) return;
       // caiu no meio da chamada: o aviso não pode ficar preso na tela
-      setCall((c) => (c && c.estado !== "Finalizado" ? { ...c, estado: "Conexão encerrada" } : c));
-      clearTimeout(timers.current.clear); timers.current.clear = setTimeout(() => setCall(null), 5_000);
+      setCall((c) => (c && c.estado !== "Finalizado" ? { ...c, estado: "Conexão encerrada", endedAt: Date.now() } : c));
+      dismissIn(GONE_MS);
       hangup("idle");
     };
-  }), [host, port, secure, dac, senha, agentId, ramal, hangup, finish, askQual]);
+  }), [host, port, secure, dac, senha, agentId, ramal, hangup, finish, askQual, dismissIn]);
 
   // mudou a configuração, saiu da página ou fechou a aba: nada fica conectado
   useEffect(() => {
@@ -148,6 +134,7 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
   }, [hangup, host, port, secure, dac, senha, agentId, ramal]);
 
   const dial = useCallback(async (phone: string, label?: string | null, eox?: EoxRef | null) => {
+    eoxRef.current = eox ?? null;
     const digits = phone.replace(/\D/g, "");
     if (digits.length < 8) return false;
     const s = await connect();
@@ -163,44 +150,36 @@ export function VocallProvider({ cfg, agentId, ramal, children }: { cfg: Pick<Vo
   }, [connect, hangup, prefix]);
 
   const value = useMemo(() => ({ configured: true, state, call, dial }), [state, call, dial]);
-  return <VocallCtx.Provider value={value}>{children}{call && <CallPill call={call} />}{qual && <QualDialog qual={qual} quals={quals} sending={sending} onPick={qualify} />}</VocallCtx.Provider>;
+  return <VocallCtx.Provider value={value}>{children}{call && <CallPill call={call} onClose={() => { clearTimeout(timers.current.clear); setCall(null); }} />}</VocallCtx.Provider>;
 }
 
-function Timer({ since }: { since: number }) {
+function Timer({ since, endedAt }: { since: number; endedAt?: number }) {
   const [now, setNow] = useState(since);
-  useEffect(() => { setNow(Date.now()); const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
-  const s = Math.max(0, Math.floor((now - since) / 1000));
-  return <span className="figure">{String(Math.floor(s / 60)).padStart(2, "0")}:{String(s % 60).padStart(2, "0")}</span>;
+  useEffect(() => {
+    if (endedAt) return;
+    setNow(Date.now()); const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t);
+  }, [endedAt]);
+  const s = Math.max(0, Math.floor(((endedAt ?? now) - since) / 1000));
+  return <span className="figure text-lg font-bold tabular-nums">{String(Math.floor(s / 60)).padStart(2, "0")}:{String(s % 60).padStart(2, "0")}</span>;
 }
 
-/** Faixa roxa como a da EOX: [EMPRESA] [TEMPO] [STATUS]. */
-function CallPill({ call }: { call: VocallCall }) {
-  const ended = call.estado === "Finalizado" || call.estado === "Conexão encerrada";
+/** Painel flutuante da ligação, embaixo e no centro: durante a chamada mostra quem e há quanto tempo; ao fim oferece "Qualificar". */
+function CallPill({ call, onClose }: { call: VocallCall; onClose: () => void }) {
+  const ended = !!call.endedAt;
   return (
-    <div role="status" className="fixed left-1/2 top-3 z-[65] flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 items-center gap-3 rounded-full px-4 py-2 text-sm font-semibold text-white shadow-xl card-in" style={{ background: ended ? "#475569" : "linear-gradient(135deg,#7c3aed,#6d28d9)" }}>
-      {ended ? <PhoneOff size={16} aria-hidden /> : <PhoneCall size={16} aria-hidden className="script-shake" />}
-      <span className="truncate">{call.empresa ?? call.telefone}</span>
-      <Timer since={call.since} />
-      <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">{call.estado ?? "Em ligação"}</span>
-    </div>
-  );
-}
-
-/** Painel que aparece quando a ligação termina: uma escolha e pronto (a conexão é cortada em seguida). */
-function QualDialog({ qual, quals, sending, onPick }: { qual: Qual; quals: VocallConfig["quals"]; sending: boolean; onPick: (texto: string) => void }) {
-  return (
-    <div role="dialog" aria-modal="true" aria-labelledby="qual-title" className="fixed inset-0 z-[70] grid place-items-center bg-black/50 p-4">
-      <div className="w-full max-w-md space-y-4 rounded-2xl border border-line bg-surface p-5 shadow-2xl card-in">
-        <div>
-          <h2 id="qual-title" className="text-lg font-bold">Como foi a ligação?</h2>
-          <p className="text-sm text-muted">{qual.empresa ?? qual.telefone ?? "Ligação encerrada"} · escolha uma opção para liberar o telefone.</p>
+    <div role="status" aria-live="polite" className="fixed inset-x-0 bottom-4 z-[65] flex justify-center px-3 pointer-events-none">
+      <div className="pointer-events-auto flex w-full max-w-xl items-center gap-3 rounded-2xl border border-white/10 p-2.5 pr-3 text-white shadow-2xl card-in" style={{ background: ended ? "linear-gradient(135deg,#1e293b,#0f172a)" : "linear-gradient(135deg,#5b21b6,#3b0f8c)" }}>
+        <span className={`relative grid size-11 shrink-0 place-items-center rounded-xl ${ended ? "bg-white/10" : "bg-white/15"}`}>
+          {ended ? <PhoneOff size={20} aria-hidden /> : <><span className="absolute inset-0 animate-ping rounded-xl bg-white/20" aria-hidden /><PhoneCall size={20} aria-hidden className="relative script-shake" /></>}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold leading-tight">{call.empresa ?? call.telefone}</p>
+          <p className="truncate text-xs text-white/70">{call.empresa ? `${call.telefone} · ` : ""}{ended ? (call.estado === "Finalizado" ? "Ligação encerrada" : call.estado) : (call.estado ?? "Em ligação")}</p>
         </div>
-        <div className="grid gap-2">
-          {quals.map((q) => (
-            <button key={q.texto} type="button" disabled={sending} onClick={() => onPick(q.texto)} className="min-h-12 rounded-xl border border-line bg-sunk px-4 py-2 text-left text-sm font-semibold transition hover:border-accent hover:bg-accent/10 disabled:opacity-50">{q.label}</button>
-          ))}
-        </div>
-        {sending && <p role="status" className="text-xs text-muted">Enviando…</p>}
+        <Timer since={call.since} endedAt={call.endedAt} />
+        {ended && call.qualLooking && <span className="flex items-center gap-1.5 text-xs text-white/70"><Loader2 size={14} className="animate-spin" aria-hidden /> Buscando…</span>}
+        {ended && call.qualUrl && <a href={call.qualUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-white px-4 text-sm font-bold text-slate-900 transition hover:bg-amber-200"><ExternalLink size={15} aria-hidden /> Qualificar</a>}
+        {ended && <button type="button" onClick={onClose} aria-label="Fechar painel da ligação" className="grid size-9 shrink-0 place-items-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white"><X size={16} aria-hidden /></button>}
       </div>
     </div>
   );
