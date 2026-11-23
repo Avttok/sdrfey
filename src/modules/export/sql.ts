@@ -50,6 +50,7 @@ const arr = (col: string) => `case when jsonb_typeof(${col}) = 'array' then ${co
 /** Colunas de contato do lead, reaproveitadas por negociações e visitas (o alias do lead é sempre `l`). */
 const leadContact = { contact_name: "l.contact_name", phones: ch("phone"), emails: ch("email"), cnpj: "l.cnpj", company: "l.company", city: "l.city", uf: "l.uf" };
 const STAGE = `case d.stage when 'novo' then 'Novo' when 'contato' then 'Em contato' when 'cotacao' then 'Cotação enviada' when 'negociacao' then 'Negociando' when 'ganho' then 'Faturado' when 'perdido' then 'Perdida' else d.stage end`;
+const FACTS_COUNT = "(select count(*) from lead_facts f where f.lead_id = l.id and f.current)::int";
 const yn = (c: string) => `case when ${c} then 'SIM' else 'NÃO' end`;
 
 export const DEFS: Record<ExDatasetKey, Def> = {
@@ -75,6 +76,9 @@ export const DEFS: Record<ExDatasetKey, Def> = {
       visit_codes: "(select string_agg(v.code, ', ' order by v.created_at) from visits v where v.lead_id = l.id and v.canceled_at is null)",
       open_deal: yn("exists (select 1 from deals d where d.lead_id = l.id and not d.is_test and d.stage not in ('ganho','perdido'))"),
       deals_count: "(select count(*) from deals d where d.lead_id = l.id and not d.is_test)::int", notes: "l.notes",
+      facts_count: FACTS_COUNT,
+      facts_summary: "(select string_agg(d.label || ': ' || f.value, '; ' order by d.group_name, d.label) from lead_facts f join field_defs d on d.key = f.key where f.lead_id = l.id and f.current)",
+      facts_missing: "(select string_agg(d.label, ', ' order by d.priority desc) from field_defs d where d.active and d.scope = 'lead' and not exists (select 1 from lead_facts f where f.lead_id = l.id and f.key = d.key and f.current))",
       created_at: "l.created_at", updated_at: "l.updated_at", enriched_at: "l.enriched_at", source: "l.source",
     },
     filter: {
@@ -91,6 +95,8 @@ export const DEFS: Record<ExDatasetKey, Def> = {
       scheduled: (v) => tri(v, "exists (select 1 from visits v where v.lead_id = l.id and v.canceled_at is null)"),
       openDeal: (v) => tri(v, "exists (select 1 from deals d where d.lead_id = l.id and not d.is_test and d.stage not in ('ganho','perdido'))"),
       worked: (v) => tri(v, "l.times_worked > 0"), served: (v) => num("l.times_served", v),
+      factsCount: (v) => num(FACTS_COUNT, v), hasFacts: (v) => tri(v, "exists (select 1 from lead_facts f where f.lead_id = l.id and f.current)"),
+      factsText: (v) => { const t = text(v); return t ? sql`exists (select 1 from lead_facts f join field_defs d on d.key = f.key where f.lead_id = l.id and f.current and (f.value ilike ${"%" + t + "%"} or d.label ilike ${"%" + t + "%"}))` : null; },
       source: (v) => inList("l.source", list(v)), createdAt: (v) => dt("l.created_at", v), updatedAt: (v) => dt("l.updated_at", v),
     },
   },

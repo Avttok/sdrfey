@@ -50,6 +50,18 @@ export async function addPersonAction(id: number, input: { name: string; roleTit
   revalidatePath(`/leads/${id}`);
   return { ok: true, message: "Pessoa adicionada." };
 }
+export async function setPersonStatusAction(id: number, personId: number, status: "ativo" | "saiu" | "invalido"): Promise<ActionResult> {
+  const me = await leadEditor(id);
+  if (!me) return fail("Sem permissão para editar este lead.");
+  if (!["ativo", "saiu", "invalido"].includes(status)) return fail("Situação inválida.");
+  const [p] = await db.select().from(leadPeople).where(and(eq(leadPeople.id, personId), eq(leadPeople.leadId, id)));
+  if (!p) return fail("Pessoa não encontrada.");
+  await db.update(leadPeople).set({ status }).where(eq(leadPeople.id, personId));
+  await logAudit(db, { userId: me.id, leadId: id, entity: "lead", action: "mudou situação do contato", field: p.name, oldValue: p.status, newValue: status });
+  revalidatePath(`/leads/${id}`);
+  const label = status === "saiu" ? "marcado como “não trabalha mais lá”. Cadastre quem assumiu o lugar." : status === "invalido" ? "marcado com contato inválido." : "voltou a ficar ativo.";
+  return { ok: true, message: `${p.name} ${label}` };
+}
 export async function removePersonAction(id: number, personId: number): Promise<ActionResult> {
   const me = await leadEditor(id);
   if (!me) return fail("Sem permissão para editar este lead.");

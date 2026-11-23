@@ -89,3 +89,13 @@ export async function approveSuggestion(id: number): Promise<boolean> {
   await db.update(fieldSuggestions).set({ status: "aprovada" }).where(eq(fieldSuggestions.id, id));
   return true;
 }
+
+export type Enricher = { id: number; name: string; facts: number; leads: number };
+/** Quem mais guardou dados nos leads (testes não contam). */
+export async function topEnrichers(limit = 8): Promise<Enricher[]> {
+  const r = await db.execute<{ id: number; name: string; facts: number; leads: number }>(sql`
+    select u.id, u.name, count(*)::int as facts, count(distinct f.lead_id)::int as leads
+    from lead_facts f join users u on u.id = f.user_id join leads l on l.id = f.lead_id
+    where not l.is_test group by u.id, u.name order by facts desc limit ${limit}`);
+  return [...r];
+}

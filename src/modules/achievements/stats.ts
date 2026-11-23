@@ -36,7 +36,8 @@ export async function achievementStats(uid: number): Promise<Stats> {
       (select count(*) from sold where is_reactivation)::int as reactivated,
       (select count(*) from seller_shuffles where user_id = ${uid} and not is_test and outcome in ('deal', 'no_answer', 'no_interest', 'skipped'))::int as shuffled,
       (select count(*) from seller_shuffles where user_id = ${uid} and not is_test and outcome = 'deal')::int as shuffle_deals,
-      (select count(*) from coin_ledger where user_id = ${uid} and ref = 'egg:done')::int as egg`);
+      (select count(*) from coin_ledger where user_id = ${uid} and ref = 'egg:done')::int as egg,
+      (select count(*) from lead_facts f join leads l on l.id = f.lead_id where f.user_id = ${uid} and not l.is_test)::int as facts`);
   return Object.fromEntries(Object.entries(r ?? {}).map(([k, v]) => [k, Number(v ?? 0)]));
 }
 

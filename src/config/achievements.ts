@@ -1,4 +1,4 @@
-import { Award, BadgeCheck, Bird, Cake, CalendarCheck, CalendarDays, Coins, Crown, Egg, FileText, Flag, Flame, Gem, Handshake, Headset, Heart, Mail, Medal, MessageCircle, Moon, Phone, PhoneCall, Rabbit, Receipt, Repeat, Rocket, Shuffle, Sparkles, Star, Sunrise, Swords, Target, Trophy, TrendingUp, Users, Wallet, Zap, type LucideIcon } from "lucide-react";
+import { BookOpen, Brain, Award, BadgeCheck, Bird, Cake, CalendarCheck, CalendarDays, Coins, Crown, Egg, FileText, Flag, Flame, Gem, Handshake, Headset, Heart, Mail, Medal, MessageCircle, Moon, Phone, PhoneCall, Rabbit, Receipt, Repeat, Rocket, Shuffle, Sparkles, Star, Sunrise, Swords, Target, Trophy, TrendingUp, Users, Wallet, Zap, type LucideIcon } from "lucide-react";
 
 /**
  * Catálogo das conquistas. Cada uma olha uma estatística (`stat`) e é ganha ao chegar na `meta`.
@@ -22,6 +22,10 @@ export const ACHIEVEMENTS: Achievement[] = [
   A("SDR", "call_100", "Telefone quente", "100 ligações registradas.", "calls", 100, PhoneCall, "#60A5FA", "ligações"),
   A("SDR", "call_500", "Voz de ouro", "500 ligações registradas.", "calls", 500, PhoneCall, "#FACC15", "ligações"),
   A("SDR", "call_2000", "Call center de um homem só", "2.000 ligações registradas.", "calls", 2000, Gem, "#22D3EE", "ligações"),
+  A("SDR", "fact_25", "Detetive de leads", "Guardou 25 dados que descobriu nas ligações.", "facts", 25, BookOpen, "#34D399", "dados"),
+  A("SDR", "fact_150", "Mapa do cliente", "Guardou 150 dados sobre os leads.", "facts", 150, BookOpen, "#60A5FA", "dados"),
+  A("SDR", "fact_600", "Enciclopédia de vendas", "Guardou 600 dados sobre os leads.", "facts", 600, Brain, "#A855F7", "dados"),
+  A("SDR", "fact_2000", "Memória de elefante", "Guardou 2.000 dados sobre os leads. A base agradece.", "facts", 2000, Brain, "#FACC15", "dados"),
   A("SDR", "zap_100", "Zap em dia", "100 contatos por WhatsApp.", "whatsapps", 100, MessageCircle, "#22C55E", "WhatsApps"),
   A("SDR", "zap_500", "Mestre do Zap", "500 contatos por WhatsApp.", "whatsapps", 500, MessageCircle, "#16A34A", "WhatsApps"),
   A("SDR", "mail_50", "Caixa de saída", "50 contatos por e-mail.", "emails", 50, Mail, "#818CF8", "e-mails"),

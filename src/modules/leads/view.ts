@@ -55,7 +55,7 @@ export async function getLeadView(leadId: number) {
     receitaWs: lead.receitaWsData ?? null,
     tags: tagRows,
     channels: channels.map((c) => ({ id: c.id, personId: c.personId, kind: c.kind, value: c.value, label: c.label, origin: c.origin, wrong: c.wrong })),
-    people: people.map((p) => ({ id: p.id, name: p.name, roleTitle: p.roleTitle, extension: p.extension })),
+    people: people.map((p) => ({ id: p.id, name: p.name, roleTitle: p.roleTitle, extension: p.extension, status: p.status })),
     visits: visitRows.map((v) => ({ id: v.id, code: v.code, at: v.createdAt.toISOString(), visitDate: v.visitDate, link: v.link, repName: v.repName, repSap: v.repSap, repCity: v.repCity, repKm: v.repKm, kind: v.kind, sellerName: v.sellerName, byUserId: v.userId, canceled: !!v.canceledAt, status: v.canceledAt ? ("cancelada" as const) : v.status, confirmedAt: v.confirmedAt?.toISOString() ?? null, by: v.by, byHex: v.by ? bubbleHex(v.byAccent, v.byId ?? 0, v.byRoles ?? undefined) : null })),
     rep,
   };

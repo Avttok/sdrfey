@@ -40,6 +40,7 @@ export const EX_DATASETS: ExDataset[] = [
       c("Classificação", "tag_interest", "Interesse", "text", ["basic"]), c("Classificação", "tag_channel", "Meio"), c("Classificação", "qualified", "Qualificado"), c("Classificação", "tag_situation", "Situação (tags)", "text", ["basic"]), c("Classificação", "tag_size", "Porte"), c("Classificação", "tag_capital", "Faixa de capital"), c("Classificação", "all_tags", "Todas as tags"),
       c("Andamento", "owner", "SDR responsável"), c("Andamento", "times_served", "Vezes sorteado", "int"), c("Andamento", "times_worked", "Vezes trabalhado", "int"), c("Andamento", "interactions", "Nº de contatos registrados", "int"), c("Andamento", "last_interaction", "Último contato", "datetime"),
       c("Andamento", "scheduled", "Visita agendada"), c("Andamento", "visit_codes", "Códigos de visita"), c("Andamento", "open_deal", "Negociação aberta"), c("Andamento", "deals_count", "Nº de negociações", "int"), c("Andamento", "notes", "Observações"),
+      c("Dados do roteiro", "facts_count", "Dados conhecidos (qtd)", "int"), c("Dados do roteiro", "facts_summary", "O que sabemos (resumo)"), c("Dados do roteiro", "facts_missing", "Dados que faltam"),
       c("Datas e origem", "created_at", "Cadastrado em", "datetime"), c("Datas e origem", "updated_at", "Atualizado em", "datetime"), c("Datas e origem", "enriched_at", "Consultado na Receita em", "datetime"), c("Datas e origem", "source", "Origem da importação"),
     ],
     filters: [
@@ -61,6 +62,9 @@ export const EX_DATASETS: ExDataset[] = [
       f("Andamento", "openDeal", "Com negociação aberta", "tri"),
       f("Andamento", "worked", "Já foi trabalhado", "tri"),
       f("Andamento", "served", "Vezes sorteado", "num", { unit: "vezes" }),
+      f("Dados do roteiro", "factsCount", "Dados conhecidos", "num", { unit: "dados" }),
+      f("Dados do roteiro", "hasFacts", "Tem algum dado do roteiro", "tri"),
+      f("Dados do roteiro", "factsText", "O que sabemos contém", "text"),
       f("Origem", "source", "Origem da importação", "multi", { dyn: "sources" }),
       f("Datas", "createdAt", "Cadastrado entre", "date"),
       f("Datas", "updatedAt", "Atualizado entre", "date"),
