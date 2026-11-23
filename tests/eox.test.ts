@@ -67,17 +67,16 @@ describe.skipIf(!HAS_DB)("preencher o link da EOX nos leads (banco real)", () =>
     ]);
   });
   afterAll(async () => { await m.db.db.delete(m.db.leads).where(like(m.db.leads.company, "ZZEOX%")); });
-  it("liga por CNPJ (com ou sem máscara), não troca link existente e não inventa", async () => {
-    const map = new Map([["11222333000181", "1"], ["11222333000262", "2"], ["11222333000343", "3"]]);
-    const n = await m.sync.linkLeads(m.db.db, cfg.baseUrl, "Accounts", map, null);
-    expect(n).toBe(2);
+  it("liga por CNPJ (com ou sem máscara) e por Código EOX, sem trocar Id existente", async () => {
+    await m.db.db.update(m.db.leads).set({ eoxId: "3" }).where(like(m.db.leads.company, "ZZEOX C"));
+    await m.db.db.update(m.db.leads).set({ eoxCode: "117805" }).where(like(m.db.leads.company, "ZZEOX D"));
+    const map = new Map([["11222333000181", "1"], ["11222333000262", "2"], ["11222333000343", "9"]]);
+    const n = await m.sync.linkLeads(m.db.db, map, new Map([["117805", "4"]]), null);
+    expect(n).toBe(3);
     const rows = await m.db.db.select().from(m.db.leads).where(like(m.db.leads.company, "ZZEOX%"));
-    const by = Object.fromEntries(rows.map((r) => [r.company, r.eoxUrl]));
-    expect(by["ZZEOX A"]).toBe("https://fey.exemplo.com.br/index.php?module=Accounts&view=Detail&record=1");
-    expect(by["ZZEOX B"]).toContain("record=2");
-    expect(by["ZZEOX C"]).toBe("https://meu-link");
-    expect(by["ZZEOX D"]).toBeNull();
-    expect(await m.sync.linkLeads(m.db.db, cfg.baseUrl, "Accounts", map, null)).toBe(0);
+    const by = Object.fromEntries(rows.map((r) => [r.company, r.eoxId]));
+    expect(by).toEqual({ "ZZEOX A": "1", "ZZEOX B": "2", "ZZEOX C": "3", "ZZEOX D": "4" });
+    expect(await m.sync.linkLeads(m.db.db, map, new Map([["117805", "4"]]), null)).toBe(0);
     void eq;
   });
 });
@@ -90,13 +89,13 @@ describe.skipIf(!HAS_DB)("importar Id EOX / Id SF em 'só enriquecer' (banco rea
     await d.db.delete(d.leads).where(like(d.leads.company, "ZZEOXI%"));
     await d.db.insert(d.leads).values([
       { cnpj: "55000000000191", company: "ZZEOXI 1", isTest: true },
-      { cnpj: "55000000000272", company: "ZZEOXI 2", isTest: true, eoxId: "5", eoxUrl: "https://meu-link", sfId: "0015e00000AAAAAAAA" },
+      { cnpj: "55000000000272", company: "ZZEOXI 2", isTest: true, eoxId: "5", sfId: "0015e00000AAAAAAAA" },
     ]);
   });
   afterAll(async () => { await d.db.delete(d.leads).where(like(d.leads.company, "ZZEOXI%")); });
-  it("preenche o que falta, monta o link e não troca o que já existe", async () => {
+  it("preenche o que falta e não troca o que já existe", async () => {
     const r = await ap.applyLeadDrafts([
-      mk("55000000000191", { eoxId: "1293925", sfId: "0015e00000AbCdEfGH" }),
+      mk("55000000000191", { eoxId: "1293925", eoxCode: "117805", sfId: "0015e00000AbCdEfGH" }),
       mk("55000000000272", { eoxId: "999", sfId: "0015e00000ZZZZZZZZ" }),
       mk("55000000000353", { eoxId: "7" }),
     ], { importedBy: null, sourceName: "teste", mode: "nutrir" });
@@ -104,8 +103,8 @@ describe.skipIf(!HAS_DB)("importar Id EOX / Id SF em 'só enriquecer' (banco rea
     const rows = await d.db.select().from(d.leads).where(like(d.leads.company, "ZZEOXI%"));
     const by = Object.fromEntries(rows.map((x) => [x.company, x]));
     expect(by["ZZEOXI 1"].eoxId).toBe("1293925");
-    expect(by["ZZEOXI 1"].eoxUrl).toBe(`${ap.EOX_FALLBACK_BASE}/index.php?module=Accounts&view=Detail&record=1293925`);
+    expect(by["ZZEOXI 1"].eoxCode).toBe("117805");
     expect(by["ZZEOXI 1"].sfId).toBe("0015e00000AbCdEfGH");
-    expect(by["ZZEOXI 2"].eoxId).toBe("5"); expect(by["ZZEOXI 2"].eoxUrl).toBe("https://meu-link"); expect(by["ZZEOXI 2"].sfId).toBe("0015e00000AAAAAAAA");
+    expect(by["ZZEOXI 2"].eoxId).toBe("5"); expect(by["ZZEOXI 2"].sfId).toBe("0015e00000AAAAAAAA");
   });
 });

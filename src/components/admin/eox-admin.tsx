@@ -19,7 +19,7 @@ export function EoxAdmin({ initial, hasKey: hadKey, sync, coverage }: { initial:
   const { run, pending } = useRun();
   const set = <K extends keyof EoxConfig>(k: K, v: EoxConfig[K]) => setC({ ...c, [k]: v });
   const dirty = JSON.stringify(c) !== JSON.stringify(base);
-  const cand = (fields ?? []).filter((f) => /cnpj|cpf|documento/i.test(`${f.label} ${f.name}`));
+  const cand = (fields ?? []).filter((f) => /cnpj|cpf|documento|c[oó]digo|account_?no|n[uú]mero/i.test(`${f.label} ${f.name}`));
 
   return (
     <div className="space-y-4">
@@ -34,6 +34,7 @@ export function EoxAdmin({ initial, hasKey: hadKey, sync, coverage }: { initial:
           <label className="text-sm">Chave de acesso<input className={inputCls} type="password" autoComplete="new-password" value={c.accessKey} onChange={(e) => set("accessKey", e.target.value)} placeholder={hasKey ? "•••••• (deixe vazio para manter)" : "Na EOX: Minhas preferências → Chave de acesso"} /></label>
           <label className="text-sm">Módulo dos clientes<input className={inputCls} value={c.module} onChange={(e) => set("module", e.target.value)} /><span className="text-xs text-muted">Padrão: Accounts (o mesmo do link <code>module=Accounts</code>).</span></label>
           <label className="text-sm">Campo do CNPJ<input className={inputCls} value={c.cnpjField} onChange={(e) => set("cnpjField", e.target.value)} placeholder="Ex.: cf_850" /><span className="text-xs text-muted">Use “Testar conexão” para listar os campos e escolher.</span></label>
+          <label className="text-sm">Campo do Código EOX <span className="text-xs text-muted">(opcional)</span><input className={inputCls} value={c.codeField} onChange={(e) => set("codeField", e.target.value)} placeholder="Ex.: account_no" /><span className="text-xs text-muted">O “Código” do cliente (ex.: 117805). Se o CNPJ não bater, acha pelo código importado.</span></label>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" className={btnPrimary} disabled={pending || !dirty} onClick={() => run(() => saveEoxConfigAction(c), undefined, () => { const saved = { ...c, accessKey: "" }; setBase(saved); setC(saved); setHasKey(hasKey || !!c.accessKey); })}><Save size={15} aria-hidden /> Salvar</button>
@@ -43,9 +44,14 @@ export function EoxAdmin({ initial, hasKey: hadKey, sync, coverage }: { initial:
         {msg && <p role="status" className={`text-sm ${msg.ok ? "text-ok" : "text-danger"}`}>{msg.text}</p>}
         {fields && (
           <div className="space-y-2">
-            <p className="text-sm font-semibold">{cand.length ? "Campos que parecem ser o CNPJ (clique para usar):" : "Nenhum campo com “CNPJ” no nome. Todos os campos:"}</p>
+            <p className="text-sm font-semibold">{cand.length ? "Campos que parecem ser o CNPJ ou o código (escolha para que serve cada um):" : "Nenhum campo com “CNPJ” no nome. Todos os campos:"}</p>
             <div className="flex max-h-48 flex-wrap gap-1.5 overflow-auto">
-              {(cand.length ? cand : fields).map((f) => <button key={f.name} type="button" onClick={() => set("cnpjField", f.name)} className={`rounded-full border px-2.5 py-1 text-xs ${c.cnpjField === f.name ? "border-accent bg-accent/10 font-semibold" : "border-line bg-sunk"}`}>{f.label} <code>{f.name}</code></button>)}
+              {(cand.length ? cand : fields).map((f) => (
+                <span key={f.name} className="inline-flex items-center gap-1 rounded-full border border-line bg-sunk py-0.5 pl-2.5 pr-1 text-xs">{f.label} <code>{f.name}</code>
+                  <button type="button" onClick={() => set("cnpjField", f.name)} className={`rounded-full px-2 py-0.5 font-semibold ${c.cnpjField === f.name ? "bg-accent text-on-accent" : "bg-panel hover:bg-accent/15"}`}>CNPJ</button>
+                  <button type="button" onClick={() => set("codeField", f.name)} className={`rounded-full px-2 py-0.5 font-semibold ${c.codeField === f.name ? "bg-accent text-on-accent" : "bg-panel hover:bg-accent/15"}`}>Código</button>
+                </span>
+              ))}
             </div>
           </div>
         )}

@@ -1,3 +1,4 @@
+import { eoxBaseUrl, eoxProfileUrl } from "@/modules/eox/sync";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { getExtraTaxPct, getIcmsRule, icmsPctFor } from "@/modules/quotes/db";
@@ -15,7 +16,7 @@ export type DealRow = {
   /** Preenchidos por onePerClient: quantas negociações o cliente já teve e o que já faturou. */
   cycles?: number; billedCount?: number; billedCents?: number;
   id: number; leadId: number; stage: DealStage; company: string; city: string | null; uf: string | null; contactName: string | null;
-  phone: string | null; email: string | null; salesforceUrl: string | null; eoxUrl: string | null;
+  phone: string | null; email: string | null; sfId: string | null; eoxId: string | null; eoxCode: string | null; eoxUrl: string | null;
   sellerId: number | null; sellerName: string | null; sdrId: number | null; sdrName: string | null; handoffNote: string | null;
   valueCents: number | null; netValueCents: number | null; mainCents: number | null; createdAt: string; claimedAt: string | null; quoteSentAt: string | null; lastContactAt: string | null;
   nextActionAt: string | null; nextActionNote: string | null; lostReason: string | null; closedAt: string | null;
@@ -71,11 +72,12 @@ export function onePerClient<T extends DealRow>(rows: T[]): T[] {
 
 export async function listDeals(meId: number, team: boolean, opts: { includeTest?: boolean } = {}): Promise<DealRow[]> {
   const cfg = await getSettings();
+  const eoxBase = await eoxBaseUrl();
   const rules = { newUntouchedHours: cfg.deal_new_untouched_hours, poolHours: cfg.deal_pool_hours, quoteChaseDays: cfg.deal_quote_chase_days, staleDays: cfg.deal_stale_days };
   const rows = await db
     .select({
       d: deals, company: leads.company, city: leads.city, uf: leads.uf, contactName: leads.contactName, phones: leads.phones, email: leads.email, address: leads.address, neighborhood: leads.neighborhood, zip: leads.zip, stateReg: leads.stateReg,
-      salesforceUrl: leads.salesforceUrl, eoxUrl: leads.eoxUrl, leadSap: leads.sapCode, leadCnpj: leads.cnpj, sellerName: seller.name, sdrName: sdr.name,
+      sfId: leads.sfId, eoxId: leads.eoxId, eoxCode: leads.eoxCode, leadSap: leads.sapCode, leadCnpj: leads.cnpj, sellerName: seller.name, sdrName: sdr.name,
     })
     .from(deals)
     .innerJoin(leads, eq(leads.id, deals.leadId))
@@ -87,7 +89,7 @@ export async function listDeals(meId: number, team: boolean, opts: { includeTest
   const out = rows.map(({ d, ...x }) => {
     const row = {
       id: d.id, leadId: d.leadId, stage: d.stage, company: x.company, city: x.city, uf: x.uf, contactName: x.contactName, phone: x.phones?.[0] ?? null, email: x.email,
-      salesforceUrl: x.salesforceUrl, eoxUrl: x.eoxUrl, sellerId: d.sellerId, sellerName: x.sellerName, sdrId: d.sdrId, sdrName: x.sdrName, handoffNote: d.handoffNote,
+      sfId: x.sfId, eoxId: x.eoxId, eoxCode: x.eoxCode, eoxUrl: eoxProfileUrl(eoxBase, x.eoxId), sellerId: d.sellerId, sellerName: x.sellerName, sdrId: d.sdrId, sdrName: x.sdrName, handoffNote: d.handoffNote,
       valueCents: d.valueCents, netValueCents: d.netValueCents, mainCents: d.realValueCents ?? d.netValueCents ?? d.closedValueCents ?? d.valueCents, createdAt: d.createdAt.toISOString(), claimedAt: iso(d.claimedAt), quoteSentAt: iso(d.quoteSentAt), lastContactAt: iso(d.lastContactAt),
       nextActionAt: iso(d.nextActionAt), nextActionNote: d.nextActionNote, lostReason: d.lostReason, closedAt: iso(d.closedAt),
       freight: d.freight, sapCode: d.sapCode ?? x.leadSap, orderNumber: d.orderNumber, quoteNumber: d.quoteNumber, quoteDate: d.quoteDate, closedOn: d.closedOn,

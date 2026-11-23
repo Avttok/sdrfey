@@ -1,9 +1,10 @@
+import { eoxBaseUrl, eoxProfileUrl } from "@/modules/eox/sync";
 import { and, desc, eq } from "drizzle-orm";
 import { db, interactions, leads, sellerShuffles, tags, users } from "@/db";
 import { getLeadCommercial, type LeadCommercial } from "./lead-commercial";
 
 export type ClientHistory = {
-  lead: { id: number; company: string; tradeName: string | null; city: string | null; uf: string | null; contactName: string | null; phones: string[]; email: string | null; sapCode: string | null; kind: "prospect" | "inativo"; salesforceUrl: string | null; eoxUrl: string | null };
+  lead: { id: number; company: string; tradeName: string | null; city: string | null; uf: string | null; contactName: string | null; phones: string[]; email: string | null; sapCode: string | null; kind: "prospect" | "inativo"; sfId: string | null; eoxId: string | null; eoxCode: string | null; eoxUrl: string | null };
   commercial: LeadCommercial;
   interactions: { at: string; by: string | null; channel: string; note: string | null }[];
   shuffles: { at: string; by: string | null; outcome: string | null; note: string | null }[];
@@ -28,7 +29,7 @@ export async function getClientHistory(leadId: number): Promise<ClientHistory | 
   const won = commercial.deals.filter((d) => d.stage === "ganho");
   const openDeal = commercial.deals.find((d) => d.stage !== "ganho" && d.stage !== "perdido");
   return {
-    lead: { id: l.id, company: l.company, tradeName: l.tradeName, city: l.city, uf: l.uf, contactName: l.contactName, phones: l.phones, email: l.email, sapCode: l.sapCode, kind: l.kind, salesforceUrl: l.salesforceUrl, eoxUrl: l.eoxUrl },
+    lead: { id: l.id, company: l.company, tradeName: l.tradeName, city: l.city, uf: l.uf, contactName: l.contactName, phones: l.phones, email: l.email, sapCode: l.sapCode, kind: l.kind, sfId: l.sfId, eoxId: l.eoxId, eoxCode: l.eoxCode, eoxUrl: eoxProfileUrl(await eoxBaseUrl(), l.eoxId) },
     commercial,
     interactions: att.map((a) => ({ at: a.at.toISOString(), by: a.by, channel: a.label ?? a.channel, note: a.note })),
     shuffles: sh.map((s) => ({ at: s.at.toISOString(), by: s.by, outcome: s.outcome, note: s.note })),

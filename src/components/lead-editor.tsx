@@ -3,7 +3,7 @@
 import { PersonBubble } from "@/components/person-bubble";
 import { RoteiroLink } from "@/components/roteiro-link";
 
-import { BrandLink } from "@/components/brand-icons";
+import { ClientIds } from "@/components/client-ids";
 import { ArrowLeft, Ban, CalendarCheck, Copy, ExternalLink, Handshake, Link2, MapPin, Pencil, Phone, Plus, Tag, Trash2, RotateCcw, UnlockKeyhole, Users } from "lucide-react";
 import Link from "next/link";
 import { SectionCard } from "@/components/section-card";
@@ -20,7 +20,6 @@ import { VisitRow } from "@/components/visit-row";
 import { DateInput } from "@/components/date-input";
 import { fmtCnpj, fmtDate, fmtDateTime, fmtPhone } from "@/lib/format";
 import { addChannelAction, markWrongAction, removeChannelAction } from "@/modules/leads/actions";
-import { saveLeadLinksAction } from "@/modules/deals/actions";
 import { addPersonAction, addVisitAction, deleteVisitAction, changeTagAction, forceReleaseAction, removePersonAction, setPersonStatusAction, resetLeadFromPageAction, updateLeadAction } from "@/modules/leads/edit";
 import type { LeadView, TagCatalog } from "@/modules/leads/view";
 
@@ -38,7 +37,6 @@ export function LeadEditor({ kpis, records, afterLeft, afterRight, lead, catalog
   const [vis, setVis] = useState({ code: "", date: "", link: "" });
   const [delVisit, setDelVisit] = useState<number | null>(null);
   const [p, setP] = useState({ name: "", roleTitle: "", extension: "" });
-  const [links, setLinks] = useState({ sf: lead.salesforceUrl ?? "", eox: lead.eoxUrl ?? "", eoxId: lead.eoxId ?? "", sfId: lead.sfId ?? "" });
 
   const toggleTag = (g: string, k: string, exclusive: boolean) => {
     const ref = `${g}:${k}`;
@@ -71,8 +69,6 @@ export function LeadEditor({ kpis, records, afterLeft, afterRight, lead, catalog
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {!sellerView && !lockedBy && inDeal && (dealSeller ? <PersonBubble name={dealSeller.name} hex={dealSeller.hex} prefix="Vendas" /> : <span className="rounded-full bg-accent/12 px-3 py-1.5 text-sm font-semibold text-accent">Com os vendedores</span>)}
-            {lead.salesforceUrl && <BrandLink kind="sf" href={lead.salesforceUrl} />}
-            {lead.eoxUrl && <BrandLink kind="eox" href={lead.eoxUrl} />}
             {sellerView ? (dealId ? <Link href={`/negociacoes/${dealId}`} className={btnPrimary}><Handshake size={16} aria-hidden /> Abrir negociação</Link> : null) : lockedBy ? <PersonBubble name={lockedBy.name} hex={lockedBy.hex} prefix="Em atendimento" /> : inDeal ? null : <><AttendButton leadId={lead.id} />{dealId ? <Link href={`/negociacoes/${dealId}`} className={btnGhost}><Handshake size={16} aria-hidden /> Abrir negociação</Link> : null}</>}
             {!sellerView && inDeal && !lockedBy && dealId ? <Link href={`/negociacoes/${dealId}`} className={btnGhost}><Handshake size={16} aria-hidden /> Abrir negociação</Link> : null}
             {!sellerView && canEdit && !lockedBy && <button type="button" className={`${btnGhost} !border-danger !bg-danger !text-white hover:brightness-110`} disabled={pending} onClick={() => setConfirmReset(true)}><RotateCcw size={15} aria-hidden /> Resetar lead</button>}
@@ -102,15 +98,7 @@ export function LeadEditor({ kpis, records, afterLeft, afterRight, lead, catalog
 
 
       {afterLeft}
-      <SectionCard icon={Link2} title="Perfis do cliente">
-        <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); run(() => saveLeadLinksAction(lead.id, { salesforceUrl: links.sf, eoxUrl: links.eox, eoxId: links.eoxId, sfId: links.sfId })); }}>
-          <label className="block text-sm"><span className="mb-1 block text-muted">Perfil no Salesforce</span><input className={inputCls} placeholder="https://…" value={links.sf} onChange={(e) => setLinks({ ...links, sf: e.target.value })} /></label>
-          <label className="block text-sm"><span className="mb-1 block text-muted">Perfil no CRM (EOX)</span><input className={inputCls} placeholder="https://…" value={links.eox} onChange={(e) => setLinks({ ...links, eox: e.target.value })} /></label>
-          <label className="block text-sm"><span className="mb-1 block text-muted">Id Salesforce</span><input className={inputCls} placeholder="15 ou 18 caracteres" value={links.sfId} onChange={(e) => setLinks({ ...links, sfId: e.target.value })} /></label>
-          <label className="block text-sm"><span className="mb-1 block text-muted">Id EOX <span className="text-xs">(número do cadastro; faz o Atendimento da EOX abrir)</span></span><input className={inputCls} inputMode="numeric" placeholder="Ex.: 1293925" value={links.eoxId} onChange={(e) => setLinks({ ...links, eoxId: e.target.value })} /></label>
-          <div className="sm:col-span-2"><button type="submit" className={btnPrimary} disabled={pending}>Salvar links</button></div>
-        </form>
-      </SectionCard>
+      <SectionCard icon={Link2} title="Ids do cliente"><ClientIds leadId={lead.id} eoxId={lead.eoxId} eoxCode={lead.eoxCode} sfId={lead.sfId} eoxUrl={lead.eoxUrl} /></SectionCard>
 
       <SectionCard icon={Phone} title="Contatos">
         <ul className="space-y-1.5">

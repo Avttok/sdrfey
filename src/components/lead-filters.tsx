@@ -64,7 +64,7 @@ export function LeadFilters({ catalog, people, ufs, sellerView }: { sellerView?:
   ) : null;
   return (
     <FilterBar id="leads" active={activeCount} onClear={clearAll} chips={chips}
-      search={<><Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" aria-hidden /><input className={`${inputCls} !rounded-xl !py-3 pl-11`} placeholder="Buscar por empresa, CNPJ, telefone, e-mail ou pessoa" value={q} onChange={(e) => setQ(e.target.value)} /></>}>
+      search={<><Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" aria-hidden /><input className={`${inputCls} !rounded-xl !py-3 pl-11`} placeholder="Buscar por empresa, CNPJ, telefone, e-mail, pessoa ou Id (EOX, Salesforce)" value={q} onChange={(e) => setQ(e.target.value)} /></>}>
       <div className="space-y-6">
           <Section icon={Tag} title="Tags">
             <div className="grid gap-x-8 gap-y-4 md:grid-cols-2">

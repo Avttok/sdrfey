@@ -1,5 +1,6 @@
 "use client";
 
+import { ClientIds } from "@/components/client-ids";
 import { Building2, Check, ExternalLink, Mail, MessageCircle, Pause, SkipForward, ThumbsDown, PhoneOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -44,9 +45,7 @@ export function SalesShuffleFlow({ shuffleId, h }: { shuffleId: number; h: Clien
               {l.email && <p className="flex items-center gap-2 pt-1"><Mail size={14} className="text-muted" aria-hidden /><a href={`mailto:${l.email}`} className="truncate hover:text-accent">{l.email}</a></p>}
             </div>
             <div className="grid grid-cols-2 content-start gap-2">
-              {([["Salesforce", l.salesforceUrl, "#0070d2", SalesforceIcon], ["CRM (EOX)", l.eoxUrl, "#692E81", EoxIcon]] as const).map(([label, url, brand, Ico]) => url
-                ? <a key={label} href={url} target="_blank" rel="noreferrer" style={{ background: brand, borderColor: brand }} className={`${btnGhost} w-full !text-white hover:brightness-110`}><Ico size={15} /> {label}</a>
-                : <span key={label} className={`${btnGhost} w-full cursor-default border-dashed !text-muted opacity-60`}><Ico size={15} /> {label}</span>)}
+              <div className="col-span-2"><ClientIds leadId={l.id} eoxId={l.eoxId} eoxCode={l.eoxCode} sfId={l.sfId} eoxUrl={l.eoxUrl} canEdit={false} /></div>
               <a href={`/leads/${l.id}`} target="_blank" rel="noreferrer" className={`${btnGhost} col-span-2 w-full`}><ExternalLink size={15} aria-hidden /> Abrir o lead completo</a>
             </div>
           </div>

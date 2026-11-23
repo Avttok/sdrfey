@@ -19,6 +19,7 @@ export type LeadDraft = {
   sapCode: string | null;
   /** Número do cadastro na EOX e Id do Salesforce. */
   eoxId?: string | null;
+  eoxCode?: string | null;
   sfId?: string | null;
   contactName: string | null;
   roleTitle: string | null;
@@ -210,6 +211,7 @@ export function parseLeadRows(
       company,
       sapCode: get(row, "sapCode"),
       eoxId: cleanEoxId(get(row, "eoxId")),
+      eoxCode: cleanCode(get(row, "eoxCode")),
       sfId: cleanSfId(get(row, "sfId")),
       contactName: get(row, "contact"),
       roleTitle: get(row, "role"),
@@ -240,4 +242,10 @@ export function cleanEoxId(v: string | null | undefined): string | null {
 export function cleanSfId(v: string | null | undefined): string | null {
   const t = (v ?? "").trim();
   return /^[A-Za-z0-9]{15}([A-Za-z0-9]{3})?$/.test(t) ? t : null;
+}
+
+/** Código do cliente na EOX: letras, números e hífen, sem espaços. */
+export function cleanCode(v: string | null | undefined): string | null {
+  const t = (v ?? "").trim();
+  return /^[A-Za-z0-9._-]{1,30}$/.test(t) ? t : null;
 }

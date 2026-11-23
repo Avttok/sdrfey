@@ -1,9 +1,6 @@
 import { inArray, sql } from "drizzle-orm";
 import { db, leadChannels, leadPeople, leads, leadTags, tagGroups, tags, users, type Db } from "@/db";
 import { logAudit } from "@/modules/audit/log";
-import { eoxLink } from "@/modules/eox/client";
-import { EOX_KEY, parseEox } from "@/modules/eox/config";
-import { settingValue } from "@/modules/settings/get";
 import type { LeadDraft, TagRef } from "./leads-parse";
 import { stripAccents } from "./normalize";
 
@@ -21,10 +18,6 @@ export type ApplyResult = {
   /** Já cadastrados que receberam alguma informação nova da planilha. */
   enriched: number;
 };
-
-/** Endereço da EOX para montar o link do cadastro a partir do Id (o da integração; se ainda não houver, o da Fey). */
-export const EOX_FALLBACK_BASE = "https://fey.vocallcontact.com.br";
-const eoxBase = async () => parseEox(await settingValue(EOX_KEY)).baseUrl || EOX_FALLBACK_BASE;
 
 const chunk = <T>(arr: T[], size: number): T[][] => {
   const out: T[][] = [];
@@ -51,7 +44,6 @@ export async function applyLeadDrafts(
       const rows = await tx.select({ cnpj: leads.cnpj }).from(leads).where(inArray(leads.cnpj, part));
       rows.forEach((r) => existing.add(r.cnpj));
     }
-    const base = await eoxBase();
     const mode = opts.mode ?? "ambos";
     const fresh = mode === "nutrir" ? [] : drafts.filter((d) => !existing.has(d.cnpj));
     result.skippedExisting = drafts.filter((d) => existing.has(d.cnpj)).length;
@@ -66,7 +58,7 @@ export async function applyLeadDrafts(
       }
     }
     const old = drafts.filter((d) => existing.has(d.cnpj));
-    if (old.length && mode !== "novos") result.enriched = await enrichExisting(tx, old, opts, base);
+    if (old.length && mode !== "novos") result.enriched = await enrichExisting(tx, old, opts);
     if (fresh.length === 0) return result;
 
     /* 2. garantir que todas as tags citadas existem (porte e capital nascem aqui) */
@@ -115,7 +107,7 @@ export async function applyLeadDrafts(
               sapCode: d.sapCode,
               eoxId: d.eoxId ?? null,
               sfId: d.sfId ?? null,
-              eoxUrl: d.eoxId ? eoxLink(base, "Accounts", d.eoxId) : null,
+              eoxCode: d.eoxCode ?? null,
               contactName: d.contactName,
               roleTitle: d.roleTitle,
               phones: d.phones,
@@ -186,7 +178,7 @@ type EnrichPlan = {
 };
 
 /** Só LÊ: descobre o que cada lead que já existe receberia da planilha. Nada é gravado aqui (serve à simulação e à importação). */
-async function planEnrich(q: Q, drafts: LeadDraft[], opts: { importedBy: number | null; sourceName: string }, base: string): Promise<EnrichPlan> {
+async function planEnrich(q: Q, drafts: LeadDraft[], opts: { importedBy: number | null; sourceName: string }): Promise<EnrichPlan> {
   const plan: EnrichPlan = { touched: 0, fills: [], channels: [], people: [], tagLinks: [], audits: [] };
   const tagRows = await q.select().from(tags);
   const tagId = new Map(tagRows.map((t) => [`${t.groupKey}:${t.key}`, t.id]));
@@ -208,7 +200,7 @@ async function planEnrich(q: Q, drafts: LeadDraft[], opts: { importedBy: number 
       const added: string[] = [];
       if (d.sapCode && !l.sapCode) { fill.sapCode = d.sapCode; added.push("Código SAP"); }
       if (d.eoxId && !l.eoxId) { fill.eoxId = d.eoxId; added.push("Id EOX"); }
-      if (d.eoxId && !l.eoxUrl) { fill.eoxUrl = eoxLink(base, "Accounts", d.eoxId); added.push("Link da EOX"); }
+      if (d.eoxCode && !l.eoxCode) { fill.eoxCode = d.eoxCode; added.push("Código EOX"); }
       if (d.sfId && !l.sfId) { fill.sfId = d.sfId; added.push("Id Salesforce"); }
       if (d.contactName && !l.contactName) { fill.contactName = d.contactName; added.push("Contato"); }
       if (d.roleTitle && !l.roleTitle) { fill.roleTitle = d.roleTitle; added.push("Cargo"); }
@@ -233,11 +225,11 @@ async function planEnrich(q: Q, drafts: LeadDraft[], opts: { importedBy: number 
   return plan;
 }
 
-const FILL_COLS: Record<string, string> = { sapCode: "sap_code", eoxId: "eox_id", eoxUrl: "eox_url", sfId: "sf_id", contactName: "contact_name", roleTitle: "role_title", email: "email", notes: "notes", legacyVisit: "legacy_visit", company: "company" };
+const FILL_COLS: Record<string, string> = { sapCode: "sap_code", eoxId: "eox_id", eoxCode: "eox_code", sfId: "sf_id", contactName: "contact_name", roleTitle: "role_title", email: "email", notes: "notes", legacyVisit: "legacy_visit", company: "company" };
 
 /** Grava o plano em poucas consultas grandes (uma por coluna e por lote), em vez de uma por lead. */
-async function enrichExisting(tx: Parameters<Parameters<Db["transaction"]>[0]>[0], drafts: LeadDraft[], opts: { importedBy: number | null; sourceName: string }, base: string): Promise<number> {
-  const plan = await planEnrich(tx, drafts, opts, base);
+async function enrichExisting(tx: Parameters<Parameters<Db["transaction"]>[0]>[0], drafts: LeadDraft[], opts: { importedBy: number | null; sourceName: string }): Promise<number> {
+  const plan = await planEnrich(tx, drafts, opts);
   for (const [key, col] of Object.entries(FILL_COLS)) {
     const rows = plan.fills.flatMap((f) => { const v = (f.fill as Record<string, unknown>)[key]; return typeof v === "string" ? [{ id: f.id, v }] : []; });
     for (const part of chunk(rows, 500)) await tx.execute(sql`update leads set ${sql.identifier(col)} = v.val, updated_at = now() from (values ${sql.join(part.map((r) => sql`(${r.id}::int, ${r.v}::text)`), sql`, `)}) as v(id, val) where leads.id = v.id`);
@@ -257,5 +249,5 @@ export async function countEnrichable(drafts: LeadDraft[]): Promise<number> {
   for (const part of chunk(drafts.map((d) => d.cnpj), 5000)) (await db.select({ cnpj: leads.cnpj }).from(leads).where(inArray(leads.cnpj, part))).forEach((r) => cnpjs.add(r.cnpj));
   const old = drafts.filter((d) => cnpjs.has(d.cnpj));
   if (!old.length) return 0;
-  return (await planEnrich(db, old, { importedBy: null, sourceName: "simulação" }, await eoxBase())).touched;
+  return (await planEnrich(db, old, { importedBy: null, sourceName: "simulação" })).touched;
 }

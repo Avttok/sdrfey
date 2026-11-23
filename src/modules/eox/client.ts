@@ -9,6 +9,7 @@ const TIMEOUT = 15_000;
 /** O "id" da API vem como "6x1293925": o número do cadastro é o que fica depois do x. */
 export const recordOf = (apiId: string): string | null => /^\d+x(\d+)$/.exec(String(apiId))?.[1] ?? null;
 export const eoxLink = (baseUrl: string, module: string, record: string) => `${baseUrl}/index.php?module=${module}&view=Detail&record=${record}`;
+export const EOX_FALLBACK_BASE = "https://fey.vocallcontact.com.br";
 export const digitsOf = (s: unknown) => String(s ?? "").replace(/\D/g, "");
 
 async function call(f: Fetch, url: string, init?: RequestInit): Promise<unknown> {
@@ -40,14 +41,15 @@ export async function eoxFields(s: EoxSession): Promise<{ name: string; label: s
   return (r.fields ?? []).map((x) => ({ name: x.name, label: x.label }));
 }
 
-export type EoxAccount = { record: string; cnpj: string };
+export type EoxAccount = { record: string; cnpj: string; code: string };
 /** Uma página de cadastros (a API entrega no máximo 100 por vez). */
 export async function eoxAccountsPage(s: EoxSession, offset: number): Promise<{ rows: EoxAccount[]; end: boolean }> {
-  const rows = await eoxQuery(s, `SELECT id, ${s.cfg.cnpjField} FROM ${s.cfg.module} LIMIT ${offset}, 100;`);
+  const rows = await eoxQuery(s, `SELECT id, ${s.cfg.cnpjField}${s.cfg.codeField ? `, ${s.cfg.codeField}` : ""} FROM ${s.cfg.module} LIMIT ${offset}, 100;`);
   const out: EoxAccount[] = [];
   for (const r of rows) {
     const record = recordOf(String(r.id)), cnpj = digitsOf(r[s.cfg.cnpjField]);
-    if (record && cnpj.length === 14) out.push({ record, cnpj });
+    const code = s.cfg.codeField ? String(r[s.cfg.codeField] ?? "").trim() : "";
+    if (record && (cnpj.length === 14 || code)) out.push({ record, cnpj: cnpj.length === 14 ? cnpj : "", code });
   }
   return { rows: out, end: rows.length < 100 };
 }
@@ -58,6 +60,15 @@ export async function eoxFindByCnpj(s: EoxSession, cnpj: string): Promise<string
   const d = digitsOf(cnpj);
   if (d.length !== 14) return null;
   const rows = await eoxQuery(s, `SELECT id FROM ${s.cfg.module} WHERE ${s.cfg.cnpjField} = '${d}' OR ${s.cfg.cnpjField} = '${mask(d)}';`);
+  const ids = rows.map((r) => Number(recordOf(String(r.id)))).filter((n) => n > 0);
+  return ids.length ? String(Math.max(...ids)) : null;
+}
+
+/** Procura pelo Código do cliente (campo configurado). Se houver mais de um, fica o mais recente. */
+export async function eoxFindByCode(s: EoxSession, code: string): Promise<string | null> {
+  const c = code.trim();
+  if (!s.cfg.codeField || !/^[A-Za-z0-9._-]{1,30}$/.test(c)) return null;
+  const rows = await eoxQuery(s, `SELECT id FROM ${s.cfg.module} WHERE ${s.cfg.codeField} = '${c}';`);
   const ids = rows.map((r) => Number(recordOf(String(r.id)))).filter((n) => n > 0);
   return ids.length ? String(Math.max(...ids)) : null;
 }

@@ -9,9 +9,11 @@ export type EoxConfig = {
   module: string;
   /** Nome interno do campo do CNPJ no cadastro (ex.: cf_850). */
   cnpjField: string;
+  /** Campo do "Código do cliente" (ex.: 117805), se houver: usado quando o CNPJ não bate. */
+  codeField: string;
 };
 export const EOX_KEY = "eox";
-export const EOX_DEFAULT: EoxConfig = { on: false, baseUrl: "", username: "", accessKey: "", module: "Accounts", cnpjField: "" };
+export const EOX_DEFAULT: EoxConfig = { on: false, baseUrl: "", username: "", accessKey: "", module: "Accounts", cnpjField: "", codeField: "" };
 
 export function parseEox(v: unknown): EoxConfig {
   const o = (v && typeof v === "object" ? v : {}) as Partial<Record<keyof EoxConfig, unknown>>;
@@ -26,6 +28,7 @@ export function parseEox(v: unknown): EoxConfig {
     accessKey: str(o.accessKey, "", 80),
     module: /^[A-Za-z]{2,40}$/.test(mod) ? mod : EOX_DEFAULT.module,
     cnpjField: str(o.cnpjField, "", 60).replace(/[^A-Za-z0-9_]/g, ""),
+    codeField: str(o.codeField, "", 60).replace(/[^A-Za-z0-9_]/g, ""),
   };
 }
 

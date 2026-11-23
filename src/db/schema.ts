@@ -147,6 +147,8 @@ export const leads = pgTable(
     eoxUrl: text("eox_url"),
     /** Código do cadastro na EOX (o "record=" do link) e o Id do Salesforce. Vêm da importação ou da integração. */
     eoxId: text("eox_id"),
+    /** Código do cliente na EOX (ex.: 117805). Diferente do Id (record=): serve para achar o cadastro pela API. */
+    eoxCode: text("eox_code"),
     sfId: text("sf_id"),
 
     ownerId: integer("owner_id").references(() => users.id, { onDelete: "set null" }),

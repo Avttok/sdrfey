@@ -1,3 +1,4 @@
+import { eoxBaseUrl, eoxProfileUrl } from "@/modules/eox/sync";
 import { and, asc, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { bubbleHex } from "@/config/theme";
 import { db, emailTemplates, leadChannels, leadPeople, leads, leadTags, tagGroups, tags, users, visits } from "@/db";
@@ -44,10 +45,11 @@ export async function getLeadView(leadId: number) {
     linkedin: lead.linkedin,
     notes: lead.notes,
     legacyVisit: lead.legacyVisit,
-    salesforceUrl: lead.salesforceUrl,
-    eoxUrl: lead.eoxUrl,
     eoxId: lead.eoxId,
+    eoxCode: lead.eoxCode,
     sfId: lead.sfId,
+    /** Perfil na EOX, montado a partir do Id. */
+    eoxUrl: eoxProfileUrl(await eoxBaseUrl(), lead.eoxId),
     ownerId: lead.ownerId,
     lockedBy: lead.lockedBy,
     isTest: lead.isTest,

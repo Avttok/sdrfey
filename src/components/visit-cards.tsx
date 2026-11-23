@@ -19,7 +19,7 @@ export type VisitCard = {
   id: number; code: string; status: "pendente" | "confirmada" | "realizada" | "cancelada"; canceled: boolean; kind: "rep" | "seller";
   visitDate: string | null; link: string | null; at: string; note: string | null; confirmedAt: string | null;
   repName: string | null; repSap: string | null; repCity: string | null; repKm: number | null; sellerName: string | null;
-  leadId: number; company: string; city: string | null; uf: string | null; sfUrl: string | null; eoxUrl: string | null;
+  leadId: number; company: string; city: string | null; uf: string | null; eoxUrl: string | null;
   by: { name: string; hex: string } | null;
   isPublic: boolean; /** Como a visita chegou até quem está olhando. */ relation: "mine" | "public" | "shared" | "team";
   cnpj: string | null; phones: string[]; email: string | null; contactName: string | null; roleTitle: string | null; canManage: boolean;
@@ -217,7 +217,6 @@ function VisitDialog({ v, onClose }: { v: VisitCard; onClose: () => void }) {
         {!editing && (
           <div className="flex flex-wrap items-center gap-2">
             {v.link && <BrandLink kind="sf" href={v.link} label="Abrir visita" />}
-            {v.sfUrl && <BrandLink kind="sf" href={v.sfUrl} label="Perfil no Salesforce" />}
             {v.eoxUrl && <BrandLink kind="eox" href={v.eoxUrl} />}
           </div>
         )}

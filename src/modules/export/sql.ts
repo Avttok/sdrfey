@@ -57,7 +57,7 @@ export const DEFS: Record<ExDatasetKey, Def> = {
   leads: {
     from: "leads l", base: ["not l.is_test"], order: "l.id",
     expr: {
-      cnpj: "l.cnpj", company: "l.company", trade_name: "coalesce(l.trade_name, l.brasilapi_data->>'nome_fantasia', l.receitaws_data->>'fantasia')", legal_name: "coalesce(l.brasilapi_data->>'razao_social', l.receitaws_data->>'nome')", sap_code: "l.sap_code", eox_id: "l.eox_id", sf_id: "l.sf_id",
+      cnpj: "l.cnpj", company: "l.company", trade_name: "coalesce(l.trade_name, l.brasilapi_data->>'nome_fantasia', l.receitaws_data->>'fantasia')", legal_name: "coalesce(l.brasilapi_data->>'razao_social', l.receitaws_data->>'nome')", sap_code: "l.sap_code", eox_id: "l.eox_id", eox_code: "l.eox_code", sf_id: "l.sf_id",
       kind: "case l.kind when 'inativo' then 'Inativo (Vendas)' else 'Novo (Prospecção)' end", id: "l.id",
       contact_name: "l.contact_name", role_title: "l.role_title", phones: ch("phone"), phone_main: ch("phone", true), emails: ch("email"), email_main: ch("email", true),
       address: "l.address", neighborhood: "l.neighborhood", zip: "l.zip", city: "l.city", uf: "l.uf", state_reg: "l.state_reg",
@@ -83,7 +83,7 @@ export const DEFS: Record<ExDatasetKey, Def> = {
     },
     filter: {
       kind: (v) => inList("l.kind", list(v)),
-      search: (v) => { const s = text(v); return s ? sql`(${ilike(["l.company", "l.trade_name", "l.contact_name", "l.sap_code"], s)} or l.cnpj like ${"%" + (digits(s) || "§§") + "%"})` : null; },
+      search: (v) => { const s = text(v); return s ? sql`(${ilike(["l.company", "l.trade_name", "l.contact_name", "l.sap_code", "l.eox_id", "l.eox_code", "l.sf_id"], s)} or l.cnpj like ${"%" + (digits(s) || "§§") + "%"})` : null; },
       uf: (v) => inList("l.uf", list(v)), city: (v) => ilike(["l.city"], text(v)), cadStatus: (v) => inList("l.registration_status", list(v)),
       enriched: (v) => tri(v, "l.enriched_at is not null"), enrichedAt: (v) => dt("l.enriched_at", v),
       tags: (v) => { const t = list(v); return t.length ? sql`(${sql.join(t.map(hasTag), sql` or `)})` : null; },

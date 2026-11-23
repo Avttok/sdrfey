@@ -1,5 +1,6 @@
 "use client";
 
+import { ClientIds } from "@/components/client-ids";
 import { EoxIcon, SalesforceIcon } from "@/components/brand-icons";
 import { RoteiroLink } from "@/components/roteiro-link";
 import { Building2, History, Plus, Package, Trash2, Tags, CalendarClock, Check, ExternalLink, FileText, Link2, Mail, MessageCircle, NotebookPen, Phone, PhoneCall, RotateCcw, Trophy, Undo2, UserPlus, XCircle } from "lucide-react";
@@ -14,7 +15,7 @@ import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { DEAL_EVENT_LABEL, fmtBRL, OPEN_STAGES, STAGE_META } from "@/config/deals";
 import type { DealStage } from "@/db/schema";
 import { chatproUrl, fmtDateTime, fmtPhone } from "@/lib/format";
-import { claimDealAction, closeDealAction, logContactAction, reassignDealAction, reopenDealAction, saveDealDataAction, saveLeadLinksAction, deleteDealAction, resetDealAction, returnDealToSdrAction, setDealColorAction, setStageAction } from "@/modules/deals/actions";
+import { claimDealAction, closeDealAction, logContactAction, reassignDealAction, reopenDealAction, saveDealDataAction, deleteDealAction, resetDealAction, returnDealToSdrAction, setDealColorAction, setStageAction } from "@/modules/deals/actions";
 import { QuoteCard, QuoteEditor, QuoteValues, type QuoteView } from "./quote-card";
 import { useRouter } from "next/navigation";
 import { ColorPicker } from "./color-picker";
@@ -54,9 +55,6 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, icmsPct
   const [nextNote, setNextNote] = useState("");
   const [reason, setReason] = useState("");
   const [confirmLost, setConfirmLost] = useState(false);
-  const [sf, setSf] = useState(deal.salesforceUrl ?? "");
-  const [eox, setEox] = useState(deal.eoxUrl ?? "");
-  const [editLinks, setEditLinks] = useState(false);
   const [f, setF] = useState({
     freight: deal.freight ?? "", sapCode: deal.sapCode ?? "", orderNumber: deal.orderNumber ?? "", quoteNumber: deal.quoteNumber ?? "", quoteDate: deal.quoteDate ?? "",
     closedOn: deal.closedOn ?? "", quoteValue: brl(deal.valueCents), netValue: brl(deal.netValueCents), closedValue: brl(deal.closedValueCents), realValue: brl(deal.realValueCents), paymentTerms: deal.paymentTerms ?? "", isReactivation: deal.isReactivation,
@@ -99,19 +97,8 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, icmsPct
               {deal.email && <p className="flex items-center gap-2 pt-1"><Mail size={14} className="text-muted" aria-hidden /><a href={`mailto:${deal.email}`} className="truncate hover:text-accent">{deal.email}</a></p>}
             </div>
             <div className="space-y-1.5">
-              <p className="flex items-center justify-between text-xs font-medium text-muted">Perfis do cliente <button type="button" className="font-medium text-accent hover:underline" onClick={() => setEditLinks(!editLinks)}>{editLinks ? "Fechar" : "Editar links"}</button></p>
-              {!editLinks && <div className="grid grid-cols-2 gap-2">
-                {([["Salesforce", deal.salesforceUrl, "#0070d2", SalesforceIcon], ["CRM (EOX)", deal.eoxUrl, "#692E81", EoxIcon]] as const).map(([label, url, brand, Ico]) => url
-                  ? <a key={label} href={url} target="_blank" rel="noreferrer" style={{ background: brand, borderColor: brand }} className={`${btnGhost} w-full !text-white hover:brightness-110`}><Ico size={15} /> {label}</a>
-                  : <button key={label} type="button" onClick={() => setEditLinks(true)} className={`${btnGhost} w-full border-dashed !text-muted hover:!text-ink`}><Ico size={15} /> {label}</button>)}
-              </div>}
-              {editLinks && (
-                <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); run(() => saveLeadLinksAction(deal.leadId, { salesforceUrl: sf, eoxUrl: eox }), undefined, () => setEditLinks(false)); }}>
-                  <input className={inputCls} placeholder="Link do perfil no Salesforce" value={sf} onChange={(e) => setSf(e.target.value)} aria-label="Link do Salesforce" />
-                  <input className={inputCls} placeholder="Link do perfil no CRM (EOX)" value={eox} onChange={(e) => setEox(e.target.value)} aria-label="Link do CRM EOX" />
-                  <button className={btnPrimary} disabled={pending}><Check size={16} aria-hidden /> Salvar links</button>
-                </form>
-              )}
+              <p className="text-xs font-medium text-muted">Ids do cliente</p>
+              <ClientIds leadId={deal.leadId} eoxId={deal.eoxId} eoxCode={deal.eoxCode} sfId={deal.sfId} eoxUrl={deal.eoxUrl} />
             </div>
           </div>
           {deal.handoffNote && <p className="rounded-lg bg-sunk px-3 py-2 text-sm"><span className="text-xs font-medium text-muted">Recado do SDR{deal.sdrName ? ` (${deal.sdrName})` : ""}</span><br />{deal.handoffNote}</p>}

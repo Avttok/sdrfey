@@ -46,7 +46,9 @@ function where(f: LeadFilters): SQL | undefined {
   if (f.q) {
     const digits = f.q.replace(/\D/g, "");
     const like = `%${f.q.replace(/[%_]/g, "")}%`;
-    c.push(sql`(${leads.company} ilike ${like} or ${leads.tradeName} ilike ${like} or exists (select 1 from lead_people p where p.lead_id = ${leads.id} and p.name ilike ${like})
+    const id = f.q.trim();
+    const idLike = `${id.replace(/[%_]/g, "")}%`;
+    c.push(sql`(${leads.company} ilike ${like} or ${leads.eoxId} = ${id} or ${leads.eoxCode} = ${id} or ${leads.sapCode} = ${id} or ${leads.sfId} ilike ${idLike} or ${leads.tradeName} ilike ${like} or exists (select 1 from lead_people p where p.lead_id = ${leads.id} and p.name ilike ${like})
       ${digits.length >= 3 ? sql`or ${leads.cnpj} like ${`%${digits}%`} or exists (select 1 from lead_channels c where c.lead_id = ${leads.id} and c.value like ${`%${digits}%`})` : sql``}
       or exists (select 1 from lead_channels c where c.lead_id = ${leads.id} and c.kind = 'email' and c.value ilike ${like}))`);
   }

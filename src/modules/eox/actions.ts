@@ -9,7 +9,7 @@ import type { ActionResult } from "@/modules/leads/actions";
 import { invalidateSettings } from "@/modules/settings/get";
 import { eoxFields, eoxLogin } from "./client";
 import { EOX_KEY, parseEox } from "./config";
-import { ensureEoxLink, loadEox, syncEoxLinks } from "./sync";
+import { ensureEoxId, eoxBaseUrl, eoxProfileUrl, loadEox, syncEoxLinks } from "./sync";
 
 const fail = (message: string): ActionResult => ({ ok: false, message });
 
@@ -51,7 +51,7 @@ export async function syncEoxNowAction(): Promise<ActionResult> {
 export async function ensureEoxLinkAction(leadId: number): Promise<string | null> {
   const me = await getCurrentUser();
   if (!me || me.mustChangePassword || !Number.isInteger(leadId)) return null;
-  return ensureEoxLink(leadId, me.id);
+  return eoxProfileUrl(await eoxBaseUrl(), await ensureEoxId(leadId, me.id));
 }
 
 export async function eoxCoverage(): Promise<{ total: number; without: number }> {
