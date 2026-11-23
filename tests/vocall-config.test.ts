@@ -11,3 +11,11 @@ describe("configuração do VocallAgent", () => {
   });
   it("sem nada vem desligado", () => { expect(parseVocall(undefined).on).toBe(false); });
 });
+
+describe("qualificação da ligação", () => {
+  it("sem lista vem o padrão; linhas sem texto saem e o nome cai no texto", () => {
+    expect(parseVocall({}).quals.length).toBeGreaterThan(0);
+    const q = parseVocall({ quals: [{ label: "", texto: " Atendida " }, { label: "x", texto: "" }, 5] }).quals;
+    expect(q).toEqual([{ label: "Atendida", texto: "Atendida" }]);
+  });
+});

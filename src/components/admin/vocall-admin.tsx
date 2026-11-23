@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Loader2, PhoneCall, PlugZap, Save, XCircle } from "lucide-react";
+import { CheckCircle2, Loader2, PhoneCall, PlugZap, Plus, Save, Trash2, XCircle } from "lucide-react";
 import { useState } from "react";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { useRun } from "@/components/use-run";
@@ -50,6 +50,18 @@ export function VocallAdmin({ initial, people }: { initial: VocallConfig; people
           <label className="text-sm">Senha de entrada<input className={inputCls} value={c.senha} onChange={(e) => set("senha", e.target.value)} /></label>
           <label className="text-sm">Prefixo do número<input className={inputCls} value={c.prefix} onChange={(e) => set("prefix", e.target.value)} placeholder="Ex.: 0 (vazio = só DDD+número)" /></label>
         </div>
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-semibold">Qualificação ao fim da ligação</legend>
+          <p className="text-xs text-muted">Quando a chamada termina o sistema pergunta “Como foi a ligação?” e envia a escolha ao VocallAgent, que libera o telefone; em seguida a conexão é cortada. O <b>texto enviado</b> precisa ser igual ao cadastrado na central.</p>
+          {c.quals.map((q, i) => (
+            <div key={i} className="flex flex-wrap items-center gap-2">
+              <input aria-label={`Nome da opção ${i + 1}`} className={`${inputCls} !w-56 flex-1`} placeholder="Nome mostrado" value={q.label} onChange={(e) => set("quals", c.quals.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
+              <input aria-label={`Texto enviado da opção ${i + 1}`} className={`${inputCls} !w-56 flex-1`} placeholder="Texto enviado à central" value={q.texto} onChange={(e) => set("quals", c.quals.map((x, j) => (j === i ? { ...x, texto: e.target.value } : x)))} />
+              <button type="button" className={btnGhost} aria-label={`Remover opção ${i + 1}`} onClick={() => set("quals", c.quals.filter((_, j) => j !== i))}><Trash2 size={14} aria-hidden /></button>
+            </div>
+          ))}
+          {c.quals.length < 12 && <button type="button" className={btnGhost} onClick={() => set("quals", [...c.quals, { label: "", texto: "" }])}><Plus size={14} aria-hidden /> Adicionar opção</button>}
+        </fieldset>
         <button type="button" className={btnPrimary} disabled={pending || !dirty} onClick={() => run(() => saveVocallConfigAction(c))}><Save size={15} aria-hidden /> Salvar configuração</button>
       </section>
 
