@@ -9,7 +9,7 @@ import { bannerStyle } from "@/config/banners";
 import { AvatarGlyph } from "@/components/avatar-glyph";
 import { RoleBadge } from "@/components/role-badge";
 import { inputCls, labelCls } from "@/components/ui";
-import { AVATARS } from "@/config/avatars";
+import { AVATARS, avatarOpen } from "@/config/avatars";
 import { unlockHint } from "@/components/rarity-tag";
 import type { Role } from "@/config/roles";
 import { CHOOSABLE_ACCENTS, resolveAccent, swatchBg } from "@/config/theme";
@@ -30,7 +30,7 @@ function Step({ n, icon: Icon, title, hint, children }: { n: number; icon: typeo
 }
 
 /** Primeiro acesso: nome, ícone, cor, tema e senha numa tela só, com uma prévia ao vivo. */
-export function FirstAccessForm({ name: name0, username, roles, accent: accent0, needPassword = true }: { name: string; username: string; roles: Role[]; accent: string | null; needPassword?: boolean }) {
+export function FirstAccessForm({ name: name0, username, roles, accent: accent0, needPassword = true, earned = [] }: { name: string; username: string; roles: Role[]; accent: string | null; needPassword?: boolean; /** Conquistas que a pessoa já tem (conta antiga no 2º acesso): liberam ícones e banners. */ earned?: readonly string[] }) {
   const [name, setName] = useState(name0);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [accent, setAccent] = useState<string | null>(accent0);
@@ -90,11 +90,11 @@ export function FirstAccessForm({ name: name0, username, roles, accent: accent0,
         <input id="fa-name" className={inputCls} value={name} maxLength={60} onChange={(e) => setName(e.target.value)} required autoComplete="name" />
       </Step>
 
-      <Step n={2} icon={Smile} title="Seu ícone" hint="Escolha um bichinho. Os com cadeado você libera com conquistas, e ficam disponíveis em Minha conta.">
+      <Step n={2} icon={Smile} title="Seu ícone" hint="Escolha um bichinho. Os com cadeado você libera com conquistas e escolhe depois em Minha conta.">
         <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Ícone de perfil">
           <button type="button" role="radio" aria-checked={!avatar} title="Iniciais do nome" onClick={() => setAvatar(null)} className={`grid size-12 place-items-center rounded-2xl border-2 text-sm font-bold transition ${!avatar ? "border-accent bg-grad text-on-accent" : "border-line bg-sunk text-muted hover:text-ink"}`}>{initialsOf(name) || "?"}</button>
           {AVATARS.map((a) => {
-            const locked = !!a.unlock; // quem acabou de chegar ainda não tem conquistas
+            const locked = !avatarOpen(a, earned); // conta nova ainda não tem conquistas; conta antiga libera o que já ganhou
             return (
               <button key={a.key} type="button" role="radio" aria-checked={avatar === a.key} aria-disabled={locked} disabled={locked} title={locked ? `${a.label} · ${unlockHint(a.unlock!)}` : a.label} onClick={() => setAvatar(a.key)} className={`relative grid size-12 place-items-center rounded-2xl border-2 transition ${locked ? "cursor-not-allowed opacity-50" : "hover:-translate-y-0.5"} ${avatar === a.key ? "border-accent bg-grad text-on-accent shadow-md" : "border-line bg-sunk text-muted hover:text-ink"}`}>
                 <AvatarGlyph avatar={a.key} initials="" size={22} />
@@ -106,7 +106,7 @@ export function FirstAccessForm({ name: name0, username, roles, accent: accent0,
       </Step>
 
       <Step n={3} icon={ImageIcon} title="Banner do perfil" hint="Um padrão com a sua cor. A prévia lá em cima muda na hora. Os com cadeado saem de conquistas.">
-        <BannerGrid value={banner} onPick={setBanner} />
+        <BannerGrid earned={earned} value={banner} onPick={setBanner} />
       </Step>
 
       <Step n={4} icon={Palette} title="Cor e tema" hint="Dá para mudar depois em Minha conta.">
