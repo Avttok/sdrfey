@@ -8,6 +8,8 @@ import { FEY, FIRST, NEXT, ONLINE, PAR, PARES, T, cat, fala, o, type Alvo, type 
  */
 export function entrada(nomeTo: string, itens: string, a: Alvo, tipo: Tipo): ScriptNode[] {
   const m = a.motivo;
+  const gk = a.gk ?? T(`Atendemos ${PARES[tipo]}, e é por isso que estou ligando.`, `Atendemos ${PARES[tipo]}, e esse é o motivo do contato.`, `Atende ${PARES[tipo]}, por isso estou ligando.`);
+  const fecha = a.fecha ?? T("É coisa rápida, e quem cuida disso é quem decide se interessa. Essa pessoa consegue falar agora?", "É um assunto breve, e cabe a quem cuida disso decidir se há interesse. Essa pessoa poderia me atender agora?", "É rapidinho, e quem cuida disso é quem decide se vale a pena. Dá pra chamar essa pessoa?");
   /** "quem cuida das compras" → "a pessoa que cuida das compras" */
   const pessoa = a.quem.replace(/^quem /, "a pessoa que ");
   return [
@@ -18,15 +20,15 @@ export function entrada(nomeTo: string, itens: string, a: Alvo, tipo: Tipo): Scr
     ), [o("Vai passar a ligação", "transferido", "ok", "Recepção transferiu a ligação"), o("Perguntou qual é o assunto", "assunto"), o("O responsável não está", "horario"), o("Pediu para mandar e-mail", "rec_email"), o("Disse que não precisam", "obj_nao", "objecao")],
     "Peça ajuda, não permissão. A recepção não decide, mas abre ou fecha a porta: seja cordial, use o nome dela e nunca minta sobre quem você é nem invente projeto ou indicação. Pergunta aberta (“quem seria?”) funciona melhor que “posso falar com o responsável?”. Nunca use a palavra “barreira” em voz alta.", "ponte"),
     fala("assunto", "Dizer o assunto", T(
-      `Claro! A Fey é uma metalúrgica e fabrica ${itens}. ${m.n} É coisa rápida, e quem cuida disso é quem vai julgar se interessa. Essa pessoa consegue falar agora?`,
-      `Com certeza. A Fey é uma metalúrgica e fabrica ${itens}. ${m.f} É um assunto breve, e cabe a quem cuida disso decidir se há interesse. Essa pessoa poderia me atender agora?`,
-      `Claro! A Fey é uma metalúrgica, a gente fabrica ${itens}. ${m.s} É rapidinho, e quem cuida disso é quem decide se vale a pena. Dá pra chamar essa pessoa?`,
+      `Claro! A Fey é uma metalúrgica e fabrica ${itens}. ${m.n} ${fecha.n}`,
+      `Com certeza. A Fey é uma metalúrgica e fabrica ${itens}. ${m.f} ${fecha.f}`,
+      `Claro! A Fey é uma metalúrgica, a gente fabrica ${itens}. ${m.s} ${fecha.s}`,
     ), [o("Passou a ligação", "transferido", "ok", "Recepção transferiu a ligação"), o("Perguntou quem é a Fey", "gk_quem"), o("Anotou um recado", "horario"), o("Pediu para mandar e-mail", "rec_email"), o("Recusou", "obj_nao", "objecao")],
     "Um motivo curto, honesto e sem jargão. Quem entende o assunto passa a ligação com mais facilidade. Não conte o pitch inteiro: a recepção não é quem decide.", "ponte"),
     fala("gk_quem", "Quem é a Fey", T(
-      `Somos uma metalúrgica de fixadores: fabricamos ${itens}. Atendemos ${PARES[tipo]} da região, e é por isso que estou ligando. Quem cuida disso aí já pode ter ouvido falar da gente. Consegue me passar pra essa pessoa?`,
-      `A Fey é uma metalúrgica de fixadores e fabrica ${itens}. Atendemos ${PARES[tipo]} da região, e esse é o motivo do contato. É possível que o responsável já tenha ouvido falar da empresa. Poderia me transferir para ele?`,
-      `A Fey é uma metalúrgica de fixadores, a gente fabrica ${itens}. Atende ${PARES[tipo]} da região, por isso estou ligando. Pode ser que o pessoal daí já tenha ouvido falar da gente. Me passa pra essa pessoa?`,
+      `Somos uma metalúrgica de fixadores: fabricamos ${itens}. ${gk.n} Quem cuida disso aí já pode ter ouvido falar da gente. Consegue me passar pra essa pessoa?`,
+      `A Fey é uma metalúrgica de fixadores e fabrica ${itens}. ${gk.f} É possível que o responsável já tenha ouvido falar da empresa. Poderia me transferir para ele?`,
+      `A Fey é uma metalúrgica de fixadores, a gente fabrica ${itens}. ${gk.s} Pode ser que o pessoal daí já tenha ouvido falar da gente. Me passa pra essa pessoa?`,
     ), [o("Passou a ligação", "transferido", "ok", "Recepção transferiu a ligação"), o("Anotou um recado", "horario"), o("Pediu para mandar e-mail", "rec_email"), o("Recusou", "obj_nao", "objecao")],
     "Prova social (Gong: a abertura “já ouviu falar de nós?” ficou entre as melhores, com cerca de 11% de sucesso): mostre que a Fey atende empresas parecidas. Seja específico e curto; não prometa o que não pode cumprir.", "ponte"),
     fala("horario", "Combinar outro horário", T(
@@ -85,19 +87,20 @@ export function entrada(nomeTo: string, itens: string, a: Alvo, tipo: Tipo): Scr
 export type Perfis = { itens: string; dor: string; tipo: Tipo; alvo: Alvo; /** onde o decisor segue */ next: string; falas: { socio: Say; compras: Say; gestor: Say }; /** respostas depois da fala do decisor */ alcada: boolean; ok: (note: string, to: string) => ScriptOption[]; tips: { socio: string; compras: string; gestor: string } };
 export function perfis(p: Perfis): ScriptNode[] {
   const { itens, alvo } = p;
+  const para = alvo.para ?? T("pra apresentar nossa linha", "para apresentar nossa linha", "pra mostrar nossa linha");
   return [
     fala("p_socio", "Dono, sócio ou diretor", p.falas.socio, p.ok("Contato: decisor de compra (dono, sócio ou diretor)", p.next), p.tips.socio, "proposta"),
     fala("p_compras", "Compras ou comprador", p.falas.compras, p.ok("Contato: comprador", p.alcada ? "p_alcada" : p.next), p.tips.compras, "proposta"),
     fala("p_gestor", "Gerente, encarregado ou líder", p.falas.gestor, [...p.ok("Contato: gerente ou encarregado, participa da compra", p.next), o("Quem compra é outra pessoa", "pedir_decisor", "neutro", "Contato: gerente, não compra")], p.tips.gestor, "proposta"),
     fala("p_balcao", "Vendas, balcão ou atendimento", T(
-      `Legal! Você que atende os clientes entende bem: quando o parafuso certo falta, o cliente vai embora, não é? A Fey é uma metalúrgica e fabrica ${itens}. Queria falar com ${alvo.quem} pra apresentar nossa linha. Quem seria essa pessoa, e você consegue me passar agora?`,
-      `Que bom! Quem atende os clientes sabe bem: quando o parafuso certo falta, o cliente acaba indo embora. A Fey é uma metalúrgica e fabrica ${itens}. Gostaria de falar com ${alvo.quem} para apresentar nossa linha. Quem seria essa pessoa, e seria possível me transferir agora?`,
-      `Que legal! Quem tá no balcão sabe bem: quando falta o parafuso certo, o cliente vai embora, né? A Fey é uma metalúrgica, a gente fabrica ${itens}. Queria falar com ${alvo.quem} pra mostrar nossa linha. Quem é essa pessoa, e dá pra me passar agora?`,
+      `Legal! Você que atende os clientes entende bem: quando o parafuso certo falta, o cliente vai embora, não é? A Fey é uma metalúrgica e fabrica ${itens}. Queria falar com ${alvo.quem} ${para.n}. Quem seria essa pessoa, e você consegue me passar agora?`,
+      `Que bom! Quem atende os clientes sabe bem: quando o parafuso certo falta, o cliente acaba indo embora. A Fey é uma metalúrgica e fabrica ${itens}. Gostaria de falar com ${alvo.quem} ${para.f}. Quem seria essa pessoa, e seria possível me transferir agora?`,
+      `Que legal! Quem tá no balcão sabe bem: quando falta o parafuso certo, o cliente vai embora, né? A Fey é uma metalúrgica, a gente fabrica ${itens}. Queria falar com ${alvo.quem} ${para.s}. Quem é essa pessoa, e dá pra me passar agora?`,
     ), [o("Passou a ligação", "transferido", "ok", "Balcão transferiu a ligação"), o("Deu nome e horário", "horario", "neutro"), o("Perguntou o assunto", "assunto"), o("Ele mesmo compra", p.next, "ok", "Contato: balcão que também compra"), o("Não passa", "obj_nao", "objecao", "Não passou o decisor")], "Quem atende o balcão é filtro e pode virar aliado. Não faça o pitch pra ele: peça ajuda, pergunte o nome de quem compra e qual o melhor horário. Use o problema dele (“cliente que vai embora”) para criar empatia. Agradeça pelo nome.", "ponte"),
     fala("p_operacao", "Estoque, manutenção, oficina ou produção", T(
-      `Legal! Você vê de perto o que falta e o que quebra. Uma pergunta rápida: qual fixador mais dá dor de cabeça aí, o que acaba rápido ou o que vem com defeito? Pergunto porque a Fey fabrica ${itens}, e quero levar a pessoa certa pra ajudar vocês.`,
-      `Que bom. Você acompanha de perto o que falta e o que quebra. Uma pergunta rápida: qual fixador mais causa transtorno aí, o que acaba rápido ou o que vem com defeito? Pergunto porque a Fey fabrica ${itens}, e desejo encaminhar a pessoa certa para ajudar vocês.`,
-      `Que bom! Você vê de perto o que falta e o que quebra. Uma perguntinha: qual fixador mais dá dor de cabeça aí, o que acaba rápido ou o que vem com defeito? Pergunto porque a Fey fabrica ${itens}, e quero levar a pessoa certa pra ajudar vocês.`,
+      `Legal! Você vê de perto o que falta e o que quebra. Uma pergunta rápida: qual fixador mais dá dor de cabeça aí, o que acaba rápido ou o que vem com defeito? Pergunto pra levar o assunto certo à pessoa que cuida das compras e ajudar vocês.`,
+      `Que bom. Você acompanha de perto o que falta e o que quebra. Uma pergunta rápida: qual fixador mais causa transtorno aí, o que acaba rápido ou o que vem com defeito? Pergunto para levar o assunto adequado à pessoa responsável pelas compras e poder ajudar vocês.`,
+      `Que bom! Você vê de perto o que falta e o que quebra. Uma perguntinha: qual fixador mais dá dor de cabeça aí, o que acaba rápido ou o que vem com defeito? Pergunto pra levar o assunto certo à pessoa que cuida das compras e ajudar vocês.`,
     ), [o("Citou um item ou problema", "pedir_decisor", "ok", "Operação informou item ou problema (anotar)"), o("Disse que está tudo certo", "pedir_decisor", "neutro"), o("Ele também faz as compras", p.next, "ok", "Contato: operação que também compra"), o("Prefere não falar", "obj_nao", "objecao")], "Quem vive o problema fala com gosto dele: deixe contar e anote item, marca e frequência (isso vira argumento para o decisor: “o pessoal da oficina comentou…”). Depois pergunte quem pede a compra.", "pergunta"),
     fala("p_admin", "Financeiro, administrativo ou RH", T(
       `Entendi, agradeço! Já adianto que não é assunto financeiro: é sobre as compras de fixadores. Pra não tomar seu tempo, quem cuida disso aí e como falo com essa pessoa?`,

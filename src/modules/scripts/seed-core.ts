@@ -9,7 +9,7 @@ export const SEG: Record<string, { itens: string; um: string; dor: string; tipo:
   parafusos: { itens: "parafusos, porcas e arruelas", um: "item de giro", dor: "item de maior giro acabando no balcão", tipo: "revenda" },
   ferragens: { itens: "parafusos, porcas, arruelas e fixadores de balcão", um: "parafuso", dor: "cliente de balcão que vai embora porque o item acabou", tipo: "revenda" },
   material_construcao: { itens: "parafusos, buchas e fixadores para obra", um: "parafuso", dor: "obra parada esperando o fixador", tipo: "revenda" },
-  ferramentas: { itens: "parafusos, porcas e arruelas de balcão", um: "fixador de giro rápido", dor: "item de giro rápido em falta e fornecedor sem suporte", tipo: "revenda" },
+  ferramentas: { itens: "parafusos, porcas e arruelas de giro rápido", um: "fixador de giro rápido", dor: "item de giro rápido em falta e fornecedor sem suporte", tipo: "revenda" },
   autopecas: { itens: "parafusos, porcas e fixadores automotivos", um: "parafuso de roda", dor: "cliente de oficina esperando uma peça simples", tipo: "revenda" },
   autopecas_atacado: { itens: "fixadores e kits automotivos", um: "kit de fixação", dor: "lojista cobrando por entrega que atrasa", tipo: "revenda" },
   posto_molas: { itens: "grampos de mola, pinos centrais, parafusos e porcas de suspensão", um: "grampo de mola", dor: "caminhão parado esperando grampo ou pino", tipo: "servico" },
@@ -84,7 +84,7 @@ export const FEY = T(
   "A gente é uma metalúrgica e fabrica parafuso, porca, grampo de mola, pino de centro e peça especial",
 );
 /** Para quem se fala: o contexto que aproxima (“atendemos empresas como a sua”). */
-export const PARES: Record<Tipo, string> = { revenda: "lojas e distribuidores que revendem fixadores", producao: "indústrias que usam fixadores na produção", servico: "oficinas e frotas que usam fixadores na manutenção" };
+export const PARES: Record<Tipo, string> = { revenda: "lojas e distribuidores da região que revendem fixadores", producao: "indústrias da região que usam fixadores na produção", servico: "oficinas e frotas da região que usam fixadores na manutenção" };
 
 /** Por objetivo: quem queremos alcançar e por que ligamos, em cada tom. */
-export type Alvo = { /** quem queremos alcançar, em uma frase ("quem cuida das compras de parafusos") */ quem: string; /** por que ligamos, curto e verdadeiro, para qualquer pessoa ouvir */ motivo: Tri };
+export type Alvo = { /** quem queremos alcançar, em uma frase ("quem cuida das compras de parafusos") */ quem: string; /** por que ligamos, curto e verdadeiro, para qualquer pessoa ouvir */ motivo: Tri; /** o que queremos tratar com essa pessoa ("pra apresentar nossa linha") */ para?: Tri; /** frase que apresenta a Fey a quem não conhece (padrão: quem atendemos) */ gk?: Tri; /** fecho do pedido de transferência na recepção */ fecha?: Tri };
