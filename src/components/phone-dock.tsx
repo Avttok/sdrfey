@@ -225,6 +225,8 @@ export function PhoneDock() {
   const warm = open && roomy && !onScriptPage && script ? asEmbed(script) : null;
   const calling = dialing && !inCall;
   const [sheet, setSheet] = useState(false);
+  const [qDone, setQDone] = useState<number | null>(null);
+  const [releasing, setReleasing] = useState(false);
   useEffect(() => { if (!inCall) setSheet(false); }, [inCall]);
   const checking = vocall.checking;
   // verde = conectado, amarelo = qualificação pendente, vermelho = em ligação, cinza = desconectado
@@ -234,138 +236,175 @@ export function PhoneDock() {
     : { dot: "bg-slate-400", text: vocall.fails >= 1 ? "Desconectado" : "Conectando…" };
   useEffect(() => { if (!open) setSide(null); }, [open]);
 
+  const contactName = lead?.person?.name ?? null;
+  const companyName = lead ? (lead.tradeName ?? lead.company) : call?.empresa ?? null;
+  const qualified = !!call && qDone === call.since;
+  const needQual = ended && !!call?.qualUrl && !qualified;
+  const newCall = async () => {
+    if (releasing) return;
+    setReleasing(true);
+    try { await vocall.release(); } finally { setReleasing(false); }
+    vocall.dismiss(); setPinned(null); setRetried(null); setNum(""); setTab("dial"); setSheet(false);
+  };
+  const tile = "flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl bg-sunk text-xs font-bold transition hover:bg-accent/10 active:scale-95";
+  const ghostTile = "flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-line text-xs text-muted";
+
   return (
     <div className="contents embed-hide">
-      {!open && <div className="fixed bottom-5 left-5 z-[64] flex max-w-[calc(100vw-6rem)] items-center gap-2">
-        <button type="button" onClick={() => setOpen(!open)} aria-label={open ? "Fechar o telefone" : inCall ? `Abrir o telefone: ${call!.empresa ?? fmtPhone(callDigits)}, ${label}` : "Abrir o telefone"} aria-expanded={open} title="Telefone"
-          className={`group relative flex h-14 min-w-14 items-center justify-center rounded-full border border-white/20 text-white shadow-xl ${!live && !inCall ? "bg-grad text-on-accent" : ""} transition hover:shadow-2xl active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${!open && inCall ? "gap-3 pl-4 pr-5" : "size-14 hover:scale-105"}`}
-          style={live ? { background: "linear-gradient(135deg,#16a34a,#15803d)" } : inCall ? { background: "linear-gradient(135deg,#1e293b,#0f172a)" } : undefined}>
-          {live && <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/30" aria-hidden />}
-          {open ? <X size={22} aria-hidden className="relative" /> : inCall ? (ended ? <PhoneOff size={21} aria-hidden className="relative shrink-0" /> : <PhoneCall size={21} aria-hidden className="relative shrink-0 script-shake" />) : <Phone size={22} aria-hidden className="relative" />}
-          {!open && inCall && (
-            <span className="relative min-w-0 text-left" role="status" aria-live="polite">
-              <span className="block max-w-[16rem] truncate text-sm font-bold leading-tight">{lead ? (lead.tradeName ?? lead.company) : call!.empresa ?? fmtPhone(callDigits)}</span>
-              <span className="block max-w-[16rem] truncate text-xs text-white/75">{lead || call!.empresa ? `${fmtPhone(callDigits)} · ` : ""}{label}</span>
-            </span>
-          )}
-          {!open && inCall && <span className="relative text-sm"><Timer since={call!.since} endedAt={call!.endedAt} /></span>}
-        </button>
-      </div>}
+      {!open && (
+        <div className="fixed bottom-5 left-5 z-[64] flex max-w-[calc(100vw-6rem)] items-center gap-2">
+          <button type="button" onClick={() => setOpen(true)} aria-label={inCall ? `Abrir o telefone: ${companyName ?? fmtPhone(callDigits)}, ${label}` : "Abrir o telefone"} aria-expanded={false} title="SDR Phone"
+            className={`group relative flex h-14 min-w-14 items-center justify-center rounded-full text-white shadow-xl ring-1 ring-white/20 transition hover:shadow-2xl active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${inCall ? "gap-3 pl-4 pr-5" : "size-14 hover:scale-105"} ${!live && !inCall ? "bg-grad text-on-accent" : ""}`}
+            style={live ? { background: "linear-gradient(135deg,#16a34a,#15803d)" } : inCall ? { background: "linear-gradient(135deg,#334155,#1e293b)" } : undefined}>
+            {live && <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/30" aria-hidden />}
+            {inCall ? (ended ? <PhoneOff size={21} aria-hidden className="relative shrink-0" /> : <PhoneCall size={21} aria-hidden className="relative shrink-0 script-shake" />) : <Phone size={22} aria-hidden className="relative" />}
+            {inCall && (
+              <span className="relative min-w-0 text-left" role="status" aria-live="polite">
+                <span className="block max-w-[16rem] truncate text-sm font-bold leading-tight">{companyName ?? fmtPhone(callDigits)}</span>
+                <span className="block max-w-[16rem] truncate text-xs text-white/75">{companyName ? `${fmtPhone(callDigits)} · ` : ""}{label}</span>
+              </span>
+            )}
+            {inCall && <span className="relative text-sm"><Timer since={call!.since} endedAt={call!.endedAt} /></span>}
+          </button>
+        </div>
+      )}
 
       {open && (
-        <section role="dialog" aria-label="Telefone" className={`card-in fixed z-[66] flex overflow-hidden rounded-3xl border border-line bg-panel shadow-2xl ${wide ? "inset-x-5 bottom-5 top-5" : "bottom-5 left-5 max-h-[min(44rem,calc(100dvh-2.5rem))] w-[24rem] max-w-[calc(100vw-2.5rem)]"}`}>
+        <section role="dialog" aria-label="SDR Phone" className={`card-in fixed z-[66] flex overflow-hidden rounded-[1.75rem] border border-line bg-panel shadow-2xl ${wide ? "inset-x-5 bottom-5 top-5" : "bottom-5 left-5 max-h-[min(46rem,calc(100dvh-2.5rem))] w-[24rem] max-w-[calc(100vw-2.5rem)]"}`}>
           <div className={`flex min-h-0 max-w-full shrink-0 flex-col ${wide ? "w-[22rem]" : "w-[24rem]"}`}>
-          <header className="relative overflow-hidden bg-grad px-4 pb-3 pt-3.5 text-on-accent">
-            <div className="flex items-center gap-3">
-              <span className="grid size-10 place-items-center rounded-2xl bg-white/20 ring-1 ring-white/25"><MorphMark size={24} color="currentColor" /></span>
-              <div className="min-w-0 flex-1">
-                <p className="font-bold leading-tight">SDR Phone</p>
-                <p className="flex items-center gap-1.5 truncate text-xs text-white/85" role="status"><span className={`size-2 rounded-full ${status.dot}`} />{status.text}</p>
+            <header className="bg-grad-soft px-4 pb-3 pt-4">
+              <div className="flex items-center gap-3">
+                <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-grad text-on-accent shadow-md"><MorphMark size={25} color="currentColor" /></span>
+                <div className="min-w-0 flex-1">
+                  <p className="display text-lg leading-tight">SDR Phone</p>
+                  <p className="mt-0.5 inline-flex items-center gap-1.5 rounded-full bg-panel/80 px-2 py-0.5 text-xs font-semibold ring-1 ring-line" role="status"><span className={`size-2 rounded-full ${status.dot}`} />{status.text}</p>
+                </div>
+                <button type="button" onClick={() => setOpen(false)} aria-label="Fechar" className="grid size-9 place-items-center rounded-xl text-muted transition hover:bg-panel hover:text-ink"><X size={18} aria-hidden /></button>
               </div>
-              <button type="button" onClick={() => setOpen(false)} aria-label="Fechar" className="grid size-8 place-items-center rounded-lg text-white/80 hover:bg-white/15"><X size={16} aria-hidden /></button>
-            </div>
-            {!inCall && !calling && (
-              <div className="mt-3 grid grid-cols-3 gap-1 rounded-xl bg-black/20 p-1" role="tablist">
-                {([["dial", "Discar"], ["lead", lead ? "Ficha" : "Ficha"], ["recent", "Recentes"]] as [Tab, string][]).map(([k, l]) => (
-                  <button key={k} type="button" role="tab" aria-selected={tab === k} disabled={k === "lead" && !lead} onClick={() => setTab(k)} className={`min-h-8 rounded-lg text-xs font-bold transition disabled:opacity-40 ${tab === k ? "bg-panel text-accent shadow" : "text-white/85 hover:bg-white/10"}`}>{l}{k === "recent" && recent.length ? ` · ${recent.length}` : ""}</button>
-                ))}
-              </div>
-            )}
-          </header>
+              {!inCall && !calling && (
+                <div className="mt-3 grid grid-cols-3 gap-1 rounded-2xl bg-sunk/80 p-1" role="tablist">
+                  {([["dial", "Discar"], ["lead", "Ficha"], ["recent", "Recentes"]] as [Tab, string][]).map(([k, l]) => (
+                    <button key={k} type="button" role="tab" aria-selected={tab === k} disabled={k === "lead" && !lead} onClick={() => setTab(k)} className={`min-h-9 rounded-xl text-xs font-bold transition disabled:opacity-40 ${tab === k ? "bg-panel text-accent shadow-sm" : "text-muted hover:text-ink"}`}>{l}{k === "recent" && recent.length ? ` · ${recent.length}` : ""}</button>
+                  ))}
+                </div>
+              )}
+            </header>
 
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
-            {inCall && sheet && lead && <LeadSheet lead={lead} others={others} onPick={(l) => setPinned(l)} onDial={() => toast("info", "Termine a ligação atual antes de ligar de novo.")} onScript={openScript} onLead={openLead} />}
-            {inCall && !(sheet && lead) && (
-              <div className="space-y-3">
-                <div className="flex flex-col items-center gap-1.5 py-1 text-center" role="status" aria-live="polite">
-                  <span className={`relative grid size-[4.5rem] place-items-center rounded-full text-white ${ended ? "bg-slate-600" : "bg-emerald-600"}`}>
-                    {!ended && <><span className="absolute inset-0 animate-ping rounded-full bg-emerald-500/40" aria-hidden /><span className="absolute -inset-1.5 rounded-full border-2 border-emerald-500/30" aria-hidden /></>}
-                    {ended ? <PhoneOff size={28} aria-hidden /> : <PhoneCall size={28} aria-hidden className="relative script-shake" />}
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+              {inCall && sheet && lead && <LeadSheet lead={lead} others={others} onPick={(l) => setPinned(l)} onDial={() => toast("info", "Termine a ligação atual antes de ligar de novo.")} onScript={openScript} onLead={openLead} />}
+
+              {inCall && !(sheet && lead) && (
+                <div className="space-y-4">
+                  <div className="flex flex-col items-center gap-1 pt-1 text-center" role="status" aria-live="polite">
+                    <span className={`relative mb-2 grid size-20 place-items-center rounded-full text-white ${ended ? "bg-slate-500" : "bg-emerald-600"}`}>
+                      {!ended && <><span className="absolute inset-0 animate-ping rounded-full bg-emerald-500/40" aria-hidden /><span className="absolute -inset-1.5 rounded-full border-2 border-emerald-500/30" aria-hidden /></>}
+                      {ended ? <PhoneOff size={30} aria-hidden /> : <PhoneCall size={30} aria-hidden className="relative script-shake" />}
+                    </span>
+                    {contactName && <p className="w-full break-words text-xl font-bold leading-tight">{contactName}</p>}
+                    {companyName && <p className={`w-full break-words leading-snug ${contactName ? "text-sm font-semibold text-muted" : "text-xl font-bold"}`}>{companyName}</p>}
+                    <p className="figure w-full break-words text-sm text-muted">{fmtPhone(callDigits)}</p>
+                    <Timer since={call!.since} endedAt={call!.endedAt} className="mt-1 text-3xl font-bold" />
+                    {ended && <span className="mt-1 rounded-full bg-slate-500/15 px-3 py-1 text-xs font-bold text-muted">{label}</span>}
+                  </div>
+
+                  {live && (
+                    <>
+                      <div className="grid grid-cols-3 gap-2">
+                        {!vocall.roteiroOn ? null : script ? <button type="button" onClick={() => openScript(script)} className={tile}><ScrollText size={18} className="text-accent" aria-hidden />Roteiro</button> : <span className={ghostTile}><ScrollText size={18} aria-hidden />Roteiro</span>}
+                        {lead ? <button type="button" onClick={() => openLead(lead.id)} className={tile}><FeyMark size={18} />Lead</button> : <span className={ghostTile}><FeyMark size={18} color="currentColor" />Lead</span>}
+                        {lead ? <button type="button" onClick={() => setSheet(true)} className={tile}><UserRound size={18} className="text-accent" aria-hidden />Ficha</button> : <span className={ghostTile}><UserRound size={18} aria-hidden />Ficha</span>}
+                      </div>
+                      <button type="button" onClick={() => { void vocall.hangupCall(); toast("info", "Pedido de desligar enviado."); }} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-danger text-base font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98]"><PhoneOff size={18} aria-hidden /> Desligar</button>
+                    </>
+                  )}
+
+                  {ended && (
+                    <div className="space-y-2.5">
+                      {call!.qualUrl
+                        ? <QualifyLink href={call!.qualUrl} done={qualified} onOpen={() => setQDone(call!.since)} />
+                        : call!.qualLooking
+                          ? <p className="flex items-center justify-center gap-2 py-2 text-sm text-muted"><Loader2 size={15} className="animate-spin" aria-hidden /> Procurando a qualificação…</p>
+                          : <p className="rounded-xl bg-sunk px-3 py-2 text-center text-xs text-muted">Número sem cadastro na EOX: não há qualificação para abrir.</p>}
+                      <button type="button" disabled={checking || needQual || releasing} onClick={() => void newCall()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-base font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:shadow-none" style={{ background: "linear-gradient(135deg,#16a34a,#15803d)" }}>
+                        {checking || releasing ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <Phone size={18} aria-hidden />} {checking ? "Conferindo a qualificação…" : releasing ? "Liberando o ramal…" : "Nova ligação"}
+                      </button>
+                      {needQual && <p className="text-center text-xs text-muted">Abra “Qualificar no EOX” uma vez para liberar a nova ligação.</p>}
+                      {lead && (
+                        <div className="space-y-1.5 border-t border-line pt-3">
+                          <p className="flex items-center gap-1.5 text-xs font-semibold text-muted"><Clock size={13} aria-hidden /> Ligar de novo</p>
+                          {retried ? <p className="rounded-xl bg-ok/10 px-3 py-2 text-sm text-ok">Tarefa criada para {retried}.</p>
+                            : <div className="grid grid-cols-3 gap-1.5">{[[1, "Amanhã"], [3, "3 dias"], [7, "1 semana"]].map(([d, l]) => <button key={d} type="button" onClick={() => void retry(d as number)} className="min-h-10 rounded-xl bg-sunk text-xs font-semibold transition hover:bg-accent/10">{l}</button>)}</div>}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {calling && (
+                <div className="flex flex-col items-center gap-3 py-10 text-center" role="status" aria-live="polite">
+                  <span className="relative grid size-24 place-items-center rounded-full bg-emerald-600 text-white">
+                    <span className="absolute inset-0 animate-ping rounded-full bg-emerald-500/40" aria-hidden />
+                    <span className="absolute -inset-2 animate-pulse rounded-full border-2 border-emerald-500/30" aria-hidden />
+                    <Phone size={34} aria-hidden className="relative script-shake" />
                   </span>
-                  <p className="max-w-full truncate text-lg font-bold">{lead ? (lead.tradeName ?? lead.company) : call!.empresa ?? fmtPhone(callDigits)}</p>
-                  <p className="figure text-sm text-muted">{fmtPhone(callDigits)}{lead?.person ? ` · ${lead.person.name}` : ""}</p>
-                  <div className="flex items-center gap-2">{ended && <span className="rounded-full bg-slate-500/15 px-2.5 py-0.5 text-xs font-bold text-muted">{label}</span>}<span className="text-lg font-bold"><Timer since={call!.since} endedAt={call!.endedAt} /></span></div>
+                  <p className="text-xl font-bold">Ligando<span className="inline-flex w-6 justify-start"><span className="animate-pulse">.</span><span className="animate-pulse [animation-delay:.2s]">.</span><span className="animate-pulse [animation-delay:.4s]">.</span></span></p>
+                  <p className="figure text-sm text-muted">{fmtPhone(digits)}</p>
+                  <p className="text-xs text-muted">Conectando ao VocallPhone…</p>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {!vocall.roteiroOn ? null : script ? <button type="button" onClick={() => openScript(script)} className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-line bg-sunk/60 text-xs font-bold hover:border-accent"><ScrollText size={17} className="text-accent" aria-hidden />Roteiro</button> : <span className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-line text-xs text-muted"><ScrollText size={17} aria-hidden />Roteiro</span>}
-                  {lead ? <button type="button" onClick={() => openLead(lead.id)} className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-line bg-sunk/60 text-xs font-bold hover:border-accent"><FeyMark size={17} aria-hidden />Lead</button> : <span className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-line text-xs text-muted"><ExternalLink size={17} aria-hidden />Lead</span>}
-                  {lead ? <button type="button" onClick={() => setSheet(true)} className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-line bg-sunk/60 text-xs font-bold hover:border-accent"><UserRound size={17} className="text-accent" aria-hidden />Ficha</button> : <span className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-line text-xs text-muted"><UserRound size={17} aria-hidden />Ficha</span>}
-                </div>
-                {live && <button type="button" onClick={() => { void vocall.hangupCall(); toast("info", "Pedido de desligar enviado."); }} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-danger text-base font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98]"><PhoneOff size={18} aria-hidden /> Desligar</button>}
-                {ended && (
-                  <>
-                    {call!.qualUrl
-                      ? <QualifyLink href={call!.qualUrl} />
-                      : (call!.qualLooking ? <p className="flex items-center justify-center gap-2 text-sm text-muted"><Loader2 size={15} className="animate-spin" aria-hidden /> Procurando a qualificação…</p> : <p className="text-center text-xs text-muted">Número sem cadastro na EOX: não há qualificação para abrir.</p>)}
-                    <button type="button" disabled={checking} onClick={() => { vocall.dismiss(); setPinned(null); setRetried(null); setNum(""); setTab("dial"); }} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-base font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40" style={{ background: "linear-gradient(135deg,#16a34a,#15803d)" }}>{checking ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <Phone size={18} aria-hidden />} {checking ? "Conferindo a qualificação…" : "Nova ligação"}</button>
-                    {lead && <div className="space-y-1.5"><p className="flex items-center gap-1.5 text-xs font-semibold text-muted"><Clock size={13} aria-hidden /> Ligar de novo</p>{retried ? <p className="rounded-lg bg-ok/10 px-3 py-2 text-sm text-ok">Tarefa criada para {retried}.</p> : <div className="grid grid-cols-3 gap-1.5">{[[1, "Amanhã"], [3, "3 dias"], [7, "1 semana"]].map(([d, l]) => <button key={d} type="button" onClick={() => void retry(d as number)} className="min-h-9 rounded-lg border border-line text-xs font-semibold hover:border-accent">{l}</button>)}</div>}</div>}
-                  </>
-                )}
-              </div>
-            )}
+              )}
 
-            {calling && (
-              <div className="flex flex-col items-center gap-3 py-8 text-center" role="status" aria-live="polite">
-                <span className="relative grid size-24 place-items-center rounded-full bg-emerald-600 text-white">
-                  <span className="absolute inset-0 animate-ping rounded-full bg-emerald-500/40" aria-hidden />
-                  <span className="absolute -inset-2 animate-pulse rounded-full border-2 border-emerald-500/30" aria-hidden />
-                  <Phone size={34} aria-hidden className="relative script-shake" />
-                </span>
-                <p className="text-xl font-bold">Ligando<span className="inline-flex w-6 justify-start"><span className="animate-pulse">.</span><span className="animate-pulse [animation-delay:.2s]">.</span><span className="animate-pulse [animation-delay:.4s]">.</span></span></p>
-                <p className="figure text-sm text-muted">{fmtPhone(digits)}</p>
-                <p className="text-xs text-muted">Conectando ao VocallPhone…</p>
-              </div>
+              {!inCall && !calling && shownTab === "dial" && (
+                <>
+                  <div className="relative rounded-3xl bg-sunk px-3 py-4 text-center">
+                    <input ref={inputRef} aria-label="Número para ligar" type="tel" inputMode="numeric" autoComplete="off" placeholder="Digite o número" value={digits ? fmtPhone(digits) : ""}
+                      onChange={(e) => { setNum(e.target.value.replace(/\D/g, "").slice(0, 13)); setPinned(null); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void dialTo(digits); } }}
+                      onPaste={(e) => { e.preventDefault(); const t = e.clipboardData.getData("text").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "").slice(0, 13); setNum(t); setPinned(null); }}
+                      className="figure w-full bg-transparent px-11 text-center text-[1.75rem] font-bold tracking-wide caret-transparent outline-none placeholder:text-base placeholder:font-medium placeholder:text-muted/70" />
+                    {digits && <button type="button" onClick={() => { setNum(""); setPinned(null); inputRef.current?.focus(); }} aria-label="Apagar o número todo" title="Apagar tudo" className="absolute left-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-xl text-muted transition hover:bg-danger/10 hover:text-danger"><Eraser size={18} aria-hidden /></button>}
+                    {digits && <button type="button" onClick={() => { setNum(digits.slice(0, -1)); setPinned(null); }} aria-label="Apagar último dígito" className="absolute right-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-xl text-muted transition hover:bg-accent/10 hover:text-ink"><Delete size={18} aria-hidden /></button>}
+                  </div>
+                  {digits.length >= 8 && (found.loading
+                    ? <p className="flex items-center justify-center gap-2 py-1 text-xs text-muted"><Loader2 size={13} className="animate-spin" aria-hidden /> Procurando o lead…</p>
+                    : lead ? <div className="space-y-1.5"><LeadStrip lead={lead} onOpen={() => setTab("lead")} />{script && <button type="button" onClick={() => openScript(script)} className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-sunk text-sm font-semibold transition hover:bg-accent/10"><ScrollText size={15} className="text-accent" aria-hidden /> Abrir o roteiro e se preparar</button>}</div>
+                    : <p className="rounded-xl border border-dashed border-line px-3 py-2 text-center text-xs text-muted">Número sem lead cadastrado. A ligação sai, sem ficha.</p>)}
+                  <div className="grid grid-cols-3 gap-2" role="group" aria-label="Teclado">
+                    {KEYS.map(([k, sub]) => (
+                      <button key={k} type="button" onClick={() => press(k)} aria-label={k} className="flex h-14 flex-col items-center justify-center rounded-2xl bg-sunk transition hover:bg-accent/10 active:scale-95 active:bg-accent/20">
+                        <span className="text-xl font-semibold leading-none">{k}</span>{sub && <span className="mt-0.5 text-[9px] font-bold tracking-widest text-muted">{sub}</span>}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {!inCall && !calling && shownTab === "lead" && lead && <LeadSheet lead={lead} others={others} onPick={(l) => { setPinned(l); }} onDial={(d, p) => { setNum(d); setTab("dial"); void dialTo(d, p); }} onScript={openScript} onLead={openLead} />}
+
+              {!inCall && !calling && shownTab === "recent" && (
+                recent.length === 0 ? <p className="py-8 text-center text-sm text-muted">As ligações que você fizer por aqui aparecem aqui.</p>
+                  : <div className="space-y-1.5">{recent.map((r) => <button key={r.digits} type="button" onClick={() => { setNum(r.digits); setPinned(null); setTab("dial"); }} className="flex w-full items-center justify-between gap-2 rounded-2xl bg-sunk px-3.5 py-3 text-left text-sm transition hover:bg-accent/10"><span className="break-words font-medium">{r.label}</span><span className="figure shrink-0 text-xs text-muted">{fmtPhone(r.digits)}</span></button>)}</div>
+              )}
+            </div>
+
+            {inCall && sheet && lead && (
+              <footer className="flex items-center gap-3 border-t border-line bg-panel p-3">
+                <span className={`relative grid size-10 shrink-0 place-items-center rounded-full text-white ${ended ? "bg-slate-500" : "bg-emerald-600"}`}>{ended ? <PhoneOff size={17} aria-hidden /> : <PhoneCall size={17} aria-hidden className="script-shake" />}</span>
+                <span className="min-w-0 flex-1"><span className="block break-words text-sm font-bold leading-tight">{contactName ?? companyName}</span><span className="block text-xs font-semibold text-muted"><Timer since={call!.since} endedAt={call!.endedAt} className="text-xs font-semibold" /></span></span>
+                <button type="button" onClick={() => setSheet(false)} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-sunk px-3 text-sm font-semibold transition hover:bg-accent/10"><ArrowLeft size={15} aria-hidden /> Voltar</button>
+              </footer>
             )}
 
             {!inCall && !calling && shownTab === "dial" && (
-              <>
-                <div className="relative">
-                  <input ref={inputRef} aria-label="Número para ligar" type="tel" inputMode="numeric" autoComplete="off" placeholder="(00) 00000-0000" value={digits ? fmtPhone(digits) : ""}
-                    onChange={(e) => { setNum(e.target.value.replace(/\D/g, "").slice(0, 13)); setPinned(null); }}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void dialTo(digits); } }}
-                    onPaste={(e) => { e.preventDefault(); const t = e.clipboardData.getData("text").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "").slice(0, 13); setNum(t); setPinned(null); }}
-                    className="figure w-full rounded-2xl border border-line bg-sunk/60 px-12 py-3.5 text-center caret-transparent text-[1.7rem] font-bold tracking-wide outline-none transition focus:border-accent focus:bg-panel" />
-                  {digits && <button type="button" onClick={() => { setNum(""); setPinned(null); inputRef.current?.focus(); }} aria-label="Apagar o número todo" title="Apagar tudo" className="absolute left-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-lg text-muted hover:bg-danger/10 hover:text-danger"><Eraser size={18} aria-hidden /></button>}
-                  {digits && <button type="button" onClick={() => { setNum(digits.slice(0, -1)); setPinned(null); }} aria-label="Apagar último dígito" className="absolute right-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-lg text-muted hover:bg-accent/10 hover:text-ink"><Delete size={18} aria-hidden /></button>}
-                </div>
-                {digits.length >= 8 && (found.loading
-                  ? <p className="flex items-center justify-center gap-2 py-2 text-xs text-muted"><Loader2 size={13} className="animate-spin" aria-hidden /> Procurando o lead…</p>
-                  : lead ? <div className="space-y-1.5"><LeadStrip lead={lead} onOpen={() => setTab("lead")} />{script && <button type="button" onClick={() => openScript(script)} className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-sunk/60 text-sm font-semibold hover:border-accent"><ScrollText size={15} className="text-accent" aria-hidden /> Abrir o roteiro e se preparar</button>}</div>
-                  : <p className="rounded-xl border border-dashed border-line px-3 py-2.5 text-center text-xs text-muted">Número sem lead cadastrado. A ligação sai, sem ficha.</p>)}
-                <div className="grid grid-cols-3 gap-2.5" role="group" aria-label="Teclado">
-                  {KEYS.map(([k, sub]) => (
-                    <button key={k} type="button" onClick={() => press(k)} aria-label={k} className="flex h-[3.25rem] flex-col items-center justify-center rounded-2xl border border-line bg-sunk/60 transition hover:border-accent hover:bg-accent/10 active:scale-95">
-                      <span className="text-xl font-semibold leading-none">{k}</span>{sub && <span className="mt-0.5 text-[9px] font-bold tracking-widest text-muted">{sub}</span>}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {!inCall && !calling && shownTab === "lead" && lead && <LeadSheet lead={lead} others={others} onPick={(l) => { setPinned(l); }} onDial={(d, p) => { setNum(d); setTab("dial"); void dialTo(d, p); }} onScript={openScript} onLead={openLead} />}
-
-            {!inCall && !calling && shownTab === "recent" && (
-              recent.length === 0 ? <p className="py-6 text-center text-sm text-muted">As ligações que você fizer por aqui aparecem aqui.</p>
-                : <div className="space-y-1.5">{recent.map((r) => <button key={r.digits} type="button" onClick={() => { setNum(r.digits); setPinned(null); setTab("dial"); }} className="flex w-full items-center justify-between gap-2 rounded-xl border border-line px-3 py-2.5 text-left text-sm hover:border-accent"><span className="truncate font-medium">{r.label}</span><span className="figure shrink-0 text-xs text-muted">{fmtPhone(r.digits)}</span></button>)}</div>
+              <footer className="space-y-2 border-t border-line bg-panel p-3">
+                {!vocall.ready && !checking && vocall.fails >= 1 && <p role="alert" className="rounded-xl bg-warn/15 px-3 py-2 text-center text-sm font-semibold text-warn">Não consegui conectar ao VocallPhone. Por favor, feche todas as janelas do EOX no seu navegador.</p>}
+                <button type="button" onClick={() => void dialTo(digits)} disabled={digits.length < 8 || dialing || !vocall.ready || checking} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:shadow-none" style={{ background: "linear-gradient(135deg,#16a34a,#15803d)" }}>
+                  {dialing || !vocall.ready ? <Loader2 size={20} className="animate-spin" aria-hidden /> : <Phone size={20} aria-hidden />} {dialing ? "Ligando…" : !vocall.ready ? "Conectando…" : "Ligar"}
+                </button>
+              </footer>
             )}
           </div>
 
-          {inCall && sheet && lead && (
-            <footer className="flex items-center gap-3 border-t border-line bg-panel p-3">
-              <span className={`relative grid size-10 shrink-0 place-items-center rounded-full text-white ${ended ? "bg-slate-600" : "bg-emerald-600"}`}>{ended ? <PhoneOff size={17} aria-hidden /> : <PhoneCall size={17} aria-hidden className="script-shake" />}</span>
-              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold">{lead.tradeName ?? lead.company}</span><span className="block text-xs font-semibold text-muted"><Timer since={call!.since} endedAt={call!.endedAt} /></span></span>
-              <button type="button" onClick={() => setSheet(false)} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-line px-3 text-sm font-semibold hover:border-accent"><ArrowLeft size={15} aria-hidden /> Voltar</button>
-            </footer>
-          )}
-          {!inCall && !calling && shownTab === "dial" && (
-            <footer className="space-y-1.5 border-t border-line bg-panel p-3">
-              {!vocall.ready && !checking && vocall.fails >= 1 && <p role="alert" className="rounded-xl bg-warn/15 px-3 py-2 text-center text-sm font-semibold text-warn">Não consegui conectar ao VocallPhone. Por favor, feche todas as janelas do EOX no seu navegador.</p>}
-              <button type="button" onClick={() => void dialTo(digits)} disabled={digits.length < 8 || dialing || !vocall.ready || checking} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40" style={{ background: "linear-gradient(135deg,#16a34a,#15803d)" }}>
-                {dialing || !vocall.ready ? <Loader2 size={20} className="animate-spin" aria-hidden /> : <Phone size={20} aria-hidden />} {dialing ? "Ligando…" : !vocall.ready ? "Conectando…" : "Ligar"}
-              </button>
-            </footer>
-          )}
-          </div>
           {(side || warm) && (
             <div className={wide ? "relative hidden min-w-0 flex-1 flex-col border-l border-line bg-bg lg:flex" : "hidden"}>
               <div className="flex items-center gap-2 border-b border-line px-3 py-2">{side?.title === "Lead" ? <FeyMark size={16} /> : <ScrollText size={16} className="text-accent" aria-hidden />}<p className="flex-1 text-sm font-bold">{side?.title}</p><button type="button" onClick={() => setSide(null)} aria-label="Fechar painel lateral" className="grid size-8 place-items-center rounded-lg text-muted hover:bg-accent/10"><X size={16} aria-hidden /></button></div>
@@ -383,11 +422,11 @@ function EoxMark({ size = 20 }: { size?: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="square" strokeLinejoin="miter"><path d="M18 4.5H7v15h11M7 12h9" /></svg>;
 }
 
-/** Abre a qualificação da ligação na EOX (nova aba). Roxo da EOX. */
-function QualifyLink({ href }: { href: string }) {
+/** Abre a qualificação da ligação na EOX (nova aba). Roxo da EOX; depois do primeiro clique fica cinza. */
+function QualifyLink({ href, done, onOpen }: { href: string; done: boolean; onOpen: () => void }) {
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-base font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98]" style={{ background: "linear-gradient(135deg,#7a3a94,#692e81)" }}>
-      <span className="grid size-6 place-items-center rounded-md bg-white/20"><EoxMark size={18} /></span> Qualificar no EOX
+    <a href={href} target="_blank" rel="noopener noreferrer" onClick={onOpen} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-base font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98]" style={{ background: done ? "linear-gradient(135deg,#64748b,#475569)" : "linear-gradient(135deg,#7a3a94,#692e81)" }}>
+      <span className="grid size-6 place-items-center rounded-md bg-white/20"><EoxMark size={18} /></span> {done ? "Qualificação aberta" : "Qualificar no EOX"}
     </a>
   );
 }
