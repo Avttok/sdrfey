@@ -63,7 +63,7 @@ describe("scripts de fábrica: triagem de perfil", () => {
         seen.add(id);
         const n = byId.get(id);
         expect(n, `${b.key}: passo ${id} não existe`).toBeTruthy();
-        for (const x of n!.options) if (x.to) stack.push(x.to);
+        for (const x of n!.options) for (const d of [x.to, ...Object.values(x.goto ?? {})]) if (d) stack.push(d);
       }
       const orfaos = b.nodes.filter((n) => !seen.has(n.id)).map((n) => n.id);
       expect(orfaos, b.key).toEqual([]);

@@ -3,16 +3,54 @@ import { visita } from "./seed-visita";
 import { sql } from "drizzle-orm";
 import { after } from "next/server";
 import { db, scripts } from "@/db";
-import type { ScriptGoal, ScriptNode } from "@/config/scripts";
+import type { ScriptGoal, ScriptNode, ScriptOption } from "@/config/scripts";
+import type { ObjectiveId } from "@/config/objectives";
 import type { ScriptTask } from "@/config/tasks";
 import { GOALS, SEGMENTS } from "@/config/scripts";
 import { NEXT, ONLINE, PARES, SEG, T, fala, fim, o, type Alvo } from "./seed-core";
 import { confirma, enriquece, entrada, minimo, objecoes, perfis } from "./seed-parts";
 
 /** Muda quando os textos de fábrica são reescritos: os scripts do time que ninguém editou são atualizados. */
-export const SEED_VERSION = 23;
+export const SEED_VERSION = 24;
 
 type Seg = (typeof SEG)[string];
+
+/** Muda, para um objetivo, o destino das respostas de um passo (o resto da conversa fica igual). */
+function reroute(nodes: ScriptNode[], from: string, obj: ObjectiveId, dest: string, only?: (o: ScriptOption) => boolean): ScriptNode[] {
+  return nodes.map((n) => (n.id !== from ? n : { ...n, options: n.options.map((o) => (o.to && !o.to.startsWith("@") && o.to !== dest && (!only || only(o)) ? { ...o, goto: { ...o.goto, [obj]: dest } } : o)) }));
+}
+
+/** Passos que só existem para os objetivos "Confirmar dados" e "Qualificar lead" da Prospecção. */
+function sdrObjetivos(): ScriptNode[] {
+  const cad = [tk("outro", "Atualizar o cadastro do lead no sistema", 0)];
+  return [
+    fala("dados_abre", "Atualizar o cadastro", T(
+      "Olha, eu tô atualizando o cadastro da {empresa} aqui na Fey, pra gente não mandar nada pra pessoa errada nem incomodar à toa. Posso confirmar com você duas ou três coisinhas rápidas?",
+      "Estou atualizando o cadastro da {empresa} aqui na Fey, para não enviarmos nada à pessoa errada nem incomodar sem necessidade. Posso confirmar com você duas ou três informações rápidas?",
+      "Olha, tô atualizando o cadastro da {empresa} aqui na Fey, pra gente não mandar nada pra pessoa errada nem incomodar à toa. Posso confirmar duas ou três coisinhas rapidinho?",
+    ), [o("Pode confirmar", "dados_contato", "ok"), o("Quem cuida disso é outra pessoa", "pedir_decisor", "neutro"), o("Está sem tempo agora", "obj_tempo", "objecao"), o("Prefere não passar dados", "obj_nao", "objecao")], "Objetivo: sair da ligação com o contato certo e atualizado. Diga que é só cadastro, seja breve e deixe o pitch para outra hora.", "confirma"),
+    fala("dados_contato", "Melhor contato", T(
+      "Qual é o melhor WhatsApp e e-mail pra falar com quem cuida das compras aí? E o seu, posso deixar anotado também?",
+      "Qual é o melhor WhatsApp e e-mail para falar com quem cuida das compras? E o seu, posso deixar anotado também?",
+      "Qual o melhor WhatsApp e e-mail pra falar com quem cuida das compras aí? E o seu, posso anotar também?",
+    ), [o("Passou WhatsApp ou e-mail", "dados_perfil", "ok", "Dados confirmados: WhatsApp ou e-mail do contato"), o("Passou só o telefone fixo", "dados_perfil", "neutro", "Dados confirmados: só telefone fixo"), o("Prefere não passar", "dados_perfil", "neutro")], "Cadastre o contato no bloco de contatos do lead enquanto a pessoa fala. Repita o número ou o e-mail em voz alta para confirmar.", "pergunta"),
+    fala("dados_perfil", "Quem decide a compra", T(
+      "E quem decide as compras de fixadores aí, é você mesmo ou outra pessoa? E em que horário costuma ser mais fácil falar com essa pessoa?",
+      "E quem decide as compras de fixadores, é você ou outra pessoa? Em que horário costuma ser mais fácil falar com ela?",
+      "E quem decide a compra de fixador aí, é você mesmo ou outra pessoa? E que horas é mais fácil de encontrar ela?",
+    ), [o("Decide sozinho", "dados_fim", "ok", "Dados confirmados: o contato decide a compra"), o("Outra pessoa decide", "dados_fim", "neutro", "Dados confirmados: decisor é outra pessoa (anotar nome e horário)"), o("Não sabe", "dados_fim", "neutro")], "Anote o nome do decisor e o melhor horário. É o que mais ajuda a próxima ligação.", "pergunta"),
+    fala("dados_fim", "Fechar o cadastro", T(
+      "Pronto, deixei tudo anotado, obrigado pela ajuda. Posso te chamar no WhatsApp quando tiver uma novidade ou uma condição boa pra {empresa}? Prometo não encher.",
+      "Pronto, deixei tudo anotado, obrigado pela ajuda. Posso entrar em contato pelo WhatsApp quando houver uma novidade ou uma condição interessante para a {empresa}? Prometo ser breve.",
+      "Pronto, deixei tudo anotado, valeu pela ajuda! Posso te chamar no WhatsApp quando tiver uma novidade ou uma condição boa pra {empresa}? Prometo não encher.",
+    ), [{ ...o("Autorizou o contato", "@retorno", "ok", "Dados confirmados: contato autorizado pelo WhatsApp"), tasks: cad }, { ...o("Prefere não receber", "@encerrar", "neutro", "Dados confirmados: não quer contato por WhatsApp"), tasks: cad }], "Agradeça de verdade. Cadastro bem feito vale mais que uma ligação de venda forçada.", "fechamento"),
+    fala("qualif_resumo", "Resumo da qualificação", T(
+      "Então, pelo que você me contou, eu acho que a Fey pode ajudar a {empresa}. Faz sentido a gente aprofundar isso numa conversa rápida com o nosso especialista?",
+      "Então, pelo que você me contou, acredito que a Fey pode ajudar a {empresa}. Faz sentido aprofundarmos isso em uma conversa rápida com o nosso especialista?",
+      "Então, pelo que você me contou, acho que a Fey pode ajudar a {empresa} sim. Faz sentido a gente aprofundar num papo rápido com o nosso especialista?",
+    ), [o("Quer a conversa com o especialista", "visita", "ok", "Qualificado: quer conversar com o especialista"), o("Prefere receber material", "digital", "neutro", "Qualificado: pediu material"), o("Quer retorno mais pra frente", "@retorno", "neutro", "Qualificado: retornar mais pra frente"), o("Não tem fit", "@encerrar", "objecao", "Qualificação: sem fit com a Fey"), o("Levantou uma objeção", "obj_menu", "objecao")], "Aqui você decide o fit com o que ouviu: compra fixadores, com que frequência, qual volume e quem decide. Anote a conclusão e marque a qualificação no fim do atendimento.", "proposta"),
+  ];
+}
 
 function sdr(s: Seg): { nodes: ScriptNode[]; startId: string } {
   const alvo: Alvo = { quem: "quem cuida das compras", motivo: T(
@@ -92,8 +130,13 @@ function sdr(s: Seg): { nodes: ScriptNode[]; startId: string } {
       "Perfeito! Te mando agora um material curtinho, só com o que interessa pro seu perfil. Depois de amanhã eu te ligo uns cinco minutinhos, pra saber o que achou? Se fizer sentido, a gente já marca o papo.",
     ), [o("Concordou", "@retorno", "ok", "Enviar material e retornar em 2 dias"), o("Mesmo assim recusou", "obj_nao", "objecao")], "Combine o dia do retorno antes de desligar. Mensagem curta para o WhatsApp: “Oi! Aqui é [seu nome], da Fey, a metalúrgica de fixadores. Conforme conversamos, segue o material. Qualquer dúvida, é só chamar.”", "apoio"),
     ...objecoes("visita", "visita"),
+    ...sdrObjetivos(),
   ];
-  return { nodes, startId: "abertura" };
+  const papeis = ["p_socio", "p_compras", "p_gestor", "p_balcao", "p_operacao", "p_admin"];
+  let routed = reroute(nodes, "conf_negocio", "qualificar", "contrato");
+  routed = reroute(routed, "conf_minimo", "qualificar", "qualif_resumo", (o) => o.to === "visita");
+  routed = reroute(routed, "papel", "dados", "dados_abre", (o) => papeis.includes(o.to ?? ""));
+  return { nodes: routed, startId: "abertura" };
 }
 
 function vendas(s: Seg): { nodes: ScriptNode[]; startId: string } {
@@ -164,8 +207,13 @@ function vendas(s: Seg): { nodes: ScriptNode[]; startId: string } {
       `Claro, decisão importante a gente pensa mesmo! Pra eu te ajudar nessa, o que você ainda quer ver, o prazo, o pagamento ou a garantia? Se quiser, a gente se fala de novo daqui a dois dias.`,
     ), [o("Combinou o retorno", "@retorno", "ok", "Combinado retorno em 2 dias"), o("Disse o que falta decidir", "obj_menu", "neutro"), o("Não quer retorno", "@encerrar", "objecao")], "“Vou pensar” quase sempre esconde uma dúvida: descubra qual é, com calma, sem pressionar.", "objecao"),
     ...objecoes("proposta", "venda"),
+    fala("proposta_fecha", "Propor o fechamento", T(
+      "Com o que você me passou, eu já consigo te passar o valor com 25% de desconto, e se fizer sentido eu abro o pedido agora mesmo, sem você precisar esperar a cotação. É linha premium, com prazo de entrega firme. Posso já abrir?",
+      "Com as informações que você passou, já consigo informar o valor com 25% de desconto e, se fizer sentido, abrir o pedido agora, sem aguardar a cotação. É linha premium, com prazo de entrega firme. Posso abrir o pedido?",
+      "Com o que você me passou, já consigo te falar o valor com 25% de desconto, e se fizer sentido eu abro o pedido agora mesmo, sem você esperar a cotação. É linha premium, com prazo firme. Posso já abrir?",
+    ), [o("Pode abrir o pedido", "fechar", "ok"), o("Prefere receber a cotação", "@cotacao", "neutro", "Preferiu receber a cotação antes de fechar"), o("Disse que é caro", "obj_preco", "objecao"), o("Quer pensar", "obj_pensar", "objecao"), o("Outra dúvida ou objeção", "obj_menu", "objecao")], "Ofereça 25% primeiro e só depois, se precisar, 26%. Se ele hesitar, volte para a cotação sem pressionar.", "fechamento"),
   ];
-  return { nodes, startId: "abertura" };
+  return { nodes: reroute(nodes, "conf_minimo", "fechar", "proposta_fecha", (o) => o.to === "proposta"), startId: "abertura" };
 }
 
 function retorno(s: Seg): { nodes: ScriptNode[]; startId: string } {

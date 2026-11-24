@@ -59,3 +59,19 @@ export async function captureContactAction(leadId: number, input: { personId?: n
   revalidatePath("/atender");
   return { ok: true, message: "Contato anotado.", ...out };
 }
+
+/** Corrige o nome de um contato do lead (nome digitado errado durante a ligação). */
+export async function renamePersonAction(leadId: number, personId: number, nameRaw: string): Promise<{ ok: boolean; message?: string }> {
+  const me = await requireUser();
+  const name = clip(nameRaw, 120);
+  if (!name) return { ok: false, message: "Informe o nome." };
+  const [p] = await db.select().from(leadPeople).where(and(eq(leadPeople.id, personId), eq(leadPeople.leadId, leadId)));
+  if (!p) return { ok: false, message: "Contato não encontrado." };
+  if (p.name === name) return { ok: true };
+  await db.transaction(async (tx) => {
+    await tx.update(leadPeople).set({ name }).where(eq(leadPeople.id, p.id));
+    await logAudit(tx, { userId: me.id, leadId, entity: "lead", action: "corrigiu nome de pessoa", field: "Pessoas", oldValue: p.name, newValue: name });
+  });
+  revalidatePath("/atender");
+  return { ok: true };
+}

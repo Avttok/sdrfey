@@ -1,4 +1,4 @@
-import { Headset, Merge, Brain, Activity, BookA, Archive, Megaphone, Coins, Clock, DatabaseZap, Download, Eraser, ScrollText, Truck, Handshake, KeyRound, PhoneCall, Link2, Mail, PanelTop, Settings2, Tags, Upload, Users, type LucideIcon } from "lucide-react";
+import { Headset, BarChart3, Merge, Brain, Activity, BookA, Archive, Megaphone, Coins, Clock, DatabaseZap, Download, Eraser, ScrollText, Truck, Handshake, KeyRound, PhoneCall, Link2, Mail, PanelTop, Settings2, Tags, Upload, Users, type LucideIcon } from "lucide-react";
 
 export type AdminItem = { href: string; label: string; hint: string; icon: LucideIcon };
 export type AdminSection = { id: string; title: string; hue: string; items: AdminItem[] };
@@ -23,6 +23,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     { href: "/admin/contatos", label: "Contatos repetidos", hint: "Encontrar e juntar pessoas duplicadas", icon: Merge },
     { href: "/admin/campos", label: "Dados dos leads", hint: "Campos que o roteiro preenche, uso e sugestões", icon: Brain },
     { href: "/admin/roteiros", label: "Roteiros de ligação", hint: "Versão de fábrica, restaurar e conferir", icon: ScrollText },
+    { href: "/admin/roteiros/uso", label: "Uso dos roteiros", hint: "Ligações, objetivos, objeções e onde param", icon: BarChart3 },
     { href: "/admin/consulta-cnpj", label: "Consulta de CNPJ", hint: "Buscar dados dos leads em lote", icon: DatabaseZap },
     { href: "/admin/exportar", label: "Exportar / backup", hint: "Baixar o banco com segurança", icon: Download },
     { href: "/admin/apagar", label: "Apagar", hint: "Excluir dados com segurança", icon: Eraser },

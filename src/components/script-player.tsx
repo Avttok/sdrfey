@@ -6,10 +6,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fillScript, sayOf, shortCompany, KIND_LABEL, moodOf, postureOf, OUTCOMES, TONE_KEYS, TONES, type ScriptDoc, type ScriptKind, type ScriptTone } from "@/config/scripts";
 import { btnGhost } from "@/components/ui";
 import { HScroll } from "./h-scroll";
+import { ObservationBox, SpeakerRow } from "./script-extras";
 import { GOAL_THEME, MOODS, OUTCOME_ICON, SEGMENT_ICON, tint } from "./script-theme";
 
 /** Retrato do andamento do roteiro: o que foi dito, o que o lead respondeu, as anotações e como terminou. */
-export type ScriptRun = { runId: string; scriptId: number; scriptTitle: string; goal: string; segment: string; contactName: string | null; steps: { id: string; title: string; mood: string; say: string; answer: string | null; kind: ScriptKind | null }[]; notes: string[]; outcome: string | null; finished: boolean };
+export type ScriptRun = { runId: string; scriptId: number; scriptTitle: string; goal: string; segment: string; objective: string | null; contactName: string | null; steps: { id: string; title: string; mood: string; say: string; answer: string | null; kind: ScriptKind | null }[]; notes: string[]; outcome: string | null; finished: boolean };
 export type ScriptVars = { empresa?: string | null; /** nome da pessoa com quem se fala (contato do telefone), se houver */ contatoCompleto?: string | null; contato?: string | null; cidade?: string | null; meunome?: string | null };
 
 const KIND: Record<ScriptKind, { hex: string; Icon: typeof ThumbsUp; hint: string }> = {
@@ -23,7 +24,7 @@ const CONFETTI = ["#f59e0b", "#22c55e", "#0ea5e9", "#8b5cf6", "#f43f5e"];
  * O roteiro da ligação. O balão mostra EXATAMENTE o que você diz ao lead (com o nome dele já no lugar);
  * a dica é só para você (não se fala). Depois toque no que o lead respondeu e o roteiro avança.
  */
-export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, onRun, onStep, endExtra, floatingCenter = false }: { /** Dados do lead: perguntas do roteiro e respostas que gravam no lead. */ facts?: FactsApi; /** avisa a cada passo novo, com o caminho percorrido (para o painel acompanhar quem está na linha) */ onStep?: (nodeId: string, path: string[]) => void; /** painel no fim da ligação (ex.: as tarefas que ela gerou); recebe o código da ligação */ endExtra?: (ctx: { runId: string }) => React.ReactNode; /** botão flutuante "Centralizar" acima do chat (só nas etapas dos shufflers) */ floatingCenter?: boolean; script: ScriptDoc; vars: ScriptVars; /** painel extra no passo atual (ex.: o campo do nome de quem fala); recebe `pick` para escolher uma resposta */ extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; onOutcome?: (o: NonNullable<ScriptDoc["nodes"][number]["outcome"]>) => void; /** chamado com a anotação sugerida quando o operador escolhe uma resposta que tem nota */ onNote?: (note: string) => void; /** chamado a cada resposta escolhida, com o retrato do andamento (para guardar no lead) */ onRun?: (run: ScriptRun) => void }) {
+export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, onRun, onStep, endExtra, floatingCenter = false, objective, onRename, savedPerson = false }: { /** Objetivo escolhido antes da ligação: as respostas com destino por objetivo seguem o caminho dele. */ objective?: string; /** Corrigir o nome de quem fala (aparece a linha "Falando com" com o botão). O segundo valor pede corrigir também o contato guardado. */ onRename?: (name: string, alsoSaved: boolean) => void; /** O nome atual é de um contato já guardado no lead. */ savedPerson?: boolean; /** Dados do lead: perguntas do roteiro e respostas que gravam no lead. */ facts?: FactsApi; /** avisa a cada passo novo, com o caminho percorrido (para o painel acompanhar quem está na linha) */ onStep?: (nodeId: string, path: string[]) => void; /** painel no fim da ligação (ex.: as tarefas que ela gerou); recebe o código da ligação */ endExtra?: (ctx: { runId: string }) => React.ReactNode; /** botão flutuante "Centralizar" acima do chat (só nas etapas dos shufflers) */ floatingCenter?: boolean; script: ScriptDoc; vars: ScriptVars; /** painel extra no passo atual (ex.: o campo do nome de quem fala); recebe `pick` para escolher uma resposta */ extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; onOutcome?: (o: NonNullable<ScriptDoc["nodes"][number]["outcome"]>) => void; /** chamado com a anotação sugerida quando o operador escolhe uma resposta que tem nota */ onNote?: (note: string) => void; /** chamado a cada resposta escolhida, com o retrato do andamento (para guardar no lead) */ onRun?: (run: ScriptRun) => void }) {
   const by = useMemo(() => new Map(script.nodes.map((n) => [n.id, n])), [script]);
   const [trail, setTrail] = useState<{ id: string; kind?: ScriptKind; via?: string }[]>([{ id: script.startId }]);
   useEffect(() => setTrail([{ id: script.startId }]), [script.id, script.startId]);
@@ -67,16 +68,19 @@ export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, on
     if (!onRun || trail.length < 2) return;
     const steps = trail.map((t, i) => { const n = by.get(t.id); return { id: t.id, title: n?.title ?? t.id, mood: n ? moodOf(n) : "apoio", say: n ? fillScript(sayOf(n, tone), vars) : "", answer: trail[i + 1]?.via ?? null, kind: trail[i + 1]?.kind ?? null }; });
     const last = by.get(trail[trail.length - 1].id);
-    onRun({ runId, scriptId: script.id, scriptTitle: script.title, goal: script.goal, segment: script.segment, contactName: vars.contatoCompleto ?? null, steps, notes: noted, outcome: last?.type === "fim" ? last.outcome ?? null : null, finished: last?.type === "fim" });
+    onRun({ runId, scriptId: script.id, scriptTitle: script.title, goal: script.goal, segment: script.segment, objective: objective ?? null, contactName: vars.contatoCompleto ?? null, steps, notes: noted, outcome: last?.type === "fim" ? last.outcome ?? null : null, finished: last?.type === "fim" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trail, noted, runId, tone]);
+  /** Para onde a resposta leva: o destino do objetivo escolhido, se houver, ou o destino de sempre. */
+  const destOf = useCallback((op: ScriptDoc["nodes"][number]["options"][number]) => (objective && op.goto?.[objective]) || op.to, [objective]);
   const pick = useCallback((i: number) => {
     const op = node.options[i];
-    if (!op?.to || !by.has(op.to)) return;
+    const to = op ? destOf(op) : null;
+    if (!op || !to || !by.has(to)) return;
     if (op.fact && facts) void facts.record(op.fact.key, op.fact.value);
     if (op.note) { onNote?.(op.note); setNoted((l) => (l.includes(op.note!) ? l : [...l, op.note!])); }
-    setTrail((t) => [...t, { id: op.to!, kind: op.kind, via: op.label }]);
-  }, [node, by, onNote, facts]);
+    setTrail((t) => [...t, { id: to, kind: op.kind, via: op.label }]);
+  }, [node, by, onNote, facts, destOf]);
 
   /** Busca de objeção: o operador salta direto para a resposta certa, sem navegar pelos menus. */
   const [quick, setQuick] = useState(false);
@@ -114,7 +118,7 @@ export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, on
             {shortCompany(vars.empresa) !== vars.empresa.trim() && <p className="truncate text-[10px] uppercase tracking-wide text-muted">{vars.empresa}</p>}
             <p className="truncate text-lg font-extrabold">{shortCompany(vars.empresa)}</p>
           </div>
-          {vars.contatoCompleto && <p className="text-xs text-muted">Falando com <b className="text-ink">{vars.contatoCompleto}</b></p>}
+          {vars.contatoCompleto && !onRename && <p className="text-xs text-muted">Falando com <b className="text-ink">{vars.contatoCompleto}</b></p>}
         </div>
       )}
       {/* Objetivo + placar */}
@@ -125,12 +129,14 @@ export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, on
           <p className="truncate text-sm font-semibold lg:hidden xl:block">{goal.mission}</p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
-          {vars.contatoCompleto && <span className="hidden items-center gap-1 rounded-full bg-sunk px-2.5 py-1 lg:inline-flex" title="Com quem você fala"><Mic size={13} aria-hidden /> Falando com <b>{vars.contatoCompleto}</b></span>}
+          {vars.contatoCompleto && !onRename && <span className="hidden items-center gap-1 rounded-full bg-sunk px-2.5 py-1 lg:inline-flex" title="Com quem você fala"><Mic size={13} aria-hidden /> Falando com <b>{vars.contatoCompleto}</b></span>}
           <span className="inline-flex items-center gap-1 rounded-full bg-sunk px-2.5 py-1" title="Etapa da conversa"><Seg size={13} aria-hidden /> Etapa {trail.length}</span>
           <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1" style={{ ...tint("#22c55e", 16, 40), border: "1px solid" }} title="Bons sinais do lead"><Flame size={13} aria-hidden style={{ color: "#16a34a" }} /> {good}</span>
           <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1" style={{ ...tint("#f97316", 16, 40), border: "1px solid" }} title="Objeções enfrentadas"><ShieldCheck size={13} aria-hidden style={{ color: "#ea580c" }} /> {hurdles}</span>
         </div>
       </div>
+
+      {onRename && <SpeakerRow name={vars.contatoCompleto ?? ""} canFixSaved={savedPerson} onRename={onRename} />}
 
       {/* Mapa do caminho (toque numa etapa para voltar a ela) */}
       <HScroll className="flex items-center gap-1 px-2 py-1" label="Caminho percorrido">
@@ -207,7 +213,7 @@ export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, on
           <p className="flex items-center gap-2 text-sm font-bold"><Ear size={16} aria-hidden className="text-accent" /> O que o lead respondeu? <span className="hidden text-xs font-normal text-muted sm:inline">(toque ou use as teclas 1, 2, 3…)</span></p>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14.5rem),1fr))] gap-2">
             {node.options.map((op, i) => {
-              const k = KIND[op.kind]; const Icon = k.Icon; const off = !op.to || !by.has(op.to);
+              const k = KIND[op.kind]; const Icon = k.Icon; const dest = destOf(op); const off = !dest || !by.has(dest);
               return (
                 <button key={i} type="button" disabled={off} onClick={() => pick(i)} style={{ ...tint(k.hex, 9, 45), ["--c" as string]: `color-mix(in srgb, ${k.hex} 55%, transparent)` }}
                   className="script-ans flex min-h-14 items-center gap-3 lg:min-h-[3.5rem] rounded-2xl border-2 px-3 py-2.5 text-left font-medium disabled:opacity-50">
@@ -241,6 +247,7 @@ export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, on
         </div>
       )}
 
+      <ObservationBox onAdd={(text) => { onNote?.(text); setNoted((l) => (l.includes(text) ? l : [...l, text])); }} />
       {noted.length > 0 && <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted"><NotebookPen size={13} aria-hidden /> Anotado na observação: {noted.map((n) => <span key={n} className="rounded-full bg-sunk px-2 py-0.5 font-medium text-ink">{n}</span>)}</p>}
       {steps > 0 && (
         <div className="flex flex-wrap items-center gap-2">

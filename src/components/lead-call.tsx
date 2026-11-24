@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { TalkingTo } from "@/components/talking-to";
-import type { CapturedPerson } from "@/modules/leads/capture";
+import { renamePersonAction, type CapturedPerson } from "@/modules/leads/capture";
 import { CalendarCheck, Copy, ExternalLink, FileText, MapPin, Phone, ScrollText } from "lucide-react";
 import { copy } from "@/components/attend-flow";
 import { callNumber } from "@/components/call-number";
@@ -40,10 +40,18 @@ export function LeadCall({ eventId, knowledge, lead, scripts, goal, area, myName
   const [notes, setNotes] = useState<string[]>([]);
   const phones = lead.channels.filter((c) => c.kind === "phone" && !c.wrong);
   const [extraPeople, setExtraPeople] = useState<CapturedPerson[]>([]);
-  const allPeople = [...lead.people.map((p) => ({ id: p.id, name: p.name })), ...extraPeople.filter((x) => !lead.people.some((p) => p.id === x.id)).map((p) => ({ id: p.id, name: p.name }))];
+  const [renamed, setRenamed] = useState<Record<number, string>>({});
+  const allPeople = [...lead.people.map((p) => ({ id: p.id, name: p.name })), ...extraPeople.filter((x) => !lead.people.some((p) => p.id === x.id)).map((p) => ({ id: p.id, name: p.name }))].map((p) => ({ ...p, name: renamed[p.id] ?? p.name }));
   const [spoken, setSpoken] = useState<string | null>(null);
   const person = (talkingId ? allPeople.find((p) => p.id === talkingId) : null) ?? allPeople[0] ?? null;
   const talkingTo = (spoken ?? person?.name ?? "").trim();
+  const talkingKnownId = allPeople.find((x) => x.name.trim().toLowerCase() === talkingTo.toLowerCase())?.id ?? null;
+  /** Corrige o nome de quem fala; se for contato guardado e a pessoa pediu, corrige lá também. */
+  const rename = (n: string, also: boolean) => {
+    const id = talkingKnownId;
+    setSpoken(n);
+    if (also && id != null) void renamePersonAction(lead.id, id, n).then((r) => { if (r.ok) { setRenamed((m) => ({ ...m, [id]: n })); setSpoken(null); toast("ok", "Nome corrigido."); } else toast("bad", r.message ?? "Não foi possível corrigir."); }).catch(() => toast("bad", "Não foi possível corrigir."));
+  };
   // a ligação do VocallPhone acompanha o roteiro: o número discado indica com quem se fala
   const live = vocall.configured ? vocall.call : null;
   const liveDigits = live ? live.telefone.replace(/\D/g, "").replace(vocall.prefix ? new RegExp(`^${vocall.prefix.replace(/\D/g, "")}`) : /^$/, "") : "";
@@ -134,7 +142,7 @@ export function LeadCall({ eventId, knowledge, lead, scripts, goal, area, myName
           <div className="bg-grad px-4 py-2 text-on-accent"><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider"><ScrollText size={14} aria-hidden /> Roteiro da ligação</p></div>
           <div className="space-y-3 p-3 sm:p-4">
             {scripts.length > 0
-              ? <ScriptPicker facts={facts} scripts={scripts} goal={goal} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} extra={(nid, pick) => (nid === "abertura" || nid === "nome" || nid === "transferido") ? (
+              ? <ScriptPicker key={lead.id} area={area} onRename={rename} savedPerson={talkingKnownId != null} facts={facts} scripts={scripts} goal={goal} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} extra={(nid, pick) => (nid === "abertura" || nid === "nome" || nid === "transferido") ? (
                     <TalkingTo value={spoken ?? person?.name ?? ""} people={allPeople} knownId={allPeople.find((x) => x.name.trim().toLowerCase() === talkingTo.toLowerCase())?.id ?? null} leadId={lead.id}
                       onChange={(v) => { setSpoken(v); const m = allPeople.find((x) => x.name.trim().toLowerCase() === v.trim().toLowerCase()); if (m) setTalkingId(m.id); }}
                       onEnter={() => pick(0)} onSaved={(p) => { setExtraPeople((l) => [...l.filter((x) => x.id !== p.id), p]); setTalkingId(p.id); setSpoken(null); }} />

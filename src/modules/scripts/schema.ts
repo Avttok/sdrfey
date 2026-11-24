@@ -14,7 +14,7 @@ export const nodeSchema = z.object({
   v: z.object({ formal: text(1500).optional(), solto: text(1500).optional() }).optional(),
   tip: text(400).optional(),
   mood: z.enum(MOOD_KEYS as [string, ...string[]]).optional(),
-  options: z.array(z.object({ label: text(120).min(1, "Toda resposta precisa de um texto."), to: z.string().trim().max(24).nullable(), kind: z.enum(["ok", "objecao", "neutro"]), note: text(160).optional(), fact: z.object({ key: factKey, value: text(120).min(1) }).optional(), tasks: taskSchema.optional() })).max(10),
+  options: z.array(z.object({ label: text(120).min(1, "Toda resposta precisa de um texto."), to: z.string().trim().max(24).nullable(), goto: z.record(z.string().max(20), z.string().trim().max(24)).optional(), kind: z.enum(["ok", "objecao", "neutro"]), note: text(160).optional(), fact: z.object({ key: factKey, value: text(120).min(1) }).optional(), tasks: taskSchema.optional() })).max(10),
   tasks: taskSchema.optional(),
   ask: z.array(z.object({ key: factKey, q: text(120).optional() })).max(3).optional(),
   outcome: z.enum(["visita", "cotacao", "retorno", "venda", "indicacao", "encerrar"]).optional(),
@@ -37,7 +37,7 @@ export function checkTree(nodes: ScriptNode[], startId: string): string | null {
   const ids = new Set<string>();
   for (const n of nodes) { if (ids.has(n.id)) return `Passo repetido (${n.id}).`; ids.add(n.id); }
   if (!ids.has(startId)) return "Escolha o passo em que o script começa.";
-  for (const n of nodes) for (const o of n.options) if (o.to && !ids.has(o.to)) return `Uma resposta do passo "${n.title}" aponta para um passo que não existe.`;
+  for (const n of nodes) for (const o of n.options) for (const d of [o.to, ...Object.values(o.goto ?? {})]) if (d && !ids.has(d)) return `Uma resposta do passo "${n.title}" aponta para um passo que não existe.`;
   return null;
 }
 
@@ -45,7 +45,7 @@ export function checkTree(nodes: ScriptNode[], startId: string): string | null {
 export function unreachable(nodes: ScriptNode[], startId: string): string[] {
   const by = new Map(nodes.map((n) => [n.id, n]));
   const seen = new Set<string>();
-  const walk = (id: string) => { if (seen.has(id) || !by.has(id)) return; seen.add(id); for (const o of by.get(id)!.options) if (o.to) walk(o.to); };
+  const walk = (id: string) => { if (seen.has(id) || !by.has(id)) return; seen.add(id); for (const o of by.get(id)!.options) for (const d of [o.to, ...Object.values(o.goto ?? {})]) if (d) walk(d); };
   walk(startId);
   return nodes.filter((n) => !seen.has(n.id)).map((n) => n.title);
 }

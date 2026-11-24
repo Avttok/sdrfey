@@ -20,7 +20,7 @@ import { saveScriptRunAction } from "@/modules/scripts/runs";
 import type { ScriptRun } from "@/components/script-player";
 import { TalkingTo } from "@/components/talking-to";
 import { LiveContacts } from "@/components/live-contacts";
-import type { CapturedChannel, CapturedPerson } from "@/modules/leads/capture";
+import { renamePersonAction, type CapturedChannel, type CapturedPerson } from "@/modules/leads/capture";
 import { guessSegment, type ScriptDoc, type ScriptGoal } from "@/config/scripts";
 import { LeadInfoPanel } from "@/components/lead-info-panel";
 import { TagChip } from "@/components/tag-chip";
@@ -128,7 +128,8 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
   const [talkingId, setTalkingId] = useState<number | null>(null);
   /** Nome digitado em “Conversando agora com”; vazio/nulo = segue a pessoa escolhida nos telefones. */
   const [spoken, setSpoken] = useState<string | null>(null);
-  const allPeople = [...lead.people, ...extraPeople.filter((p) => !lead.people.some((x) => x.id === p.id))];
+  const [renamed, setRenamed] = useState<Record<number, string>>({});
+  const allPeople = [...lead.people, ...extraPeople.filter((p) => !lead.people.some((x) => x.id === p.id))].map((p) => (renamed[p.id] ? { ...p, name: renamed[p.id] } : p));
   const allChannels = [...lead.channels, ...extraChannels.filter((c) => !lead.channels.some((x) => x.kind === c.kind && x.value === c.value))];
   const phones = allChannels.filter((c) => c.kind === "phone");
   const emails = allChannels.filter((c) => c.kind === "email");
@@ -245,6 +246,13 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
   const callPhone = goodPhones.find((p) => p.id === callId) ?? null;
   const callPerson = (talkingId ? allPeople.find((x) => x.id === talkingId) : null) ?? (callPhone?.personId ? allPeople.find((x) => x.id === callPhone.personId) : null) ?? allPeople[0] ?? null;
   const talkingTo = (spoken ?? callPerson?.name ?? "").trim();
+  const talkingKnownId = allPeople.find((x) => x.name.trim().toLowerCase() === talkingTo.toLowerCase())?.id ?? null;
+  /** Corrige o nome de quem fala; se for contato guardado e a pessoa pediu, corrige lá também. */
+  const renameSpeaker = (n: string, also: boolean) => {
+    const id = talkingKnownId;
+    setSpoken(n);
+    if (also && id != null) void renamePersonAction(lead.id, id, n).then((r) => { if (r.ok) { setRenamed((m) => ({ ...m, [id]: n })); setSpoken(null); toast("ok", "Nome corrigido."); } else toast("bad", r.message ?? "Não foi possível corrigir."); }).catch(() => toast("bad", "Não foi possível corrigir."));
+  };
   const facts = useLeadFacts({ leadId: lead.id, defs: knowledge.defs, initial: knowledge.facts, isTest: lead.isTest, personId: callPerson?.id ?? null });
   const vars = { meu_nome: myName.split(" ")[0], empresa: lead.tradeName ?? lead.company, cidade: lead.city, representante: lead.rep?.repName, contato: talkingTo.split(/\s+/)[0] || undefined };
   /** Guarda o andamento do roteiro no lead (em segundo plano, com pausa curta para não salvar a cada toque). */
@@ -512,7 +520,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                 <p className="flex items-center gap-2 px-1 text-xs font-bold uppercase tracking-wider text-accent"><ScrollText size={14} aria-hidden /> Roteiro da ligação <span className="font-normal normal-case tracking-normal text-muted">· leia a fala, escute e toque no que o lead respondeu</span></p>
                 <div className="space-y-3">
                 {scripts.length > 0
-                  ? <ScriptPicker facts={facts} scripts={scripts} goal={scriptGoal ?? (sales ? "vendas" : "sdr")} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} extra={(nid, pick) => (nid === "abertura" || nid === "nome" || nid === "transferido") ? (
+                  ? <ScriptPicker key={lead.id} area={sales ? "vendas" : "sdr"} onRename={renameSpeaker} savedPerson={talkingKnownId != null} facts={facts} scripts={scripts} goal={scriptGoal ?? (sales ? "vendas" : "sdr")} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} extra={(nid, pick) => (nid === "abertura" || nid === "nome" || nid === "transferido") ? (
                   <TalkingTo value={spoken ?? callPerson?.name ?? ""} people={allPeople} knownId={allPeople.find((x) => x.name.trim().toLowerCase() === talkingTo.toLowerCase())?.id ?? null} leadId={lead.id}
                   onChange={(v) => { setSpoken(v); const m = allPeople.find((x) => x.name.trim().toLowerCase() === v.trim().toLowerCase()); if (m) setTalkingId(m.id); }}
                   onEnter={() => pick(0)} onSaved={(p) => { setExtraPeople((l) => [...l.filter((x) => x.id !== p.id), p]); setTalkingId(p.id); setSpoken(null); }} />

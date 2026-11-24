@@ -474,6 +474,8 @@ export const callScripts = pgTable(
     scriptTitle: text("script_title").notNull(),
     goal: text("goal").notNull(),
     segment: text("segment").notNull(),
+    /** Objetivo escolhido antes da ligação (agendar, qualificar, cotacao…). */
+    objective: text("objective"),
     contactName: text("contact_name"),
     steps: jsonb("steps").$type<CallScriptStep[]>().notNull(),
     notes: jsonb("notes").$type<string[]>().notNull().default([]),
