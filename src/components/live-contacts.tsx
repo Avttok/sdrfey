@@ -1,7 +1,7 @@
 "use client";
 
 import { AtSign, Check, Phone, Plus, UserPlus, UserRound, X } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { btnGhost, btnPrimary, inputCls } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { fmtPhone } from "@/lib/format";
@@ -16,10 +16,12 @@ const CARGOS = ["Dono(a) / sócio(a)", "Comprador(a)", "Gerente", "Compras", "Fi
  * Contatos "ao vivo": enquanto a ligação acontece o operador anota nome, cargo, e-mail e telefones de quem aparece.
  * Tudo é salvo no lead na hora (some nada se a ligação cair) e a pessoa passa a ser quem o roteiro chama pelo nome.
  */
-export function LiveContacts({ leadId, people, channels, talkingId, onTalking, onSaved }: { leadId: number; people: Person[]; channels: Channel[]; talkingId: number | null; onTalking: (id: number | null) => void; onSaved: (p: CapturedPerson, ch: CapturedChannel[]) => void }) {
+export function LiveContacts({ leadId, people, channels, talkingId, onTalking, onSaved, openSignal }: { /** Muda quando alguém pede para abrir o formulário (botão ao lado do roteiro). */ openSignal?: number; leadId: number; people: Person[]; channels: Channel[]; talkingId: number | null; onTalking: (id: number | null) => void; onSaved: (p: CapturedPerson, ch: CapturedChannel[]) => void }) {
   const toast = useToast();
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
+  const box = useRef<HTMLElement>(null);
+  useEffect(() => { if (!openSignal) return; setOpen(true); box.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, [openSignal]);
   const [target, setTarget] = useState<number | "new">("new");
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
@@ -38,7 +40,7 @@ export function LiveContacts({ leadId, people, channels, talkingId, onTalking, o
   const canSave = target === "new" ? name.trim().length > 0 : !!(email.trim() || phones.some((p) => p.trim()) || role.trim());
 
   return (
-    <section className="rounded-2xl border border-line bg-panel p-3" aria-label="Contatos desta ligação">
+    <section ref={box} className="rounded-2xl border border-line bg-panel p-3" aria-label="Contatos desta ligação">
       <div className="flex flex-wrap items-center gap-2">
         <span className="grid size-8 place-items-center rounded-xl bg-accent/15 text-accent"><UserRound size={16} aria-hidden /></span>
         <div className="min-w-0 flex-1 leading-tight"><h3 className="text-sm font-bold">Contatos da ligação</h3><p className="text-xs text-muted">Anote quem aparecer: nome, cargo, e-mail e telefone. Salva no lead na hora.</p></div>
@@ -98,5 +100,14 @@ export function LiveContacts({ leadId, people, channels, talkingId, onTalking, o
         </div>
       )}
     </section>
+  );
+}
+
+/** Atalho "Anotar contato", no mesmo estilo do interruptor "Revisar dados nesta ligação". */
+export function ContactPill({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-sunk/60 px-3 py-1 text-xs font-semibold transition hover:border-accent/60" title="Anotar nome, cargo, e-mail e telefone de quem aparecer na ligação">
+      <UserPlus size={13} aria-hidden /> Anotar contato
+    </button>
   );
 }

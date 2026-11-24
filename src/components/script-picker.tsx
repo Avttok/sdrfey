@@ -1,7 +1,7 @@
 "use client";
 
 import type { FactsApi } from "@/components/lead-facts";
-import { BadgeCheck, CalendarCheck, ChevronDown, ClipboardCheck, FileText, Hand, Heart, MapPin, PhoneCall, RefreshCw, Star, Target, Wand2, Handshake } from "lucide-react";
+import { BadgeCheck, CalendarCheck, ChevronDown, ChevronRight, ClipboardCheck, FileText, Hand, Heart, MapPin, PhoneCall, RefreshCw, Star, Target, Wand2, Handshake } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GOALS, SEGMENTS, type ScriptDoc, type ScriptGoal } from "@/config/scripts";
 import { OBJECTIVES, objectivesFor, suggestObjective, type ObjectiveArea, type ObjectiveId } from "@/config/objectives";
@@ -49,12 +49,20 @@ export function ScriptPicker({ facts, scripts, vars, goal, segmentHint, extra, o
       <div className="space-y-3" role="group" aria-label="Escolha seu objetivo">
         <div><p className="flex items-center gap-2 text-lg font-extrabold"><Target size={20} aria-hidden className="text-accent" /> Escolha seu objetivo</p><p className="text-sm text-muted">O roteiro é montado para chegar lá. Dá para trocar durante a ligação.</p></div>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-2.5">
-          {objectivesFor(area).map((k) => {
-            const d = OBJECTIVES[k]; const Icon = OBJ_ICON[k];
+          {[...objectivesFor(area)].sort((x, y) => Number(y === sug) - Number(x === sug)).map((k) => {
+            const d = OBJECTIVES[k]; const Icon = OBJ_ICON[k]; const top = k === sug;
+            if (top) return (
+              <button key={k} type="button" onClick={() => choose(k)} style={{ background: `linear-gradient(135deg, ${d.hex}, color-mix(in srgb, ${d.hex} 62%, #000))`, boxShadow: `0 10px 30px -10px ${d.hex}` }} className="group relative col-span-full flex items-center gap-4 overflow-hidden rounded-3xl border-2 border-white/30 px-5 py-5 text-left text-white transition hover:-translate-y-0.5 hover:brightness-110 active:scale-[0.99]">
+                <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide" style={{ color: d.hex }}><Star size={12} aria-hidden /> Recomendado para este lead</span>
+                <span className="grid size-16 shrink-0 place-items-center rounded-2xl bg-white/25 shadow-inner"><Icon size={32} aria-hidden /></span>
+                <span className="min-w-0 flex-1 pt-4"><span className="block text-2xl font-extrabold leading-tight">{d.label}</span><span className="mt-1 block text-sm opacity-95">{d.hint}</span></span>
+                <span className="hidden shrink-0 items-center gap-1 rounded-xl bg-white/25 px-4 py-2.5 text-sm font-bold sm:inline-flex">Começar <ChevronRight size={16} aria-hidden /></span>
+              </button>
+            );
             return (
               <button key={k} type="button" onClick={() => choose(k)} style={tint(d.hex, 9, 40)} className="group flex items-start gap-3 rounded-2xl border-2 px-3.5 py-3 text-left transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
                 <span className="grid size-11 shrink-0 place-items-center rounded-xl text-white shadow" style={{ background: d.hex }}><Icon size={22} aria-hidden /></span>
-                <span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-1.5 font-bold">{d.label}{k === sug && <span className="rounded-full bg-ok/20 px-1.5 text-[10px] font-bold uppercase text-ok">sugerido</span>}</span><span className="mt-0.5 block text-xs text-muted">{d.hint}</span></span>
+                <span className="min-w-0 flex-1"><span className="block font-bold">{d.label}</span><span className="mt-0.5 block text-xs text-muted">{d.hint}</span></span>
               </button>
             );
           })}

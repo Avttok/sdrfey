@@ -15,7 +15,8 @@ export function useRun() {
   const run = (fn: () => Promise<R>, okMsg?: string, after?: () => void, busy?: string) => {
     setLabel(busy);
     start(async () => {
-      const r = await fn();
+      let r: R;
+      try { r = await fn(); } catch { return toast("bad", "Algo deu errado e nada foi alterado. Tente de novo."); }
       if (r && !r.ok) return toast("bad", r.message ?? "Não foi possível concluir.");
       toast("ok", (r && r.message) || okMsg || "Pronto.");
       after?.();

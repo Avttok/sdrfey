@@ -19,7 +19,7 @@ import { RunTasks } from "@/components/run-tasks";
 import { saveScriptRunAction } from "@/modules/scripts/runs";
 import type { ScriptRun } from "@/components/script-player";
 import { TalkingTo } from "@/components/talking-to";
-import { LiveContacts } from "@/components/live-contacts";
+import { ContactPill, LiveContacts } from "@/components/live-contacts";
 import { renamePersonAction, type CapturedChannel, type CapturedPerson } from "@/modules/leads/capture";
 import { guessSegment, type ScriptDoc, type ScriptGoal } from "@/config/scripts";
 import { LeadInfoPanel } from "@/components/lead-info-panel";
@@ -128,6 +128,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
   const [talkingId, setTalkingId] = useState<number | null>(null);
   /** Nome digitado em “Conversando agora com”; vazio/nulo = segue a pessoa escolhida nos telefones. */
   const [spoken, setSpoken] = useState<string | null>(null);
+  const [contactSignal, setContactSignal] = useState(0);
   const [renamed, setRenamed] = useState<Record<number, string>>({});
   const allPeople = [...lead.people, ...extraPeople.filter((p) => !lead.people.some((x) => x.id === p.id))].map((p) => (renamed[p.id] ? { ...p, name: renamed[p.id] } : p));
   const allChannels = [...lead.channels, ...extraChannels.filter((c) => !lead.channels.some((x) => x.kind === c.kind && x.value === c.value))];
@@ -512,7 +513,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                   <Info label="Sócios" wide>{lead.info?.partners.length ? <ul className="flex flex-wrap gap-x-3 gap-y-0.5">{lead.info.partners.map((q, i) => <li key={i}><b>{q.name}</b>{cleanRole(q.role) ? <span className="text-muted"> · {cleanRole(q.role)}</span> : null}</li>)}</ul> : <span className="text-warn">Sem informação</span>}</Info>
                   <Info label="Atividade" wide>{lead.info?.activity ? `${lead.info.cnae ? `${lead.info.cnae} - ` : ""}${lead.info.activity}` : <span className="text-warn">Sem informação</span>}</Info>
                 </div>
-                <LiveContacts leadId={lead.id} people={allPeople} channels={allChannels} talkingId={callPerson?.id ?? null} onTalking={(id) => { setTalkingId(id); setSpoken(null); }} onSaved={(p, ch) => { setExtraPeople((l) => [...l.filter((x) => x.id !== p.id), p]); setExtraChannels((l) => [...l, ...ch]); }} />
+                <LiveContacts openSignal={contactSignal} leadId={lead.id} people={allPeople} channels={allChannels} talkingId={callPerson?.id ?? null} onTalking={(id) => { setTalkingId(id); setSpoken(null); }} onSaved={(p, ch) => { setExtraPeople((l) => [...l.filter((x) => x.id !== p.id), p]); setExtraChannels((l) => [...l, ...ch]); }} />
                 <ProductHints recos={recos} />
                 <UsedToggle on={used.has("ligacao")} onClick={() => toggleUsed("ligacao")} label="Ligação feita" Icon={Phone} color="#8b5cf6" />
               </div>
@@ -526,7 +527,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                   onEnter={() => pick(0)} onSaved={(p) => { setExtraPeople((l) => [...l.filter((x) => x.id !== p.id), p]); setTalkingId(p.id); setSpoken(null); }} />
                 ) : null} vars={{ empresa: vars.empresa, contato: vars.contato, contatoCompleto: talkingTo || null, cidade: vars.cidade, meunome: vars.meu_nome }} onNote={addNote} onRun={keepRun} onStep={onScriptStep} endExtra={lead.isTest ? undefined : ({ runId }) => <RunTasks runId={runId} area={sales ? "vendas" : "sdr"} />} />
                   : <p className="text-sm text-muted">{roteiroOff ? "O roteiro está desligado para você (o Adm pode ligar em Ligações ou Permissões)." : "Ainda não há roteiros. O Adm pode criar em Scripts."}</p>}
-                <div className="flex flex-wrap items-center gap-2"><ReviewToggle facts={facts} /></div>
+                <div className="flex flex-wrap items-center gap-2"><ReviewToggle facts={facts} /><ContactPill onClick={() => setContactSignal((n) => n + 1)} /></div>
                 <LeadKnowledge facts={facts} units={knowledge.units} goalIsSales={!!sales} />
                 </div>
               </div>

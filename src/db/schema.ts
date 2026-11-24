@@ -373,7 +373,7 @@ export const leadChannels = pgTable(
     wrong: boolean("wrong").notNull().default(false),
     createdAt: now(),
   },
-  (t) => [uniqueIndex("lead_channels_uq").on(t.leadId, t.kind, t.value), index("lead_channels_value_idx").on(t.value), index("lead_channels_value_trgm").using("gin", sql`${t.value} gin_trgm_ops`)],
+  (t) => [uniqueIndex("lead_channels_uq").on(t.leadId, t.kind, t.value), index("lead_channels_person_idx").on(t.personId), index("lead_channels_value_idx").on(t.value), index("lead_channels_value_trgm").using("gin", sql`${t.value} gin_trgm_ops`)],
 );
 
 /* ───────────── Atendimento ───────────── */
@@ -1057,6 +1057,7 @@ export const leadFacts = pgTable(
   (t) => [
     uniqueIndex("lead_facts_current_uq").on(t.leadId, sql`coalesce(${t.personId}, 0)`, t.key).where(sql`${t.current}`),
     index("lead_facts_lead_idx").on(t.leadId, t.current),
+    index("lead_facts_person_idx").on(t.personId),
     index("lead_facts_key_idx").on(t.key),
   ],
 );
