@@ -51,6 +51,8 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, roteiroOn = true,
   const [health, setHealth] = useState<VocallHealth>({ status: "unknown", reason: null, at: null });
   /** Último estado do ramal informado pelo VocallAgent (undefined = ainda não informou). false = livre. */
   const livre = useRef<string | false | null | undefined>(undefined);
+  /** A central avisou `aguardando_qualificacao` nesta conexão: há uma qualificação pendente e, enquanto ela existir, o VocallAgent NÃO informa o estado do ramal (HARs de 24/11). */
+  const pendSeen = useRef(false);
   /** Nome mostrado na chamada (a central não recebe mais o cliente). */
   const dialLabel = useRef<string | null>(null);
   const { host, port, secure, dac, senha, prefix } = cfg;
@@ -154,6 +156,7 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, roteiroOn = true,
       } else if (m.action === "livre") {
         const st = (m.data as { state?: unknown } | undefined)?.state;
         livre.current = typeof st === "string" ? st : false;
+        pendSeen.current = false; // o ramal informou estado: não há mais nada pendente
       } else if (m.action === "retorno_qualificacao") {
         // a EOX respondeu: id numérico = há qualificação (é o sourceuuid); "Desconhecido" = não há
         const id = String((m.data as { id_qualificacao_pendente?: unknown } | undefined)?.id_qualificacao_pendente ?? "");
@@ -161,6 +164,7 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, roteiroOn = true,
         const pend = String((m.data as { pendentes?: unknown } | undefined)?.pendentes ?? "");
         if (/^\d+$/.test(id)) void askQual(id); else { if (pend === "0") noQual.current = true; void askQual(); }
       } else if (m.action === "aguardando_qualificacao") {
+        pendSeen.current = true;
         clearTimeout(timers.current.idle);
         // espera a resposta da EOX (retorno_qualificacao); se não vier em 3 s, pergunta direto à central
         clearTimeout(timers.current.qual);
@@ -189,12 +193,12 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, roteiroOn = true,
 
   const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
   /** Espera o VocallAgent informar o estado do ramal (é o sinal de que o app está de pé). */
-  const waitLivre = useCallback(async (ms: number) => { const end = Date.now() + ms; while (livre.current === undefined && Date.now() < end && ws.current) await sleep(100); return livre.current; }, []);
+  const waitLivre = useCallback(async (ms: number) => { const end = Date.now() + ms; while (livre.current === undefined && !pendSeen.current && Date.now() < end && ws.current) await sleep(100); return livre.current; }, []);
   const down = useCallback((reason: string) => { if (alive.current) setHealth({ status: "down", reason, at: Date.now() }); }, []);
 
   /** Uma tentativa: entra, confere o estado do ramal e pede a chamada. */
   const attempt = useCallback(async (digits: string): Promise<boolean> => {
-    livre.current = undefined;
+    livre.current = undefined; pendSeen.current = false;
     const s = await connect();
     if (!s || s.readyState !== 1) { down("Não consegui entrar no VocallAgent. Confira o agente, o ramal e a conexão."); return false; }
     const st = await waitLivre(1_500); // sem resposta do ramal o app costuma estar travado: ainda assim tenta o pedido
@@ -221,24 +225,26 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, roteiroOn = true,
     setPanel(true); // ligou: o discador abre sozinho; se a pessoa minimizar, o botão flutuante mostra a chamada
     setHealth((h) => ({ ...h, status: "checking" }));
     let ok = await attempt(digits);
-    if (!ok) { // não confirmou: derruba a conexão, espera um instante e entra de novo do zero (resolve app que perdeu a sessão)
+    if (!ok && !pendSeen.current) { // não confirmou (e não é qualificação pendente, que um segundo login não resolve): derruba a conexão, espera um instante e entra de novo do zero (resolve app que perdeu a sessão)
       hangup("idle"); await sleep(700);
       ok = await attempt(digits);
     }
     if (ok) { if (alive.current) { setHealth({ status: "ok", reason: null, at: Date.now() }); setPending(null); } return true; }
     const u = await findPending();
-    down(u ? "A última chamada ainda espera qualificação. Salve-a na EOX (o botão Qualificar está no discador) e tente de novo." : livre.current === undefined ? "O VocallPhone não respondeu: o ramal não informou estado. Confira se o app está aberto e logado." : isFree(livre.current) ? "O VocallPhone recebeu o pedido mas não iniciou a chamada. Confira o app e o ramal." : `O ramal está em "${livre.current}".`);
+    down(u ? "A última chamada ainda espera qualificação. Salve-a na EOX (o botão Qualificar está no discador) e tente de novo." : pendSeen.current ? "O VocallAgent respondeu, mas há uma qualificação pendente e a central não libera novas chamadas até ela ser salva na EOX. Qualifique a última ligação e tente de novo." : livre.current === undefined ? "O VocallPhone não respondeu: o ramal não informou estado. Confira se o app está aberto e logado." : isFree(livre.current) ? "O VocallPhone recebeu o pedido mas não iniciou a chamada. Confira o app e o ramal." : `O ramal está em "${livre.current}".`);
     return false;
   }, [attempt, hangup, down, findPending]);
 
   const check = useCallback(async (): Promise<boolean> => {
     if (call && !call.endedAt) return true;
     setHealth({ status: "checking", reason: null, at: null });
-    livre.current = undefined;
+    livre.current = undefined; pendSeen.current = false;
     const s = await connect();
     if (!s) { down("Não consegui entrar no VocallAgent. Confira o agente, o ramal e a conexão."); return false; }
     const st = await waitLivre(3_000);
+    const pend = pendSeen.current;
     hangup("idle");
+    if (st === undefined && pend) { const u = await findPending(); down(u ? "A última chamada ainda espera qualificação. Salve-a na EOX (o botão Qualificar está no discador)." : "O VocallAgent respondeu, mas há uma qualificação pendente. Qualifique a última ligação na EOX."); return false; }
     if (st === undefined) { down("O ramal não informou estado: o app do VocallPhone parece fechado ou travado."); return false; }
     if (!isFree(st)) { const u = await findPending(); down(u ? "A última chamada ainda espera qualificação. Salve-a na EOX (o botão Qualificar está no discador)." : `Ramal em "${String(st)}": ocupado em outra chamada ou sem registro.`); return false; }
     if (alive.current) setHealth({ status: "ok", reason: null, at: Date.now() });
