@@ -2,7 +2,7 @@
 
 import type { useToast } from "@/components/toast";
 import type { useVocall } from "@/components/vocall-provider";
-import { ensureEoxLinkAction } from "@/modules/eox/actions";
+import { resolveEoxLinkAction } from "@/modules/eox/actions";
 import { trackTouch } from "@/lib/touch-bus";
 import { parseEoxUrl } from "@/modules/vocall/eox";
 
@@ -16,7 +16,7 @@ export const callNumber = async (digits: string, label: string | null, toast: Re
   if (vocall.configured) {
     // sem o link do cadastro da EOX o Atendimento da EOX abre em branco: procura agora pelo CNPJ (se a integração estiver ligada)
     let url = lead?.eoxUrl ?? null;
-    if (!url && lead) url = await ensureEoxLinkAction(lead.id).catch(() => null);
+    if (!url) url = await resolveEoxLinkAction(digits, lead?.id ?? null).catch(() => null);
     const eox = parseEoxUrl(url);
     toast("info", "Pedindo a ligação ao VocallPhone…");
     if (await vocall.dial(digits, label, eox)) { toast("ok", "Ligando pelo VocallPhone."); track(true); return; }

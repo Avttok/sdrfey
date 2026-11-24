@@ -9,7 +9,7 @@ import type { ActionResult } from "@/modules/leads/actions";
 import { invalidateSettings } from "@/modules/settings/get";
 import { eoxFields, eoxLogin } from "./client";
 import { EOX_KEY, parseEox } from "./config";
-import { ensureEoxId, eoxBaseUrl, eoxProfileUrl, eoxStep, loadEox, syncEoxLinks, type EoxStep } from "./sync";
+import { ensureEoxId, eoxBaseUrl, eoxProfileUrl, eoxRecordForCall, eoxStep, loadEox, syncEoxLinks, type EoxStep } from "./sync";
 
 const fail = (message: string): ActionResult => ({ ok: false, message });
 
@@ -52,6 +52,14 @@ export async function ensureEoxLinkAction(leadId: number): Promise<string | null
   const me = await getCurrentUser();
   if (!me || me.mustChangePassword || !Number.isInteger(leadId)) return null;
   return eoxProfileUrl(await eoxBaseUrl(), await ensureEoxId(leadId, me.id));
+}
+
+/** Ao iniciar uma ligação: o link do cadastro na EOX, pelo lead ou pelo telefone discado. Procura na EOX se ainda não estiver ligado. */
+export async function resolveEoxLinkAction(digits: string, leadId: number | null): Promise<string | null> {
+  const me = await getCurrentUser();
+  if (!me || me.mustChangePassword) return null;
+  const { record } = await eoxRecordForCall(me.id, String(digits ?? ""), leadId);
+  return eoxProfileUrl(await eoxBaseUrl(), record);
 }
 
 export type EoxCoverage = { total: number; withCode: number; withId: number; withInfo: number; blocked: number; customers: number; lastSyncAt: string | null };

@@ -185,3 +185,27 @@ export async function eoxStep(phase: "direct" | "scan", opts: { budgetMs?: numbe
   const after = await eoxRemaining();
   return { ok: true, phase, linked, checked, done, ...after, message: done ? "Varredura completa." : "Continua…" };
 }
+
+/**
+ * Código EOX (o "record" do cadastro) de quem está sendo ligado: pelo lead, ou pelo telefone quando não se sabe o lead.
+ * Usa o que já está guardado e, se faltar, pergunta à EOX (CNPJ e código do cliente). Nunca lança erro.
+ */
+export async function eoxRecordForCall(userId: number | null, digits: string, leadId?: number | null): Promise<{ record: string | null; leadId: number | null }> {
+  try {
+    let id = Number.isInteger(leadId) ? (leadId as number) : null;
+    if (id == null) {
+      const key = digits.replace(/\D/g, "").slice(-8);
+      if (key.length === 8) {
+        const rows = await db.execute<{ id: number }>(sql`
+          select l.id from leads l where l.is_test = false and (
+            exists (select 1 from lead_channels c where c.lead_id = l.id and c.kind = 'phone' and right(regexp_replace(c.value, '\\D', '', 'g'), 8) = ${key})
+            or exists (select 1 from unnest(l.phones) p where right(regexp_replace(p, '\\D', '', 'g'), 8) = ${key}))
+          order by (l.eox_id ~ '^\\d{7,}$') desc nulls last, l.times_served desc, l.id limit 1`);
+        id = rows[0]?.id ?? null;
+      }
+    }
+    if (id == null) return { record: null, leadId: null };
+    const record = await ensureEoxId(id, userId);
+    return { record: isRecordId(record) ? record : null, leadId: id };
+  } catch { return { record: null, leadId: null }; }
+}

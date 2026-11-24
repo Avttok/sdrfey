@@ -189,7 +189,7 @@ export function PhoneDock() {
           )}
           {!open && inCall && <span className="relative text-sm"><Timer since={call!.since} endedAt={call!.endedAt} /></span>}
         </button>
-        {!open && ended && call!.qualUrl && <a href={call!.qualUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center gap-1.5 rounded-full bg-white px-4 text-sm font-bold text-slate-900 shadow-xl transition hover:bg-amber-200"><ExternalLink size={15} aria-hidden /> Qualificar</a>}
+        {!open && ended && call!.qualUrl && <QualifyLink href={call!.qualUrl} compact />}
       </div>
 
       {open && (
@@ -232,7 +232,7 @@ export function PhoneDock() {
                 {ended && (
                   <>
                     {call!.qualUrl
-                      ? <a href={call!.qualUrl} target="_blank" rel="noopener noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-grad text-base font-bold text-on-accent shadow-lg transition hover:brightness-110 active:scale-[0.98]"><ExternalLink size={17} aria-hidden /> Qualificar na EOX</a>
+                      ? <QualifyLink href={call!.qualUrl} />
                       : call!.qualLooking && <p className="flex items-center justify-center gap-2 text-sm text-muted"><Loader2 size={15} className="animate-spin" aria-hidden /> Procurando a qualificação…</p>}
                     {lead && <div className="space-y-1.5"><p className="flex items-center gap-1.5 text-xs font-semibold text-muted"><Clock size={13} aria-hidden /> Ligar de novo</p>{retried ? <p className="rounded-lg bg-ok/10 px-3 py-2 text-sm text-ok">Tarefa criada para {retried}.</p> : <div className="grid grid-cols-3 gap-1.5">{[[1, "Amanhã"], [3, "3 dias"], [7, "1 semana"]].map(([d, l]) => <button key={d} type="button" onClick={() => void retry(d as number)} className="min-h-9 rounded-lg border border-line text-xs font-semibold hover:border-accent">{l}</button>)}</div>}</div>}
                     <button type="button" onClick={() => { vocall.dismiss(); setPinned(null); setRetried(null); setNum(""); setTab("dial"); }} className="min-h-10 w-full rounded-xl border border-line text-sm font-semibold hover:border-accent">Nova ligação</button>
@@ -283,5 +283,19 @@ export function PhoneDock() {
         </section>
       )}
     </>
+  );
+}
+
+/** Logo "E" da EOX (só a letra, em traço grosso) para o botão de qualificar. */
+function EoxMark({ size = 20 }: { size?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="square" strokeLinejoin="miter"><path d="M18 4.5H7v15h11M7 12h9" /></svg>;
+}
+
+/** Abre a qualificação da ligação na EOX (nova aba). Roxo da EOX. */
+function QualifyLink({ href, compact = false }: { href: string; compact?: boolean }) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center justify-center gap-2 font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98] ${compact ? "h-11 rounded-full px-4 text-sm shadow-xl" : "flex min-h-12 w-full rounded-2xl text-base"}`} style={{ background: "linear-gradient(135deg,#7a3a94,#692e81)" }}>
+      <span className="grid size-6 place-items-center rounded-md bg-white/20"><EoxMark size={compact ? 16 : 18} /></span> Qualificar no EOX
+    </a>
   );
 }

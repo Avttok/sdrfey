@@ -2,7 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db, users } from "@/db";
 import { getCurrentUser } from "@/modules/auth/guard";
-import { eoxBaseUrl, isRecordId } from "@/modules/eox/sync";
+import { eoxBaseUrl, eoxRecordForCall } from "@/modules/eox/sync";
 import { settingValue } from "@/modules/settings/get";
 import { parseVocall, VOCALL_KEY } from "@/modules/vocall/config";
 
@@ -22,15 +22,9 @@ export async function POST(req: Request) {
   /** Número discado: com ele o Código EOX (parent_id) sai do cadastro mesmo quando a central não tem pendência. */
   const asked = String(((await req.json().catch(() => ({}))) as { telefone?: unknown }).telefone ?? "").replace(/\D/g, "");
   const parentOf = async (tel: string | null): Promise<string | null> => {
-    const key = (tel ?? "").replace(/\D/g, "").slice(-8);
-    if (key.length !== 8) return null;
-    const rows = await db.execute<{ eox_id: string | null }>(sql`
-      select l.eox_id from leads l where l.is_test = false and l.eox_id ~ '^\\d{7,}$' and (
-        exists (select 1 from lead_channels c where c.lead_id = l.id and c.kind = 'phone' and right(regexp_replace(c.value, '\\D', '', 'g'), 8) = ${key})
-        or exists (select 1 from unnest(l.phones) p where right(regexp_replace(p, '\\D', '', 'g'), 8) = ${key}))
-      order by l.times_served desc, l.id limit 1`);
-    const v = rows[0]?.eox_id ?? null;
-    return isRecordId(v) ? v : null;
+    const d = (tel ?? "").replace(/\D/g, "");
+    if (d.length < 8) return null;
+    return (await eoxRecordForCall(me.id, d)).record;
   };
   try {
     const r = await fetch(`${cfg.secure ? "https" : "http"}://${cfg.host}/vocallagent/qualificacao.php`, {
