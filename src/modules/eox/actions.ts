@@ -7,8 +7,8 @@ import { logAudit } from "@/modules/audit/log";
 import { getCurrentUser, requireAdmin } from "@/modules/auth/guard";
 import type { ActionResult } from "@/modules/leads/actions";
 import { invalidateSettings } from "@/modules/settings/get";
-import { eoxFields, eoxLogin } from "./client";
-import { EOX_KEY, parseEox } from "./config";
+import { digitsOf, eoxFields, eoxFindByCnpj, eoxFindByCode, eoxForget, eoxLoginCached, withEox } from "./client";
+import { EOX_KEY, eoxReady, parseEox } from "./config";
 import { ensureEoxId, eoxBaseUrl, eoxProfileUrl, eoxRecordForCall, eoxStep, loadEox, syncEoxLinks, type EoxStep } from "./sync";
 
 const fail = (message: string): ActionResult => ({ ok: false, message });
@@ -33,7 +33,8 @@ export async function testEoxAction(): Promise<ActionResult & { fields?: { name:
   const c = await loadEox();
   if (!c.baseUrl || !c.username || !c.accessKey) return fail("Salve endereço, usuário e chave de acesso primeiro.");
   try {
-    const s = await eoxLogin(c);
+    eoxForget(c);
+    const s = await eoxLoginCached(c);
     const fields = await eoxFields(s);
     return { ok: true, message: `Conectou na EOX. O módulo ${c.module} tem ${fields.length} campos.`, fields };
   } catch (e) { return fail(`Não conectou: ${(e as Error).message}`); }
@@ -79,4 +80,51 @@ export async function eoxStepAction(phase: "direct" | "scan", restart = false): 
   const r = await eoxStep(phase === "scan" ? "scan" : "direct", { userId: me.id, restart, budgetMs: 25_000 });
   if (r.linked) await logAudit(db, { userId: me.id, entity: "setting", action: "varredura da EOX", field: phase, newValue: `${r.linked} cadastros ligados em ${r.checked} verificados` });
   return r;
+}
+
+
+/** Conta EOX: salva, liga a integração, entra e já sugere o campo do CNPJ. Um clique só. */
+export async function eoxConnectAction(input: unknown): Promise<ActionResult & { fields?: { name: string; label: string }[]; cnpjField?: string }> {
+  const me = await requireAdmin();
+  const old = await loadEox();
+  const c = parseEox(input);
+  if (!c.accessKey) c.accessKey = old.accessKey;
+  if (!c.baseUrl || !c.username || !c.accessKey) return fail("Preencha o endereço, o usuário e a chave de acesso.");
+  let fields: { name: string; label: string }[];
+  try { eoxForget(c); fields = await eoxFields(await eoxLoginCached(c)); } catch (e) { return fail(`A EOX recusou o login: ${(e as Error).message}`); }
+  if (!c.cnpjField) {
+    const hit = fields.filter((f) => /cnpj/i.test(`${f.label} ${f.name}`));
+    if (hit.length === 1) c.cnpjField = hit[0].name;
+  }
+  if (!c.codeField) { const hit = fields.find((f) => f.name === "account_no"); if (hit) c.codeField = hit.name; }
+  c.on = !!c.cnpjField;
+  await db.insert(settings).values({ key: EOX_KEY, value: c, updatedBy: me.id }).onConflictDoUpdate({ target: settings.key, set: { value: c, updatedAt: new Date(), updatedBy: me.id } });
+  invalidateSettings();
+  await logAudit(db, { userId: me.id, entity: "setting", action: "conectou conta EOX", field: EOX_KEY, newValue: `${c.baseUrl}, usuário ${c.username}` });
+  revalidatePath("/admin/eox");
+  return { ok: true, message: c.on ? `Conta ${c.username} conectada e ligada. O sistema vai consultar o Código EOX nas ligações.` : "Conectou, mas escolha o campo do CNPJ abaixo para ligar a consulta.", fields, cnpjField: c.cnpjField };
+}
+
+/** Desconecta a conta (apaga a chave guardada e desliga a consulta). */
+export async function eoxDisconnectAction(): Promise<ActionResult> {
+  const me = await requireAdmin();
+  const old = await loadEox();
+  eoxForget(old);
+  const c = { ...old, on: false, accessKey: "" };
+  await db.insert(settings).values({ key: EOX_KEY, value: c, updatedBy: me.id }).onConflictDoUpdate({ target: settings.key, set: { value: c, updatedAt: new Date(), updatedBy: me.id } });
+  invalidateSettings();
+  revalidatePath("/admin/eox");
+  return { ok: true, message: "Conta EOX desconectada." };
+}
+
+/** Teste ao vivo: digite um CNPJ ou o ID EOX e veja o Código EOX (record) que a EOX devolve. */
+export async function eoxTryLookupAction(query: string): Promise<ActionResult & { record?: string | null }> {
+  await requireAdmin();
+  const cfg = await loadEox();
+  if (!eoxReady(cfg)) return fail("Conecte a conta EOX e escolha o campo do CNPJ primeiro.");
+  const q = String(query ?? "").trim();
+  try {
+    const rec = await withEox(cfg, async (s) => (digitsOf(q).length === 14 ? await eoxFindByCnpj(s, q) : null) ?? (await eoxFindByCode(s, q)));
+    return rec ? { ok: true, record: rec, message: `Código EOX (record): ${rec}` } : fail("A EOX não tem cadastro com esse CNPJ/ID.");
+  } catch (e) { return fail(`A EOX não respondeu: ${(e as Error).message}`); }
 }

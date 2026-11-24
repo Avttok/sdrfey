@@ -1,10 +1,10 @@
 "use client";
 
-import { Loader2, PlugZap, Save } from "lucide-react";
+import { CheckCircle2, CircleSlash, Loader2, LogOut, PlugZap, Save, Search } from "lucide-react";
 import { useState } from "react";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { useRun } from "@/components/use-run";
-import { saveEoxConfigAction, testEoxAction } from "@/modules/eox/actions";
+import { eoxConnectAction, eoxDisconnectAction, eoxTryLookupAction, saveEoxConfigAction, testEoxAction } from "@/modules/eox/actions";
 import type { EoxConfig } from "@/modules/eox/config";
 
 export function EoxConnection({ initial, hasKey: hadKey }: { initial: EoxConfig; hasKey: boolean }) {
@@ -18,10 +18,44 @@ export function EoxConnection({ initial, hasKey: hadKey }: { initial: EoxConfig;
   const { run, pending } = useRun();
   const set = <K extends keyof EoxConfig>(k: K, v: EoxConfig[K]) => setC({ ...c, [k]: v });
   const dirty = JSON.stringify(c) !== JSON.stringify(base);
+  const [q, setQ] = useState("");
+  const [look, setLook] = useState<{ ok: boolean; text: string } | null>(null);
+  const logged = base.on && !!base.baseUrl && !!base.username && hasKey && !!base.cnpjField;
+  const connect = () => run(async () => {
+    const r = await eoxConnectAction(c);
+    if (r.ok) { const saved = { ...c, accessKey: "", on: !!(r.cnpjField || c.cnpjField), cnpjField: r.cnpjField || c.cnpjField }; setBase(saved); setC(saved); setHasKey(true); setFields(r.fields ?? null); }
+    return r;
+  });
   const cand = (fields ?? []).filter((f) => /cnpj|cpf|documento|c[oó]digo|account_?no|n[uú]mero/i.test(`${f.label} ${f.name}`));
 
   return (
     <div className="space-y-4">
+      <section className={`${panelCls} space-y-4 p-5`}>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className={`grid size-11 place-items-center rounded-2xl ${logged ? "bg-ok/15 text-ok" : "bg-warn/15 text-warn"}`}>{logged ? <CheckCircle2 size={22} aria-hidden /> : <CircleSlash size={22} aria-hidden />}</span>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-semibold">{logged ? `Conta EOX conectada: ${base.username}` : "Conta EOX não conectada"}</h2>
+            <p className="text-sm text-muted">{logged ? `${base.baseUrl} — o sistema fica logado e consulta o Código EOX (o “record” do cadastro) de cada lead ao ligar, e usa nele o parent_id da qualificação.` : "Entre com a sua conta da EOX uma vez: o sistema guarda o acesso no servidor e consulta os Códigos sempre que precisar."}</p>
+          </div>
+          {logged && <button type="button" className={btnGhost} disabled={pending} onClick={() => run(async () => { const r = await eoxDisconnectAction(); if (r.ok) { setBase({ ...base, on: false }); setC({ ...c, on: false }); setHasKey(false); } return r; })}><LogOut size={16} aria-hidden /> Sair da conta</button>}
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className="text-sm sm:col-span-3">Endereço da EOX<input className={inputCls} value={c.baseUrl} onChange={(e) => set("baseUrl", e.target.value)} placeholder="https://fey.vocallcontact.com.br" /></label>
+          <label className="text-sm sm:col-span-1">Usuário<input className={inputCls} autoComplete="off" value={c.username} onChange={(e) => set("username", e.target.value)} /></label>
+          <label className="text-sm sm:col-span-2">Chave de acesso (EOX &gt; Minhas preferências)<input className={inputCls} type="password" autoComplete="new-password" value={c.accessKey} onChange={(e) => set("accessKey", e.target.value)} placeholder={hasKey ? "•••••• guardada (deixe vazio para manter)" : "Cole a chave de acesso"} /></label>
+        </div>
+        <button type="button" className={btnPrimary} disabled={pending || !c.baseUrl || !c.username || (!c.accessKey && !hasKey)} onClick={connect}>{pending ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <PlugZap size={16} aria-hidden />} {logged ? "Reconectar" : "Entrar e ligar a consulta"}</button>
+        {logged && (
+          <div className="space-y-2 border-t border-line pt-4">
+            <p className="text-sm font-semibold">Teste: digite um CNPJ ou um ID EOX</p>
+            <div className="flex flex-wrap gap-2">
+              <input className={`${inputCls} max-w-xs`} value={q} onChange={(e) => setQ(e.target.value)} placeholder="00.000.000/0000-00" />
+              <button type="button" className={btnGhost} disabled={!q.trim()} onClick={async () => { const r = await eoxTryLookupAction(q); setLook({ ok: r.ok, text: r.message ?? "" }); }}><Search size={16} aria-hidden /> Procurar na EOX</button>
+            </div>
+            {look && <p role="status" className={`text-sm ${look.ok ? "text-ok" : "text-danger"}`}>{look.text}</p>}
+          </div>
+        )}
+      </section>
       <section className={`${panelCls} space-y-4 p-5`}>
         <div className="flex flex-wrap items-center gap-3">
           <div className="min-w-0 flex-1"><h2 className="font-semibold">Conexão com a EOX</h2><p className="text-sm text-muted">Usuário e chave da API da EOX. Com ela, o sistema acha o cadastro de cada lead (Código EOX), em lotes ou na hora da ligação.</p></div>

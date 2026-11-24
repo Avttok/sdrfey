@@ -2,7 +2,7 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db, leads, settings, type Db } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { invalidateSettings, settingValue } from "@/modules/settings/get";
-import { digitsOf, EOX_FALLBACK_BASE, eoxAccountsPage, eoxFindByCnpj, eoxFindByCode, eoxLink, eoxLogin, type EoxSession } from "./client";
+import { digitsOf, EOX_FALLBACK_BASE, eoxAccountsPage, eoxFindByCnpj, eoxFindByCode, eoxLink, eoxLogin, withEox, type EoxSession } from "./client";
 import { EOX_KEY, eoxReady, parseEox } from "./config";
 
 export const EOX_SYNC_KEY = "eox_sync";
@@ -118,20 +118,23 @@ export async function syncEoxLinks(opts: { budgetMs?: number; userId?: number | 
 }
 
 /** Na hora de ligar: se o lead não tem Código EOX, procura só ele (por ID EOX, depois por CNPJ) e grava. null se a EOX não tem esse cliente. */
-export async function ensureEoxId(leadId: number, userId: number | null): Promise<string | null> {
+export type EoxLookup = { record: string | null; why: string };
+/** Como ensureEoxId, mas diz o motivo quando não acha (aparece no teste do Adm). */
+export async function eoxLookup(leadId: number, userId: number | null): Promise<EoxLookup> {
   const cfg = await loadEox();
-  if (!eoxReady(cfg)) return null;
   const [l] = await db.select({ cnpj: leads.cnpj, eoxId: leads.eoxId, eoxCode: leads.eoxCode }).from(leads).where(eq(leads.id, leadId));
-  if (!l) return null;
-  if (isRecordId(l.eoxId) && l.eoxId !== l.eoxCode) return l.eoxId;
+  if (!l) return { record: null, why: "lead não encontrado" };
+  if (isRecordId(l.eoxId) && l.eoxId !== l.eoxCode) return { record: l.eoxId, why: "já estava guardado" };
+  if (!eoxReady(cfg)) return { record: null, why: "integração com a EOX desligada ou incompleta (Admin > EOX > Conexão)" };
+  if (digitsOf(l.cnpj).length !== 14 && !(l.eoxCode && cfg.codeField)) return { record: null, why: "o lead não tem CNPJ nem ID EOX para procurar" };
   try {
-    const s = await eoxLogin(cfg);
-    const rec = (await eoxFindByCnpj(s, l.cnpj)) ?? (l.eoxCode ? await eoxFindByCode(s, l.eoxCode) : null);
-    if (!rec) return null;
+    const rec = await withEox(cfg, async (s) => (await eoxFindByCnpj(s, l.cnpj)) ?? (l.eoxCode ? await eoxFindByCode(s, l.eoxCode) : null));
+    if (!rec) return { record: null, why: "a EOX não tem cadastro com esse CNPJ/ID" };
     await linkLeads(db, new Map([[digitsOf(l.cnpj), rec]]), new Map(), userId);
-    return rec;
-  } catch { return null; }
+    return { record: rec, why: "achado na EOX" };
+  } catch (e) { return { record: null, why: `a EOX não respondeu: ${(e as Error).message}` }; }
 }
+export async function ensureEoxId(leadId: number, userId: number | null): Promise<string | null> { return (await eoxLookup(leadId, userId)).record; }
 
 export type EoxStep = { ok: boolean; message: string; phase: "direct" | "scan"; linked: number; checked: number; done: boolean; remaining: number; total: number };
 

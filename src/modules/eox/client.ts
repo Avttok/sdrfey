@@ -30,6 +30,23 @@ export async function eoxLogin(cfg: EoxConfig, f: Fetch = fetch): Promise<EoxSes
   return { cfg, session: lg.sessionName, f };
 }
 
+/** Sessão guardada em memória (14 min): a conta fica "logada" e as consultas não pedem login a cada ligação. */
+const sessions = new Map<string, { s: EoxSession; at: number }>();
+const sessionKey = (c: EoxConfig) => createHash("md5").update(`${c.baseUrl}|${c.username}|${c.accessKey}`).digest("hex");
+export async function eoxLoginCached(cfg: EoxConfig, f: Fetch = fetch): Promise<EoxSession> {
+  const k = sessionKey(cfg), hit = sessions.get(k);
+  if (hit && Date.now() - hit.at < 14 * 60_000) return { ...hit.s, cfg };
+  const s = await eoxLogin(cfg, f);
+  sessions.set(k, { s, at: Date.now() });
+  return s;
+}
+export const eoxForget = (cfg: EoxConfig) => { sessions.delete(sessionKey(cfg)); };
+/** Executa com a sessão guardada; se a EOX derrubou a sessão, entra de novo e repete uma vez. */
+export async function withEox<T>(cfg: EoxConfig, fn: (s: EoxSession) => Promise<T>): Promise<T> {
+  try { return await fn(await eoxLoginCached(cfg)); }
+  catch (e) { eoxForget(cfg); try { return await fn(await eoxLoginCached(cfg)); } catch { throw e; } }
+}
+
 export async function eoxQuery(s: EoxSession, sql: string): Promise<Record<string, unknown>[]> {
   const u = `${s.cfg.baseUrl}/webservice.php?operation=query&sessionName=${encodeURIComponent(s.session)}&query=${encodeURIComponent(sql)}`;
   return (await call(s.f, u)) as Record<string, unknown>[];
@@ -58,7 +75,7 @@ const mask = (d: string) => d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "
 /** Procura um cliente pelo CNPJ (com ou sem pontuação). Se houver mais de um, fica o mais recente. */
 export async function eoxFindByCnpj(s: EoxSession, cnpj: string): Promise<string | null> {
   const d = digitsOf(cnpj);
-  if (d.length !== 14) return null;
+  if (d.length !== 14 || !s.cfg.cnpjField) return null;
   const rows = await eoxQuery(s, `SELECT id FROM ${s.cfg.module} WHERE ${s.cfg.cnpjField} = '${d}' OR ${s.cfg.cnpjField} = '${mask(d)}';`);
   const ids = rows.map((r) => Number(recordOf(String(r.id)))).filter((n) => n > 0);
   return ids.length ? String(Math.max(...ids)) : null;

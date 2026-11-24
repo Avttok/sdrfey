@@ -235,11 +235,13 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, roteiroOn = true,
   const busy = state !== "idle" || (!!call && !call.endedAt);
   useEffect(() => {
     if (ready === true || busy || !(panel || ready === false)) return;
-    let stop = false; let timer: ReturnType<typeof setTimeout>;
+    let stop = false; let timer: ReturnType<typeof setTimeout>; let n = 0;
+    // cada consulta é um login no VocallAgent (o ramal pode apitar): espaça aos poucos e não consulta com a aba escondida
     const tick = async () => {
+      if (typeof document !== "undefined" && document.hidden) { timer = setTimeout(() => void tick(), 5_000); return; }
       const ok = await probe();
       if (stop || !alive.current) return;
-      if (ok) setReady(true); else timer = setTimeout(() => void tick(), 3_000);
+      if (ok) setReady(true); else timer = setTimeout(() => void tick(), Math.min(3_000 + n++ * 3_000, 15_000));
     };
     timer = setTimeout(() => void tick(), ready === null ? 0 : 3_000);
     return () => { stop = true; clearTimeout(timer); };
