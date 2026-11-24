@@ -568,7 +568,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
       </div>
 
       <div className="sticky bottom-3 z-40 flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-panel/90 p-3 shadow-lg backdrop-blur lg:mx-[4.75rem]">
-        <button type="button" className={`${btnPrimary} !bg-grad-danger !text-white`} disabled={pending} onClick={() => run(() => leave(releaseThis))}><Square size={15} aria-hidden /> Parar</button>
+        <button type="button" className={`${btnPrimary} !bg-grad-danger !text-white`} disabled={pending} onClick={() => ask({ title: "Parar o atendimento?", body: "O lead volta para a fila e você sai desta tela.", label: "Sim, parar", tone: "warn", icon: Square, onConfirm: () => run(() => leave(releaseThis)) })}><Square size={15} aria-hidden /> Parar</button>
         <button type="button" className={btnGhost} disabled={pending} title="Esconde este lead só de você por 24 h e não conta na meta" onClick={() => ask({ title: "Pular este lead?", body: "Ele fica escondido só de você por 24 h e não conta na meta. Você recebe o próximo.", label: "Sim, pular", tone: "warn", icon: SkipForward, onConfirm: seek })}><SkipForward size={16} aria-hidden /> Pular lead</button>
         <span className="flex-1" />
         {step > 0 && <button type="button" className={btnGhost} onClick={() => go(prevStep(step))}><ChevronLeft size={16} aria-hidden /> Voltar</button>}

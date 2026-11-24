@@ -26,8 +26,6 @@ type Recent = { digits: string; label: string };
 type Tab = "dial" | "lead" | "recent";
 
 const asEmbed = (u: string) => u + (u.includes("?") ? "&" : "?") + "embed=1";
-/** Razão social completa quando o nome fantasia guardado é só um pedaço dela (vem cortado de algumas planilhas). */
-const bestName = (l: { tradeName: string | null; company: string }) => (l.tradeName && l.company.length > l.tradeName.length && l.company.toLowerCase().startsWith(l.tradeName.toLowerCase()) ? l.company : l.tradeName ?? l.company);
 const initials = (s: string) => s.replace(/[^\p{L}\s]/gu, "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "#";
 const ago = (iso: string) => { const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000); return d <= 0 ? "hoje" : d === 1 ? "ontem" : `há ${d} dias`; };
 
@@ -243,7 +241,8 @@ export function PhoneDock() {
 
   const broken = !vocall.ready && !checking && vocall.fails >= 1;
   const contactName = lead?.person?.name ?? null;
-  const companyName = lead ? bestName(lead) : call?.empresa ?? null;
+  const companyName = lead ? lead.company : call?.empresa ?? null; // razão social inteira
+  const tradeLine = lead?.tradeName && lead.tradeName.trim().toLowerCase() !== lead.company.trim().toLowerCase() ? lead.tradeName : null;
   const qualified = !!call && qDone === call.since;
   const needQual = ended && !!call?.qualUrl && !qualified;
   const newCall = async () => {
@@ -310,6 +309,7 @@ export function PhoneDock() {
                     </span>
                     {contactName && <p className="w-full break-words text-xl font-bold leading-tight">{contactName}</p>}
                     {companyName && <p className={`w-full break-words leading-snug ${contactName ? "text-sm font-semibold text-muted" : "text-xl font-bold"}`}>{companyName}</p>}
+                    {tradeLine && <p className="w-full break-words text-xs font-semibold text-muted">{tradeLine}</p>}
                     <p className="figure w-full break-words text-sm text-muted">{fmtPhone(callDigits)}</p>
                     <Timer since={call!.since} endedAt={call!.endedAt} className="mt-1 text-3xl font-bold" />
                     {ended && <span className="mt-1 rounded-full bg-slate-500/15 px-3 py-1 text-xs font-bold text-muted">{label}</span>}
@@ -405,7 +405,7 @@ export function PhoneDock() {
 
             {!inCall && !calling && shownTab === "dial" && (
               <footer className="space-y-2 border-t border-line bg-panel p-3">
-                {broken && <p role="alert" className="rounded-xl bg-warn/15 px-3 py-2 text-center text-sm font-semibold text-warn">Não consegui conectar ao VocallPhone. Por favor, feche todas as janelas do EOX no seu navegador.</p>}
+                {broken && <p role="alert" className="rounded-xl bg-warn/15 px-3 py-2 text-left text-sm font-semibold leading-snug text-warn break-words">Não consegui conectar ao VocallPhone. Por favor, feche todas as janelas do EOX no seu navegador. Certifique-se de que o VocallPhone esteja com a cor verde e disponível. Caso esteja aguardando qualificação, aperte no botão EOX abaixo e feche quando o VocallPhone ficar verde e disponível.</p>}
                 {broken ? (
                   <a href={vocall.eoxBase || "https://fey.vocallcontact.com.br/"} target="_blank" rel="noopener noreferrer" onClick={() => setEoxOpened(true)} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98]" style={{ background: "linear-gradient(135deg,#7a3a94,#692e81)" }}><span className="grid size-7 place-items-center rounded-md bg-white/20"><EoxMark size={20} /></span> EOX</a>
                 ) : (                <button type="button" onClick={() => void dialTo(digits)} disabled={digits.length < 8 || dialing || !vocall.ready || checking} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:shadow-none" style={{ background: "linear-gradient(135deg,#16a34a,#15803d)" }}>

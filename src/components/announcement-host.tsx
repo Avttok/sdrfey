@@ -46,5 +46,5 @@ export function AnnouncementHost() {
   const close = (id: number) => { const next = [...closed, id]; setClosed(next); try { localStorage.setItem(KEY, JSON.stringify(next.slice(-100))); } catch { /* ignora */ } };
   const shown = items.filter((a) => !closed.includes(a.id));
   if (!shown.length) return null;
-  return <div aria-live="polite" className="pointer-events-none fixed inset-x-0 top-2 z-[80] flex flex-col items-center gap-2 px-3">{shown.map((a) => <AnnouncementCard key={a.id} a={a} onClose={() => close(a.id)} />)}</div>;
+  return <div aria-live="polite" className="relative z-30 flex flex-col items-center gap-2 px-3 pt-3">{shown.map((a) => <AnnouncementCard key={a.id} a={a} onClose={() => close(a.id)} />)}</div>;
 }

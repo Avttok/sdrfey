@@ -29,8 +29,9 @@ export function FlashTag({ label, color, on, onClick, icon, Comp, hint, disabled
 /** Grupo de tags em cards: o cabeçalho minimiza/expande (com animação) e a escolha fica lembrada neste aparelho. */
 export function TagDeck({ title, hint, icon: I, children, count, total }: { title: string; hint?: string; icon?: typeof Workflow; children: React.ReactNode; count: number; total: number }) {
   const key = `fey:tagdeck:${title}`;
-  const [open, setOpen] = useState(true);
-  useEffect(() => { try { if (localStorage.getItem(key) === "0") setOpen(false); } catch { /* sem armazenamento: segue aberto */ } }, [key]);
+  const [open, setOpen] = useState(false);
+  // sempre começa minimizado; só abre se a pessoa deixou aberto neste aparelho
+  useEffect(() => { try { if (localStorage.getItem(key) === "1") setOpen(true); } catch { /* sem armazenamento: segue minimizado */ } }, [key]);
   const toggle = () => setOpen((o) => { try { localStorage.setItem(key, o ? "0" : "1"); } catch { /* */ } return !o; });
   return (
     <section className="space-y-2.5">

@@ -82,6 +82,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {user.navLayout === "side" && <div className="contents embed-hide"><SideBarFor user={user} badges={badges} groupNav={groupNav} /></div>}
         <div className="app-col flex min-w-0 flex-1 flex-col">
           <div className="contents embed-hide"><AppHeader user={user} badges={badges} groupNav={groupNav} navAlign={settings.nav_align} /></div>
+          <div className="embed-hide contents"><AnnouncementHost /></div>
           {user.isAdmin && user.navLayout === "side" && <div className="embed-hide hidden justify-end px-6 pt-3 lg:flex"><AdminViewSwitch mode={user.adminView} /></div>}
           <ScrollAssist />
           <main className="mx-auto flex w-full max-w-[92rem] flex-1 flex-col px-3 py-7 pb-10 sm:px-5 lg:px-6">{children}</main>
@@ -89,7 +90,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </div>
       <div className="contents embed-hide"><GoldMode reached={gold.reached} label={gold.label} userId={user.id} /></div>
-      <div className="contents embed-hide"><AnnouncementHost /></div>
       <div className="contents embed-hide"><BottomFade /></div>
       <SwRegister />
       <UpdateNotice />
