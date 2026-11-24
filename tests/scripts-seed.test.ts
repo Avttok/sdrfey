@@ -16,7 +16,9 @@ describe("scripts de fábrica", () => {
 describe("revisão dos textos de fábrica", async () => {
   const { FIELD_SEED_BY_KEY } = await import("@/config/facts");
   const { SEG } = await import("@/modules/scripts/seed-core");
-  const all = buildAll();
+  const { galeria } = await import("@/modules/scripts/seed-galeria");
+  /** A galeria (módulos extras) passa pelas mesmas regras de texto, em todos os tipos de cliente. */
+  const all = [...buildAll(), ...Object.keys(SEG).map((k) => ({ key: `galeria:${k}`, goal: "galeria" as never, segment: k, nodes: galeria(SEG[k]), startId: "" }))];
   const texts = (n: (typeof all)[number]["nodes"][number]) => [["n", n.say], ["f", n.v?.formal], ["s", n.v?.solto]].filter((x): x is [string, string] => !!x[1]);
   const L = "(?<![\\p{L}])", R = "(?![\\p{L}])";
   const re = (w: string, f = "iu") => new RegExp(`${L}(${w})${R}`, f);

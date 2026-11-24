@@ -1,18 +1,19 @@
 import { moduleOf, MODULES, objKey, type ModuleCategory } from "@/config/script-modules";
 
 /** O que o sistema sabe da conversa até agora. */
-export type SuggestCtx = { goal: string; objective: string | null; /** módulos já percorridos */ visited: string[]; /** módulo do passo atual */ current: string | null; /** objeções enfrentadas (chave de módulo, ex.: obj:preco) */ objections: string[]; good: number; hurdles: number };
+export type SuggestCtx = { /** passo atual (id sem prefixo) */ node?: string | null; goal: string; objective: string | null; /** módulos já percorridos */ visited: string[]; /** módulo do passo atual */ current: string | null; /** objeções enfrentadas (chave de módulo, ex.: obj:preco) */ objections: string[]; good: number; hurdles: number };
 /** Números das ligações guardadas, por módulo. */
 export type ModuleStat = { uses: number; wins: number; stops: number; taken: number };
 export type Suggestion = { key: string; title: string; category: ModuleCategory; score: number; why: string; gallery: boolean; learned: number | null };
 
 /** Depois de ouvir esta objeção, o que costuma ajudar (regra de partida, até haver dados). */
 const AFTER: Record<string, string[]> = {
-  "obj:preco": ["minimo", "obj:valor", "descoberta"], "obj:preco_cedo": ["descoberta", "minimo"], "obj:desconto": ["minimo", "obj:valor"], "obj:valor": ["descoberta", "pitch"],
-  "obj:fornecedor": ["pitch", "descoberta", "obj:satisfeito"], "obj:satisfeito": ["descoberta", "pitch"], "obj:distribuidor": ["pitch", "descoberta"], "obj:concorrente": ["pitch", "descoberta"],
-  "obj:enviar": ["visita", "descoberta"], "obj:pensar_geral": ["visita", "descoberta"], "obj:pensar": ["proposta", "descoberta"], "obj:depois": ["visita", "obj:tempo"], "obj:tempo": ["visita"],
-  "obj:socio": ["perfil", "visita"], "obj:confianca": ["pitch", "obj:referencia"], "obj:ruim": ["descoberta", "pitch"], "obj:prazo": ["pitch", "descoberta"], "obj:qualidade": ["pitch", "obj:certificado"],
-  "obj:minimo": ["minimo"], "obj:minimo2": ["minimo"], "obj:verba": ["minimo", "descoberta"], "obj:estoque": ["descoberta", "visita"],
+  "obj:preco": ["minimo", "custo", "obj:valor", "spin"], "obj:preco_cedo": ["spin", "descoberta", "minimo"], "obj:desconto": ["minimo", "custo", "obj:valor"], "obj:valor": ["custo", "spin", "pitch"],
+  "obj:fornecedor": ["prova", "spin", "pitch", "obj:satisfeito"], "obj:satisfeito": ["spin", "util", "pitch"], "obj:distribuidor": ["pitch", "spin", "prova"], "obj:concorrente": ["custo", "prova", "pitch"],
+  "obj:enviar": ["util", "proximo", "visita"], "obj:pensar_geral": ["proximo", "util", "visita"], "obj:pensar": ["proximo", "proposta", "spin"], "obj:depois": ["proximo", "cadencia", "obj:tempo"], "obj:tempo": ["proximo", "visita"],
+  "obj:socio": ["perfil", "proximo"], "obj:confianca": ["prova", "pitch", "obj:referencia"], "obj:ruim": ["spin", "prova", "pitch"], "obj:prazo": ["pitch", "spin"], "obj:qualidade": ["prova", "pitch", "obj:certificado"],
+  "obj:minimo": ["minimo", "custo"], "obj:minimo2": ["minimo", "custo"], "obj:verba": ["minimo", "custo", "spin"], "obj:estoque": ["ciclo", "spin", "visita"],
+  "obj:resultado": ["prova", "util", "obj:referencia"], "obj:nao_preciso": ["spin", "concorda"], "obj:numero": ["prova", "util"], "obj:momento": ["ciclo", "proximo", "cadencia"], "obj:nao": ["despedida", "ciclo"],
 };
 const CLOSE: Record<string, string> = { sdr: "visita", visita: "visita", vendas: "proposta", retorno: "proposta", fidelizar: "fideliza", reativar: "reativa" };
 const FLOW: string[] = ["perfil", "confirma", "pitch", "descoberta", "minimo", "visita", "proposta"];
@@ -30,6 +31,12 @@ export function suggestModules(ctx: SuggestCtx, loadable: string[], stats: Recor
     if (rel.includes(key)) { prior = 0.85 - rel.indexOf(key) * 0.1; why = `Costuma ajudar depois de “${moduleOf(`obj_${last.slice(4)}`)?.title ?? "objeção"}”`; }
     else if (key === CLOSE[ctx.goal] && ctx.good >= 2) { prior = 0.8; why = "Bons sinais do lead: hora de ir para o fechamento"; }
     else if (key === CLOSE[ctx.goal] && ctx.good >= 1 && ctx.hurdles === 0) { prior = 0.55; why = "Conversa fluindo sem objeções"; }
+    else if (key === "cadencia" && /^(sem_resp|wa_msg|rec_email)$/.test(ctx.node ?? "")) { prior = 0.9; why = "Sem resposta: sequência de WhatsApp em vários toques"; }
+    else if (key === "despedida" && (ctx.node === "ret_ultima" || ctx.hurdles >= 2)) { prior = ctx.node === "ret_ultima" ? 0.85 : 0.5; why = "Muitas tentativas ou objeções: despedir-se bem deixa a porta aberta"; }
+    else if (key === "spin" && ["perfil", "confirma"].includes(ctx.current ?? "") && ["sdr", "vendas", "reativar"].includes(ctx.goal)) { prior = 0.55; why = "Descobrir a dor antes de propor"; }
+    else if (key === "concorda" && ["perfil", "confirma", "descoberta"].includes(ctx.current ?? "") && !seen.has("pitch")) { prior = 0.45; why = "Alinhar critérios antes de apresentar a solução"; }
+    else if (key === "ciclo" && ["fidelizar", "reativar"].includes(ctx.goal) && ctx.good >= 1) { prior = 0.6; why = "Cliente receptivo: combinar o ritmo de reposição"; }
+    else if (key === "proximo" && ctx.good >= 1) { prior = 0.6; why = "Há interesse: combinar o próximo passo com data"; }
     else if (ctx.hurdles >= 2 && key === "descoberta") { prior = 0.7; why = "Várias objeções: deixe o lead falar mais"; }
     else if (key.startsWith("obj:")) { prior = ctx.objections.includes(key) ? 0.05 : 0.1; why = "Resposta pronta se o lead levantar"; }
     else { const i = FLOW.indexOf(key); const c = ctx.current ? FLOW.indexOf(ctx.current) : -1; if (i > c && i >= 0) { prior = 0.45 - (i - c - 1) * 0.06; why = "Próximo passo natural da conversa"; } }

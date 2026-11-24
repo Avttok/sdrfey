@@ -108,7 +108,7 @@ export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, on
     const visited = visitedModules(ids);
     const objs = ids.map((i) => moduleOf(i)).filter((m) => m?.category === "objecao").map((m) => m!.key);
     const loadable = [...new Set([...inScript, ...sdata.gallery])];
-    return suggestModules({ goal: script.goal, objective: objective ?? null, visited, current: moduleOf(node.id)?.key ?? null, objections: objs, good, hurdles }, loadable, sdata.stats, 3).map((s) => ({ ...s, gallery: !inScript.has(s.key) }));
+    return suggestModules({ node: baseId(node.id), goal: script.goal, objective: objective ?? null, visited, current: moduleOf(node.id)?.key ?? null, objections: objs, good, hurdles }, loadable, sdata.stats, 3).map((s) => ({ ...s, gallery: !inScript.has(s.key) }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trail, sdata, inScript, objective, script.goal]);
   const [taking, setTaking] = useState<string | null>(null);

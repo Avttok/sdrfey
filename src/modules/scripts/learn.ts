@@ -3,6 +3,8 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { db, scripts } from "@/db";
 import { extractModule, moduleOf, entryOf } from "@/config/script-modules";
+import { galeria } from "./seed-galeria";
+import { SEG } from "./seed-core";
 import { loadRuns, statsOf, type Run } from "./learn-core";
 import type { ModuleStat } from "@/config/script-suggest";
 import type { ScriptNode } from "@/config/scripts";
@@ -23,6 +25,7 @@ export async function suggestDataAction(goal: string, segment: string): Promise<
   const rows = await db.select({ nodes: scripts.nodes }).from(scripts).where(and(isNull(scripts.ownerId), eq(scripts.segment, segment), eq(scripts.active, true)));
   const keys = new Set<string>();
   for (const r of rows) for (const n of r.nodes as ScriptNode[]) { const k = moduleOf(n.id)?.key; if (k) keys.add(k); }
+  for (const n of galeria(SEG[segment] ?? SEG.geral)) { const k = moduleOf(n.id)?.key; if (k) keys.add(k); }
   return { stats: statsOf(await recentRuns(), goal), gallery: [...keys] };
 }
 
@@ -32,5 +35,6 @@ export async function loadModuleAction(key: string, segment: string, prefix: str
   if (!/^g\d{1,3}:$/.test(prefix)) return null;
   const rows = await db.select({ nodes: scripts.nodes, goal: scripts.goal }).from(scripts).where(and(isNull(scripts.ownerId), eq(scripts.segment, segment), eq(scripts.active, true)));
   for (const r of rows) { const nodes = r.nodes as ScriptNode[]; if (entryOf(nodes, key)) { const x = extractModule(nodes, key, prefix); if (x) return x; } }
+  const g = galeria(SEG[segment] ?? SEG.geral); if (entryOf(g, key)) return extractModule(g, key, prefix);
   return null;
 }

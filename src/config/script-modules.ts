@@ -27,6 +27,15 @@ export const MODULES: ModuleDef[] = [
   M("fideliza", "Relacionamento", "relacionamento", "Nota de 0 a 10, dúvidas, reposição e indicação", /^fid_[a-z_]+$/, ["fid_continua", "fid_nps"]),
   M("reativa", "Retomar o contato", "retomada", "Histórico, motivo da parada e oferta de volta", /^reat_[a-z]+$/, ["reat_historico"]),
   M("visita_v", "Confirmar a visita", "visita", "Confirmar, lembrar, remarcar ou ligar depois da visita", /^v_[a-z]+$/, ["v_confirma", "v_pos"], false),
+  M("spin", "Descoberta com SPIN", "descoberta", "Quatro perguntas: como compram, o que dá errado, o que isso custa e o que mudaria", /^gx_spin_[a-z]$/, ["gx_spin_s"]),
+  M("concorda", "Concordar critérios", "descoberta", "Duas perguntas de concordância antes de apresentar a solução", /^gx_conc$/, ["gx_conc"]),
+  M("prova", "Quem já compra da Fey", "pitch", "Prova social com o tipo de cliente que a Fey já atende", /^gx_prova$/, ["gx_prova"]),
+  M("custo", "Custo de ficar parado", "proposta", "Comparar o preço da peça com o custo de parar por falta dela", /^gx_custo$/, ["gx_custo"]),
+  M("util", "Oferecer algo útil", "pitch", "Mandar uma lista de itens de giro, sem compromisso, antes de pedir", /^gx_util$/, ["gx_util"]),
+  M("proximo", "Fechar o próximo passo", "fechamento", "Combinar dia e período de uma conversa curta e esperar a resposta", /^gx_prox$/, ["gx_prox"]),
+  M("ciclo", "Ciclo de reposição", "relacionamento", "Saber o ritmo de reposição e combinar o lembrete", /^gx_ciclo$/, ["gx_ciclo"]),
+  M("cadencia", "Cadência de WhatsApp", "relacionamento", "Os cinco toques de WhatsApp, cada um com um assunto", /^gx_cad[0-9]?$/, ["gx_cad"]),
+  M("despedida", "Mensagem de despedida", "retomada", "Despedir-se com elegância de quem não responde", /^gx_desp(_[a-z])?$/, ["gx_desp"]),
   M("menu_objecao", "Menu de objeções", "objecao", "Escolher a objeção que o lead levantou", /^obj_menu[0-9]?$/, ["obj_menu"], false),
   M("final", "Final da ligação", "final", "Resultado e próximos passos", /^fim_[a-z_]+$/, [], false),
 ];
@@ -35,7 +44,7 @@ const OBJ_TITLE: Record<string, string> = {
   preco: "Está caro", valor: "Não vê valor", prazo: "Prazo de entrega", qualidade: "Dúvida de qualidade", pagamento: "Forma de pagamento", frete: "Frete", minimo: "Pedido mínimo", minimo2: "Mínimo do 2º pedido",
   fornecedor: "Já tem fornecedor", satisfeito: "Satisfeito com o atual", distribuidor: "Compra de distribuidor", concorrente: "Concorrente", confianca: "Não conhece a Fey", ruim: "Experiência ruim",
   socio: "Falar com o sócio", tempo: "Sem tempo", enviar: "Manda por e-mail", estoque: "Tem estoque", depois: "Liga depois", verba: "Sem verba", pensar_geral: "Vou pensar", pensar: "Vou pensar",
-  preco_cedo: "Preço de cara", desconto: "Pede mais desconto", marca: "Só trabalha com uma marca", matriz: "Compra pela matriz", cadastro: "Burocracia de cadastro", certificado: "Pede certificado", referencia: "Pede referências", especial: "Item sob medida", nao: "Não quer",
+  preco_cedo: "Preço de cara", resultado: "Duvida que funcione", nao_preciso: "Diz que não precisa", numero: "Como conseguiram o número", momento: "Deixa para outro momento", desconto: "Pede mais desconto", marca: "Só trabalha com uma marca", matriz: "Compra pela matriz", cadastro: "Burocracia de cadastro", certificado: "Pede certificado", referencia: "Pede referências", especial: "Item sob medida", nao: "Não quer",
 };
 export const objKey = (id: string) => `obj:${id.replace(/^obj_/, "")}`;
 
