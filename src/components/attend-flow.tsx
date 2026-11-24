@@ -2,7 +2,7 @@
 
 import { callNumber } from "@/components/call-number";
 import { flushTouches, pendingTouches, trackTouch, useTouchScope, type TouchDone } from "@/lib/touch-bus";
-import { Timer, UserRound, Flag, Ban, Building2, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Send, Plus, RotateCcw, History, SkipForward, ScrollText, Square, TriangleAlert, Trash2, X } from "lucide-react";
+import { Timer, UserRound, Flag, Ban, Building2, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Send, Plus, RotateCcw, History, SkipForward, ScrollText, Square, TriangleAlert, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ConfirmDialog, useConfirm } from "@/components/confirm-dialog";
@@ -46,7 +46,8 @@ function StepTitle({ i }: { i: number }) {
   return (
     <div className="step-title flex items-center gap-3">
       <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-grad text-on-accent shadow-md shadow-accent/25"><I size={20} aria-hidden /></span>
-      <div className="min-w-0"><h2 className="display text-xl leading-tight">{STEPS[i]}</h2><p className="text-xs text-muted">{STEP_HINT[i]}</p></div>
+      <div className="min-w-0 flex-1"><h2 className="display text-xl leading-tight">{STEPS[i]}</h2><p className="text-xs text-muted">{STEP_HINT[i]}</p></div>
+      <span className="figure shrink-0 rounded-full bg-accent/12 px-3 py-1 text-xs font-bold text-accent">Etapa {i + 1} de {STEPS.length}</span>
     </div>
   );
 }
@@ -411,8 +412,14 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
         )}
 
         {step > 0 && step !== 4 && step !== 3 && (
-          <div className="mb-5 grid gap-x-6 gap-y-3 rounded-xl bg-sunk p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <Info label="Empresa"><b>{lead.tradeName ?? lead.company}</b></Info>
+          <LeadGlance
+            chips={[
+              { k: "Empresa", v: <b>{lead.tradeName ?? lead.company}</b> },
+              { k: "Situação", v: lead.registrationStatus ? <b className={lead.registrationStatus.toUpperCase() === "ATIVA" ? "text-ok" : "text-danger"}>{lead.registrationStatus.toUpperCase()}</b> : <span className="text-warn">Sem informação</span> },
+              { k: "Cidade", v: lead.city ? `${lead.city}/${lead.uf}` : <span className="text-warn">Sem informação</span> },
+              { k: "Contato", v: goodPhones[0] ? <CopyVal text={goodPhones[0].value}>{fmtPhone(goodPhones[0].value)}</CopyVal> : goodEmails[0] ? <CopyVal>{goodEmails[0].value}</CopyVal> : <span className="text-warn">Sem contato</span> },
+            ]}>
+<Info label="Empresa"><b>{lead.tradeName ?? lead.company}</b></Info>
             <Info label="CNPJ"><CopyVal text={lead.cnpj}>{fmtCnpj(lead.cnpj)}</CopyVal></Info>
             <Info label="Situação">{lead.registrationStatus ? <b className={lead.registrationStatus.toUpperCase() === "ATIVA" ? "text-ok" : "text-danger"}>{lead.registrationStatus.toUpperCase()}</b> : <span className="text-warn">Sem informação</span>}</Info>
             <Info label="Cidade">{lead.city ? (`${lead.city}/${lead.uf}`) : <span className="text-warn">Sem informação</span>}</Info>
@@ -420,7 +427,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
             <Info label="Atividade" wide>{lead.info?.activity ? (`${lead.info.cnae ? `${lead.info.cnae} - ` : ""}${lead.info.activity}`) : <span className="text-warn">Sem informação</span>}</Info>
             <Info label="Representante">{lead.rep ? (`${lead.rep.repName ?? "—"} · ${lead.rep.km} km`) : <span className="text-warn">Sem informação</span>}</Info>
             <Info label="Contato principal">{goodPhones[0] ? <CopyVal text={goodPhones[0].value}>{fmtPhone(goodPhones[0].value)}</CopyVal> : goodEmails[0] ? <CopyVal>{goodEmails[0].value}</CopyVal> : <span className="text-warn">Sem contato</span>}</Info>
-          </div>
+          </LeadGlance>
         )}
 
         {step === 1 && (
@@ -428,24 +435,21 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
             <StepTitle i={1} />
             {goodEmails.length === 0 ? <p className="text-sm text-muted">Este lead não tem e-mail válido. Adicione no passo Contatos ou pule.</p> : (
               <>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)]">
+                  <div className="space-y-3">
+                    <div className="grid gap-3">
                   <label className="text-sm">Modelo<select className={inputCls} value={tplId} onChange={(e) => setTplId(Number(e.target.value))}>{templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></label>
-                  <label className="text-sm">Enviar para<select className={inputCls} value={emailTo} onChange={(e) => setEmailTo(e.target.value)}>{goodEmails.map((e) => <option key={e.id} value={e.value}>{e.value}</option>)}</select></label>
-                </div>
-                {tpl && (
-                  <div className="rounded-xl border border-line bg-white p-4 text-sm text-neutral-900">
-                    <p className="flex items-center gap-1.5 border-b border-neutral-200 pb-2 font-semibold"><FileText size={14} aria-hidden /> {renderTemplate(tpl.subject, vars)}</p>
-                    {tpl.bodyHtml
-                      ? <div className="mt-3 leading-relaxed [&_a]:text-blue-700 [&_a]:underline [&_img]:max-w-full" dangerouslySetInnerHTML={{ __html: renderHtml(tpl.bodyHtml, vars) }} />
-                      : <p className="mt-3 whitespace-pre-wrap">{renderTemplate(tpl.body, vars)}</p>}
+                      <label className="text-sm">Enviar para<select className={inputCls} value={emailTo} onChange={(e) => setEmailTo(e.target.value)}>{goodEmails.map((e) => <option key={e.id} value={e.value}>{e.value}</option>)}</select></label>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" className={btnPrimary} onClick={copyAndOpen}><Send size={16} aria-hidden /> Copiar e abrir e-mail</button>
+                      <button type="button" className={btnGhost} onClick={copyFormatted}><Copy size={16} aria-hidden /> Só copiar</button>
+                      {mail && <a href={mail} onClick={() => { const to = emailTo || goodEmails[0]?.value; if (to) void trackTouch({ leadId: lead.id, channel: "email", target: to, label: lead.tradeName ?? lead.company, defer: true }); }} className={btnGhost}><ExternalLink size={16} aria-hidden /> Abrir com texto simples</a>}
+                    </div>
+                    <p className="text-xs text-muted">“Copiar e abrir e-mail” copia o corpo formatado (negrito, cores e imagens) e abre o e-mail com destinatário e assunto prontos: é só colar com Ctrl+V.</p>
                   </div>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" className={btnPrimary} onClick={copyAndOpen}><Send size={16} aria-hidden /> Copiar e abrir e-mail</button>
-                  <button type="button" className={btnGhost} onClick={copyFormatted}><Copy size={16} aria-hidden /> Só copiar</button>
-                  {mail && <a href={mail} onClick={() => { const to = emailTo || goodEmails[0]?.value; if (to) void trackTouch({ leadId: lead.id, channel: "email", target: to, label: lead.tradeName ?? lead.company, defer: true }); }} className={btnGhost}><ExternalLink size={16} aria-hidden /> Abrir com texto simples</a>}
+                  {tpl && <EmailPreview subject={renderTemplate(tpl.subject, vars)} html={tpl.bodyHtml ? renderHtml(tpl.bodyHtml, vars) : null} text={renderTemplate(tpl.body, vars)} />}
                 </div>
-                <p className="text-xs text-muted">“Copiar e abrir e-mail” copia o corpo formatado (negrito, cores e imagens) e abre o e-mail com destinatário e assunto prontos: é só colar com Ctrl+V.</p>
               </>
             )}
             <UsedToggle on={used.has("email")} onClick={() => toggleUsed("email")} label="E-mail enviado" Icon={Mail} color="#0ea5e9" />
@@ -458,7 +462,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
             <ul className="space-y-1.5">
               {goodPhones.map((p) => (
                 <li key={p.id} className="lift flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-sunk/60 px-4 py-3"><span aria-hidden className="grid size-10 place-items-center rounded-xl bg-ok/15 text-ok"><MessageCircle size={18} /></span>
-                  <span className="flex-1"><CopyVal text={p.value}><span className="figure text-lg">{fmtPhone(p.value)}</span></CopyVal></span>
+                  <span className="flex-1"><CopyVal text={p.value}><span className="figure text-lg">{fmtPhone(p.value)}</span></CopyVal>{done.whatsapp?.has(keyOf("whatsapp", p.value)) && <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-ok/15 px-2 py-0.5 text-xs font-bold text-ok"><Check size={12} aria-hidden /> registrado</span>}</span>
                   <a href={chatproUrl(p.value)} target="_blank" rel="noreferrer" onClick={() => { void trackTouch({ leadId: lead.id, channel: "whatsapp", target: p.value, label: lead.tradeName ?? lead.company, personId: p.personId ?? null, defer: true }); }} className={btnPrimary}><MessageCircle size={16} aria-hidden /> Abrir no ChatPro</a>
                 </li>
               ))}
@@ -573,4 +577,60 @@ function UsedToggle({ on, onClick, label, Icon, color }: { on: boolean; onClick:
 
 function Info({ label, children, wide }: { label: string; children: React.ReactNode; wide?: boolean }) {
   return <div className={wide ? "sm:col-span-2" : ""}><p className="text-xs text-muted">{label}</p><div className="mt-0.5">{children}</div></div>;
+}
+
+
+/** Prévia do e-mail: mostra só um pedaço e deixa expandir/minimizar com animação. */
+const MAIL_COLLAPSED = 200;
+function EmailPreview({ subject, html, text }: { subject: string; html: string | null; text: string }) {
+  const [open, setOpen] = useState(false);
+  const [full, setFull] = useState(0);
+  const inner = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = inner.current; if (!el) return;
+    const m = () => setFull(el.scrollHeight);
+    m();
+    const ro = new ResizeObserver(m); ro.observe(el);
+    return () => ro.disconnect();
+  }, [html, text]);
+  useEffect(() => setOpen(false), [subject]);
+  const big = full > MAIL_COLLAPSED + 40;
+  return (
+    <div className="overflow-hidden rounded-2xl border border-line bg-white text-sm text-neutral-900 shadow-sm">
+      <p className="flex items-center gap-1.5 border-b border-neutral-200 bg-neutral-50 px-4 py-2.5 font-semibold"><FileText size={14} aria-hidden /> <span className="min-w-0 truncate">{subject}</span></p>
+      <div className="relative">
+        <div className="overflow-hidden transition-[max-height] duration-500 ease-out" style={{ maxHeight: big ? (open ? full : MAIL_COLLAPSED) : undefined }}>
+          <div ref={inner} className="p-4">
+            {html
+              ? <div className="leading-relaxed [&_a]:text-blue-700 [&_a]:underline [&_img]:max-w-full" dangerouslySetInnerHTML={{ __html: html }} />
+              : <p className="whitespace-pre-wrap leading-relaxed">{text}</p>}
+          </div>
+        </div>
+        {big && <div aria-hidden className={`pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white to-transparent transition-opacity duration-300 ${open ? "opacity-0" : "opacity-100"}`} />}
+      </div>
+      {big && (
+        <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="flex w-full items-center justify-center gap-1.5 border-t border-neutral-200 bg-neutral-50 py-2 text-xs font-bold text-neutral-700 transition hover:bg-neutral-100">
+          <ChevronDown size={14} className={`transition-transform duration-300 ${open ? "rotate-180" : ""}`} aria-hidden /> {open ? "Minimizar e-mail" : "Expandir e-mail completo"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Resumo do lead nas etapas: o essencial em bolhas e, se quiser, o cadastro completo (abre e fecha com animação). */
+function LeadGlance({ chips, children }: { chips: { k: string; v: React.ReactNode }[]; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mb-5 overflow-hidden rounded-2xl border border-line bg-sunk/60">
+      <div className="flex flex-wrap items-center gap-2 p-3">
+        {chips.map((c) => <span key={c.k} className="inline-flex items-center gap-1.5 rounded-full bg-panel px-3 py-1 text-sm shadow-sm ring-1 ring-line"><span className="text-xs text-muted">{c.k}</span>{c.v}</span>)}
+        <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="ml-auto inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold text-accent hover:bg-accent/10">
+          {open ? "Ver menos" : "Ver tudo"} <ChevronDown size={13} className={`transition-transform duration-300 ${open ? "rotate-180" : ""}`} aria-hidden />
+        </button>
+      </div>
+      <div className={`grid transition-[grid-template-rows] duration-500 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+        <div className="min-h-0 overflow-hidden"><div className="grid gap-x-6 gap-y-3 border-t border-line p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">{children}</div></div>
+      </div>
+    </div>
+  );
 }
