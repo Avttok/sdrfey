@@ -493,3 +493,7 @@ html[data-copy-guard="on"] input, html[data-copy-guard="on"] textarea, html[data
 @keyframes roteiro-glow { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); } 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 0%, transparent); } }
 .roteiro-cta { animation: roteiro-glow 2.8s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .roteiro-cta { animation: none; } }
+
+/* Página aberta dentro do discador (roteiro ao lado): só o conteúdo, sem menu, rodapé nem botões flutuantes. */
+html.embed .embed-hide { display: none !important; }
+html.embed main { padding-top: 0.75rem; padding-bottom: 1.5rem; max-width: none; }

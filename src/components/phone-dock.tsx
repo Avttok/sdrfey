@@ -1,7 +1,9 @@
 "use client";
 
-import { Ban, Building2, CalendarClock, Clock, Copy, Delete, ExternalLink, History, Loader2, Mail, MapPin, MessageCircle, Phone, PhoneCall, PhoneOff, ScrollText, UserRound, X } from "lucide-react";
+import { Ban, Building2, CalendarClock, Clock, Copy, Delete, Eraser, ExternalLink, History, Loader2, Mail, MapPin, MessageCircle, Phone, PhoneCall, PhoneOff, ScrollText, UserRound, X } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { FeyMark } from "@/components/logo";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { callNumber } from "@/components/call-number";
 import { estadoLabel, Timer } from "@/components/call-ui";
@@ -63,7 +65,7 @@ function LeadStrip({ lead, onOpen }: { lead: PhoneLead; onOpen: () => void }) {
 }
 
 /** Ficha completa do lead: dados, todos os números (com ligar e WhatsApp), tarefas e Ids. */
-function LeadSheet({ lead, others, onPick, onDial }: { lead: PhoneLead; others: PhoneLead[]; onPick: (l: PhoneLead) => void; onDial: (digits: string, personName: string | null) => void }) {
+function LeadSheet({ lead, others, onPick, onDial, onScript }: { onScript: (url: string) => void; lead: PhoneLead; others: PhoneLead[]; onPick: (l: PhoneLead) => void; onDial: (digits: string, personName: string | null) => void }) {
   const { roteiroOn } = useVocall();
   const place = [lead.city, lead.uf].filter(Boolean).join(" / ");
   const row = "flex items-start gap-2 text-sm";
@@ -107,7 +109,7 @@ function LeadSheet({ lead, others, onPick, onDial }: { lead: PhoneLead; others: 
       <ClientIds leadId={lead.id} eoxId={lead.eoxId} eoxCode={lead.eoxCode} sfId={lead.sfId} eoxUrl={lead.eoxUrl} canEdit={false} compact />
       <div className="grid grid-cols-2 gap-2">
         <Link href={`/leads/${lead.id}`} target="_blank" className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-line bg-panel text-sm font-semibold hover:border-accent"><ExternalLink size={14} aria-hidden /> Abrir lead</Link>
-        {roteiroOn && <Link href={`/roteiro/${lead.id}${lead.kind === "inativo" ? "?area=vendas" : "?area=sdr&goal=sdr"}`} target="_blank" className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-line bg-panel text-sm font-semibold hover:border-accent"><ScrollText size={14} aria-hidden /> Roteiro</Link>}
+        {roteiroOn && <button type="button" onClick={() => onScript(`/roteiro/${lead.id}${lead.kind === "inativo" ? "?area=vendas" : "?area=sdr&goal=sdr"}`)} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-line bg-panel text-sm font-semibold hover:border-accent"><ScrollText size={14} aria-hidden /> Roteiro</button>}
       </div>
       {others.length > 0 && (
         <div className="space-y-1 border-t border-line pt-2">
@@ -130,6 +132,8 @@ export function PhoneDock() {
   const [tab, setTab] = useState<Tab>("dial");
   const [retried, setRetried] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const pathname = usePathname();
+  const [scriptUrl, setScriptUrl] = useState<string | null>(null);
   const { panel: open, setPanel: setOpen, call, prefix } = vocall;
 
   useEffect(() => { try { const r = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]"); if (Array.isArray(r)) setRecent(r.filter((x) => x && typeof x.digits === "string").slice(0, 8)); } catch { /* sem armazenamento */ } }, []);
@@ -172,10 +176,19 @@ export function PhoneDock() {
   };
   const script = lead && vocall.roteiroOn ? `/roteiro/${lead.id}?${lead.kind === "inativo" ? "area=vendas" : "area=sdr&goal=sdr"}${lastCallTouch() ? `&evento=${lastCallTouch()}` : ""}` : null;
   const shownTab: Tab = inCall ? "lead" : tab;
+  // roteiro dentro do próprio discador (painel se expande, discador à esquerda): não em páginas que já têm roteiro, nem em telas estreitas
+  const onScriptPage = /^\/(roteiro|atender)(\/|$)/.test(pathname ?? "");
+  const openScript = (url: string) => {
+    if (onScriptPage || typeof window === "undefined" || window.innerWidth < 1100) { window.open(url, "_blank", "noopener"); return; }
+    setScriptUrl(url + (url.includes("?") ? "&" : "?") + "embed=1");
+  };
+  const wide = !!scriptUrl && !onScriptPage;
+  const checking = vocall.checking;
+  useEffect(() => { if (!open) setScriptUrl(null); }, [open]);
 
   return (
-    <>
-      <div className="fixed bottom-5 left-5 z-[64] flex max-w-[calc(100vw-6rem)] items-center gap-2">
+    <div className="contents embed-hide">
+      {!open && <div className="fixed bottom-5 left-5 z-[64] flex max-w-[calc(100vw-6rem)] items-center gap-2">
         <button type="button" onClick={() => setOpen(!open)} aria-label={open ? "Fechar o telefone" : inCall ? `Abrir o telefone: ${call!.empresa ?? fmtPhone(callDigits)}, ${label}` : "Abrir o telefone"} aria-expanded={open} title="Telefone"
           className={`group relative flex h-14 min-w-14 items-center justify-center rounded-full border border-white/20 text-white shadow-xl transition hover:shadow-2xl active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${!open && inCall ? "gap-3 pl-4 pr-5" : "size-14 hover:scale-105"}`}
           style={{ background: live ? "linear-gradient(135deg,#16a34a,#15803d)" : inCall ? "linear-gradient(135deg,#1e293b,#0f172a)" : "linear-gradient(135deg,#7c3aed,#5b21b6)" }}>
@@ -189,16 +202,17 @@ export function PhoneDock() {
           )}
           {!open && inCall && <span className="relative text-sm"><Timer since={call!.since} endedAt={call!.endedAt} /></span>}
         </button>
-      </div>
+      </div>}
 
       {open && (
-        <section role="dialog" aria-label="Telefone" className="card-in fixed bottom-24 left-5 z-[66] flex max-h-[min(44rem,calc(100dvh-7.5rem))] w-[24rem] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-3xl border border-line bg-panel shadow-2xl">
+        <section role="dialog" aria-label="Telefone" className={`card-in fixed z-[66] flex overflow-hidden rounded-3xl border border-line bg-panel shadow-2xl ${wide ? "inset-x-5 bottom-5 top-5" : "bottom-5 left-5 max-h-[min(44rem,calc(100dvh-2.5rem))] w-[24rem] max-w-[calc(100vw-2.5rem)]"}`}>
+          <div className="flex min-h-0 w-[24rem] max-w-full shrink-0 flex-col">
           <header className="relative overflow-hidden px-4 pb-3 pt-3.5 text-white" style={{ background: live ? "linear-gradient(135deg,#15803d,#166534)" : "linear-gradient(135deg,#6d28d9,#4c1d95)" }}>
             <div className="flex items-center gap-3">
               <span className="grid size-10 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/20">{live ? <PhoneCall size={19} aria-hidden className="script-shake" /> : <Phone size={19} aria-hidden />}</span>
               <div className="min-w-0 flex-1">
                 <p className="font-bold leading-tight">{live ? "Em chamada" : ended ? "Ligação encerrada" : "Telefone"}</p>
-                <p className="flex items-center gap-1.5 truncate text-xs text-white/80"><span className={`size-1.5 rounded-full ${live || vocall.ready ? "bg-emerald-300" : "animate-pulse bg-amber-300"}`} />{live ? label : "VocallPhone"}</p>
+                <p className="flex items-center gap-1.5 truncate text-xs text-white/80"><span className={`size-1.5 rounded-full ${live || vocall.ready ? "bg-emerald-300" : "animate-pulse bg-amber-300"}`} />{live ? "Disponível" : checking ? "Conferindo a qualificação…" : "VocallPhone"}</p>
               </div>
               <button type="button" onClick={() => setOpen(false)} aria-label="Fechar" className="grid size-8 place-items-center rounded-lg text-white/80 hover:bg-white/15"><X size={16} aria-hidden /></button>
             </div>
@@ -224,8 +238,8 @@ export function PhoneDock() {
                   <div className="flex items-center gap-2"><span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${ended ? "bg-slate-500/15 text-muted" : "bg-ok/15 text-ok"}`}>{label}</span><Timer since={call!.since} endedAt={call!.endedAt} /></div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  {!vocall.roteiroOn ? null : script ? <Link href={script} target="_blank" className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-line bg-sunk/60 text-xs font-bold hover:border-accent"><ScrollText size={17} className="text-accent" aria-hidden />Roteiro</Link> : <span className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-line text-xs text-muted"><ScrollText size={17} aria-hidden />Roteiro</span>}
-                  {lead ? <Link href={`/leads/${lead.id}`} target="_blank" className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-line bg-sunk/60 text-xs font-bold hover:border-accent"><ExternalLink size={17} className="text-accent" aria-hidden />Lead</Link> : <span className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-line text-xs text-muted"><ExternalLink size={17} aria-hidden />Lead</span>}
+                  {!vocall.roteiroOn ? null : script ? <button type="button" onClick={() => openScript(script)} className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-line bg-sunk/60 text-xs font-bold hover:border-accent"><ScrollText size={17} className="text-accent" aria-hidden />Roteiro</button> : <span className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-line text-xs text-muted"><ScrollText size={17} aria-hidden />Roteiro</span>}
+                  {lead ? <Link href={`/leads/${lead.id}`} target="_blank" className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-line bg-sunk/60 text-xs font-bold hover:border-accent"><FeyMark size={17} aria-hidden />Lead</Link> : <span className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-line text-xs text-muted"><ExternalLink size={17} aria-hidden />Lead</span>}
                   <button type="button" onClick={() => { void navigator.clipboard?.writeText(callDigits); toast("info", "Número copiado."); }} className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-line bg-sunk/60 text-xs font-bold hover:border-accent"><Copy size={17} className="text-accent" aria-hidden />Copiar</button>
                 </div>
                 {ended && (
@@ -234,7 +248,7 @@ export function PhoneDock() {
                       ? <QualifyLink href={call!.qualUrl} />
                       : (call!.qualLooking ? <p className="flex items-center justify-center gap-2 text-sm text-muted"><Loader2 size={15} className="animate-spin" aria-hidden /> Procurando a qualificação…</p> : <p className="text-center text-xs text-muted">Número sem cadastro na EOX: não há qualificação para abrir.</p>)}
                     {lead && <div className="space-y-1.5"><p className="flex items-center gap-1.5 text-xs font-semibold text-muted"><Clock size={13} aria-hidden /> Ligar de novo</p>{retried ? <p className="rounded-lg bg-ok/10 px-3 py-2 text-sm text-ok">Tarefa criada para {retried}.</p> : <div className="grid grid-cols-3 gap-1.5">{[[1, "Amanhã"], [3, "3 dias"], [7, "1 semana"]].map(([d, l]) => <button key={d} type="button" onClick={() => void retry(d as number)} className="min-h-9 rounded-lg border border-line text-xs font-semibold hover:border-accent">{l}</button>)}</div>}</div>}
-                    <button type="button" onClick={() => { vocall.dismiss(); setPinned(null); setRetried(null); setNum(""); setTab("dial"); }} className="min-h-10 w-full rounded-xl border border-line text-sm font-semibold hover:border-accent">Nova ligação</button>
+                    <button type="button" disabled={checking} onClick={() => { vocall.dismiss(); setPinned(null); setRetried(null); setNum(""); setTab("dial"); }} className="min-h-10 w-full rounded-xl border border-line text-sm font-semibold hover:border-accent disabled:opacity-40">{checking ? "Conferindo a qualificação…" : "Nova ligação"}</button>
                   </>
                 )}
               </div>
@@ -247,7 +261,8 @@ export function PhoneDock() {
                     onChange={(e) => { setNum(e.target.value.replace(/\D/g, "").slice(0, 13)); setPinned(null); }}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void dialTo(digits); } }}
                     onPaste={(e) => { e.preventDefault(); const t = e.clipboardData.getData("text").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "").slice(0, 13); setNum(t); setPinned(null); }}
-                    className="figure w-full rounded-2xl border border-line bg-sunk/60 px-4 py-3.5 pr-12 text-center text-[1.7rem] font-bold tracking-wide outline-none transition focus:border-accent focus:bg-panel" />
+                    className="figure w-full rounded-2xl border border-line bg-sunk/60 px-12 py-3.5 text-center caret-transparent text-[1.7rem] font-bold tracking-wide outline-none transition focus:border-accent focus:bg-panel" />
+                  {digits && <button type="button" onClick={() => { setNum(""); setPinned(null); inputRef.current?.focus(); }} aria-label="Apagar o número todo" title="Apagar tudo" className="absolute left-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-lg text-muted hover:bg-danger/10 hover:text-danger"><Eraser size={18} aria-hidden /></button>}
                   {digits && <button type="button" onClick={() => { setNum(digits.slice(0, -1)); setPinned(null); }} aria-label="Apagar último dígito" className="absolute right-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-lg text-muted hover:bg-accent/10 hover:text-ink"><Delete size={18} aria-hidden /></button>}
                 </div>
                 {digits.length >= 8 && (found.loading
@@ -264,7 +279,7 @@ export function PhoneDock() {
               </>
             )}
 
-            {!inCall && shownTab === "lead" && lead && <LeadSheet lead={lead} others={others} onPick={(l) => { setPinned(l); }} onDial={(d, p) => { setNum(d); setTab("dial"); void dialTo(d, p); }} />}
+            {!inCall && shownTab === "lead" && lead && <LeadSheet lead={lead} others={others} onPick={(l) => { setPinned(l); }} onDial={(d, p) => { setNum(d); setTab("dial"); void dialTo(d, p); }} onScript={openScript} />}
 
             {!inCall && shownTab === "recent" && (
               recent.length === 0 ? <p className="py-6 text-center text-sm text-muted">As ligações que você fizer por aqui aparecem aqui.</p>
@@ -274,14 +289,22 @@ export function PhoneDock() {
 
           {!inCall && shownTab === "dial" && (
             <footer className="space-y-1.5 border-t border-line bg-panel p-3">
-              <button type="button" onClick={() => void dialTo(digits)} disabled={digits.length < 8 || dialing || !vocall.ready} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40" style={{ background: "linear-gradient(135deg,#16a34a,#15803d)" }}>
+              {!vocall.ready && !checking && vocall.fails >= 4 && <p role="alert" className="rounded-xl bg-warn/15 px-3 py-2 text-center text-sm font-semibold text-warn">Não consegui conectar ao VocallPhone. Por favor, feche todas as janelas do EOX no seu navegador.</p>}
+              <button type="button" onClick={() => void dialTo(digits)} disabled={digits.length < 8 || dialing || !vocall.ready || checking} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40" style={{ background: "linear-gradient(135deg,#16a34a,#15803d)" }}>
                 {dialing || !vocall.ready ? <Loader2 size={20} className="animate-spin" aria-hidden /> : <Phone size={20} aria-hidden />} {dialing ? "Ligando…" : !vocall.ready ? "Conectando…" : "Ligar"}
               </button>
             </footer>
           )}
+          </div>
+          {wide && (
+            <div className="relative hidden min-w-0 flex-1 flex-col border-l border-line bg-bg lg:flex">
+              <div className="flex items-center gap-2 border-b border-line px-3 py-2"><ScrollText size={16} className="text-accent" aria-hidden /><p className="flex-1 text-sm font-bold">Roteiro</p><button type="button" onClick={() => setScriptUrl(null)} aria-label="Fechar o roteiro" className="grid size-8 place-items-center rounded-lg text-muted hover:bg-accent/10"><X size={16} aria-hidden /></button></div>
+              <iframe key={scriptUrl} src={scriptUrl!} title="Roteiro" className="min-h-0 w-full flex-1 border-0" />
+            </div>
+          )}
         </section>
       )}
-    </>
+    </div>
   );
 }
 

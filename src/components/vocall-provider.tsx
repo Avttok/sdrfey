@@ -8,8 +8,8 @@ import { qualificationLink, type EoxRef } from "@/modules/vocall/eox";
 
 export type VocallState = "off" | "idle" | "connecting" | "online" | "error";
 export type VocallCall = { telefone: string; empresa: string | null; estado: string | null; since: number; /** Momento em que a chamada acabou (congela o cronômetro). */ endedAt?: number; /** Formulário de Atendimento da EOX para qualificar esta ligação. */ qualUrl?: string | null; /** Procurando a qualificação pendente na central. */ qualLooking?: boolean };
-type Ctx = { configured: boolean; /** Roteiro durante a ligação liberado (chave do Adm + permissão). */ roteiroOn: boolean; /** O VocallPhone está livre para ligar (consulta automática a cada 3 s). null = ainda consultando; false = ocupado ou liberando a última chamada. */ ready: boolean | null; /** Painel do telefone aberto. */ panel: boolean; setPanel: (open: boolean) => void; /** Texto colocado antes do número ao discar (para reconhecer o lead na chamada). */ prefix: string; state: VocallState; call: VocallCall | null; /** Liga: conecta ao VocallAgent só agora, pede a chamada e resolve true quando o VocallPhone confirma; false se não conectou ou não confirmou (aí vale copiar e colar no app). A conexão é cortada quando a chamada termina. */ dial: (phone: string, label?: string | null, eox?: EoxRef | null) => Promise<boolean>; /** Fecha o aviso da ligação que acabou. */ dismiss: () => void };
-const VocallCtx = createContext<Ctx>({ configured: false, roteiroOn: true, ready: null, panel: false, setPanel: () => {}, prefix: "", state: "off", call: null, dial: async () => false, dismiss: () => {} });
+type Ctx = { configured: boolean; /** Chamada acabou e o sistema ainda confere se há qualificação: nada de nova ligação até acabar. */ checking: boolean; /** Quantas consultas seguidas do ramal falharam (muitas = algo prendendo o VocallPhone). */ fails: number; /** Roteiro durante a ligação liberado (chave do Adm + permissão). */ roteiroOn: boolean; /** O VocallPhone está livre para ligar (consulta automática a cada 3 s). null = ainda consultando; false = ocupado ou liberando a última chamada. */ ready: boolean | null; /** Painel do telefone aberto. */ panel: boolean; setPanel: (open: boolean) => void; /** Texto colocado antes do número ao discar (para reconhecer o lead na chamada). */ prefix: string; state: VocallState; call: VocallCall | null; /** Liga: conecta ao VocallAgent só agora, pede a chamada e resolve true quando o VocallPhone confirma; false se não conectou ou não confirmou (aí vale copiar e colar no app). A conexão é cortada quando a chamada termina. */ dial: (phone: string, label?: string | null, eox?: EoxRef | null) => Promise<boolean>; /** Fecha o aviso da ligação que acabou. */ dismiss: () => void };
+const VocallCtx = createContext<Ctx>({ configured: false, checking: false, fails: 0, roteiroOn: true, ready: null, panel: false, setPanel: () => {}, prefix: "", state: "off", call: null, dial: async () => false, dismiss: () => {} });
 export const useVocall = () => useContext(VocallCtx);
 
 export const vocallUrl = (c: Pick<VocallConfig, "host" | "port" | "secure">) => `${c.secure ? "wss" : "ws"}://${c.host}:${c.port}/vocallagent`;
@@ -54,6 +54,8 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, roteiroOn = true,
   const livre = useRef<string | false | null | undefined>(undefined);
   /** O VocallPhone está livre? Consulta própria, fora da conexão da chamada. */
   const [ready, setReady] = useState<boolean | null>(null);
+  const [fails, setFails] = useState(0);
+  const checkingRef = useRef(false);
   /** Nome mostrado na chamada (a central não recebe mais o cliente). */
   const dialLabel = useRef<string | null>(null);
   const { host, port, secure, dac, senha, prefix } = cfg;
@@ -170,7 +172,7 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, roteiroOn = true,
       if (ws.current !== sock) return;
       // caiu no meio da chamada: o aviso não pode ficar preso na tela
       if (!hinted.current) { hinted.current = true; const a = answeredAt.current; hintLastCall(a != null, a != null ? Math.round((Date.now() - a) / 1000) : null); }
-      setCall((c) => (c && c.estado !== "Finalizado" ? { ...c, estado: "Conexão encerrada", endedAt: Date.now() } : c));
+      setCall((c) => (c && c.estado !== "Finalizado" ? { ...c, estado: "Conexão encerrada", endedAt: Date.now(), qualLooking: false } : c));
       dismissIn(GONE_MS);
       hangup("idle");
     };
@@ -210,7 +212,7 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, roteiroOn = true,
   const dial = useCallback(async (phone: string, label?: string | null, eox?: EoxRef | null) => {
     eoxRef.current = eox ?? null; srcId.current = null; dialDigits.current = phone.replace(/\D/g, ""); answeredAt.current = null; hinted.current = false; noQual.current = false; dialLabel.current = label ?? null;
     const digits = phone.replace(/\D/g, "");
-    if (digits.length < 8) return false;
+    if (digits.length < 8 || checkingRef.current) return false;
     setPanel(true); // ligou: o discador abre sozinho; se a pessoa minimizar, o botão flutuante mostra a chamada
     setReady(false);
     let ok = await attempt(digits);
@@ -237,7 +239,7 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, roteiroOn = true,
   }), [host, port, secure, agentId, ramal, dac, senha]);
 
   // painel aberto: começa do zero (o estado de antes pode ter mudado)
-  useEffect(() => { if (panel) setReady((r) => (r === true ? null : r)); }, [panel]);
+  useEffect(() => { if (panel) { setReady((r) => (r === true ? null : r)); setFails(0); } }, [panel]);
   // consulta a cada 3 s, em silêncio, enquanto o discador está aberto (ou o VocallPhone ainda libera a última chamada), até achar o ramal livre
   const busy = state !== "idle" || (!!call && !call.endedAt);
   useEffect(() => {
@@ -248,12 +250,14 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, roteiroOn = true,
       if (typeof document !== "undefined" && document.hidden) { timer = setTimeout(() => void tick(), 5_000); return; }
       const ok = await probe();
       if (stop || !alive.current) return;
-      if (ok) setReady(true); else timer = setTimeout(() => void tick(), Math.min(3_000 + n++ * 3_000, 15_000));
+      if (ok) { setReady(true); setFails(0); } else { setFails((f) => f + 1); timer = setTimeout(() => void tick(), Math.min(3_000 + n++ * 3_000, 15_000)); }
     };
     timer = setTimeout(() => void tick(), ready === null ? 0 : 3_000);
     return () => { stop = true; clearTimeout(timer); };
   }, [ready, busy, panel, probe]);
 
-  const value = useMemo(() => ({ configured: true, roteiroOn, ready, panel, setPanel, prefix, state, call, dial, dismiss: () => { clearTimeout(timers.current.clear); setCall(null); } }), [roteiroOn, ready, panel, prefix, state, call, dial]);
+  const checking = !!call?.endedAt && call.qualLooking !== false;
+  checkingRef.current = checking;
+  const value = useMemo(() => ({ configured: true, checking, fails, roteiroOn, ready: checking ? false : ready, panel, setPanel, prefix, state, call, dial, dismiss: () => { clearTimeout(timers.current.clear); setCall(null); } }), [roteiroOn, ready, checking, fails, panel, prefix, state, call, dial]);
   return <VocallCtx.Provider value={value}>{children}<PhoneDock /></VocallCtx.Provider>;
 }

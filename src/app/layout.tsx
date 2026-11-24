@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
 
 // Aplica o tema antes da primeira pintura para não piscar branco no modo noturno.
-const themeScript = `try{var t=localStorage.getItem('theme');var d=t==='dark';document.documentElement.classList.toggle('dark',d)}catch(e){}`;
+const themeScript = `try{var t=localStorage.getItem('theme');var d=t==='dark';document.documentElement.classList.toggle('dark',d)}catch(e){}try{if(window.top!==window.self)document.documentElement.classList.add('embed')}catch(e){document.documentElement.classList.add('embed')}`;
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();

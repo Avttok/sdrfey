@@ -78,24 +78,24 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <Presence />
         <TouchHost />
         <Suspense fallback={null}><NavBusy /></Suspense>
-        {user.navLayout === "side" && <SideBarFor user={user} badges={badges} groupNav={groupNav} />}
+        {user.navLayout === "side" && <div className="contents embed-hide"><SideBarFor user={user} badges={badges} groupNav={groupNav} /></div>}
         <div className="app-col flex min-w-0 flex-1 flex-col">
-          <AppHeader user={user} badges={badges} groupNav={groupNav} navAlign={settings.nav_align} />
-          {user.isAdmin && user.navLayout === "side" && <div className="hidden justify-end px-6 pt-3 lg:flex"><AdminViewSwitch mode={user.adminView} /></div>}
+          <div className="contents embed-hide"><AppHeader user={user} badges={badges} groupNav={groupNav} navAlign={settings.nav_align} /></div>
+          {user.isAdmin && user.navLayout === "side" && <div className="embed-hide hidden justify-end px-6 pt-3 lg:flex"><AdminViewSwitch mode={user.adminView} /></div>}
           <ScrollAssist />
           <main className="mx-auto flex w-full max-w-[92rem] flex-1 flex-col px-3 py-7 pb-10 sm:px-5 lg:px-6">{children}</main>
-          <footer className="relative z-40 px-4 pb-6 text-center text-xs text-muted"><span className="relative inline-block px-4 py-1.5"><span aria-hidden className="glow-pulse absolute inset-0 rounded-full bg-accent/50 blur-lg" /><span className="relative font-medium">Made by Ruan Carlos</span>{avatars.eggs.includes(user.id) && <GoldFooterEgg />}</span>{!avatars.eggs.includes(user.id) && <EggHunt />}</footer>
+          <footer className="embed-hide relative z-40 px-4 pb-6 text-center text-xs text-muted"><span className="relative inline-block px-4 py-1.5"><span aria-hidden className="glow-pulse absolute inset-0 rounded-full bg-accent/50 blur-lg" /><span className="relative font-medium">Made by Ruan Carlos</span>{avatars.eggs.includes(user.id) && <GoldFooterEgg />}</span>{!avatars.eggs.includes(user.id) && <EggHunt />}</footer>
         </div>
       </div>
-      <GoldMode reached={gold.reached} label={gold.label} userId={user.id} />
-      <AnnouncementHost />
-      <BottomFade />
+      <div className="contents embed-hide"><GoldMode reached={gold.reached} label={gold.label} userId={user.id} /></div>
+      <div className="contents embed-hide"><AnnouncementHost /></div>
+      <div className="contents embed-hide"><BottomFade /></div>
       <SwRegister />
       <LiveSnap />
-      {user.isAdmin && <EnrichDock side={user.navLayout === "side"} />}
+      {user.isAdmin && <div className="contents embed-hide"><EnrichDock side={user.navLayout === "side"} /></div>}
       {settings.copy_guard === 1 && !user.isAdmin && <CopyGuard />}
-      <QuickDock items={quick} hasChat={!!hasChat} />
-      <Suspense fallback={null}><ChatMount user={user} /></Suspense>
+      <div className="contents embed-hide"><QuickDock items={quick} hasChat={!!hasChat} /></div>
+      <div className="contents embed-hide"><Suspense fallback={null}><ChatMount user={user} /></Suspense></div>
       </AvatarProvider>
       </TagIconProvider>
       </TermsProvider>
