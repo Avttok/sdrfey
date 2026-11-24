@@ -371,7 +371,7 @@ export const leadChannels = pgTable(
     /** Telefone só com dígitos; e-mail em minúsculas. */
     value: text("value").notNull(),
     label: text("label"),
-    origin: text("origin").$type<"import" | "manual" | "brasilapi" | "receitaws" | "site" | "google">().notNull().default("manual"),
+    origin: text("origin").$type<"import" | "manual" | "brasilapi" | "receitaws" | "opencnpj" | "site" | "google">().notNull().default("manual"),
     wrong: boolean("wrong").notNull().default(false),
     createdAt: now(),
   },

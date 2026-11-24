@@ -11,7 +11,7 @@ import { CountUp } from "@/components/goal-tiles";
 import { ACHIEVEMENT_BY_KEY } from "@/config/achievements";
 import { chatStyle } from "@/components/chat/styled";
 import { ChatShop } from "@/components/chat/chat-shop";
-import { Plus, Coins, Building2, EllipsisVertical, ExternalLink, FileText, Handshake, Loader2, MessageCircle, Paperclip, Search, Send, SmilePlus, Trash2, WifiOff, X } from "lucide-react";
+import { Check, ChevronDown, Hash, Plus, Coins, Building2, EllipsisVertical, ExternalLink, FileText, Handshake, Loader2, MessageCircle, Paperclip, Search, Send, SmilePlus, Trash2, WifiOff, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/toast";
@@ -209,6 +209,7 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
   const [dms, setDms] = useState<DmItem[]>([]);
   const [people, setPeople] = useState<ChatPerson[]>([]);
   const [dmPick, setDmPick] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
   const [dmQ, setDmQ] = useState("");
   const allChannels: Channel[] = [...channels, ...dms.map((d) => ({ key: d.key, label: d.name.split(" ")[0], hint: "Conversa direta" }))];
   useEffect(() => { const c = lsGet<ChatPerson[]>(`people:${meId}`); if (c) setPeople(c); }, [meId]);
@@ -455,14 +456,34 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
           {shop && <ChatShop myName={myName} meId={meId} />}
           {!shop && (
             <div className="relative">
-              <HScroll role="tablist" label="Grupos e conversas" className="flex items-center gap-1.5 border-b border-line/70 px-3 py-2.5">
-                {allChannels.map((c) => (
-                  <button key={c.key} type="button" role="tab" aria-selected={channel === c.key} onClick={() => setChannel(c.key)} className={`relative shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${channel === c.key ? "bg-grad text-on-accent shadow-sm" : "bg-sunk text-muted hover:bg-accent/10 hover:text-ink"}`}>
-                    {c.key.startsWith("dm:") && <span aria-hidden className="mr-1 inline-block size-1.5 rounded-full" style={{ background: dms.find((d) => d.key === c.key)?.hex }} />}{c.label}{unread[c.key] ? <span className="figure ml-1.5 rounded-full bg-danger px-1.5 text-[10px] font-bold leading-4 text-white">{unread[c.key]}</span> : null}
-                  </button>
-                ))}
-                <button type="button" aria-label="Nova conversa direta" title="Nova conversa direta" aria-expanded={dmPick} onClick={() => setDmPick((v) => !v)} className="ml-auto grid size-7 shrink-0 place-items-center rounded-lg text-muted hover:bg-sunk hover:text-accent"><Plus size={16} aria-hidden /></button>
-              </HScroll>
+              <button type="button" aria-expanded={listOpen} aria-haspopup="listbox" onClick={() => { setListOpen((v) => !v); setDmPick(false); }} className="flex w-full items-center gap-3 border-b border-line/70 px-4 py-2.5 text-left transition hover:bg-sunk/60">
+                <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-2xl text-sm font-bold text-white shadow-sm" style={{ background: channel.startsWith("dm:") ? dms.find((d) => d.key === channel)?.hex ?? "var(--accent)" : "var(--accent)" }}>{channel.startsWith("dm:") ? (cur?.label ?? "?").slice(0, 1).toUpperCase() : <Hash size={18} />}</span>
+                <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold">{cur?.label ?? "Conversa"}</span><span className="block truncate text-xs text-muted">{cur?.hint ?? ""}</span></span>
+                {total - (unread[channel] ?? 0) > 0 && <span className="figure rounded-full bg-danger px-1.5 text-[10px] font-bold leading-4 text-white" title="Mensagens novas em outras conversas">{total - (unread[channel] ?? 0)}</span>}
+                <ChevronDown size={18} aria-hidden className={`shrink-0 text-muted transition ${listOpen ? "rotate-180" : ""}`} />
+              </button>
+              {listOpen && (
+                <div role="listbox" aria-label="Grupos e conversas" className="menu-up absolute inset-x-2 top-full z-20 mt-1 max-h-[22rem] overflow-y-auto rounded-2xl border border-line bg-panel p-2 shadow-2xl">
+                  <p className="px-2 pb-1 pt-1 text-[11px] font-bold uppercase tracking-wider text-muted">Grupos</p>
+                  {allChannels.filter((c) => !c.key.startsWith("dm:")).map((c) => (
+                    <button key={c.key} type="button" role="option" aria-selected={channel === c.key} onClick={() => { setChannel(c.key); setListOpen(false); }} className={`flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition ${channel === c.key ? "bg-grad-soft" : "hover:bg-sunk"}`}>
+                      <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent"><Hash size={16} /></span>
+                      <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{c.label}</span><span className="block truncate text-xs text-muted">{c.hint}</span></span>
+                      {unread[c.key] ? <span className="figure rounded-full bg-danger px-1.5 text-[10px] font-bold leading-4 text-white">{unread[c.key]}</span> : channel === c.key ? <Check size={15} aria-hidden className="text-accent" /> : null}
+                    </button>
+                  ))}
+                  <div className="mt-1 flex items-center justify-between px-2 pb-1 pt-2"><p className="text-[11px] font-bold uppercase tracking-wider text-muted">Conversas privadas</p>
+                    <button type="button" onClick={() => { setListOpen(false); setDmPick(true); }} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-accent transition hover:bg-sunk"><Plus size={13} aria-hidden /> Nova</button></div>
+                  {allChannels.filter((c) => c.key.startsWith("dm:")).map((c) => (
+                    <button key={c.key} type="button" role="option" aria-selected={channel === c.key} onClick={() => { setChannel(c.key); setListOpen(false); }} className={`flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition ${channel === c.key ? "bg-grad-soft" : "hover:bg-sunk"}`}>
+                      <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white" style={{ background: dms.find((d) => d.key === c.key)?.hex }}>{c.label.slice(0, 1).toUpperCase()}</span>
+                      <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{dms.find((d) => d.key === c.key)?.name ?? c.label}</span><span className="block truncate text-xs text-muted">Conversa direta</span></span>
+                      {unread[c.key] ? <span className="figure rounded-full bg-danger px-1.5 text-[10px] font-bold leading-4 text-white">{unread[c.key]}</span> : null}
+                    </button>
+                  ))}
+                  {!allChannels.some((c) => c.key.startsWith("dm:")) && <p className="px-2 py-2 text-xs text-muted">Nenhuma conversa privada ainda. Toque em “Nova” para falar com alguém.</p>}
+                </div>
+              )}
               {dmPick && (
                 <div className="absolute inset-x-2 top-full z-20 mt-1 rounded-xl border border-line bg-panel p-2 shadow-xl">
                   <input autoFocus value={dmQ} onChange={(e) => setDmQ(e.target.value)} placeholder="Conversar com…" className="mb-1.5 w-full rounded-lg border border-line bg-sunk px-3 py-2 text-sm" />

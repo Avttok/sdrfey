@@ -61,20 +61,26 @@ export async function enrichBatch(max: number, budgetMs = 25_000, userId: number
   retryH = cfg0.enrich_retry_hours;
   const fast = cfg0.enrich_fast === 1;
   if (fast) {
-    /* Pesquisa Rápida: `max` leads para cada fonte (BrasilAPI e Minha Receita) ao mesmo tempo; a ReceitaWS segue 1 por vez, na fila. */
-    const rows = await db.execute<{ id: number }>(sql`select l.id from leads l where ${scopeWhere(list)} order by (exists (select 1 from deals d where d.lead_id = l.id and d.import_pending)) desc, ${list.startsWith("age:") ? sql`l.enriched_at asc` : sql`l.enrich_tried_at nulls first`}, md5(l.id::text) limit ${max * 2}`);
+    /* Pesquisa Rápida em massa: um bloco grande de leads, vários ao mesmo tempo (BrasilAPI e Minha Receita alternando, OpenCNPJ para e-mail e telefone,
+       e a leitura do site de cada lead). A ReceitaWS só pega o que ficou sem nenhum contato, 1 por vez. */
+    const n = max <= 1 ? 30 : max * 3;
+    const stop = t0 + Math.min(budgetMs, 30_000);
+    const rows = await db.execute<{ id: number }>(sql`select l.id from leads l where ${scopeWhere(list)} order by (exists (select 1 from deals d where d.lead_id = l.id and d.import_pending)) desc, ${list.startsWith("age:") ? sql`l.enriched_at asc` : sql`l.enrich_tried_at nulls first`}, md5(l.id::text) limit ${n}`);
     const ids = [...rows].map((r) => r.id);
     if (ids.length) await db.execute(sql`update leads set enrich_tried_at = now() where id in (${sql.join(ids.map((i) => sql`${i}`), sql`, `)})`);
-    const chain = async (mine: number[], via: "brasilapi" | "minhareceita") => {
-      for (const id of mine) {
-        if (Date.now() - t0 > budgetMs) break;
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < ids.length && Date.now() < stop) {
+        const i = cursor++;
+        const id = ids[i];
         tried++;
-        try { (await enrichLead(id, userId, origin, via)).state === "ok" ? ok++ : failed++; } catch { failed++; }
-        await new Promise((r) => setTimeout(r, 250));
+        try { (await enrichLead(id, userId, origin, i % 2 === 0 ? "brasilapi" : "minhareceita")).state === "ok" ? ok++ : failed++; } catch { failed++; }
       }
     };
-    await Promise.all([chain(ids.filter((_, i) => i % 2 === 0), "brasilapi"), chain(ids.filter((_, i) => i % 2 === 1), "minhareceita"), ids.length ? Promise.resolve() : rwDrain(budgetMs - (Date.now() - t0)).then((n) => { tried += n; ok += n; })]);
-    if (ids.length) await rwStep();
+    await Promise.all([...Array.from({ length: 10 }, worker), rwDrain(ids.length ? 0 : budgetMs - (Date.now() - t0)).then((c) => { tried += c; ok += c; })]);
+    // o que foi sorteado e não deu tempo de consultar volta para a fila agora
+    if (cursor < ids.length) await db.execute(sql`update leads set enrich_tried_at = null where id in (${sql.join(ids.slice(Math.max(cursor, 0)).map((i) => sql`${i}`), sql`, `)}) and enriched_at is null`);
+    if (ids.length && (await rwStep()) === "wait") { /* a ReceitaWS tem intervalo próprio */ }
     const stF = await enrichStats();
     return { tried, ok, failed, left: (stF.lists[list] ?? 0) + (await rwQueueSize()) };
   }

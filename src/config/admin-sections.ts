@@ -6,7 +6,7 @@ export type AdminSection = { id: string; title: string; hue: string; items: Admi
 /** Todas as áreas do Adm, agrupadas. Usado pelo menu lateral e pela Central do Adm. */
 export const ADMIN_SECTIONS: AdminSection[] = [
   { id: "pessoas", title: "Pessoas e acesso", hue: "#6366f1", items: [
-    { href: "/admin/usuarios", label: "Equipe e acessos", hint: "Contas, cargos e permissões", icon: Users },
+    { href: "/admin/usuarios", label: "Equipe e acessos", hint: "Contas, cargos, metas e senhas", icon: Users },
     { href: "/admin/permissoes", label: "Permissões por cargo", hint: "O que cada cargo pode ver e fazer", icon: KeyRound },
     { href: "/admin/chat", label: "Conversas do chat", hint: "Ler e moderar grupos e conversas privadas", icon: MessagesSquare },
     { href: "/admin/moedas", label: "Moedas e pontos", hint: "Saldos, bloqueios e ajustes", icon: Coins },

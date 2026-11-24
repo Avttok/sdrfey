@@ -17,8 +17,8 @@ const ROLES: { key: RoleKey; label: string; hint: string }[] = [
 ];
 
 /** Usuários + Permissões numa tela só: escolha um cargo (vale para todos) ou uma pessoa (ajustes individuais). */
-export function TeamWorkspace({ people, matrixUsers, roles, myId }: { people: UserRow[]; matrixUsers: MatrixUser[]; roles: Record<RoleKey, PermissionMap>; myId: number }) {
-  const [target, setTarget] = useState<Target>({ kind: "role", role: "user" });
+export function TeamWorkspace({ mode, people, matrixUsers, roles, myId }: { /** people = contas e cadastro; access = o que cada cargo e cada pessoa pode ver e fazer */ mode: "people" | "access"; people: UserRow[]; matrixUsers: MatrixUser[]; roles: Record<RoleKey, PermissionMap>; myId: number }) {
+  const [target, setTarget] = useState<Target>(mode === "people" ? { kind: "user", id: people[0]?.id ?? 0 } : { kind: "role", role: "user" });
   const [q, setQ] = useState("");
   const list = useMemo(() => { const t = q.trim().toLowerCase(); return t ? people.filter((u) => u.name.toLowerCase().includes(t) || u.username.toLowerCase().includes(t)) : people; }, [people, q]);
   const sel = target.kind === "user" ? people.find((u) => u.id === target.id) ?? null : null;
@@ -28,16 +28,16 @@ export function TeamWorkspace({ people, matrixUsers, roles, myId }: { people: Us
   return (
     <div className="grid gap-5 lg:grid-cols-[19rem_minmax(0,1fr)]">
       <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
-        <section className={`${panelCls} p-3`}>
-          <p className="mb-1.5 flex items-center gap-1.5 px-2 text-xs font-semibold uppercase tracking-wider text-muted"><Shield size={13} aria-hidden /> Padrão por cargo (global)</p>
+        {mode === "access" && <section className={`${panelCls} p-3`}>
+          <p className="mb-1.5 flex items-center gap-1.5 px-2 text-xs font-semibold uppercase tracking-wider text-muted"><Shield size={13} aria-hidden /> 1 · Padrão do cargo</p>
           {ROLES.map((r) => { const on = target.kind === "role" && target.role === r.key; return (
             <button key={r.key} type="button" aria-pressed={on} className={item(on)} onClick={() => setTarget({ kind: "role", role: r.key })}>
               <KeyRound size={16} aria-hidden /><span className="flex-1"><span className="block text-sm font-semibold">{r.label}</span><span className={`block text-xs ${on ? "opacity-80" : "text-muted"}`}>{r.hint}</span></span>
             </button>
           ); })}
-        </section>
+        </section>}
         <section className={`${panelCls} p-3`}>
-          <p className="mb-1.5 flex items-center gap-1.5 px-2 text-xs font-semibold uppercase tracking-wider text-muted"><UserCog size={13} aria-hidden /> Pessoas ({people.length})</p>
+          <p className="mb-1.5 flex items-center gap-1.5 px-2 text-xs font-semibold uppercase tracking-wider text-muted"><UserCog size={13} aria-hidden /> {mode === "access" ? "2 · Ajuste de uma pessoa" : "Pessoas"} ({people.length})</p>
           <label className="relative mb-2 block"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" aria-hidden /><input className={`${inputCls} pl-8`} placeholder="Buscar pessoa…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Buscar pessoa" /></label>
           <ul className="no-sb max-h-[50vh] space-y-0.5 overflow-y-auto">
             {list.map((u) => { const on = target.kind === "user" && target.id === u.id; return (
@@ -49,15 +49,22 @@ export function TeamWorkspace({ people, matrixUsers, roles, myId }: { people: Us
             {list.length === 0 && <li className="px-2 py-3 text-sm text-muted">Ninguém encontrado.</li>}
           </ul>
         </section>
-        <NewUser />
-        <ProfileTriggerAll />
+        {mode === "people" && <><NewUser /><ProfileTriggerAll /></>}
       </aside>
 
       <div className="min-w-0 space-y-4">
-        {sel && <ul><UserCard key={sel.id} u={sel} isMe={sel.id === myId} /></ul>}
-        {isAdminSel
-          ? <p className={`${panelCls} p-4 text-sm text-muted`}>Administradores sempre veem e fazem tudo, por isso não há permissões para ajustar aqui.</p>
-          : <PermissionMatrix users={matrixUsers} roles={roles} target={target} onTarget={setTarget} />}
+        {mode === "people" && (sel ? <ul><UserCard key={sel.id} u={sel} isMe={sel.id === myId} /></ul> : <p className={`${panelCls} p-4 text-sm text-muted`}>Escolha uma pessoa na lista.</p>)}
+        {mode === "access" && (
+          <>
+            <div className={`${panelCls} grid gap-3 p-4 text-sm sm:grid-cols-2`}>
+              <p><b className="block">1 · Padrão do cargo</b><span className="text-muted">Vale para todo mundo que tem aquele cargo. É o ponto de partida.</span></p>
+              <p><b className="block">2 · Ajuste de uma pessoa</b><span className="text-muted">Só para ela, por cima do padrão. Administradores sempre veem e fazem tudo.</span></p>
+            </div>
+            {isAdminSel
+              ? <p className={`${panelCls} p-4 text-sm text-muted`}>Administradores sempre veem e fazem tudo, por isso não há permissões para ajustar aqui.</p>
+              : <PermissionMatrix users={matrixUsers} roles={roles} target={target} onTarget={setTarget} />}
+          </>
+        )}
       </div>
     </div>
   );

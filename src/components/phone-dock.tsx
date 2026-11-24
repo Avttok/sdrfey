@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Ban, Building2, CalendarClock, Clock, Copy, Delete, Eraser, ExternalLink, History, Loader2, Mail, MapPin, MessageCircle, Phone, PhoneCall, PhoneOff, ScrollText, UserRound, X } from "lucide-react";
+import { TriangleAlert, ArrowLeft, Ban, Building2, CalendarClock, Clock, Copy, Delete, Eraser, ExternalLink, History, Loader2, Mail, MapPin, MessageCircle, Phone, PhoneCall, PhoneOff, ScrollText, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FeyMark } from "@/components/logo";
@@ -405,7 +405,16 @@ export function PhoneDock() {
 
             {!inCall && !calling && shownTab === "dial" && (
               <footer className="space-y-2 border-t border-line bg-panel p-3">
-                {broken && <p role="alert" className="rounded-xl bg-warn/15 px-3 py-2 text-left text-sm font-semibold leading-snug text-warn break-words">Não consegui conectar ao VocallPhone. Por favor, feche todas as janelas do EOX no seu navegador. Certifique-se de que o VocallPhone esteja com a cor verde e disponível. Caso esteja aguardando qualificação, aperte no botão EOX abaixo e feche quando o VocallPhone ficar verde e disponível.</p>}
+                {broken && (
+                  <div role="alert" className="space-y-2.5 rounded-2xl border border-warn/40 bg-warn/10 p-3.5 text-ink">
+                    <p className="flex items-center gap-2 text-base font-bold"><TriangleAlert size={18} aria-hidden className="shrink-0 text-warn" /> Não consegui conectar ao VocallPhone</p>
+                    <ol className="space-y-2 text-sm leading-snug text-muted">
+                      {["Feche todas as janelas do EOX no seu navegador.", "Certifique-se de que o VocallPhone esteja com a cor verde e disponível.", "Caso esteja aguardando qualificação, aperte no botão EOX abaixo e feche quando o VocallPhone ficar verde e disponível."].map((t, n) => (
+                        <li key={n} className="flex gap-2.5"><span aria-hidden className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-warn text-[11px] font-bold text-white">{n + 1}</span><span>{t}</span></li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
                 {broken ? (
                   <a href={vocall.eoxBase || "https://fey.vocallcontact.com.br/"} target="_blank" rel="noopener noreferrer" onClick={() => setEoxOpened(true)} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98]" style={{ background: "linear-gradient(135deg,#7a3a94,#692e81)" }}><span className="grid size-7 place-items-center rounded-md bg-white/20"><EoxMark size={20} /></span> EOX</a>
                 ) : (                <button type="button" onClick={() => void dialTo(digits)} disabled={digits.length < 8 || dialing || !vocall.ready || checking} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:shadow-none" style={{ background: "linear-gradient(135deg,#16a34a,#15803d)" }}>

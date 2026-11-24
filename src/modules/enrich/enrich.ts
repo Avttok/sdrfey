@@ -7,7 +7,7 @@ import { slugify } from "@/modules/import/normalize";
 import { classifyCapital, classifyPorte } from "./classify";
 import { getSettings } from "@/modules/settings/get";
 import { discoverSite, findPlace, scanSite } from "./web";
-import { mergeInfo, parseBrasilApi, parseReceitaWs, statusToSituation, type CnpjInfo } from "./parse";
+import { mergeInfo, parseBrasilApi, parsePhones, parseReceitaWs, statusToSituation, type CnpjInfo } from "./parse";
 
 export type EnrichResult = {
   /** ok = ao menos uma fonte respondeu; unavailable = nenhuma respondeu (tente atualizar). */
@@ -37,6 +37,15 @@ async function getJson(url: string): Promise<{ data: unknown | null; why?: strin
     }
   }
   return { data: null, why };
+}
+
+/** OpenCNPJ.org: telefones (sem fax) e e-mail da Receita. Só o que falta nas outras fontes. */
+function parseOpenCnpj(j: unknown): { phones: string[]; emails: string[] } | null {
+  if (!j || typeof j !== "object") return null;
+  const o = j as { telefones?: { ddd?: string; numero?: string; is_fax?: boolean }[]; email?: unknown };
+  const phones = (Array.isArray(o.telefones) ? o.telefones : []).filter((t) => t && !t.is_fax).flatMap((t) => parsePhones(`${t.ddd ?? ""}${t.numero ?? ""}`));
+  const e = typeof o.email === "string" ? o.email.trim().toLowerCase() : "";
+  return { phones: [...new Set(phones)], emails: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) ? [e] : [] };
 }
 
 /** Garante a tag (porte/capital nascem sob demanda, como na importação) e devolve o par grupo:chave. */
@@ -88,12 +97,15 @@ async function enrichCore(leadId: number, userId: number | null, via?: "brasilap
   const useRw = !fast && cfg.enrich_receitaws === 1, useB = cfg.enrich_brasilapi === 1;
   const mrUrl = `https://minhareceita.org/${lead.cnpj}`;
   let rwRes: Awaited<ReturnType<typeof getJson>>, bRes: Awaited<ReturnType<typeof getJson>>;
+  let open: { phones: string[]; emails: string[] } | null = null;
   if (fast) {
     /* Pesquisa Rápida: os CNPJs se dividem entre BrasilAPI e Minha Receita (cada uma serve de reserva da outra); a ReceitaWS fica para a fila. */
     const order = (via ? via === "brasilapi" : lead.id % 2 === 0) ? [bUrl, mrUrl] : [mrUrl, bUrl];
     rwRes = off;
-    bRes = await getJson(order[0]);
+    const [prim, oc] = await Promise.all([getJson(order[0]), getJson(`https://api.opencnpj.org/${lead.cnpj}`)]);
+    bRes = prim;
     if (!parseBrasilApi(bRes.data) && !bRes.final) bRes = await getJson(order[1]);
+    open = parseOpenCnpj(oc.data);
   } else {
     [rwRes, bRes] = await Promise.all([call(useRw, rwUrl), call(useB, bUrl)]);
     if ((useRw || useB) && !parseReceitaWs(rwRes.data) && !parseBrasilApi(bRes.data) && !(rwRes.final && bRes.final)) {
@@ -113,6 +125,7 @@ async function enrichCore(leadId: number, userId: number | null, via?: "brasilap
     if (pm) { a = pm; rb = m.data; }
   }
   let info = mergeInfo(a, b);
+  if (info && open) info = { ...info, phones: [...new Set([...info.phones, ...open.phones])], emails: [...new Set([...info.emails, ...open.emails])] };
   /* Poucos telefones/e-mails? A Minha Receita (mesma base, outro servidor) completa o que faltar. */
   if (info && !fast && cfg.enrich_minhareceita === 1 && (info.phones.length < 2 || !info.emails.length)) {
     const m = await getJson(`https://minhareceita.org/${lead.cnpj}`);
@@ -153,7 +166,7 @@ async function enrichCore(leadId: number, userId: number | null, via?: "brasilap
       .where(eq(leads.id, leadId));
 
     const origin = (value: string, kind: "phone" | "email") =>
-      (kind === "phone" ? a?.phones : a?.emails)?.includes(value) ? ("brasilapi" as const) : ("receitaws" as const);
+      (kind === "phone" ? a?.phones : a?.emails)?.includes(value) ? ("brasilapi" as const) : (kind === "phone" ? open?.phones : open?.emails)?.includes(value) && !(kind === "phone" ? b?.phones : b?.emails)?.includes(value) ? ("opencnpj" as const) : ("receitaws" as const);
     for (const value of info.phones) {
       const r = await tx.insert(leadChannels).values({ leadId, kind: "phone", value, origin: origin(value, "phone") }).onConflictDoNothing().returning({ id: leadChannels.id });
       result.newPhones += r.length;
@@ -251,10 +264,10 @@ export async function fetchCnpjInfo(cnpj: string): Promise<CnpjInfo | null> {
 }
 
 
-/** Fila da Pesquisa Rápida: leads já consultados que ainda não têm telefone ou e-mail e que a ReceitaWS ainda não olhou. */
+/** Fila da Pesquisa Rápida: leads já consultados que continuam sem NENHUM telefone ou e-mail (o OpenCNPJ já tentou) e que a ReceitaWS ainda não olhou. */
 export const RW_QUEUE = sql`l.enriched_at is not null and l.rw_checked_at is null and l.receitaws_data is null and l.brasilapi_data is not null and not l.is_test
   and (l.registration_status is null or l.registration_status ilike 'ativ%')
-  and not (exists (select 1 from lead_channels c where c.lead_id = l.id and c.kind = 'phone' and not c.wrong) and exists (select 1 from lead_channels c where c.lead_id = l.id and c.kind = 'email' and not c.wrong))`;
+  and not exists (select 1 from lead_channels c where c.lead_id = l.id and not c.wrong)`;
 
 export async function rwQueueSize(): Promise<number> {
   const [r] = await db.execute<{ n: number }>(sql`select count(*)::int as n from leads l where ${RW_QUEUE}`);

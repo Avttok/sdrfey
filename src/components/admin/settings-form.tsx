@@ -52,7 +52,7 @@ const GROUPS: { title: string; sub: string; icon: typeof Clock; fields: Field[] 
     { key: "chat_on", label: "Chat interno", hint: "Botão flutuante. Desligado, some para todos (as conversas ficam guardadas).", kind: "toggle" },
   ] },
   { title: "Fontes da consulta de CNPJ", sub: "De onde vêm telefones, e-mails e dados", icon: Database, fields: [
-    { key: "enrich_fast", label: "Pesquisa Rápida", hint: "Os CNPJs se dividem entre BrasilAPI e Minha Receita (sem limite) e a ReceitaWS entra depois, numa fila, só para buscar o e-mail e o telefone que faltam.", kind: "toggle" },
+    { key: "enrich_fast", label: "Pesquisa Rápida", hint: "Modo em massa: ~10 leads ao mesmo tempo. Dados da Receita vêm da BrasilAPI ou da Minha Receita (alternando, sem limite), e-mail e telefone vêm do OpenCNPJ, e o site de cada lead é lido em seguida. A ReceitaWS só pega, 1 por vez, quem ficou sem nenhum contato.", kind: "toggle" },
     { key: "enrich_receitaws", label: "ReceitaWS", hint: "Dados cadastrais e telefones da Receita. Gratuita, com limite de consultas por minuto.", kind: "toggle" },
     { key: "enrich_brasilapi", label: "BrasilAPI", hint: "Mesma base da Receita, sem o limite apertado. Gratuita.", kind: "toggle" },
     { key: "enrich_minhareceita", label: "Minha Receita (reserva)", hint: "Só entra quando as duas de cima não respondem. Gratuita.", kind: "toggle" },

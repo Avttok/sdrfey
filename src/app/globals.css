@@ -506,3 +506,7 @@ html.embed .lc-aside > * { margin: 0; }
 @keyframes hint-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent, #6366f1) 45%, transparent); transform: scale(1); } 50% { box-shadow: 0 0 0 10px transparent; transform: scale(1.04); } }
 .hint-pulse { animation: hint-pulse 2.2s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .hint-pulse { animation: none; } }
+
+.goal-done { animation: goal-pop 2.4s ease-in-out infinite; }
+@keyframes goal-pop { 0%,100% { filter: drop-shadow(0 0 0 transparent); } 50% { filter: drop-shadow(0 0 14px rgb(52 211 153 / .6)); } }
+@media (prefers-reduced-motion: reduce) { .goal-done { animation: none; } }
