@@ -21,6 +21,7 @@ import { EnrichDock } from "@/components/enrich-dock";
 import { LiveSnap } from "@/components/live-snap";
 import { EggHunt, GoldFooterEgg } from "@/components/egg-hunt";
 import { CopyGuard } from "@/components/copy-guard";
+import { UpdateNotice } from "@/components/update-notice";
 import { SwRegister } from "@/components/sw-register";
 import { ChatMount } from "@/components/chat/chat-mount";
 import { AvatarProvider } from "@/components/person-bubble";
@@ -91,11 +92,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="contents embed-hide"><AnnouncementHost /></div>
       <div className="contents embed-hide"><BottomFade /></div>
       <SwRegister />
+      <UpdateNotice />
       <LiveSnap />
       {user.isAdmin && <div className="contents embed-hide"><EnrichDock side={user.navLayout === "side"} /></div>}
       {settings.copy_guard === 1 && !user.isAdmin && <CopyGuard />}
-      <div className="contents embed-hide"><QuickDock items={quick} hasChat={!!hasChat} /></div>
-      <div className="contents embed-hide"><Suspense fallback={null}><ChatMount user={user} /></Suspense></div>
+      <div className="embed-hide pointer-events-none fixed bottom-5 right-5 z-[45] flex flex-col items-end gap-2.5"><QuickDock items={quick} hasChat={!!hasChat} /><Suspense fallback={hasChat ? <div className="size-14" aria-hidden /> : null}><ChatMount user={user} /></Suspense></div>
+      
       </AvatarProvider>
       </TagIconProvider>
       </TermsProvider>

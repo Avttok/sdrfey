@@ -66,6 +66,8 @@ export const SETTING_DEFAULTS = {
   email_html_kb: 4000,
   /** 1 = bloqueia copiar, arrastar e clique direito fora de campos de texto (só para quem não é Adm). */
   copy_guard: 0,
+  /** 1 = quem está com uma versão velha do site vê o aviso para recarregar a página. */
+  update_notice: 1,
   /** Fontes da consulta de CNPJ (1 = usa). Places precisa da chave GOOGLE_PLACES_API_KEY. */
   enrich_receitaws: 1,
   enrich_brasilapi: 1,

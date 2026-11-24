@@ -56,7 +56,7 @@ export function QuickDock({ items, hasChat }: { items: QuickKey[]; hasChat: bool
   const visible = items.filter((k) => !(k === "shuffle" && path === "/atender") && !(k === "shuffle-sales" && path === "/shuffler-vendas") && !(k === "visits" && path === "/visitas") && !(k === "leads" && path === "/leads") && !(k === "admin" && path.startsWith("/admin")));
   const newDeal = () => { if (path === "/negociacoes") window.dispatchEvent(new Event(NEW_DEAL_EVENT)); else router.push("/negociacoes?novo=1"); };
   return (
-    <div className={`pointer-events-none fixed right-5 z-30 flex flex-col-reverse items-end gap-2.5 ${hasChat ? "bottom-[5.25rem]" : "bottom-5"}`} role="toolbar" aria-label="Atalhos rápidos" aria-orientation="vertical">
+    <div className="pointer-events-none flex flex-col-reverse items-end gap-2.5" data-has-chat={hasChat ? "1" : "0"} role="toolbar" aria-label="Atalhos rápidos" aria-orientation="vertical">
       {open && visible.map((k) => {
         const m = META[k];
         const wrap = "group pointer-events-auto relative quick-pop";

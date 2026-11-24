@@ -491,7 +491,7 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
           </footer>}
         </section>
       )}
-      <button type="button" aria-label={open ? "Fechar chat" : total ? `Abrir chat (${total} não lidas)` : "Abrir chat"} aria-expanded={open} onClick={() => setOpen(!open)} style={vv ? { bottom: btnBottom } : undefined} className="fixed bottom-5 right-5 z-40 grid size-14 place-items-center rounded-full bg-grad text-on-accent shadow-xl transition hover:scale-105 active:scale-95">
+      <button type="button" aria-label={open ? "Fechar chat" : total ? `Abrir chat (${total} não lidas)` : "Abrir chat"} aria-expanded={open} onClick={() => setOpen(!open)} className="pointer-events-auto relative grid size-14 place-items-center rounded-full bg-grad text-on-accent shadow-xl transition hover:scale-105 active:scale-95">
         {open ? <X size={24} aria-hidden /> : <MessageCircle size={24} aria-hidden />}
         {!open && total > 0 && <span className="figure absolute -right-1 -top-1 min-w-5 rounded-full border-2 border-bg bg-danger px-1 text-center text-[11px] font-bold leading-4 text-white">{total > 99 ? "99+" : total}</span>}
       </button>

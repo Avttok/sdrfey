@@ -12,7 +12,7 @@ import { saveLeadIdsAction } from "@/modules/deals/actions";
 type Props = { leadId: number; eoxId: string | null; eoxCode: string | null; sfId: string | null; eoxUrl: string | null; canEdit?: boolean; /** Link do perfil no Salesforce, quando o lead tem. */ sfUrl?: string | null };
 
 /** Ids do cliente nas outras ferramentas: o da EOX abre o cadastro; o do Salesforce e o código só se copiam. */
-export function ClientIds({ leadId, eoxId, eoxCode, sfId, eoxUrl, canEdit = true, compact = false, sfUrl = null }: Props & { compact?: boolean }) {
+export function ClientIds({ leadId, eoxId, eoxCode, sfId, eoxUrl, canEdit = true, compact = false, sfUrl = null, menu = true }: Props & { compact?: boolean; /** Com seta para Perfil, Atendimentos e Conversas (não usado no discador). */ menu?: boolean }) {
   const toast = useToast();
   const { run, pending } = useRun();
   const [edit, setEdit] = useState(false);
@@ -33,7 +33,7 @@ export function ClientIds({ leadId, eoxId, eoxCode, sfId, eoxUrl, canEdit = true
   return (
     <div className={`flex flex-wrap items-center ${compact ? "gap-1.5" : "gap-2"}`}>
       {eoxUrl && eoxId
-        ? <EoxMenu url={eoxUrl} size={compact ? "sm" : "md"} />
+        ? (menu ? <EoxMenu url={eoxUrl} size={compact ? "sm" : "md"} /> : <a href={eoxUrl} target="_blank" rel="noopener noreferrer" style={{ background: "#692E81", borderColor: "#692E81" }} className={`${chip} text-white hover:brightness-110`} title="Abrir o cadastro na EOX"><EoxIcon size={compact ? 13 : 16} /> EOX <ExternalLink size={compact ? 11 : 13} aria-hidden /></a>)
         : <span className={`${chip} border-dashed border-line text-muted`} title="Ainda sem o cadastro da EOX"><EoxIcon size={compact ? 12 : 15} /> EOX</span>}
       {sfUrl
         ? <a href={sfUrl} target="_blank" rel="noopener noreferrer" style={{ background: "#0070d2" }} className={`${chip} border-transparent text-white hover:brightness-110`} title="Abrir no Salesforce"><SalesforceIcon size={compact ? 13 : 16} /> Salesforce <ExternalLink size={compact ? 11 : 13} aria-hidden /></a>

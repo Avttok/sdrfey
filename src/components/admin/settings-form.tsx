@@ -60,6 +60,7 @@ const GROUPS: { title: string; sub: string; icon: typeof Clock; fields: Field[] 
   ] },
   { title: "Segurança", sub: "Proteção dos dados", icon: ShieldCheck, fields: [
     { key: "copy_guard", label: "Bloquear cópia de telas", hint: "Para quem não é Adm: impede selecionar, copiar, arrastar e clicar com o botão direito (campos de texto continuam normais).", kind: "toggle" },
+    { key: "update_notice", label: "Avisar sobre atualização do site", hint: "Quando sair uma versão nova, quem está com a página aberta numa versão velha vê “Por favor, recarregue a página. Há uma nova atualização!”.", kind: "toggle" },
   ] },
 ];
 
