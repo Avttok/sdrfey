@@ -104,7 +104,7 @@ export function ImportEditor({ file, kind, busy, onApply }: { file: File; kind: 
         <ChevronRight size={22} className="relative shrink-0 text-accent transition group-hover:translate-x-1" aria-hidden />
       </button>
       {open && createPortal(
-        <div className="fixed inset-0 z-[70] grid place-items-center bg-black/55 p-3 backdrop-blur-[2px]" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !dirty) setOpen(false); }}>
+        <div className="fixed inset-0 z-[70] grid place-items-center bg-black/55 p-3" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !dirty) setOpen(false); }}>
           <section role="dialog" aria-modal="true" aria-label="Editar dados da importação" className="flex h-[min(94vh,60rem)] w-[min(98vw,110rem)] flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl">
             <header className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3">
               <span className="grid size-9 place-items-center rounded-xl bg-grad-soft text-accent"><Pencil size={17} aria-hidden /></span>

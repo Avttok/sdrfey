@@ -104,7 +104,7 @@ export function EnrichAdmin({ initial, on: on0, cronReady, live: live0 }: { init
           <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-grad-soft text-accent"><DatabaseZap size={26} aria-hidden /></span>
           <div className="min-w-56 flex-1">
             <p className="figure flex flex-wrap items-baseline gap-x-2 text-3xl font-bold leading-none">{live.stats.done.toLocaleString("pt-BR")}<span className="text-base font-medium text-muted">de {live.stats.total.toLocaleString("pt-BR")} consultados</span></p>
-            <p className="mt-1.5 text-sm text-muted">{live.stats.pending.toLocaleString("pt-BR")} esperando · {live.stats.failed.toLocaleString("pt-BR")} sem resposta (tento de novo em 6 h)</p>
+            <p className="mt-1.5 text-sm text-muted">{live.stats.pending.toLocaleString("pt-BR")} esperando · {live.stats.failed.toLocaleString("pt-BR")} sem resposta (tento de novo em 6 h){live.stats.rwQueue > 0 && <> · {live.stats.rwQueue.toLocaleString("pt-BR")} na fila da ReceitaWS (e-mail e telefone)</>}</p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <span className="figure text-3xl font-bold leading-none text-accent">{pct}%</span>

@@ -1,4 +1,4 @@
-import { Headset, BarChart3, Puzzle, Merge, Brain, Activity, BookA, Archive, Megaphone, Coins, Clock, DatabaseZap, Download, Eraser, ScrollText, Truck, Handshake, KeyRound, PhoneCall, Link2, Mail, PanelTop, Settings2, Tags, Upload, Users, type LucideIcon } from "lucide-react";
+import { Headset, BarChart3, Puzzle, Merge, Brain, Activity, BookA, Archive, Megaphone, Coins, Clock, DatabaseZap, Download, Eraser, ScrollText, Truck, Handshake, KeyRound, PhoneCall, Link2, Mail, PanelTop, Settings2, Tags, Upload, Users, FlaskConical, MessagesSquare, type LucideIcon } from "lucide-react";
 
 export type AdminItem = { href: string; label: string; hint: string; icon: LucideIcon };
 export type AdminSection = { id: string; title: string; hue: string; items: AdminItem[] };
@@ -7,6 +7,8 @@ export type AdminSection = { id: string; title: string; hue: string; items: Admi
 export const ADMIN_SECTIONS: AdminSection[] = [
   { id: "pessoas", title: "Pessoas e acesso", hue: "#6366f1", items: [
     { href: "/admin/usuarios", label: "Equipe e acessos", hint: "Contas, cargos e permissões", icon: Users },
+    { href: "/admin/permissoes", label: "Permissões por cargo", hint: "O que cada cargo pode ver e fazer", icon: KeyRound },
+    { href: "/admin/chat", label: "Conversas do chat", hint: "Ler e moderar grupos e conversas privadas", icon: MessagesSquare },
     { href: "/admin/moedas", label: "Moedas e pontos", hint: "Saldos, bloqueios e ajustes", icon: Coins },
   ] },
   { id: "vendas", title: "Vendas", hue: "#10b981", items: [
@@ -37,6 +39,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     { href: "/admin/barra", label: "Barra de menus", hint: "Ordem do menu para todos", icon: PanelTop },
     { href: "/admin/parametros", label: "Parâmetros", hint: "SDR: sorteio · Vendas: avisos das negociações · Segurança", icon: Settings2 },
     { href: "/admin/banco", label: "Saúde do sistema", hint: "Banco, conexões e números", icon: Activity },
+    { href: "/admin/modo-teste", label: "Modo teste", hint: "Leads de teste para treinar sem sujar os números", icon: FlaskConical },
     { href: "/admin/ao-vivo", label: "Ao vivo", hint: "Quem está online", icon: Clock },
   ] },
 ];

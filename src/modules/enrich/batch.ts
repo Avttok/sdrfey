@@ -3,14 +3,14 @@ import { db } from "@/db";
 import { getSettings } from "@/modules/settings/get";
 import { ENRICH_LISTS, normList } from "@/config/enrich-lists";
 import { AGE_LISTS } from "./ages";
-import { enrichLead, rwQueueSize, rwStep } from "./enrich";
+import { enrichLead, rwQueueSize, rwStep, RW_QUEUE } from "./enrich";
 
 /** Lead que ainda não foi consultado e que não falhou nas últimas 6 horas. */
 let retryH = 6;
 const retry = () => sql`make_interval(hours => ${retryH})`;
 const PENDING_ = () => sql`not l.is_test and l.enriched_at is null and (l.enrich_tried_at is null or l.enrich_tried_at < now() - ${retry()})`;
 
-export type EnrichStats = { total: number; done: number; pending: number; failed: number; older: Record<number, number>; /** quantos leads há em cada lista (por chave) */ lists: Record<string, number> };
+export type EnrichStats = { /** Pesquisa Rápida: leads esperando a ReceitaWS (e-mail e telefone) */ rwQueue: number; total: number; done: number; pending: number; failed: number; older: Record<number, number>; /** quantos leads há em cada lista (por chave) */ lists: Record<string, number> };
 
 const phoneOk = sql`exists (select 1 from lead_channels c where c.lead_id = l.id and c.kind = 'phone' and not c.wrong)`;
 const emailOk = sql`exists (select 1 from lead_channels c where c.lead_id = l.id and c.kind = 'email' and not c.wrong)`;
@@ -42,13 +42,14 @@ export async function enrichStats(): Promise<EnrichStats> {
     select count(*)::int as total,
       ${sql.join(AGE_LISTS.map((d) => sql`count(*) filter (where l.enriched_at is not null and l.enriched_at < now() - make_interval(days => ${d}))::int as ${sql.raw("o" + d)}`), sql`, `)},
       ${sql.join(ENRICH_LISTS.map((x, i) => sql`count(*) filter (where ${scopeWhere(x.key)})::int as ${sql.raw("l" + i)}`), sql`, `)},
+      count(*) filter (where ${RW_QUEUE})::int as rwq,
       count(*) filter (where l.enriched_at is not null)::int as done,
       count(*) filter (where ${PENDING_()})::int as pending,
       count(*) filter (where l.enriched_at is null and l.enrich_tried_at is not null and l.enrich_tried_at >= now() - ${retry()})::int as failed
     from leads l where not l.is_test`);
   const older: Record<number, number> = { 7: r?.o7 ?? 0, 14: r?.o14 ?? 0, 21: r?.o21 ?? 0, 30: r?.o30 ?? 0, 60: r?.o60 ?? 0, 90: r?.o90 ?? 0 };
   const lists = Object.fromEntries(ENRICH_LISTS.map((x, i) => [x.key, Number(r?.[`l${i}`] ?? 0)]));
-  return { total: r?.total ?? 0, done: r?.done ?? 0, pending: r?.pending ?? 0, failed: r?.failed ?? 0, older, lists };
+  return { rwQueue: r?.rwq ?? 0, total: r?.total ?? 0, done: r?.done ?? 0, pending: r?.pending ?? 0, failed: r?.failed ?? 0, older, lists };
 }
 
 /** Consulta até `max` leads, um de cada vez (as APIs gratuitas limitam o ritmo), parando quando passar de `budgetMs`. */
@@ -59,6 +60,24 @@ export async function enrichBatch(max: number, budgetMs = 25_000, userId: number
   const cfg0 = await getSettings();
   retryH = cfg0.enrich_retry_hours;
   const fast = cfg0.enrich_fast === 1;
+  if (fast) {
+    /* Pesquisa Rápida: `max` leads para cada fonte (BrasilAPI e Minha Receita) ao mesmo tempo; a ReceitaWS segue 1 por vez, na fila. */
+    const rows = await db.execute<{ id: number }>(sql`select l.id from leads l where ${scopeWhere(list)} order by (exists (select 1 from deals d where d.lead_id = l.id and d.import_pending)) desc, ${list.startsWith("age:") ? sql`l.enriched_at asc` : sql`l.enrich_tried_at nulls first`}, md5(l.id::text) limit ${max * 2}`);
+    const ids = [...rows].map((r) => r.id);
+    if (ids.length) await db.execute(sql`update leads set enrich_tried_at = now() where id in (${sql.join(ids.map((i) => sql`${i}`), sql`, `)})`);
+    const chain = async (mine: number[], via: "brasilapi" | "minhareceita") => {
+      for (const id of mine) {
+        if (Date.now() - t0 > budgetMs) break;
+        tried++;
+        try { (await enrichLead(id, userId, origin, via)).state === "ok" ? ok++ : failed++; } catch { failed++; }
+        await new Promise((r) => setTimeout(r, 250));
+      }
+    };
+    await Promise.all([chain(ids.filter((_, i) => i % 2 === 0), "brasilapi"), chain(ids.filter((_, i) => i % 2 === 1), "minhareceita"), ids.length ? Promise.resolve() : rwDrain(budgetMs - (Date.now() - t0)).then((n) => { tried += n; ok += n; })]);
+    if (ids.length) await rwStep();
+    const stF = await enrichStats();
+    return { tried, ok, failed, left: (stF.lists[list] ?? 0) + (await rwQueueSize()) };
+  }
   while (tried < max && Date.now() - t0 < budgetMs) {
     const [next] = await db.execute<{ id: number }>(sql`select l.id from leads l where ${scopeWhere(list)} order by (exists (select 1 from deals d where d.lead_id = l.id and d.import_pending)) desc, ${list.startsWith("age:") ? sql`l.enriched_at asc` : sql`l.enrich_tried_at nulls first`}, md5(l.id::text) limit 1`);
     if (!next) {
@@ -79,6 +98,17 @@ export async function enrichBatch(max: number, budgetMs = 25_000, userId: number
   }
   const st = await enrichStats();
   return { tried, ok, failed, left: (st.lists[list] ?? 0) + (fast ? await rwQueueSize() : 0) };
+}
+
+/** Esvazia a fila da ReceitaWS (1 por vez, no ritmo dela) até acabar o tempo. Devolve quantos fez. */
+async function rwDrain(ms: number): Promise<number> {
+  const t0 = Date.now(); let n = 0;
+  while (Date.now() - t0 < ms) {
+    const st = await rwStep();
+    if (st === "none") break;
+    if (st === "did") n++; else await new Promise((r) => setTimeout(r, 4000));
+  }
+  return n;
 }
 
 export async function autoEnrichOn(): Promise<boolean> {

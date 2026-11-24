@@ -21,7 +21,7 @@ export function ConfirmDialog({ open, icon: Icon, title, children, confirmLabel,
   if (!open || !mounted) return null;
   const tint = tone === "danger" ? "bg-danger/15 text-danger" : tone === "warn" ? "bg-warn/15 text-warn" : "bg-grad-soft text-accent";
   return createPortal(
-    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/45 backdrop-blur-md p-4" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
+    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/45 p-4" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
       <div role="alertdialog" aria-modal="true" aria-label={title} className="w-full max-w-md overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl">
         <span aria-hidden className={`block h-1 ${tone === "danger" ? "bg-grad-danger" : "bg-grad"}`} />
         <div className="space-y-4 p-6">

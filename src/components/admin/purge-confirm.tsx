@@ -22,7 +22,7 @@ export function TypedConfirm({ open, title, children, word, label, busy, onCance
   if (!open || !mounted) return null;
   const ok = typed.trim().toUpperCase() === word;
   return createPortal(
-    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/45 backdrop-blur-md p-4" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
+    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/45 p-4" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
       <form role="alertdialog" aria-modal="true" aria-label={title} className="w-full max-w-md overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl"
         onSubmit={(e) => { e.preventDefault(); if (ok && !busy) onConfirm(typed); }}>
         <span aria-hidden className="block h-1 bg-grad-danger" />

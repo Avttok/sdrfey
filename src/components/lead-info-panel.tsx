@@ -14,6 +14,9 @@ import { cleanRole, fmtAge, fmtCnpj, fmtDate, fmtMoney } from "@/lib/format";
 import { selectedRows } from "@/modules/enrich/flatten";
 import type { LeadView } from "@/modules/leads/view";
 
+/** "EMPRESA DE PEQUENO PORTE" → "Empresa de pequeno porte" (a Receita manda tudo em maiúsculas). */
+const nice = (t: string) => { const l = t.toLowerCase(); return l.charAt(0).toUpperCase() + l.slice(1); };
+
 type Search = "idle" | "searching" | "failed";
 
 /** Dados da empresa + representante mais próximo. Usado no atendimento e no editor do lead. */
@@ -77,8 +80,8 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false, showMap =
         <div className="relative flex flex-wrap items-start gap-3">
           <span aria-hidden className="grid size-14 shrink-0 place-items-center rounded-2xl bg-grad text-on-accent shadow-lg shadow-accent/30"><Building2 size={26} /></span>
           <div className="min-w-0 flex-1">
-            <h2 className="display break-words text-xl leading-tight sm:text-2xl">{lead.company}</h2>
-            {lead.tradeName && lead.tradeName.trim().toLowerCase() !== lead.company.trim().toLowerCase() && <p className="mt-0.5 break-words text-sm font-semibold text-muted">{lead.tradeName}</p>}
+            <h2 className="break-words text-lg font-extrabold leading-snug tracking-tight sm:text-xl">{lead.company}</h2>
+            {lead.tradeName && lead.tradeName.trim().toLowerCase() !== lead.company.trim().toLowerCase() && <p className="mt-0.5 break-words text-sm font-medium text-muted">{nice(lead.tradeName)}</p>}
             <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"><CopyVal text={lead.cnpj}><span className="figure">{fmtCnpj(lead.cnpj)}</span></CopyVal>{lead.city && <span className="inline-flex items-center gap-1 text-muted"><MapPin size={13} aria-hidden /> {lead.city}/{lead.uf}</span>}</p>
           </div>
           {status ? <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${open ? "bg-ok/15 text-ok" : "bg-danger/15 text-danger"}`}>{open ? <CircleCheck size={14} aria-hidden /> : <TriangleAlert size={14} aria-hidden />} {status.toUpperCase()}</span> : <span className="rounded-full bg-sunk px-3 py-1 text-xs font-bold">{missing}</span>}
@@ -90,16 +93,16 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false, showMap =
       </div>
 
       {/* números que importam para a conversa */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Tile icon={Factory} label="Porte">{info?.porte ?? (info?.isMei ? "MEI" : null) ?? missing}</Tile>
-        <Tile icon={Landmark} label="Capital social">{info?.capital != null ? fmtMoney(info.capital) : missing}</Tile>
-        <Tile icon={CalendarClock} label="Tempo de atividade">{ageText ?? missing}</Tile>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-2">
+        <Tile icon={Factory} label="Porte">{info?.porte ? nice(info.porte) : info?.isMei ? "MEI" : missing}</Tile>
+        <Tile icon={Landmark} label="Capital">{info?.capital != null ? fmtMoney(info.capital) : missing}</Tile>
+        <Tile icon={CalendarClock} label="Atividade há">{ageText ?? missing}</Tile>
         <Tile icon={CalendarCheck} label="Visitas">{lead.visits.length ? `${lead.visits.filter((v) => !v.canceled).length} · última ${fmtDate(lastVisit?.at ?? lead.visits[0].at)}` : "Nenhuma"}</Tile>
       </div>
 
-      <div className="space-y-2.5 rounded-2xl border border-line p-3.5 text-sm">
-        <Row icon={Briefcase} label="Atividade">{info?.activity ? `${info.cnae ? `${info.cnae} - ` : ""}${info.activity}` : missing}</Row>
-        {info?.nature && <Row icon={Scale} label="Natureza jurídica">{info.nature}</Row>}
+      <div className="space-y-2.5 rounded-2xl border border-line p-4 text-sm">
+        <Row icon={Briefcase} label="Atividade">{info?.activity ? `${info.cnae ? `${info.cnae} - ` : ""}${nice(info.activity)}` : missing}</Row>
+        {info?.nature && <Row icon={Scale} label="Natureza jurídica">{nice(info.nature)}</Row>}
         <Row icon={MapPin} label="Endereço"><span className="flex flex-wrap items-center gap-x-2 gap-y-1">{addressLine ? <CopyVal>{addressLine}</CopyVal> : missing}{!showMap && <a href={mapsHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent underline"><MapPin size={13} aria-hidden /> Abrir no mapa</a>}</span></Row>
         <Row icon={Users} label="Sócios">{info?.partners.length ? <span className="flex flex-wrap gap-1.5">{info.partners.map((p, i) => <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-sunk px-2.5 py-1 text-xs"><UserRound size={12} aria-hidden className="text-accent" /><b className="font-semibold">{p.name}</b>{cleanRole(p.role) ? <span className="text-muted">· {cleanRole(p.role)}</span> : null}</span>)}</span> : missing}</Row>
       </div>
@@ -181,8 +184,8 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false, showMap =
 }
 
 function Tile({ icon: Icon, label, children }: { icon: LucideIcon; label: string; children: React.ReactNode }) {
-  return <div className="rounded-2xl border border-line bg-sunk/50 p-3"><p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted"><Icon size={13} aria-hidden className="text-accent" /> {label}</p><p className="mt-1 break-words text-sm font-semibold leading-snug">{children}</p></div>;
+  return <div className="rounded-2xl border border-line bg-sunk/50 p-3"><p className="flex items-center gap-1.5 whitespace-nowrap text-[11px] font-bold uppercase tracking-wide text-muted"><Icon size={13} aria-hidden className="shrink-0 text-accent" /> {label}</p><p className="mt-1.5 text-sm font-semibold leading-snug [overflow-wrap:anywhere]">{children}</p></div>;
 }
 function Row({ icon: Icon, label, children }: { icon: LucideIcon; label: string; children: React.ReactNode }) {
-  return <div className="flex items-start gap-3"><span aria-hidden className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-accent/12 text-accent"><Icon size={14} /></span><div className="min-w-0 flex-1"><p className="text-[11px] font-bold uppercase tracking-wider text-muted">{label}</p><div className="break-words">{children}</div></div></div>;
+  return <div className="flex items-start gap-3"><span aria-hidden className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-accent/12 text-accent"><Icon size={14} /></span><div className="min-w-0 flex-1"><p className="text-[11px] font-bold uppercase tracking-wide text-muted">{label}</p><div className="text-sm leading-snug [overflow-wrap:anywhere]">{children}</div></div></div>;
 }

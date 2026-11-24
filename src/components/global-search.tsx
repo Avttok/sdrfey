@@ -1,11 +1,17 @@
 "use client";
 
-import { Archive, Building2, CalendarCheck, CornerDownLeft, FileText, Handshake, LayoutGrid, Loader2, Mail, MapPin, ScrollText, Search, ShieldCheck, Truck, UserRound, X, type LucideIcon } from "lucide-react";
+import { Bell, Building2, CalendarCheck, CornerDownLeft, Handshake, LayoutGrid, ListChecks, Loader2, Mail, MapPin, MessageCircle, Package, ScrollText, Search, ShieldCheck, Tag, Truck, UserRound, Users, X, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { SearchHit, SearchKind } from "@/app/api/search/route";
 
 const META: Record<SearchKind, { label: string; icon: LucideIcon; color: string }> = {
+  user: { label: "Pessoas da equipe", icon: Users, color: "#3b82f6" },
+  task: { label: "Tarefas", icon: ListChecks, color: "#22c55e" },
+  chat: { label: "Mensagens do chat", icon: MessageCircle, color: "#06b6d4" },
+  notif: { label: "Notificações", icon: Bell, color: "#eab308" },
+  product: { label: "Produtos", icon: Package, color: "#a855f7" },
+  tag: { label: "Tags", icon: Tag, color: "#f43f5e" },
   page: { label: "Páginas", icon: LayoutGrid, color: "#6366f1" },
   admin: { label: "Painel do Adm", icon: ShieldCheck, color: "#ec4899" },
   lead: { label: "Leads", icon: Building2, color: "#0ea5e9" },
@@ -17,7 +23,6 @@ const META: Record<SearchKind, { label: string; icon: LucideIcon; color: string 
   email: { label: "Modelos de e-mail", icon: Mail, color: "#ef4444" },
   script: { label: "Roteiros", icon: ScrollText, color: "#d946ef" },
 };
-void FileText; void Archive;
 
 /** Lupa ao lado do sino: abre uma busca única por tudo que a pessoa pode ver no sistema. */
 export function GlobalSearch({ side = false }: { side?: boolean }) {
@@ -46,7 +51,7 @@ export function GlobalSearch({ side = false }: { side?: boolean }) {
     return () => { clearTimeout(t); ctl.abort(); };
   }, [q]);
 
-  const go = (h: SearchHit) => { setOpen(false); router.push(h.href); };
+  const go = (h: SearchHit) => { setOpen(false); if (h.href.startsWith("chat:")) { window.dispatchEvent(new CustomEvent("fey:open-chat", { detail: h.href.slice(5) === "dm" ? "geral" : h.href.slice(5) })); return; } router.push(h.href); };
   const onKey = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") { e.preventDefault(); setCur((c) => Math.min(hits.length - 1, c + 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setCur((c) => Math.max(0, c - 1)); }
@@ -58,7 +63,7 @@ export function GlobalSearch({ side = false }: { side?: boolean }) {
     <>
       <button type="button" aria-label="Pesquisar no sistema" title="Pesquisar (Ctrl+K)" onClick={() => setOpen(true)} className={`grid size-10 place-items-center rounded-xl text-muted transition hover:bg-sunk hover:text-ink ${side ? "" : ""}`}><Search size={20} aria-hidden /></button>
       {open && (
-        <div className="fixed inset-0 z-[90] flex items-start justify-center bg-black/45 px-3 pt-[10vh] backdrop-blur-sm" onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
+        <div className="fixed inset-0 z-[90] flex items-start justify-center bg-black/45 px-3 pt-[10vh]" onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
           <div role="dialog" aria-label="Pesquisar" className="menu-up w-full max-w-xl overflow-hidden rounded-3xl border border-line bg-panel shadow-2xl">
             <div className="flex items-center gap-3 border-b border-line px-4 py-3">
               {busy ? <Loader2 size={20} aria-hidden className="shrink-0 animate-spin text-accent" /> : <Search size={20} aria-hidden className="shrink-0 text-accent" />}

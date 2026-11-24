@@ -39,7 +39,7 @@ export function Modal({ onClose, title, subtitle, icon: Icon, badges, size = "md
   }, []);
   if (!host) return null;
   return createPortal(
-    <div className="modal-back fixed inset-0 z-50 flex items-end justify-center bg-black/45 backdrop-blur-sm sm:items-center sm:p-4" onMouseDown={(e) => { if (e.target === e.currentTarget && !locked) onClose(); }}>
+    <div className="modal-back fixed inset-0 z-50 flex items-end justify-center bg-black/45 sm:items-center sm:p-4" onMouseDown={(e) => { if (e.target === e.currentTarget && !locked) onClose(); }}>
       <div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={label} aria-labelledby={label ? undefined : titleId}
         className={`modal-card flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-3xl border border-line bg-panel shadow-2xl outline-none sm:max-h-[90dvh] sm:rounded-2xl ${SIZE[size]}`}>
         <header className="relative flex items-start gap-3 border-b border-line bg-grad-soft px-5 py-4 sm:px-6">

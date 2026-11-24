@@ -5,13 +5,13 @@ import { sql } from "drizzle-orm";
 import { AttendFlow } from "@/components/attend-flow";
 import { GoalPills } from "@/components/goal-tiles";
 import { ShuffleHero } from "@/components/shuffle-hero";
-import { ListHint } from "@/components/list-hint";
+import { ListCards } from "@/components/list-hint";
 import { db } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
 import { getSettings } from "@/modules/settings/get";
 import { effectiveGoals } from "@/modules/settings/goals";
 import { startSalesListAction } from "@/modules/lists/actions";
-import { activeList } from "@/modules/lists/queries";
+import { activeList, myLists } from "@/modules/lists/queries";
 import { recosForLead } from "@/modules/recommendations/data";
 import { suggestGoal } from "@/modules/scripts/goal";
 import { listScriptsFor } from "@/modules/scripts/list";
@@ -39,10 +39,11 @@ export default async function SalesShufflePage() {
       (select count(*) from seller_shuffles where user_id = ${me.id} and not is_test and outcome = 'deal' and done_at >= ${today})::int as deals`),
     inactiveStock(),
   ]);
-  const al = me.permissions["tab.lista_flow_vendas"] || me.isAdmin ? await activeList(me.id, "vendas") : null;
+  const listOk = me.permissions["tab.lista_flow_vendas"] || me.isAdmin;
+  const al = listOk ? await activeList(me.id, "vendas") : null;
+  const myL = listOk ? await myLists(me.id, "vendas") : null;
   return (
-    <ShuffleHero list={al && al.count > 0 ? { action: startSalesListAction, name: al.name, count: al.count, href: "/lista-flow-vendas" } : undefined} title="Shuffler Vendas" avatar={me.avatar} roles={me.shownRoles} action={startSalesShuffleAction} empty={stock > 0 ? undefined : { hint: "Nenhum lead inativo livre agora. Quando o time liberar novos (ou algum voltar da espera), eles aparecem aqui." }}>
-      {!al && (me.permissions["tab.lista_flow_vendas"] || me.isAdmin) && <ListHint href="/lista-flow-vendas" />}
+    <ShuffleHero aside={myL ? <ListCards href="/lista-flow-vendas" lists={myL.map((l) => ({ id: l.id, name: l.name, count: l.count, active: l.active }))} /> : undefined} list={al && al.count > 0 ? { action: startSalesListAction, name: al.name, count: al.count, href: "/lista-flow-vendas" } : undefined} title="Shuffler Vendas" avatar={me.avatar} roles={me.shownRoles} action={startSalesShuffleAction} empty={stock > 0 ? undefined : { hint: "Nenhum lead inativo livre agora. Quando o time liberar novos (ou algum voltar da espera), eles aparecem aqui." }}>
       <GoalPills items={[
         { icon: "shuffle", label: "Trabalhados hoje", value: r?.worked ?? 0 },
         { icon: "handshake", label: "Negociações abertas hoje", value: r?.deals ?? 0 },

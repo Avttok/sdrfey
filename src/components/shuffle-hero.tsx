@@ -8,7 +8,7 @@ import type { Role } from "@/config/roles";
 import { SubmitButton } from "@/components/submit-button";
 
 /** Tela inicial do Shuffler: fundo vivo, cartas flutuando, título, conteúdo centralizado e botão grande. */
-export function ShuffleHero({ action, children, avatar, roles, empty, list, title = "Shuffler Prospecção" }: { /** Lista do Lista Flow ativa: mostra o botão extra. */ list?: { action: () => void | Promise<void>; name: string; count: number; href: string }; /** Nome exibido no topo da tela inicial. */ title?: string; action: () => void | Promise<void>; children: React.ReactNode; avatar?: string | null; roles: readonly Role[]; /** Sem lead para sortear: troca a tela por um aviso. */ empty?: { hint: string } }) {
+export function ShuffleHero({ action, children, avatar, roles, empty, list, aside, title = "Shuffler Prospecção" }: { /** Cartas do canto direito (listas). Com elas, as metas vão para a esquerda. */ aside?: React.ReactNode; /** Lista do Lista Flow ativa: mostra o botão extra. */ list?: { action: () => void | Promise<void>; name: string; count: number; href: string }; /** Nome exibido no topo da tela inicial. */ title?: string; action: () => void | Promise<void>; children: React.ReactNode; avatar?: string | null; roles: readonly Role[]; /** Sem lead para sortear: troca a tela por um aviso. */ empty?: { hint: string } }) {
   return (
     <>
       <div aria-hidden className="spawn-fade pointer-events-none fixed inset-0 -z-10" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 26%, var(--bg)) 0%, color-mix(in srgb, var(--accent) 7%, var(--bg)) 48%, color-mix(in srgb, var(--accent) 20%, var(--bg)) 100%)" }}>
@@ -35,7 +35,7 @@ export function ShuffleHero({ action, children, avatar, roles, empty, list, titl
           <span className="text-accent"><BrandMark size={92} color="currentColor" legacy={<FeyMark animated size={92} color="currentColor" />} /></span>
           <h1 className="sr-only"><Term>{title}</Term></h1>
         </div>
-        <div className="w-full">{children}</div>
+        {aside ? <div className="grid w-full max-w-5xl items-center gap-8 lg:grid-cols-[minmax(0,1fr)_auto]"><div className="min-w-0">{children}</div><div className="lg:pl-6">{aside}</div></div> : <div className="w-full">{children}</div>}
         <form action={action} className="sh-rise flex flex-col items-center gap-3" style={{ "--d": ".5s" } as React.CSSProperties}>
           <div className="relative grid size-32 place-items-center">
             {[["-18deg", "-2.1rem", "0s"], ["16deg", "2.1rem", "-1.4s"]].map(([r, x, d]) => (

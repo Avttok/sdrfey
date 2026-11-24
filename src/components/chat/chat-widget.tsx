@@ -53,7 +53,7 @@ function InfoDialog({ messageId, onClose }: { messageId: number; onClose: () => 
   }, [messageId]);
   const Icon = info ? KIND_META[info.kind].Icon : Building2;
   return (
-    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/40 backdrop-blur-md p-4" role="dialog" aria-modal="true" aria-label="Item compartilhado" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label="Item compartilhado" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="max-h-[88vh] w-full max-w-xl space-y-4 overflow-y-auto rounded-2xl border border-line bg-panel p-5 shadow-2xl">
         <div className="flex items-start gap-3">
           <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-grad-soft text-accent"><Icon size={20} aria-hidden /></span>
@@ -135,7 +135,7 @@ function ProfileDialog({ userId, hex, isAdmin, onClose, onPurged }: { userId: nu
   const themeVars = (th ? { "--accent": th.hex, "--accent-2": th.hex2 ?? `color-mix(in oklab, ${th.hex} 78%, black)`, "--on-accent": th.on } : { "--accent": hex }) as unknown as React.CSSProperties;
   const sty = chatStyle(p?.style);
   return (
-    <div className="spawn-fade fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-label="Perfil" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="spawn-fade fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Perfil" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={themeVars} className="spawn-in relative w-full max-w-sm overflow-hidden rounded-3xl border border-line bg-panel shadow-2xl">
         <div className="relative h-32 overflow-hidden bg-grad" style={bannerStyle(p?.banner)}>
           <span aria-hidden className="sh-card absolute -left-6 -top-8 size-32 rounded-full bg-white/25 blur-2xl" style={{ "--d": "0s" } as React.CSSProperties} />
@@ -190,6 +190,7 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
   const [open, setOpen] = useState(false);
   const { ask, dialog } = useConfirm();
   const [channel, setChannel] = useState(channels[0].key);
+  useEffect(() => { const on = (e: Event) => { const c = (e as CustomEvent<string>).detail; if (typeof c === "string") { setChannel(c); setOpen(true); } }; window.addEventListener("fey:open-chat", on); return () => window.removeEventListener("fey:open-chat", on); }, []);
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [more, setMore] = useState(false);

@@ -6,10 +6,13 @@ import { visibleNav } from "@/config/nav";
 import { ADMIN_SECTIONS } from "@/config/admin-sections";
 import { isSellerOnly } from "@/config/roles";
 import { where as leadsWhere } from "@/modules/leads/list";
+import { canAccessChannel, CHANNELS } from "@/modules/chat/channels";
+import { visibleUsers } from "@/modules/auth/visibility";
+import { ROLE_META, type Role } from "@/config/roles";
 
 export const dynamic = "force-dynamic";
 
-export type SearchKind = "page" | "admin" | "lead" | "person" | "visit" | "deal" | "rep" | "carrier" | "email" | "script";
+export type SearchKind = "page" | "admin" | "user" | "lead" | "person" | "visit" | "deal" | "task" | "chat" | "notif" | "product" | "tag" | "rep" | "carrier" | "email" | "script";
 export type SearchHit = { kind: SearchKind; title: string; sub?: string; href: string };
 
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -28,6 +31,9 @@ export async function GET(req: Request) {
   // Páginas e configurações (só as que a pessoa enxerga no menu; o painel do Adm só para o Adm)
   for (const n of visibleNav(me.permissions, me.isAdmin)) if (norm(`${n.label} ${n.group ?? ""}`).includes(nq)) hits.push({ kind: "page", title: n.label, sub: n.group ?? "Menu", href: n.href });
   if (adminAll) for (const s of ADMIN_SECTIONS) for (const i of s.items) if (norm(`${i.label} ${i.hint} ${s.title}`).includes(nq)) hits.push({ kind: "admin", title: i.label, sub: `Painel do Adm · ${s.title}`, href: i.href });
+
+  const MINE: [string, string][] = [["Minha conta · Cor, tema e aparência", "tema cor accent fonte aparência escuro claro"], ["Minha conta · Foto e banner do perfil", "avatar foto banner perfil"], ["Minha conta · Senha", "senha trocar segurança"], ["Minha conta · Agente e ramal (discador)", "agente ramal discador vocall telefone"], ["Minha conta · Barra de menus", "menu barra ordem pastas"]];
+  for (const [t, k] of MINE) if (norm(`${t} ${k}`).includes(nq)) hits.push({ kind: "page", title: t, sub: "Configurações", href: "/conta" });
 
   const jobs: Promise<void>[] = [];
   const run = (fn: () => Promise<void>) => jobs.push(fn().catch(() => undefined));
@@ -66,9 +72,40 @@ export async function GET(req: Request) {
     const r = await db.execute<{ id: number; title: string; summary: string | null }>(sql`select id, title, summary from scripts where active = true and (owner_id is null or owner_id = ${me.id}) and (title ilike ${like} or summary ilike ${like}) order by title limit 4`);
     for (const x of r) hits.push({ kind: "script", title: x.title, sub: x.summary ?? "Roteiro", href: "/scripts" });
   });
+  run(async () => {
+    const r = await db.execute<{ id: number; name: string; username: string; roles: string[] }>(sql`select id, name, username, roles from users where active = true and (name ilike ${like} or username ilike ${like}) and ${visibleUsers(me) ?? sql`true`} order by name limit 5`);
+    for (const x of r) hits.push({ kind: "user", title: x.name, sub: `@${x.username} · ${x.roles.filter((k) => k !== "admin" || me.isAdmin).map((k) => ROLE_META[k as Role]?.label ?? k).join(", ")}`, href: adminAll ? "/admin/usuarios" : "chat:dm" });
+  });
+  if (can("chat.use")) run(async () => {
+    const r = await db.execute<{ channel: string; body: string; at: string; name: string | null }>(sql`select m.channel, m.body, m.created_at as at, u.name from chat_messages m left join users u on u.id = m.user_id where m.deleted_at is null and m.body ilike ${like} order by m.id desc limit 60`);
+    let n = 0;
+    for (const x of r) {
+      if (n >= 5) break;
+      if (!canAccessChannel({ id: me.id, roles: me.roles }, x.channel)) continue;
+      n++;
+      const label = x.channel.startsWith("dm:") ? "Conversa privada" : CHANNELS.find((c) => c.key === x.channel)?.label ?? x.channel;
+      hits.push({ kind: "chat", title: x.body.slice(0, 90), sub: `${x.name ?? "Conta removida"} · ${label}`, href: `chat:${x.channel}` });
+    }
+  });
+  run(async () => {
+    const r = await db.execute<{ title: string; note: string | null; lead_id: number | null; done: boolean }>(sql`select title, note, lead_id, done_at is not null as done from tasks where user_id = ${me.id} and (title ilike ${like} or note ilike ${like}) order by done_at is not null, due_at nulls last limit 5`);
+    for (const x of r) hits.push({ kind: "task", title: x.title, sub: x.done ? "Tarefa concluída" : "Tarefa", href: x.lead_id ? `/leads/${x.lead_id}` : "/tarefas" });
+  });
+  run(async () => {
+    const r = await db.execute<{ title: string; body: string | null; href: string | null }>(sql`select title, body, href from notifications where user_id = ${me.id} and (title ilike ${like} or body ilike ${like}) order by id desc limit 4`);
+    for (const x of r) hits.push({ kind: "notif", title: x.title, sub: x.body ?? "Notificação", href: x.href ?? "/painel" });
+  });
+  if (can("tab.negociacoes") || adminAll) run(async () => {
+    const r = await db.execute<{ code: string; description: string }>(sql`select code, description from products where code ilike ${like} or description ilike ${like} order by description limit 4`);
+    for (const x of r) hits.push({ kind: "product", title: x.description, sub: `Produto · ${x.code}`, href: adminAll ? "/admin/vendas" : "/negociacoes" });
+  });
+  if (adminAll) run(async () => {
+    const r = await db.execute<{ label: string; group_key: string }>(sql`select label, group_key from tags where label ilike ${like} order by label limit 4`);
+    for (const x of r) hits.push({ kind: "tag", title: x.label, sub: `Tag · ${x.group_key}`, href: "/admin/tags" });
+  });
   await Promise.all(jobs);
 
-  const order: SearchKind[] = ["page", "admin", "lead", "person", "deal", "visit", "rep", "carrier", "email", "script"];
+  const order: SearchKind[] = ["page", "admin", "user", "lead", "person", "deal", "visit", "task", "chat", "notif", "product", "tag", "rep", "carrier", "email", "script"];
   hits.sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
-  return NextResponse.json({ hits: hits.slice(0, 40) }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ hits: hits.slice(0, 60) }, { headers: { "Cache-Control": "no-store" } });
 }

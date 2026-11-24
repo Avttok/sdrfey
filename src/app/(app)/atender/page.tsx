@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 import { and, eq, sql } from "drizzle-orm";
 import { AttendFlow } from "@/components/attend-flow";
 import { GoalTiles } from "@/components/goal-tiles";
-import { ListHint } from "@/components/list-hint";
+import { ListCards } from "@/components/list-hint";
 import { ShuffleHero } from "@/components/shuffle-hero";
 import { attendanceSessions, db, leads, users, visits } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
@@ -15,7 +15,7 @@ import { peekNextSeller } from "@/modules/deals/handoff";
 import { getSettings } from "@/modules/settings/get";
 import { effectiveGoals } from "@/modules/settings/goals";
 import { startSdrListAction } from "@/modules/lists/actions";
-import { activeList } from "@/modules/lists/queries";
+import { activeList, myLists } from "@/modules/lists/queries";
 import { recosForLead } from "@/modules/recommendations/data";
 import { listScriptsFor } from "@/modules/scripts/list";
 import { guessSegment } from "@/config/scripts";
@@ -52,20 +52,20 @@ export default async function AttendPage() {
   const goals = effectiveGoals(me, settings);
   const needExtra = goals.calls.on || goals.converted.on;
   // o que sobra também roda junto: cada ida ao banco em fila soma o tempo de rede
-  const [extraRows, available, al, picked] = await Promise.all([
+  const [extraRows, available, al, myL, picked] = await Promise.all([
     needExtra ? db.execute<{ calls: number; converted: number }>(sql`select
       (select count(*) from interactions i where i.user_id = ${me.id} and not i.is_test and i.channel = 'ligacao' and i.at >= ${today})::int as calls,
       (select count(*) from deals d where d.sdr_id = ${me.id} and not d.is_test and d.created_at >= ${today})::int as converted`) : Promise.resolve([]),
     lead ? Promise.resolve(true) : hasAvailable(me.id, { skipRelease: true }),
     !lead && (me.permissions["tab.lista_flow"] || me.isAdmin) ? activeList(me.id, "sdr") : Promise.resolve(null),
+    !lead && (me.permissions["tab.lista_flow"] || me.isAdmin) ? myLists(me.id, "sdr") : Promise.resolve(null),
     lead ? suggestGoal(lead.id, "sdr").then(async (g) => ({ g, list: await listScriptsFor(me.id, g, guessSegment(lead.tradeName, lead.company, lead.info?.activity)) })) : Promise.resolve({ g: "sdr" as const, list: [] }),
   ]);
   const extra = { calls: extraRows[0]?.calls ?? 0, converted: extraRows[0]?.converted ?? 0 };
 
   if (!lead) {
     return (
-      <ShuffleHero list={al && al.count > 0 ? { action: startSdrListAction, name: al.name, count: al.count, href: "/lista-flow" } : undefined} avatar={me.avatar} roles={me.shownRoles} action={startAction} empty={available ? undefined : { hint: "Todos os leads já foram trabalhados, estão com outra pessoa ou aguardando a hora de voltar. Avise o time e confira de novo daqui a pouco." }}>
-        {!al && (me.permissions["tab.lista_flow"] || me.isAdmin) && <ListHint href="/lista-flow" />}
+      <ShuffleHero aside={myL ? <ListCards href="/lista-flow" lists={myL.map((l) => ({ id: l.id, name: l.name, count: l.count, active: l.active }))} /> : undefined} list={al && al.count > 0 ? { action: startSdrListAction, name: al.name, count: al.count, href: "/lista-flow" } : undefined} avatar={me.avatar} roles={me.shownRoles} action={startAction} empty={available ? undefined : { hint: "Todos os leads já foram trabalhados, estão com outra pessoa ou aguardando a hora de voltar. Avise o time e confira de novo daqui a pouco." }}>
         <GoalTiles items={[
           ...(goals.attended.on ? [{ k: "attended" as const, label: "Atendidos", value: done?.n ?? 0, qty: goals.attended.qty }] : []),
           ...(goals.scheduled.on ? [{ k: "scheduled" as const, label: "Agendados", value: sched?.n ?? 0, qty: goals.scheduled.qty }] : []),

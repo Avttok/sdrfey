@@ -55,7 +55,7 @@ async function ensureAutoTag(tx: Parameters<Parameters<typeof db.transaction>[0]
 export type EnrichOrigin = "lote" | "cron" | "manual" | "auto" | "novo";
 
 /** Consulta o CNPJ e registra o resultado no histórico (tela do Adm). */
-export async function enrichLead(leadId: number, userId: number | null = null, origin: EnrichOrigin = "manual"): Promise<EnrichResult> {
+export async function enrichLead(leadId: number, userId: number | null = null, origin: EnrichOrigin = "manual", via?: "brasilapi" | "minhareceita"): Promise<EnrichResult> {
   const t0 = Date.now();
   const log = async (ok: boolean, r?: EnrichResult, err?: string) => {
     try {
@@ -64,7 +64,7 @@ export async function enrichLead(leadId: number, userId: number | null = null, o
     } catch { /* o histórico nunca derruba a consulta */ }
   };
   try {
-    const r = await enrichCore(leadId, userId);
+    const r = await enrichCore(leadId, userId, via);
     await log(r.state === "ok", r);
     return r;
   } catch (e) { await log(false, undefined, e instanceof Error ? e.message : "erro"); throw e; }
@@ -74,7 +74,7 @@ export async function enrichLead(leadId: number, userId: number | null = null, o
   }
 }
 
-async function enrichCore(leadId: number, userId: number | null): Promise<EnrichResult> {
+async function enrichCore(leadId: number, userId: number | null, via?: "brasilapi" | "minhareceita"): Promise<EnrichResult> {
   const [lead] = await db.select().from(leads).where(eq(leads.id, leadId));
   if (!lead) throw new Error("Lead não encontrado.");
 
@@ -90,7 +90,7 @@ async function enrichCore(leadId: number, userId: number | null): Promise<Enrich
   let rwRes: Awaited<ReturnType<typeof getJson>>, bRes: Awaited<ReturnType<typeof getJson>>;
   if (fast) {
     /* Pesquisa Rápida: os CNPJs se dividem entre BrasilAPI e Minha Receita (cada uma serve de reserva da outra); a ReceitaWS fica para a fila. */
-    const order = lead.id % 2 === 0 ? [bUrl, mrUrl] : [mrUrl, bUrl];
+    const order = (via ? via === "brasilapi" : lead.id % 2 === 0) ? [bUrl, mrUrl] : [mrUrl, bUrl];
     rwRes = off;
     bRes = await getJson(order[0]);
     if (!parseBrasilApi(bRes.data) && !bRes.final) bRes = await getJson(order[1]);

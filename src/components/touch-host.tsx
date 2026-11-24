@@ -74,7 +74,7 @@ export function TouchHost() {
 
   return (
     <>
-      <div className="fixed inset-0 z-[61] bg-black/25 backdrop-blur-[3px]" aria-hidden />
+      <div className="fixed inset-0 z-[61] bg-black/25" aria-hidden />
       <div className="pointer-events-none fixed inset-x-0 bottom-0 top-0 z-[62] flex items-end justify-center px-4 pb-24 max-lg:pb-28" aria-live="polite">
         <section role="dialog" aria-modal="true" aria-label={title} className="card-in pointer-events-auto relative flex max-h-[min(36rem,calc(100dvh-8rem))] w-full max-w-[34rem] flex-col overflow-hidden rounded-3xl border border-line bg-panel shadow-2xl ring-1 ring-black/5">
           <header className="flex items-center gap-3 bg-grad px-4 py-3 text-on-accent">
