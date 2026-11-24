@@ -1,6 +1,8 @@
 "use client";
 
 import { callNumber } from "@/components/call-number";
+import { CallResultMenu } from "@/components/call-result-menu";
+import { resolveTouchAction, startTouchAction } from "@/modules/touches/actions";
 import { flushTouches, pendingTouches, trackTouch, useTouchScope, type TouchDone } from "@/lib/touch-bus";
 import { Timer, UserRound, Flag, Ban, Building2, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Send, Plus, RotateCcw, History, SkipForward, ScrollText, Square, TriangleAlert, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -470,6 +472,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                 <li key={p.id} className="lift flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-sunk/60 px-4 py-3"><span aria-hidden className="grid size-10 place-items-center rounded-xl bg-ok/15 text-ok"><MessageCircle size={18} /></span>
                   <span className="flex-1"><CopyVal text={p.value}><span className="figure text-lg">{fmtPhone(p.value)}</span></CopyVal>{done.whatsapp?.has(keyOf("whatsapp", p.value)) && <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-ok/15 px-2 py-0.5 text-xs font-bold text-ok"><Check size={12} aria-hidden /> registrado</span>}</span>
                   <a href={chatproUrl(p.value)} target="_blank" rel="noreferrer" onClick={() => { void trackTouch({ leadId: lead.id, channel: "whatsapp", target: p.value, label: lead.tradeName ?? lead.company, personId: p.personId ?? null, defer: true }); }} className={btnPrimary}><MessageCircle size={16} aria-hidden /> Abrir no ChatPro</a>
+                  <button type="button" className={`${btnGhost} !px-3 text-danger`} title="Marcar este número como inválido" aria-label="Marcar este número como inválido" onClick={() => run(() => markWrongAction(lead.id, p.id, true), "Número marcado como inválido.")}><Ban size={15} aria-hidden /> Inválido</button>
                 </li>
               ))}
               {goodPhones.length === 0 && <li className="text-sm text-muted">Sem telefone válido.</li>}
@@ -488,14 +491,19 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                 const who = p.personId ? allPeople.find((x) => x.id === p.personId) : null;
                 const on = callPhone?.id === p.id;
                 return (
-                  <li key={p.id} className={`lift flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border-2 px-3 py-2.5 transition ${on ? "border-accent bg-accent/10" : "border-line bg-sunk/60"}`}>
-                    <span aria-hidden className={`grid size-10 shrink-0 place-items-center rounded-xl ${on ? "bg-accent text-on-accent" : "bg-accent/15 text-accent"}`}><Phone size={18} /></span>
-                    <button type="button" className="min-w-[11rem] flex-1 whitespace-nowrap text-left" onClick={() => { setCallId(on ? null : p.id); setSpoken(null); if (!on && p.personId) setTalkingId(p.personId); }} title="Usar este número no roteiro" aria-pressed={on}>
-                      <span className="figure block text-lg leading-tight">{fmtPhone(p.value)}</span>
-                      <span className="block truncate text-xs text-muted">{who ? <><UserRound size={11} aria-hidden className="mr-0.5 inline" />{who.name}{who.roleTitle ? ` · ${who.roleTitle}` : ""}</> : "Sem contato indexado"}</span>
-                    </button>
-                    <button type="button" disabled={vocall.configured && vocall.ready === false} className={`${btnPrimary} disabled:opacity-50`} onClick={() => { setCallId(p.id); void callNumber(p.value, lead.tradeName ?? lead.company, toast, vocall, lead, p.personId ?? null); }}><Phone size={15} aria-hidden /> Ligar</button>
-                    <button type="button" className={btnGhost} aria-label="Copiar número" onClick={() => { void copy(p.value, toast); void trackTouch({ leadId: lead.id, channel: "call", target: p.value, label: lead.tradeName ?? lead.company, personId: p.personId ?? null, defer: true }); }}><Copy size={15} aria-hidden /> Copiar</button>
+                  <li key={p.id} className={`lift space-y-2.5 rounded-2xl border-2 px-3 py-3 transition ${on ? "border-accent bg-accent/10" : "border-line bg-sunk/60"}`}>
+                    <div className="flex items-center gap-3">
+                      <span aria-hidden className={`grid size-10 shrink-0 place-items-center rounded-xl ${on ? "bg-accent text-on-accent" : "bg-accent/15 text-accent"}`}><Phone size={18} /></span>
+                      <button type="button" className="min-w-0 flex-1 text-left" onClick={() => { setCallId(on ? null : p.id); setSpoken(null); if (!on && p.personId) setTalkingId(p.personId); }} title="Usar este número no roteiro" aria-pressed={on}>
+                        <span className="figure block text-lg leading-tight">{fmtPhone(p.value)}</span>
+                        <span className="block break-words text-xs text-muted">{who ? <><UserRound size={11} aria-hidden className="mr-0.5 inline" />{who.name}{who.roleTitle ? ` · ${who.roleTitle}` : ""}</> : "Sem contato indexado"}</span>
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button type="button" disabled={vocall.configured && vocall.ready === false} className={`${btnPrimary} flex-1 disabled:opacity-50`} onClick={() => { setCallId(p.id); void callNumber(p.value, lead.tradeName ?? lead.company, toast, vocall, lead, p.personId ?? null); }}><Phone size={15} aria-hidden /> Ligar</button>
+                      <button type="button" className={`${btnGhost} !px-3`} aria-label="Copiar número" title="Copiar número" onClick={() => { void copy(p.value, toast); void trackTouch({ leadId: lead.id, channel: "call", target: p.value, label: lead.tradeName ?? lead.company, personId: p.personId ?? null, defer: true }); }}><Copy size={16} aria-hidden /></button>
+                      <CallResultMenu onPick={(r) => run(async () => { const t = await startTouchAction({ leadId: lead.id, channel: "call", target: p.value, personId: p.personId ?? null }); if (!t.ok) return { ok: false, message: "Não consegui registrar." }; return resolveTouchAction({ id: t.id, outcome: r }); }, r === "numero_errado" ? "Número marcado como inválido." : "Resultado registrado.")} />
+                    </div>
                   </li>
                 );
               })}

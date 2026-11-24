@@ -54,14 +54,14 @@ export function LiveContacts({ onNote, leadId, people, channels, talkingId, onTa
       {onNote && obsOpen && <div className="mt-3"><ObservationForm onAdd={(t) => { onNote(t); toast("ok", "Observação anotada."); }} onClose={() => setObsOpen(false)} /></div>}
 
       {people.length > 0 && (
-        <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+        <ul className="mt-3 grid gap-2">
           {people.map((p) => {
             const mine = channels.filter((c) => c.personId === p.id && !c.wrong); const on = talkingId === p.id;
             return (
               <li key={p.id} className={`rounded-xl border-2 p-2.5 transition ${on ? "border-accent bg-accent/10" : "border-line bg-sunk/60"}`}>
                 <button type="button" aria-pressed={on} onClick={() => onTalking(on ? null : p.id)} className="flex w-full items-center gap-2 text-left" title="Falar com esta pessoa no roteiro">
                   <span className={`grid size-8 shrink-0 place-items-center rounded-full text-xs font-bold ${on ? "bg-accent text-on-accent" : "bg-sunk text-muted"}`}>{p.name.trim()[0]?.toUpperCase()}</span>
-                  <span className="min-w-0 flex-1"><b className="block truncate text-sm">{p.name}</b><span className="block truncate text-xs text-muted">{p.roleTitle ?? "Sem cargo"}</span></span>
+                  <span className="min-w-0 flex-1"><b className="block break-words text-sm">{p.name}</b><span className="block break-words text-xs text-muted">{p.roleTitle ?? "Sem cargo"}</span></span>
                   {on && <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold uppercase text-on-accent"><Check size={11} aria-hidden /> No roteiro</span>}
                 </button>
                 {mine.length > 0 && <p className="mt-1.5 flex flex-wrap gap-1 text-xs">{mine.map((c) => <span key={c.id} className="inline-flex items-center gap-1 rounded-full bg-panel px-2 py-0.5">{c.kind === "phone" ? <Phone size={11} aria-hidden /> : <AtSign size={11} aria-hidden />}{c.kind === "phone" ? fmtPhone(c.value) : c.value}</span>)}</p>}

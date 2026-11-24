@@ -25,7 +25,7 @@ import { addChannelAction, markWrongAction, removeChannelAction } from "@/module
 import { addPersonAction, addVisitAction, deleteVisitAction, changeTagAction, forceReleaseAction, removePersonAction, setPersonStatusAction, resetLeadFromPageAction, updateLeadAction } from "@/modules/leads/edit";
 import type { LeadView, TagCatalog } from "@/modules/leads/view";
 
-export function LeadEditor({ kpis, records, afterLeft, afterRight, lead, catalog, owners, canEdit, canRelease, lockedBy, showMap, meId, sellerView, dealId, inDeal, dealSeller }: { kpis?: React.ReactNode; records?: React.ReactNode; afterLeft?: React.ReactNode; afterRight?: React.ReactNode; dealSeller?: { name: string; hex: string } | null; inDeal?: boolean; sellerView?: boolean; dealId?: number | null; showMap: boolean; meId: number; lead: LeadView; catalog: TagCatalog; owners: { id: number; name: string }[]; canEdit: boolean; canRelease: boolean; lockedBy: { name: string; hex: string } | null }) {
+export function LeadEditor({ adminDelete, kpis, records, afterLeft, afterRight, lead, catalog, owners, canEdit, canRelease, lockedBy, showMap, meId, sellerView, dealId, inDeal, dealSeller }: { adminDelete?: React.ReactNode; kpis?: React.ReactNode; records?: React.ReactNode; afterLeft?: React.ReactNode; afterRight?: React.ReactNode; dealSeller?: { name: string; hex: string } | null; inDeal?: boolean; sellerView?: boolean; dealId?: number | null; showMap: boolean; meId: number; lead: LeadView; catalog: TagCatalog; owners: { id: number; name: string }[]; canEdit: boolean; canRelease: boolean; lockedBy: { name: string; hex: string } | null }) {
   const toast = useToast();
   const active = lead.registrationStatus ? lead.registrationStatus.toUpperCase() === "ATIVA" : null;
   const name0 = lead.tradeName ?? lead.company;
@@ -54,7 +54,7 @@ export function LeadEditor({ kpis, records, afterLeft, afterRight, lead, catalog
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-2"><Link href="/leads" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink"><ArrowLeft size={15} aria-hidden /> Voltar para Leads</Link><RoteiroLink leadId={lead.id} /></div>
+      <div className="flex flex-wrap items-center justify-between gap-2"><Link href="/leads" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink"><ArrowLeft size={15} aria-hidden /> Voltar para Leads</Link>{adminDelete}</div>
       <header className={`${panelCls} relative overflow-hidden p-5 sm:p-6`}>
         <div aria-hidden className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-accent/10 blur-2xl" />
         <div className="relative flex flex-wrap items-center gap-x-5 gap-y-4">
@@ -72,6 +72,7 @@ export function LeadEditor({ kpis, records, afterLeft, afterRight, lead, catalog
           <div className="flex flex-wrap items-center gap-2">
             {!sellerView && !lockedBy && inDeal && (dealSeller ? <PersonBubble name={dealSeller.name} hex={dealSeller.hex} /> : <span className="rounded-full bg-accent/12 px-3 py-1.5 text-sm font-semibold text-accent">Vendas</span>)}
             {sellerView ? (dealId ? <Link href={`/negociacoes/${dealId}`} className={btnPrimary}><Handshake size={16} aria-hidden /> Abrir negociação</Link> : null) : lockedBy ? <PersonBubble name={lockedBy.name} hex={lockedBy.hex} prefix="Em atendimento" /> : inDeal ? null : <><AttendButton leadId={lead.id} />{dealId ? <Link href={`/negociacoes/${dealId}`} className={btnGhost}><Handshake size={16} aria-hidden /> Abrir negociação</Link> : null}</>}
+            <RoteiroLink leadId={lead.id} />
             {!sellerView && inDeal && !lockedBy && dealId ? <Link href={`/negociacoes/${dealId}`} className={btnGhost}><Handshake size={16} aria-hidden /> Abrir negociação</Link> : null}
             {!sellerView && canEdit && !lockedBy && <button type="button" className={`${btnGhost} !border-danger !bg-danger !text-white hover:brightness-110`} disabled={pending} onClick={() => setConfirmReset(true)}><RotateCcw size={15} aria-hidden /> Resetar lead</button>}
             {lockedBy && canRelease && <button type="button" className={btnGhost} disabled={pending} onClick={() => ask({ title: "Liberar este lead?", body: `${lockedBy?.name ?? "A pessoa"} perde o atendimento em andamento e o lead volta ao estoque.`, label: "Sim, liberar", tone: "warn", icon: UnlockKeyhole, onConfirm: () => run(() => forceReleaseAction(lead.id)) })}><UnlockKeyhole size={15} aria-hidden /> Liberar lead</button>}

@@ -26,6 +26,8 @@ type Recent = { digits: string; label: string };
 type Tab = "dial" | "lead" | "recent";
 
 const asEmbed = (u: string) => u + (u.includes("?") ? "&" : "?") + "embed=1";
+/** Razão social completa quando o nome fantasia guardado é só um pedaço dela (vem cortado de algumas planilhas). */
+const bestName = (l: { tradeName: string | null; company: string }) => (l.tradeName && l.company.length > l.tradeName.length && l.company.toLowerCase().startsWith(l.tradeName.toLowerCase()) ? l.company : l.tradeName ?? l.company);
 const initials = (s: string) => s.replace(/[^\p{L}\s]/gu, "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "#";
 const ago = (iso: string) => { const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000); return d <= 0 ? "hoje" : d === 1 ? "ontem" : `há ${d} dias`; };
 
@@ -241,7 +243,7 @@ export function PhoneDock() {
 
   const broken = !vocall.ready && !checking && vocall.fails >= 1;
   const contactName = lead?.person?.name ?? null;
-  const companyName = lead ? (lead.tradeName ?? lead.company) : call?.empresa ?? null;
+  const companyName = lead ? bestName(lead) : call?.empresa ?? null;
   const qualified = !!call && qDone === call.since;
   const needQual = ended && !!call?.qualUrl && !qualified;
   const newCall = async () => {
@@ -362,12 +364,12 @@ export function PhoneDock() {
 
               {!inCall && !calling && shownTab === "dial" && (
                 <>
-                  <div className="relative rounded-3xl bg-sunk px-3 py-4 text-center transition focus-within:ring-2 focus-within:ring-accent/40">
-                    <input ref={inputRef} aria-label="Número para ligar" type="tel" inputMode="numeric" autoComplete="off" placeholder="Digite o número" value={digits ? fmtPhone(digits) : ""}
+                  <div className="relative rounded-3xl bg-sunk px-3 py-4 text-center">
+                    <input ref={inputRef} aria-label="Número para ligar" type="tel" inputMode="numeric" autoComplete="off" placeholder="DIGITE O NÚMERO" style={{ outline: "none", boxShadow: "none", border: 0 }} value={digits ? fmtPhone(digits) : ""}
                       onChange={(e) => { setNum(e.target.value.replace(/\D/g, "").slice(0, 13)); setPinned(null); }}
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void dialTo(digits); } }}
                       onPaste={(e) => { e.preventDefault(); const t = e.clipboardData.getData("text").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "").slice(0, 13); setNum(t); setPinned(null); }}
-                      className="figure w-full appearance-none rounded-none border-0 bg-transparent px-11 text-center text-[1.75rem] font-bold tracking-wide caret-transparent shadow-none outline-none ring-0 focus:border-0 focus:shadow-none focus:outline-none focus:ring-0 focus-visible:outline-none placeholder:text-base placeholder:font-medium placeholder:text-muted/70" />
+                      className="figure w-full appearance-none rounded-none border-0 bg-transparent px-11 text-center text-[1.75rem] font-bold tracking-wide caret-transparent shadow-none outline-none ring-0 focus:border-0 focus:shadow-none focus:outline-none focus:ring-0 focus-visible:outline-none placeholder:text-center placeholder:text-sm placeholder:font-bold placeholder:tracking-widest placeholder:text-muted/70" />
                     {digits && <button type="button" onClick={() => { setNum(""); setPinned(null); inputRef.current?.focus(); }} aria-label="Apagar o número todo" title="Apagar tudo" className="absolute left-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-xl text-muted transition hover:bg-danger/10 hover:text-danger"><Eraser size={18} aria-hidden /></button>}
                     {digits && <button type="button" onClick={() => { setNum(digits.slice(0, -1)); setPinned(null); }} aria-label="Apagar último dígito" className="absolute right-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-xl text-muted transition hover:bg-accent/10 hover:text-ink"><Delete size={18} aria-hidden /></button>}
                   </div>

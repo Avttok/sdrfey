@@ -14,6 +14,9 @@ import { btnGhost, panelCls } from "@/components/ui";
 import { CHOOSABLE_ACCENTS, resolveAccent, swatchBg } from "@/config/theme";
 import { earnedKeysOf } from "@/modules/achievements/stats";
 import { requireUser } from "@/modules/auth/guard";
+import { MyDialerForm } from "@/components/my-dialer-form";
+import { db, users } from "@/db";
+import { eq } from "drizzle-orm";
 import { setAccentAction } from "@/modules/users/actions";
 
 export const metadata: Metadata = { title: "Minha conta" };
@@ -22,6 +25,8 @@ export default async function AccountPage() {
   const user = await requireUser();
   const current = resolveAccent(user.accent, user.shownRoles);
   const earned = await earnedKeysOf(user.id, user.roles);
+  const canDial = user.isAdmin || !!user.permissions["fn.dialer"];
+  const [vp] = canDial ? await db.select({ a: users.vocallAgentId, r: users.vocallRamal }).from(users).where(eq(users.id, user.id)) : [];
 
   return (
     <div className="space-y-6">
@@ -33,6 +38,7 @@ export default async function AccountPage() {
         <section className={`${panelCls} p-6`}>
           <h2 className="display mb-5 text-xl">Meus dados</h2>
           <DisplayNameForm name={user.name} username={user.username} />
+          {canDial && <><h2 className="display mb-5 mt-8 text-xl">Discador (VocallPhone)</h2><MyDialerForm agentId={vp?.a ?? ""} ramal={vp?.r ?? ""} /></>}
           <h2 className="display mb-5 mt-8 text-xl">Trocar senha</h2>
           <PasswordForm />
         </section>
