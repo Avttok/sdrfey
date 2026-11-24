@@ -11,7 +11,7 @@ import { NEXT, ONLINE, PARES, SEG, T, fala, fim, o, type Alvo } from "./seed-cor
 import { confirma, enriquece, entrada, minimo, objecoes, perfis } from "./seed-parts";
 
 /** Muda quando os textos de fábrica são reescritos: os scripts do time que ninguém editou são atualizados. */
-export const SEED_VERSION = 25;
+export const SEED_VERSION = 26;
 
 type Seg = (typeof SEG)[string];
 
@@ -25,9 +25,9 @@ function sdrObjetivos(): ScriptNode[] {
   const cad = [tk("outro", "Atualizar o cadastro do lead no sistema", 0)];
   return [
     fala("dados_abre", "Atualizar o cadastro", T(
-      "Olha, eu tô atualizando o cadastro da {empresa} aqui na Fey, pra gente não mandar nada pra pessoa errada nem incomodar à toa. Posso confirmar com você duas ou três coisinhas rápidas?",
-      "Estou atualizando o cadastro da {empresa} aqui na Fey, para não enviarmos nada à pessoa errada nem incomodar sem necessidade. Posso confirmar com você duas ou três informações rápidas?",
-      "Olha, tô atualizando o cadastro da {empresa} aqui na Fey, pra gente não mandar nada pra pessoa errada nem incomodar à toa. Posso confirmar duas ou três coisinhas rapidinho?",
+      "Olha, eu tô atualizando o cadastro da {empresa} aqui na Fey, pra gente mandar só o que serve, e pra pessoa certa. Posso confirmar com você duas ou três coisinhas rápidas?",
+      "Estou atualizando o cadastro da {empresa} aqui na Fey, para enviarmos apenas o que for útil, e à pessoa certa. Posso confirmar com você duas ou três informações rápidas?",
+      "Olha, tô atualizando o cadastro da {empresa} aqui na Fey, pra gente mandar só o que serve, e pra pessoa certa. Posso confirmar duas ou três coisinhas rapidinho?",
     ), [o("Pode confirmar", "dados_contato", "ok"), o("Quem cuida disso é outra pessoa", "pedir_decisor", "neutro"), o("Está sem tempo agora", "obj_tempo", "objecao"), o("Prefere não passar dados", "obj_nao", "objecao")], "Objetivo: sair da ligação com o contato certo e atualizado. Diga que é só cadastro, seja breve e deixe o pitch para outra hora.", "confirma"),
     fala("dados_contato", "Melhor contato", T(
       "Qual é o melhor WhatsApp e e-mail pra falar com quem cuida das compras aí? E o seu, posso deixar anotado também?",
@@ -273,9 +273,9 @@ function retorno(s: Seg): { nodes: ScriptNode[]; startId: string } {
       `Sem pressa! Quando você acha que dá pra me responder? Eu anoto e te ligo bem nesse dia, e já te mando um resumo por escrito, pra você ter em mãos.`,
     ), [o("Deu uma data", "@retorno", "ok", "Retornar na data combinada"), o("Já tentei várias vezes sem resposta", "ret_ultima", "neutro")], undefined, "apoio"),
     fala("ret_ultima", "Última tentativa", T(
-      "Pelo que eu vejo, talvez o momento não seja esse, e tudo bem. Vou deixar a cotação com você e não te incomodo mais por enquanto. Se mudar alguma coisa, é só me chamar nesse número. Posso te procurar de novo daqui a um mês?",
-      "Pelo que percebo, talvez este não seja o momento, e está tudo bem. Deixo a cotação com você, sem incomodar por ora. Se algo mudar, basta me chamar neste número. Posso entrar em contato novamente daqui a um mês?",
-      "Pelo jeito o momento não é esse, e tá tudo bem! Deixo a cotação com você e não te incomodo mais por enquanto. Se mudar alguma coisa, é só me chamar nesse número. Posso te procurar de novo daqui a um mês?",
+      "Pelo que eu vejo, talvez o momento não seja esse, e tudo bem. Vou deixar a cotação com você e não insisto por enquanto. Se mudar alguma coisa, é só me chamar nesse número. Posso te procurar de novo daqui a um mês?",
+      "Pelo que percebo, talvez este não seja o momento, e está tudo bem. Deixo a cotação com você, sem insistir por ora. Se algo mudar, basta me chamar neste número. Posso entrar em contato novamente daqui a um mês?",
+      "Pelo jeito o momento não é esse, e tá tudo bem! Deixo a cotação com você e não insisto por enquanto. Se mudar alguma coisa, é só me chamar nesse número. Posso te procurar de novo daqui a um mês?",
     ), [o("Pode procurar em um mês", "@retorno", "neutro", "Sem resposta à cotação: procurar de novo em 1 mês"), o("Prefere encerrar", "@encerrar", "objecao", "Sem interesse na cotação")], "Mensagem de despedida (break-up): reconhece o silêncio, deixa a porta aberta e tira a pressão. É comum o lead responder justamente aqui. Faça só depois de várias tentativas.", "apoio"),
     fala("motivo", "Entender o motivo", T(
       `Valeu por me avisar, é bom saber. Pra eu melhorar, o que pesou mais, o preço, o prazo ou outra coisa? E posso te procurar de novo daqui a um mês?`,

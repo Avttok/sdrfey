@@ -33,9 +33,9 @@ export function entrada(_nomeTo: string, itens: string, a: Alvo, tipo: Tipo): Sc
     ), [o("Passou a ligação", "transferido", "ok", "Recepção transferiu a ligação"), o("Anotou um recado", "horario"), o("Pediu para mandar e-mail", "rec_email"), o("Recusou", "obj_nao", "objecao")],
     "Prova social (Gong: a abertura “já ouviu falar de nós?” ficou entre as melhores, com cerca de 11% de sucesso): mostre que a Fey atende empresas parecidas. Seja específico e curto; não prometa o que não pode cumprir.", "ponte"),
     fala("horario", "Combinar outro horário", T(
-      `Sem problema! Eu não quero te atrapalhar. Qual o nome dessa pessoa, e a que horas ela costuma estar aí? Eu ligo direto nesse horário.`,
-      `Sem problema. Não quero atrapalhar. Qual é o nome dessa pessoa e em que horário ela costuma estar disponível? Ligo exatamente nessa hora.`,
-      `Beleza! Não quero atrapalhar ninguém. Como é o nome dela e a que horas ela costuma estar aí? Eu ligo bem nessa hora, combinado?`,
+      `Sem problema! Qual o nome dessa pessoa, e a que horas ela costuma estar aí? Eu ligo direto nesse horário, e você não precisa repassar nada.`,
+      `Sem problema. Qual é o nome dessa pessoa e em que horário ela costuma estar disponível? Ligo exatamente nessa hora, sem que você precise repassar nada.`,
+      `Beleza! Como é o nome dela e a que horas ela costuma estar aí? Eu ligo bem nessa hora, e você não precisa repassar nada. Combinado?`,
     ), [o("Deu o nome e o horário", "@retorno", "ok", "Retornar no horário combinado com o decisor"), o("Só o nome, sem horário", "@retorno", "neutro", "Sem horário combinado: tentar de novo em outro dia e horário"), o("Não quis passar nada", "obj_nao", "objecao", "Recepção não passou nome nem horário")], "Anote nome, horário e quem informou. Na volta, abra com “a recepção me indicou este horário”.", "apoio"),
     fala("rec_email", "Pedido de e-mail", T(
       `Claro, eu mando sim! Pra quem eu endereço, e qual o melhor e-mail? Ah, e depois de amanhã eu te ligo só pra ver se chegou direitinho, pode ser?`,
@@ -48,9 +48,9 @@ export function entrada(_nomeTo: string, itens: string, a: Alvo, tipo: Tipo): Sc
       `Oi! Aqui é {meunome}, da Fey, a metalúrgica especializada em fixadores. A pessoa que me atendeu me passou pra você, por causa das compras. Com quem eu falo?`,
     ), [o("Disse o nome", "papel", "ok", "Chegou a outra pessoa por transferência"), o("Perguntou o assunto", "assunto"), o("Sem tempo agora", "obj_tempo", "objecao")], "Pessoa nova, conversa nova: reapresente-se em uma frase, diga quem passou a ligação (isso dá legitimidade) e pergunte o nome. Escreva o nome no campo “Conversando atualmente com”: o campo esvazia sozinho para a nova pessoa, e o nome de quem falou antes fica registrado na ligação.", "ponte"),
     fala("quem", "Pessoa errada", T(
-      `Ih, desculpa o engano, e obrigado pela paciência. Você sabe me dizer quem é ${pessoa} aí na {empresa}? Dá pra falar direto com ela?`,
-      `Desculpe o engano, e obrigado pela paciência. Você saberia me dizer quem é ${pessoa} na {empresa}? Assim eu falo direto com ela.`,
-      `Ih, foi mal o engano, e valeu pela paciência! Você sabe quem é ${pessoa} aí na {empresa}? Dá pra falar direto com ela?`,
+      `Obrigado pela atenção, e desculpe se liguei para a pessoa errada. Você sabe me dizer quem é ${pessoa} aí na {empresa}? Dá pra falar direto com ela?`,
+      `Agradeço a atenção e peço desculpas se liguei para a pessoa errada. Você saberia me dizer quem é ${pessoa} na {empresa}? Assim eu falo direto com ela.`,
+      `Valeu pela atenção, e desculpa se liguei pra pessoa errada! Você sabe quem é ${pessoa} aí na {empresa}? Dá pra falar direto com ela?`,
     ), [o("Passou o contato", "transferido", "ok"), o("Não sabe ou não passa", "@encerrar", "objecao")], undefined, "ponte"),
     fala("sem_resp", "Ninguém atendeu", T(
       `Se cair na caixa postal, deixe um recado de uns vinte segundos, algo como “Oi, aqui é {meunome}, da Fey, metalúrgica especializada em fixadores. Liguei ${tema.n}. Vou tentar de novo mais tarde e, se você preferir, é só me chamar neste número. É [seu telefone], repito, [seu telefone]. Um abraço!”`,
@@ -68,9 +68,9 @@ export function entrada(_nomeTo: string, itens: string, a: Alvo, tipo: Tipo): Sc
       `Entendi, valeu por me contar! Você me ajuda? Preciso falar com ${a.quem}. Quem é essa pessoa, e qual o melhor jeito de falar com ela?`,
     ), [o("Transferiu ou chamou a pessoa", "transferido", "ok"), o("Deu nome e horário", "horario", "neutro"), o("Não passa o contato", "@encerrar", "objecao", "Não passou o decisor")], "Quem não decide costuma ajudar se for tratado como parceiro: agradeça, peça o NOME e o melhor horário, e deixe claro que será rápido.", "ponte"),
     fala("papel", "Função de quem atende", T(
-      `[[contato?Prazer, {contato}!|Prazer!]] E você cuida de quê aí na {empresa}? Pergunto pra não te falar de uma coisa que nem é com você.`,
-      `[[contato?Muito prazer, {contato}!|Muito prazer!]] E qual é a sua função na {empresa}? Pergunto para não tomar seu tempo com algo que não seja da sua área.`,
-      `[[contato?Prazer, {contato}!|Prazer!]] E você faz o que aí na {empresa}? Pergunto pra não te falar de coisa que nem é com você.`,
+      `[[contato?Prazer, {contato}!|Prazer!]] E qual é a sua função aí na {empresa}? Assim eu já falo do que faz parte do seu dia a dia.`,
+      `[[contato?Muito prazer, {contato}!|Muito prazer!]] E qual é a sua função na {empresa}? Assim conduzo a conversa pelo que faz parte da sua rotina.`,
+      `[[contato?Prazer, {contato}!|Prazer!]] E o que você faz aí na {empresa}? Assim eu já falo do que faz parte do seu dia a dia.`,
     ), [o("Dono, sócio ou diretor", "p_socio", "ok", "Contato: dono, sócio ou diretor"), o("Compras ou comprador", "p_compras", "ok", "Contato: compras"), o("Gerente, encarregado ou líder", "p_gestor", "ok", "Contato: gerente, encarregado ou líder"), o("Vendas, balcão ou atendimento", "p_balcao", "neutro", "Contato: vendas, balcão ou atendimento"), o("Estoque, manutenção, oficina ou produção", "p_operacao", "neutro", "Contato: estoque, manutenção, oficina ou produção"), o("Financeiro, administrativo ou RH", "p_admin", "neutro", "Contato: financeiro, administrativo ou RH"), o("Assistente ou secretária(o) de alguém", "p_assistente", "neutro", "Contato: assistente ou secretária(o)"), o("Recepção ou telefonista", "secretaria", "neutro", "Contato: recepção ou telefonista"), o("Prefere não dizer", "p_admin", "neutro")], "Esta é a pergunta que define a conversa: cada função tem um caminho diferente aqui embaixo. Escute o cargo e a entonação. Se disser só “trabalho aqui” ou “sou de tudo um pouco”, pergunte: “e quem costuma cuidar das compras?”.", "ponte"),
   ];
 }
@@ -141,9 +141,9 @@ export function confirma(next: string, itens: string, tipo: Tipo): ScriptNode[] 
   const perfil = tipo === "revenda" ? "Cliente que revende fixadores é o perfil central: pergunte como atende o balcão e o que mais gira." : tipo === "producao" ? "Quem usa fixador na produção compra recorrente e valoriza prazo e padrão: vá por aí." : "Quem usa nos serviços e na manutenção sofre com parada: o valor está em ter o item na hora.";
   return [
     fala("conf_empresa", "Confirmar empresa e local", T(
-      `Só pra eu não incomodar a empresa errada, aí é a {empresa_completa}, de {cidade}, né?`,
-      `Só para não incomodar a empresa errada, estou falando com a {empresa_completa}, de {cidade}, certo?`,
-      `Só pra eu não atrapalhar a empresa errada, aí é a {empresa_completa}, de {cidade}, né?`,
+      `Só pra confirmar que liguei no lugar certo, aí é a {empresa_completa}, de {cidade}, né?`,
+      `Só para confirmar que liguei no lugar certo, estou falando com a {empresa_completa}, de {cidade}, certo?`,
+      `Só pra confirmar que liguei no lugar certo, aí é a {empresa_completa}, de {cidade}, né?`,
     ), [o("Confirmou", "papel", "ok", "Empresa e local confirmados"), o("Mudou de nome ou de endereço", "papel", "neutro", "Atenção: nome ou endereço diferente do cadastro"), o("Não é essa empresa", "@encerrar", "objecao", "Telefone não pertence à empresa")], "Soa como cortesia, não como checagem. Se mudou, anote o nome e o endereço novos na observação."),
     fala("conf_segmento", "Entender como a empresa trabalha", T(
       `Legal! E me conta, como a {empresa} trabalha com fixadores? Vocês revendem, usam na produção, ou é mais manutenção e serviço?`,
@@ -387,9 +387,9 @@ export function objecoes(back: string, foco: "visita" | "venda"): ScriptNode[] {
       "Boa pergunta, e eu não vou te prometer o que não sei! Prefiro te mostrar com um negócio parecido com o seu. Posso te passar um cliente que compra da gente numa rotina parecida, ou você começa por um pedido pequeno pra ver com os próprios olhos. O que te deixa mais tranquilo?",
     ), [ok("Topou ver um caso parecido ou testar com pedido pequeno", "Quer ver resultado parecido: caso de cliente ou pedido pequeno"), nao(), outra], "Quem pergunta se funciona quer prova, não argumento. Só cite um cliente com a autorização dele; sem isso, o pedido pequeno é a melhor prova."),
     fala("obj_nao_preciso", "Diz que não precisa", T(
-      "Pode ser que não precise mesmo, e tudo bem. Só pra eu entender, quando falta um parafuso ou uma porca de uma hora pra outra, como vocês resolvem hoje? Se dá certo sempre, eu fico tranquilo e não te incomodo mais.",
-      "Pode ser que não precisem, e tudo bem. Para eu compreender, quando falta um parafuso ou uma porca de uma hora para outra, como vocês resolvem hoje? Se funciona sempre, fico tranquilo e não volto a incomodar.",
-      "Pode ser que não precise mesmo, e tá tudo bem! Só pra eu entender, quando falta um parafuso ou uma porca de uma hora pra outra, como vocês resolvem hoje? Se dá certo sempre, eu fico tranquilo e não te incomodo mais.",
+      "Pode ser que não precise mesmo, e tudo bem. Só pra eu entender, quando falta um parafuso ou uma porca de uma hora pra outra, como vocês resolvem hoje? Se dá certo sempre, eu fico tranquilo e não insisto mais.",
+      "Pode ser que não precisem, e tudo bem. Para eu compreender, quando falta um parafuso ou uma porca de uma hora para outra, como vocês resolvem hoje? Se funciona sempre, fico tranquilo e não volto a insistir.",
+      "Pode ser que não precise mesmo, e tá tudo bem! Só pra eu entender, quando falta um parafuso ou uma porca de uma hora pra outra, como vocês resolvem hoje? Se dá certo sempre, eu fico tranquilo e não insisto mais.",
     ), [ok("Contou como resolve hoje e topou conversar", "Dizia não precisar: contou como resolve a falta de item"), nao("Não vê necessidade"), outra], "Quase sempre é uma dor que a pessoa ainda não reconheceu. Pergunte pelo dia em que faltou item, sem discutir nem provar que ela precisa."),
     fala("obj_numero", "Perguntou como conseguimos o número", T(
       "Boa pergunta, e eu respondo direto. O telefone da empresa vem de cadastro empresarial, não de lista pessoal, e eu liguei porque vocês trabalham com um tipo de negócio que usa fixador. Se preferir que eu não ligue mais, eu retiro agora, sem problema nenhum. Mas se você me der uma chance, eu te conto o que a gente faz.",
@@ -402,9 +402,9 @@ export function objecoes(back: string, foco: "visita" | "venda"): ScriptNode[] {
       "Que bom que você gostou, e eu não quero te atropelar! Só que “outro momento” costuma virar nunca, então me ajuda com uma coisa. O que precisa rolar pra ficar um bom momento, e em que mês você acha que isso acontece? Eu anoto e te procuro bem nessa data.",
     ), [o("Combinou o mês ou o que precisa acontecer", "@retorno", "ok", "Outro momento: retorno combinado com data ou gatilho"), nao(), outra], "Há interesse, só falta data. Transforme “depois” em um mês ou em um gatilho (fim do estoque, pedido grande, nova obra) e cumpra o combinado."),
     fala("obj_nao", "Sem interesse", T(
-      `Tudo bem, valeu pela sinceridade! Só pra eu entender e não te incomodar à toa, é porque vocês já estão bem atendidos ou porque o assunto não faz sentido pra vocês? Pergunto sem compromisso mesmo.`,
-      `Tudo bem, agradeço a franqueza. Para eu compreender e não incomodar à toa, é porque já estão bem atendidos ou porque o assunto não faz sentido para a empresa? Pergunto sem compromisso.`,
-      `Tranquilo, valeu pela sinceridade! Só pra eu entender e não te incomodar à toa, é porque vocês já estão bem atendidos ou porque o assunto não faz sentido aí? Pergunto sem compromisso mesmo.`,
+      `Tudo bem, valeu pela sinceridade! Só pra eu entender melhor, é porque vocês já estão bem atendidos ou porque o assunto não faz sentido pra vocês? Pergunto sem compromisso mesmo.`,
+      `Tudo bem, agradeço a franqueza. Para compreender melhor, é porque já estão bem atendidos ou porque o assunto não faz sentido para a empresa? Pergunto sem compromisso.`,
+      `Tranquilo, valeu pela sinceridade! Só pra eu entender melhor, é porque vocês já estão bem atendidos ou porque o assunto não faz sentido aí? Pergunto sem compromisso mesmo.`,
     ), [ok("Explicou o motivo e abriu espaço"), o("Encerrou a conversa", "@encerrar", "objecao", "Sem interesse")], `Pergunta de saída (negativo reverso, Sandler): ajuda a registrar o motivo real. ${PAR}`),
   ];
 }

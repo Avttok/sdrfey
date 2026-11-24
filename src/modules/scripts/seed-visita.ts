@@ -44,9 +44,9 @@ export function visita(): { nodes: ScriptNode[]; startId: string } {
     ), [o("Contou o motivo e permitiu novo contato", "@retorno", "neutro", "Visita cancelada: procurar de novo em 1 mês"), o("Encerrou a conversa", "@encerrar", "objecao", "Visita cancelada pelo cliente")],
     "Registre o motivo no sistema, e se foi o momento, combine voltar a falar. Saia bem, sem insistir.", "pergunta"),
     fala("v_horario", "Combinar outro horário", T(
-      `Sem problema! Eu não quero atrapalhar. Qual o nome da pessoa que combinou a visita, e a que horas ela costuma estar aí? Eu ligo bem nessa hora.`,
-      `Sem problema. Não quero atrapalhar. Poderia me informar o nome da pessoa que combinou a visita e o melhor horário para falar com ela? Ligo exatamente nesse horário.`,
-      `Beleza! Não quero atrapalhar. Como é o nome de quem combinou a visita, e que horas ela costuma estar aí? Eu ligo bem nessa hora, combinado?`,
+      `Sem problema! Qual o nome da pessoa que combinou a visita, e a que horas ela costuma estar aí? Eu ligo bem nessa hora.`,
+      `Sem problema. Poderia me informar o nome da pessoa que combinou a visita e o melhor horário para falar com ela? Ligo exatamente nesse horário.`,
+      `Beleza! Como é o nome de quem combinou a visita, e que horas ela costuma estar aí? Eu ligo bem nessa hora, combinado?`,
     ), [o("Deu o nome e o horário", "@retorno", "ok", "Retornar no horário combinado para confirmar a visita")], "Anote nome, horário e quem informou. Na volta, abra com “a recepção me indicou este horário”.", "apoio"),
     fala("v_wa", "Mensagem de WhatsApp", T(
       `Logo depois da ligação, mande no WhatsApp uma mensagem como “Oi, tudo bem? Aqui é {meunome}, da Fey. Tentei falar com você sobre a visita que a gente combinou. Ela continua boa pra vocês? Se preferir, me diz por aqui o melhor dia e horário. Um abraço!”`,
