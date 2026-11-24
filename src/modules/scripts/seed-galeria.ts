@@ -15,9 +15,49 @@ const no = (label: string, note?: string) => o(label, VOLTA, "objecao", note);
  * Base: estudo de técnicas de vendas e cold call em conteúdo brasileiro (SPIN, perguntas de concordância, prova social,
  * custo total, reciprocidade, próximo passo com silêncio, cadência de WhatsApp e despedida). Veja claude/scripts-estudo-vendas.md.
  */
-export function galeria(s: Seg): ScriptNode[] {
+
+/**
+ * Conversa própria de cada segmento: duas perguntas que só fazem sentido para quem trabalha daquele jeito (como compra e onde dói).
+ * Textos neutros (sem “pra”, “a gente” ou “gostaria”) porque entram nos três tons.
+ */
+const TALK: Record<string, { sit: string; prob: string }> = {
+  geral: { sit: "Vocês compram fixadores com que frequência, e de quantos fornecedores?", prob: "Já faltou algum item justamente na hora de atender um cliente?" },
+  distribuidor_fixadores: { sit: "Quais são os itens que mais giram no estoque de vocês, e quem repõe?", prob: "Quando um item de giro acaba, o cliente espera ou compra do concorrente?" },
+  distribuidor_industrial: { sit: "Vocês atendem mais indústrias de manutenção ou de produção, e como chegam os pedidos?", prob: "O cliente industrial já ficou esperando um item que vocês não tinham?" },
+  parafusos: { sit: "O que mais sai no balcão da loja, e vocês trabalham com caixa fechada ou a granel?", prob: "Quando o item de maior giro acaba, quanto tempo leva até a reposição chegar?" },
+  ferragens: { sit: "Vocês têm uma lista fixa de fixadores que repõem sempre, ou compram conforme o balcão pede?", prob: "Já perderam venda porque o cliente pediu um fixador e ele tinha acabado?" },
+  material_construcao: { sit: "Os fixadores saem mais para obra grande ou para o cliente de balcão?", prob: "Já houve obra esperando um fixador que ainda não tinha chegado?" },
+  ferramentas: { sit: "Além das ferramentas, vocês vendem fixador solto, e quem cuida dessa reposição?", prob: "Os fornecedores de vocês dão suporte quando falta um item de giro rápido?" },
+  autopecas: { sit: "Quais parafusos e porcas o balcão mais vende, e de onde vocês compram hoje?", prob: "O cliente da oficina já ficou esperando uma peça simples que vocês não tinham?" },
+  autopecas_atacado: { sit: "Vocês vendem mais kits prontos ou fixadores avulsos para os lojistas?", prob: "Quando uma entrega atrasa, os lojistas cobram vocês, certo? Como lidam com isso?" },
+  posto_molas: { sit: "Quais grampos, pinos e parafusos de suspensão vocês mais usam por mês, e de onde vêm?", prob: "Já ficou caminhão parado no posto esperando grampo ou pino?" },
+  auto_center: { sit: "Quais parafusos e porcas de roda e suspensão vocês mais trocam, e quem compra?", prob: "Já tiveram retrabalho por parafuso que afrouxou ou quebrou?" },
+  oficina_pesados: { sit: "Que fixadores de caminhão e ônibus vocês mais usam, e vocês mantêm estoque deles?", prob: "Já ficou veículo parado na oficina por falta de um fixador?" },
+  concessionaria: { sit: "A oficina compra fixador de reposição fora da rede ou só pelo canal da marca?", prob: "Já aconteceu de um carro ficar esperando um parafuso simples?" },
+  transportadora_frota: { sit: "Como funciona a manutenção da frota, e quem pede os fixadores de roda e suspensão?", prob: "Quanto custa para vocês um caminhão parado na manutenção por falta de um fixador?" },
+  implementos: { sit: "Quais parafusos, grampos e pinos vocês usam na montagem de carretas e implementos, e em que volume?", prob: "Já atrasou montagem porque faltou fixador?" },
+  carrocerias: { sit: "Os fixadores de montagem vêm de um fornecedor fixo, ou vocês compram conforme a necessidade de cada obra?", prob: "Já atrasou entrega de carroceria por causa de um fixador?" },
+  maquinas_agricolas: { sit: "Vocês fabricam, fazem reposição ou os dois, e como a safra muda o ritmo de compra?", prob: "Já houve máquina parada na safra esperando um fixador de alta resistência?" },
+  industria: { sit: "Quem pede os fixadores da manutenção, e vocês trabalham com estoque mínimo?", prob: "Quanto custa uma máquina parada por causa de um fixador em falta?" },
+  metalurgica: { sit: "Os fixadores entram na montagem, na usinagem ou nos dois, e quem cuida da compra?", prob: "Já ficou produção parada esperando fixador?" },
+  serralheria: { sit: "Vocês compram fixador por obra ou mantêm estoque na serralheria?", prob: "Já atrasou uma obra de estrutura porque faltou parafuso?" },
+  moveis: { sit: "Quais parafusos e fixadores a linha de montagem mais consome, e com que regularidade?", prob: "Já parou a linha esperando fixador, ou o padrão variou de um lote para outro?" },
+  eletro_energia: { sit: "Os fixadores de estruturas e equipamentos têm exigência de norma ou de acabamento?", prob: "Já ficou equipamento parado esperando um fixador específico?" },
+  construcao_pesada: { sit: "Como é a manutenção das máquinas, e quem compra os fixadores de alta resistência?", prob: "Já ficou máquina parada na obra ou na mina esperando um fixador?" },
+};
+
+export function galeria(s: Seg, key = "geral"): ScriptNode[] {
+  const talk = TALK[key] ?? TALK.geral;
   const pares = PARES[s.tipo];
   return [
+    /* ───────── Conversa do segmento ───────── */
+    fala("gx_seg", "Conversa do segmento", T(
+      `Me conta um pouco do dia a dia aí. ${talk.sit} E ${talk.prob}`,
+      `Pode me contar um pouco do dia a dia da empresa? ${talk.sit} E ${talk.prob}`,
+      `Me conta um pouco do dia a dia aí! ${talk.sit} E ${talk.prob}`,
+    ), [o("Contou como compra e onde dói", VOLTA, "ok", "Contou como compra e o que já deu errado"), meh("Respondeu pouco", "Respondeu pouco sobre a rotina de compra"), no("Não quis falar disso")],
+    "Perguntas do segmento: uma de situação e uma de problema, no jeito de trabalhar de quem está do outro lado. Escute até o fim e use o que ele disser (item, prazo, parada) nas próximas falas.", "pergunta"),
+
     /* ───────── Descoberta com SPIN ───────── */
     fala("gx_spin_s", "Como compram hoje", T(
       `Me conta como funciona aí hoje. Quando falta ${s.um} ou outro fixador, vocês pedem pra quem e em quanto tempo costuma chegar?`,
@@ -110,9 +150,9 @@ export function galeria(s: Seg): ScriptNode[] {
       `Mande no WhatsApp “Oi, {meunome} de novo, da Fey. A gente atende ${pares}. Se fizer sentido, te mando só os itens de maior giro pra você olhar, sem compromisso. Pode ser?”`,
     ), [ok("Mensagem enviada", "WhatsApp enviado, 2º toque", [tk("whatsapp", "3º toque no WhatsApp com pergunta", 3)]), meh("Não tem WhatsApp")], "Segundo ângulo: prova social e oferta pequena. Não repita o texto do primeiro toque.", "apoio"),
     fala("gx_cad3", "WhatsApp, 3º toque", T(
-      `Mande no WhatsApp “Uma pergunta rápida pra eu não te mandar coisa à toa. Hoje, quando falta um fixador aí, como vocês resolvem?”`,
-      `Envie no WhatsApp “Uma pergunta objetiva, para eu não enviar conteúdo desnecessário. Hoje, quando falta um fixador, como vocês resolvem?”`,
-      `Mande no WhatsApp “Uma pergunta rápida pra eu não te mandar coisa à toa. Hoje, quando falta um fixador aí, como vocês resolvem?”`,
+      `Mande no WhatsApp “Uma pergunta rápida pra eu te mandar só o que serve. Hoje, quando falta um fixador aí, como vocês resolvem?”`,
+      `Envie no WhatsApp “Uma pergunta objetiva, para eu enviar apenas o que for útil. Hoje, quando falta um fixador, como vocês resolvem?”`,
+      `Mande no WhatsApp “Uma pergunta rápida pra eu te mandar só o que serve. Hoje, quando falta um fixador aí, como vocês resolvem?”`,
     ), [ok("Mensagem enviada", "WhatsApp enviado, 3º toque", [tk("whatsapp", "4º toque no WhatsApp pedindo permissão", 5)]), meh("Não tem WhatsApp")], "Terceiro ângulo: diagnóstico. Uma pergunta que a pessoa responde em uma linha.", "apoio"),
     fala("gx_cad4", "WhatsApp, 4º toque", T(
       `Mande no WhatsApp “Posso te mandar um resumo de três linhas do que a gente faz? Se não for o momento, é só me falar que eu paro por aqui.”`,

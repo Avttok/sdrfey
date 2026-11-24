@@ -8,7 +8,8 @@ import { SEG } from "@/modules/scripts/seed-core";
 describe("galeria de módulos", () => {
   it("em todo tipo de cliente: passos classificados, ligações fechadas, até 10 respostas, volta ao roteiro", () => {
     for (const [seg, s] of Object.entries(SEG)) {
-      const nodes = galeria(s); const ids = new Set(nodes.map((n) => n.id));
+      const k = seg;
+      const nodes = galeria(s, k); const ids = new Set(nodes.map((n) => n.id));
       expect(ids.size, seg).toBe(nodes.length);
       for (const n of nodes) {
         expect(moduleOf(n.id), `${seg}/${n.id}`).not.toBeNull();

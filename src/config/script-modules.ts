@@ -28,6 +28,7 @@ export const MODULES: ModuleDef[] = [
   M("reativa", "Retomar o contato", "retomada", "Histórico, motivo da parada e oferta de volta", /^reat_[a-z]+$/, ["reat_historico"]),
   M("visita_v", "Confirmar a visita", "visita", "Confirmar, lembrar, remarcar ou ligar depois da visita", /^v_[a-z]+$/, ["v_confirma", "v_pos"], false),
   M("spin", "Descoberta com SPIN", "descoberta", "Quatro perguntas: como compram, o que dá errado, o que isso custa e o que mudaria", /^gx_spin_[a-z]$/, ["gx_spin_s"]),
+  M("segmento", "Conversa do segmento", "descoberta", "Duas perguntas feitas sob medida para o jeito de comprar deste segmento", /^gx_seg$/, ["gx_seg"]),
   M("concorda", "Concordar critérios", "descoberta", "Duas perguntas de concordância antes de apresentar a solução", /^gx_conc$/, ["gx_conc"]),
   M("prova", "Quem já compra da Fey", "pitch", "Prova social com o tipo de cliente que a Fey já atende", /^gx_prova$/, ["gx_prova"]),
   M("custo", "Custo de ficar parado", "proposta", "Comparar o preço da peça com o custo de parar por falta dela", /^gx_custo$/, ["gx_custo"]),

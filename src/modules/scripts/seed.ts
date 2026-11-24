@@ -11,7 +11,7 @@ import { NEXT, ONLINE, PARES, SEG, T, fala, fim, o, type Alvo } from "./seed-cor
 import { confirma, enriquece, entrada, minimo, objecoes, perfis } from "./seed-parts";
 
 /** Muda quando os textos de fábrica são reescritos: os scripts do time que ninguém editou são atualizados. */
-export const SEED_VERSION = 26;
+export const SEED_VERSION = 27;
 
 type Seg = (typeof SEG)[string];
 
@@ -73,7 +73,7 @@ function sdr(s: Seg): { nodes: ScriptNode[]; startId: string } {
         socio: T(
       `Que bom falar direto com quem decide! Vou ser breve, porque seu tempo vale ouro. Somos uma metalúrgica especializada em fixadores, fabricamos ${s.itens} e atendemos ${PARES[s.tipo]}. Eu queria ver se faz sentido mostrar nossa linha pra {empresa}. Em trinta segundos eu te explico, e você decide se vale a pena continuar. Pode ser?`,
       `Que bom falar diretamente com quem decide. Serei breve, pois seu tempo é valioso. Somos uma metalúrgica especializada em fixadores, fabricamos ${s.itens} e atendemos ${PARES[s.tipo]}. Gostaria de avaliar se faz sentido apresentar nossa linha à {empresa}. Posso explicar em trinta segundos, e você decide se vale continuar?`,
-      `Que bom falar direto com quem decide! Vou ser breve, que o seu tempo é curto. Somos uma metalúrgica especializada em fixadores, fabricamos ${s.itens} e atendemos ${PARES[s.tipo]}. Queria ver se faz sentido mostrar nossa linha pra {empresa}. Te explico em trinta segundos e você decide se vale seguir. Pode ser?`,
+      `Que bom falar direto com quem decide! Vou ser breve, que eu sei que o seu tempo é corrido. Somos uma metalúrgica especializada em fixadores, fabricamos ${s.itens} e atendemos ${PARES[s.tipo]}. Queria ver se faz sentido mostrar nossa linha pra {empresa}. Te explico em trinta segundos e você decide se vale seguir. Pode ser?`,
     ),
         compras: T(
       `Então eu tô falando com a pessoa certa! Somos uma metalúrgica especializada em fixadores e fabricamos ${s.itens}. Tô ligando pra apresentar a Fey como mais uma opção na sua lista de fornecedores, com fabricação própria e prazo firme. Posso te fazer umas perguntas rápidas sobre como vocês compram hoje, pra ver se faz sentido?`,

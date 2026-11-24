@@ -33,6 +33,7 @@ export function suggestModules(ctx: SuggestCtx, loadable: string[], stats: Recor
     else if (key === CLOSE[ctx.goal] && ctx.good >= 1 && ctx.hurdles === 0) { prior = 0.55; why = "Conversa fluindo sem objeções"; }
     else if (key === "cadencia" && /^(sem_resp|wa_msg|rec_email)$/.test(ctx.node ?? "")) { prior = 0.9; why = "Sem resposta: sequência de WhatsApp em vários toques"; }
     else if (key === "despedida" && (ctx.node === "ret_ultima" || ctx.hurdles >= 2)) { prior = ctx.node === "ret_ultima" ? 0.85 : 0.5; why = "Muitas tentativas ou objeções: despedir-se bem deixa a porta aberta"; }
+    else if (key === "segmento" && ["perfil", "confirma"].includes(ctx.current ?? "") && ["sdr", "vendas", "reativar"].includes(ctx.goal) && !seen.has("pitch")) { prior = 0.6; why = "Perguntas feitas para o jeito de comprar deste segmento"; }
     else if (key === "spin" && ["perfil", "confirma"].includes(ctx.current ?? "") && ["sdr", "vendas", "reativar"].includes(ctx.goal)) { prior = 0.55; why = "Descobrir a dor antes de propor"; }
     else if (key === "concorda" && ["perfil", "confirma", "descoberta"].includes(ctx.current ?? "") && !seen.has("pitch")) { prior = 0.45; why = "Alinhar critérios antes de apresentar a solução"; }
     else if (key === "ciclo" && ["fidelizar", "reativar"].includes(ctx.goal) && ctx.good >= 1) { prior = 0.6; why = "Cliente receptivo: combinar o ritmo de reposição"; }

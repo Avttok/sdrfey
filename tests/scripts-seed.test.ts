@@ -18,7 +18,7 @@ describe("revisão dos textos de fábrica", async () => {
   const { SEG } = await import("@/modules/scripts/seed-core");
   const { galeria } = await import("@/modules/scripts/seed-galeria");
   /** A galeria (módulos extras) passa pelas mesmas regras de texto, em todos os tipos de cliente. */
-  const all = [...buildAll(), ...Object.keys(SEG).map((k) => ({ key: `galeria:${k}`, goal: "galeria" as never, segment: k, nodes: galeria(SEG[k]), startId: "" }))];
+  const all = [...buildAll(), ...Object.keys(SEG).map((k) => ({ key: `galeria:${k}`, goal: "galeria" as never, segment: k, nodes: galeria(SEG[k], k), startId: "" }))];
   const texts = (n: (typeof all)[number]["nodes"][number]) => [["n", n.say], ["f", n.v?.formal], ["s", n.v?.solto]].filter((x): x is [string, string] => !!x[1]);
   const L = "(?<![\\p{L}])", R = "(?![\\p{L}])";
   const re = (w: string, f = "iu") => new RegExp(`${L}(${w})${R}`, f);
@@ -48,6 +48,12 @@ describe("revisão dos textos de fábrica", async () => {
     for (const b of all) for (const n of b.nodes) if (n.type === "fala") for (const [tone, t] of texts(n)) {
       expect(/:/.test(t), `${b.key}/${n.id}:${tone} dois-pontos`).toBe(false);
       expect(re("em duas frases|só uma pergunta|me tira uma curiosidade|vou ser transparente já de cara|só me conta").test(t), `${b.key}/${n.id}:${tone} frase de manual`).toBe(false);
+    }
+  });
+
+  it("amigável em todos os tons: nada que trate a pessoa como incômodo, sem importância ou culpada", () => {
+    for (const b of all) for (const n of b.nodes) for (const [tone, t] of texts(n)) {
+      expect(re("atrapalh\\w*|incomod\\w* à toa|à toa|nem é com (você|vc)|perder (o seu |seu |meu )?tempo|não é da sua conta|você não entendeu|não entendeu|óbvio|obviamente|como eu disse|burr\\w+|estúpid\\w+").test(t), `${b.key}/${n.id}:${tone} tom pouco amigável`).toBe(false);
     }
   });
 
