@@ -8,8 +8,8 @@ import { qualificationLink, type EoxRef } from "@/modules/vocall/eox";
 
 export type VocallState = "off" | "idle" | "connecting" | "online" | "error";
 export type VocallCall = { telefone: string; empresa: string | null; estado: string | null; since: number; /** Momento em que a chamada acabou (congela o cronômetro). */ endedAt?: number; /** Formulário de Atendimento da EOX para qualificar esta ligação. */ qualUrl?: string | null; /** Procurando a qualificação pendente na central. */ qualLooking?: boolean };
-type Ctx = { configured: boolean; /** Chamada acabou e o sistema ainda confere se há qualificação: nada de nova ligação até acabar. */ checking: boolean; /** Quantas consultas seguidas do ramal falharam (muitas = algo prendendo o VocallPhone). */ fails: number; /** Roteiro durante a ligação liberado (chave do Adm + permissão). */ roteiroOn: boolean; /** O VocallPhone está livre para ligar (consulta automática a cada 3 s). null = ainda consultando; false = ocupado ou liberando a última chamada. */ ready: boolean | null; /** Painel do telefone aberto. */ panel: boolean; setPanel: (open: boolean) => void; /** Texto colocado antes do número ao discar (para reconhecer o lead na chamada). */ prefix: string; state: VocallState; call: VocallCall | null; /** Liga: conecta ao VocallAgent só agora, pede a chamada e resolve true quando o VocallPhone confirma; false se não conectou ou não confirmou (aí vale copiar e colar no app). A conexão é cortada quando a chamada termina. */ dial: (phone: string, label?: string | null, eox?: EoxRef | null) => Promise<boolean>; /** Fecha o aviso da ligação que acabou. */ dismiss: () => void };
-const VocallCtx = createContext<Ctx>({ configured: false, checking: false, fails: 0, roteiroOn: true, ready: null, panel: false, setPanel: () => {}, prefix: "", state: "off", call: null, dial: async () => false, dismiss: () => {} });
+type Ctx = { configured: boolean; /** Pede ao VocallAgent para desligar a chamada em andamento. */ hangupCall: () => Promise<void>; /** Chamada acabou e o sistema ainda confere se há qualificação: nada de nova ligação até acabar. */ checking: boolean; /** Quantas consultas seguidas do ramal falharam (muitas = algo prendendo o VocallPhone). */ fails: number; /** Roteiro durante a ligação liberado (chave do Adm + permissão). */ roteiroOn: boolean; /** O VocallPhone está livre para ligar (consulta automática a cada 3 s). null = ainda consultando; false = ocupado ou liberando a última chamada. */ ready: boolean | null; /** Painel do telefone aberto. */ panel: boolean; setPanel: (open: boolean) => void; /** Texto colocado antes do número ao discar (para reconhecer o lead na chamada). */ prefix: string; state: VocallState; call: VocallCall | null; /** Liga: conecta ao VocallAgent só agora, pede a chamada e resolve true quando o VocallPhone confirma; false se não conectou ou não confirmou (aí vale copiar e colar no app). A conexão é cortada quando a chamada termina. */ dial: (phone: string, label?: string | null, eox?: EoxRef | null) => Promise<boolean>; /** Fecha o aviso da ligação que acabou. */ dismiss: () => void };
+const VocallCtx = createContext<Ctx>({ configured: false, hangupCall: async () => {}, checking: false, fails: 0, roteiroOn: true, ready: null, panel: false, setPanel: () => {}, prefix: "", state: "off", call: null, dial: async () => false, dismiss: () => {} });
 export const useVocall = () => useContext(VocallCtx);
 
 export const vocallUrl = (c: Pick<VocallConfig, "host" | "port" | "secure">) => `${c.secure ? "wss" : "ws"}://${c.host}:${c.port}/vocallagent`;
@@ -256,8 +256,15 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, roteiroOn = true,
     return () => { stop = true; clearTimeout(timer); };
   }, [ready, busy, panel, probe]);
 
+  /** Desligar pelo discador: manda o pedido à central com o id da chamada. O nome exato do comando não vem documentado nos HARs, então tenta os usuais. */
+  const hangupCall = useCallback(async () => {
+    const sock = ws.current;
+    if (!sock || sock.readyState !== 1) return;
+    const uuid = srcId.current;
+    for (const action of ["desligar", "hangup", "encerrar"]) { try { sock.send(JSON.stringify({ action, data: { uuid, id_chamada: uuid, telefone: dialDigits.current } })); } catch { /* sem conexão */ } }
+  }, []);
   const checking = !!call?.endedAt && call.qualLooking !== false;
   checkingRef.current = checking;
-  const value = useMemo(() => ({ configured: true, checking, fails, roteiroOn, ready: checking ? false : ready, panel, setPanel, prefix, state, call, dial, dismiss: () => { clearTimeout(timers.current.clear); setCall(null); } }), [roteiroOn, ready, checking, fails, panel, prefix, state, call, dial]);
+  const value = useMemo(() => ({ configured: true, hangupCall, checking, fails, roteiroOn, ready: checking ? false : ready, panel, setPanel, prefix, state, call, dial, dismiss: () => { clearTimeout(timers.current.clear); setCall(null); } }), [roteiroOn, hangupCall, ready, checking, fails, panel, prefix, state, call, dial]);
   return <VocallCtx.Provider value={value}>{children}<PhoneDock /></VocallCtx.Provider>;
 }

@@ -64,58 +64,90 @@ function LeadStrip({ lead, onOpen }: { lead: PhoneLead; onOpen: () => void }) {
   );
 }
 
-/** Ficha completa do lead: dados, todos os números (com ligar e WhatsApp), tarefas e Ids. */
+/** Bloco da ficha: título pequeno + conteúdo em cartão. */
+function Card({ title, Icon, children }: { title: string; Icon: typeof Phone; children: React.ReactNode }) {
+  return (
+    <section className="space-y-2 rounded-2xl border border-line bg-panel p-3">
+      <h3 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted"><Icon size={13} aria-hidden /> {title}</h3>
+      {children}
+    </section>
+  );
+}
+
+/** Ficha do lead: cabeça com o essencial, ações rápidas, contatos, resumo e IDs, em cartões curtos. */
 function LeadSheet({ lead, others, onPick, onDial, onScript }: { onScript: (url: string) => void; lead: PhoneLead; others: PhoneLead[]; onPick: (l: PhoneLead) => void; onDial: (digits: string, personName: string | null) => void }) {
   const { roteiroOn } = useVocall();
+  const name = lead.tradeName ?? lead.company;
   const place = [lead.city, lead.uf].filter(Boolean).join(" / ");
-  const row = "flex items-start gap-2 text-sm";
   const phones = lead.channels.filter((c) => c.kind === "phone");
   const emails = lead.channels.filter((c) => c.kind === "email" && !c.wrong);
+  const firstPhone = phones.find((p) => !p.wrong);
+  const act = "flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border border-line bg-sunk/60 text-xs font-bold transition hover:border-accent active:scale-95";
+  const scriptUrl = `/roteiro/${lead.id}${lead.kind === "inativo" ? "?area=vendas" : "?area=sdr&goal=sdr"}`;
   return (
     <div className="space-y-3">
-      <div className="flex items-start gap-3">
-        <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-2xl bg-grad text-base font-black text-on-accent">{initials(lead.tradeName ?? lead.company)}</span>
-        <div className="min-w-0 flex-1">
-          <p className="font-bold leading-tight">{lead.tradeName ?? lead.company}</p>
-          {lead.tradeName && <p className="truncate text-xs text-muted" title={lead.company}>{lead.company}</p>}
-          <div className="mt-1.5 flex flex-wrap gap-1.5"><Chip tone="accent">{lead.kind === "inativo" ? "Cliente (Vendas)" : "Prospecção"}</Chip>{lead.dealStage && <Chip tone="ok">{STAGE[lead.dealStage] ?? lead.dealStage}</Chip>}</div>
+      <div className="rounded-2xl p-4 text-center text-white" style={{ background: "linear-gradient(135deg,#6d28d9,#4c1d95)" }}>
+        <span aria-hidden className="mx-auto grid size-14 place-items-center rounded-2xl bg-white/20 text-lg font-black ring-1 ring-white/30">{initials(name)}</span>
+        <p className="mt-2 text-lg font-bold leading-tight">{name}</p>
+        {lead.tradeName && <p className="truncate text-xs text-white/70" title={lead.company}>{lead.company}</p>}
+        <div className="mt-2 flex flex-wrap justify-center gap-1.5">
+          <span className="rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-semibold">{lead.kind === "inativo" ? "Cliente (Vendas)" : "Prospecção"}</span>
+          {lead.dealStage && <span className="rounded-full bg-emerald-400/30 px-2 py-0.5 text-[11px] font-semibold">{STAGE[lead.dealStage] ?? lead.dealStage}</span>}
+          {place && <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-semibold"><MapPin size={11} aria-hidden />{place}</span>}
         </div>
       </div>
-      {lead.person && <p className="flex items-center gap-2 rounded-xl bg-ok/10 px-3 py-2 text-sm"><UserRound size={15} className="shrink-0 text-ok" aria-hidden /><span><b>{lead.person.name}</b>{lead.person.role && <span className="text-muted"> · {lead.person.role}</span>}<span className="text-muted"> · costuma atender neste número</span></span></p>}
-      {lead.touch && <p className="flex flex-wrap items-center gap-2 rounded-xl border border-line px-3 py-2 text-sm"><History size={15} className="shrink-0 text-muted" aria-hidden /><span>Este número: <b>{lead.touch.attempts}</b> ligação(ões)</span><OutcomeChip channel="call" outcome={lead.touch.lastOutcome} /><span className="text-xs text-muted">{ago(lead.touch.lastAt)}</span></p>}
-      <EoxInfoCard info={lead.eoxInfo} compact />
-      <div className="space-y-1">
-        {place && <p className={row}><MapPin size={15} className="mt-0.5 shrink-0 text-muted" aria-hidden />{place}</p>}
-        {lead.contactName && <p className={row}><UserRound size={15} className="mt-0.5 shrink-0 text-muted" aria-hidden /><span>{lead.contactName}{lead.roleTitle && <span className="text-muted"> · {lead.roleTitle}</span>}</span></p>}
-        <p className={row}><History size={15} className="mt-0.5 shrink-0 text-muted" aria-hidden /><span className="text-muted">{lead.timesServed ? `Já atendido ${lead.timesServed}×` : "Ainda não atendido"}{lead.ownerName && ` · Responsável: ${lead.ownerName.split(" ")[0]}`}</span></p>
+
+      <div className={`grid gap-2 ${roteiroOn ? "grid-cols-4" : "grid-cols-3"}`}>
+        <button type="button" disabled={!firstPhone} onClick={() => firstPhone && onDial(firstPhone.value, firstPhone.person)} className={`${act} disabled:opacity-40`}><Phone size={17} className="text-ok" aria-hidden />Ligar</button>
+        {firstPhone ? <a href={chatproUrl(firstPhone.value)} target="_blank" rel="noreferrer" onClick={() => void trackTouch({ leadId: lead.id, channel: "whatsapp", target: firstPhone.value, label: name })} className={act}><MessageCircle size={17} className="text-accent" aria-hidden />WhatsApp</a> : <span className={`${act} opacity-40`}><MessageCircle size={17} aria-hidden />WhatsApp</span>}
+        {roteiroOn && <button type="button" onClick={() => onScript(scriptUrl)} className={act}><ScrollText size={17} className="text-accent" aria-hidden />Roteiro</button>}
+        <Link href={`/leads/${lead.id}`} target="_blank" className={act}><FeyMark size={17} />Lead</Link>
       </div>
-      {phones.length > 0 && (
-        <div className="space-y-1.5">
-          <p className="text-xs font-semibold text-muted">Números e contatos</p>
+
+      {(lead.person || lead.touch) && (
+        <Card title="Quem atende" Icon={UserRound}>
+          {lead.person && <p className="text-sm"><b>{lead.person.name}</b>{lead.person.role && <span className="text-muted"> · {lead.person.role}</span>}<span className="block text-xs text-muted">costuma atender neste número</span></p>}
+          {lead.touch && <p className="flex flex-wrap items-center gap-2 text-sm"><History size={14} className="shrink-0 text-muted" aria-hidden /><span><b>{lead.touch.attempts}</b> ligação(ões)</span><OutcomeChip channel="call" outcome={lead.touch.lastOutcome} /><span className="text-xs text-muted">{ago(lead.touch.lastAt)}</span></p>}
+        </Card>
+      )}
+
+      {(phones.length > 0 || emails.length > 0) && (
+        <Card title="Contatos" Icon={Phone}>
           {phones.map((p) => (
-            <div key={p.value} className={`flex items-center gap-2 rounded-xl border border-line px-2.5 py-1.5 ${p.wrong ? "opacity-50" : ""}`}>
+            <div key={p.value} className={`flex items-center gap-2 rounded-xl bg-sunk/60 px-2.5 py-1.5 ${p.wrong ? "opacity-50" : ""}`}>
               <span className="min-w-0 flex-1"><span className={`figure block text-sm font-semibold ${p.wrong ? "line-through" : ""}`}>{fmtPhone(p.value)}</span>{p.person && <span className="block truncate text-xs text-muted">{p.person}</span>}</span>
               {!p.wrong && <>
                 <button type="button" onClick={() => onDial(p.value, p.person)} aria-label={`Ligar para ${fmtPhone(p.value)}`} className="grid size-8 place-items-center rounded-lg bg-ok/15 text-ok hover:brightness-110"><Phone size={15} aria-hidden /></button>
-                <a href={chatproUrl(p.value)} target="_blank" rel="noreferrer" onClick={() => void trackTouch({ leadId: lead.id, channel: "whatsapp", target: p.value, label: lead.tradeName ?? lead.company })} aria-label="WhatsApp" className="grid size-8 place-items-center rounded-lg bg-accent/12 text-accent hover:brightness-110"><MessageCircle size={15} aria-hidden /></a>
+                <a href={chatproUrl(p.value)} target="_blank" rel="noreferrer" onClick={() => void trackTouch({ leadId: lead.id, channel: "whatsapp", target: p.value, label: name })} aria-label="WhatsApp" className="grid size-8 place-items-center rounded-lg bg-accent/12 text-accent hover:brightness-110"><MessageCircle size={15} aria-hidden /></a>
               </>}
             </div>
           ))}
-        </div>
+          {emails.map((m) => <a key={m.value} href={`mailto:${m.value}`} onClick={() => void trackTouch({ leadId: lead.id, channel: "email", target: m.value, label: name })} className="flex items-center gap-2 rounded-xl bg-sunk/60 px-2.5 py-2 text-sm hover:text-accent"><Mail size={15} className="shrink-0 text-muted" aria-hidden /><span className="truncate">{m.value}</span>{m.person && <span className="shrink-0 text-xs text-muted">· {m.person}</span>}</a>)}
+        </Card>
       )}
-      {emails.length > 0 && <div className="space-y-1">{emails.map((m) => <a key={m.value} href={`mailto:${m.value}`} onClick={() => void trackTouch({ leadId: lead.id, channel: "email", target: m.value, label: lead.tradeName ?? lead.company })} className={`${row} hover:text-accent`}><Mail size={15} className="mt-0.5 shrink-0 text-muted" aria-hidden /><span className="truncate">{m.value}</span>{m.person && <span className="shrink-0 text-xs text-muted">· {m.person}</span>}</a>)}</div>}
-      {lead.tasks.length > 0 && <div className="space-y-1 rounded-xl border border-dashed border-line p-2.5"><p className="flex items-center gap-1.5 text-xs font-semibold text-muted"><CalendarClock size={13} aria-hidden /> Suas tarefas neste lead</p>{lead.tasks.map((t) => <p key={t.id} className="text-sm">{t.title}{t.dueAt && <span className="text-xs text-muted"> · {new Date(t.dueAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</span>}</p>)}</div>}
-      {lead.notes && <p className="line-clamp-3 rounded-xl border border-dashed border-line bg-panel px-3 py-2 text-xs italic text-muted">“{lead.notes}”</p>}
-      <ClientIds leadId={lead.id} eoxId={lead.eoxId} eoxCode={lead.eoxCode} sfId={lead.sfId} eoxUrl={lead.eoxUrl} canEdit={false} compact />
-      <div className="grid grid-cols-2 gap-2">
-        <Link href={`/leads/${lead.id}`} target="_blank" className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-line bg-panel text-sm font-semibold hover:border-accent"><ExternalLink size={14} aria-hidden /> Abrir lead</Link>
-        {roteiroOn && <button type="button" onClick={() => onScript(`/roteiro/${lead.id}${lead.kind === "inativo" ? "?area=vendas" : "?area=sdr&goal=sdr"}`)} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-line bg-panel text-sm font-semibold hover:border-accent"><ScrollText size={14} aria-hidden /> Roteiro</button>}
-      </div>
+
+      <Card title="Resumo" Icon={History}>
+        {lead.contactName && <p className="flex items-center gap-2 text-sm"><UserRound size={14} className="shrink-0 text-muted" aria-hidden /><span>{lead.contactName}{lead.roleTitle && <span className="text-muted"> · {lead.roleTitle}</span>}</span></p>}
+        <p className="text-sm text-muted">{lead.timesServed ? `Já atendido ${lead.timesServed}×` : "Ainda não atendido"}{lead.ownerName && ` · Responsável: ${lead.ownerName.split(" ")[0]}`}</p>
+        {lead.notes && <p className="line-clamp-3 rounded-lg bg-sunk/60 px-2.5 py-2 text-xs italic text-muted">“{lead.notes}”</p>}
+      </Card>
+
+      {lead.eoxInfo && <EoxInfoCard info={lead.eoxInfo} compact />}
+
+      {lead.tasks.length > 0 && (
+        <Card title="Suas tarefas" Icon={CalendarClock}>
+          {lead.tasks.map((t) => <p key={t.id} className="text-sm">{t.title}{t.dueAt && <span className="text-xs text-muted"> · {new Date(t.dueAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</span>}</p>)}
+        </Card>
+      )}
+
+      <Card title="Identificação" Icon={Building2}>
+        <ClientIds leadId={lead.id} eoxId={lead.eoxId} eoxCode={lead.eoxCode} sfId={lead.sfId} eoxUrl={lead.eoxUrl} canEdit={false} compact />
+      </Card>
+
       {others.length > 0 && (
-        <div className="space-y-1 border-t border-line pt-2">
-          <p className="text-xs text-muted">Este número também está em:</p>
+        <Card title="Este número também está em" Icon={Building2}>
           {others.map((o) => <button key={o.id} type="button" onClick={() => onPick(o)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-accent/10"><Building2 size={14} className="shrink-0 text-muted" aria-hidden /><span className="truncate">{o.tradeName ?? o.company}</span></button>)}
-        </div>
+        </Card>
       )}
     </div>
   );
@@ -242,6 +274,7 @@ export function PhoneDock() {
                   {lead ? <Link href={`/leads/${lead.id}`} target="_blank" className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-line bg-sunk/60 text-xs font-bold hover:border-accent"><FeyMark size={17} aria-hidden />Lead</Link> : <span className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-line text-xs text-muted"><ExternalLink size={17} aria-hidden />Lead</span>}
                   <button type="button" onClick={() => { void navigator.clipboard?.writeText(callDigits); toast("info", "Número copiado."); }} className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-line bg-sunk/60 text-xs font-bold hover:border-accent"><Copy size={17} className="text-accent" aria-hidden />Copiar</button>
                 </div>
+                {live && <button type="button" onClick={() => { void vocall.hangupCall(); toast("info", "Pedido de desligar enviado."); }} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-danger text-base font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98]"><PhoneOff size={18} aria-hidden /> Desligar</button>}
                 {ended && (
                   <>
                     {call!.qualUrl
@@ -267,7 +300,7 @@ export function PhoneDock() {
                 </div>
                 {digits.length >= 8 && (found.loading
                   ? <p className="flex items-center justify-center gap-2 py-2 text-xs text-muted"><Loader2 size={13} className="animate-spin" aria-hidden /> Procurando o lead…</p>
-                  : lead ? <LeadStrip lead={lead} onOpen={() => setTab("lead")} />
+                  : lead ? <div className="space-y-1.5"><LeadStrip lead={lead} onOpen={() => setTab("lead")} />{script && <button type="button" onClick={() => openScript(script)} className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-sunk/60 text-sm font-semibold hover:border-accent"><ScrollText size={15} className="text-accent" aria-hidden /> Abrir o roteiro e se preparar</button>}</div>
                   : <p className="rounded-xl border border-dashed border-line px-3 py-2.5 text-center text-xs text-muted">Número sem lead cadastrado. A ligação sai, sem ficha.</p>)}
                 <div className="grid grid-cols-3 gap-2.5" role="group" aria-label="Teclado">
                   {KEYS.map(([k, sub]) => (
@@ -289,7 +322,7 @@ export function PhoneDock() {
 
           {!inCall && shownTab === "dial" && (
             <footer className="space-y-1.5 border-t border-line bg-panel p-3">
-              {!vocall.ready && !checking && vocall.fails >= 4 && <p role="alert" className="rounded-xl bg-warn/15 px-3 py-2 text-center text-sm font-semibold text-warn">Não consegui conectar ao VocallPhone. Por favor, feche todas as janelas do EOX no seu navegador.</p>}
+              {!vocall.ready && !checking && vocall.fails >= 1 && <p role="alert" className="rounded-xl bg-warn/15 px-3 py-2 text-center text-sm font-semibold text-warn">Não consegui conectar ao VocallPhone. Por favor, feche todas as janelas do EOX no seu navegador.</p>}
               <button type="button" onClick={() => void dialTo(digits)} disabled={digits.length < 8 || dialing || !vocall.ready || checking} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40" style={{ background: "linear-gradient(135deg,#16a34a,#15803d)" }}>
                 {dialing || !vocall.ready ? <Loader2 size={20} className="animate-spin" aria-hidden /> : <Phone size={20} aria-hidden />} {dialing ? "Ligando…" : !vocall.ready ? "Conectando…" : "Ligar"}
               </button>
