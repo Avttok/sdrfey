@@ -28,6 +28,7 @@ import { db, tags, users } from "@/db";
 import { tagIconKey } from "@/config/tag-icons";
 import { TagIconProvider } from "@/components/tag-chip";
 import { eq, isNotNull } from "drizzle-orm";
+import { ScrollAssist } from "@/components/scroll-assist";
 import { roteiroEnabled } from "@/modules/scripts/gate";
 import { requireUser } from "@/modules/auth/guard";
 import { eggHolders } from "@/modules/achievements/stats";
@@ -81,6 +82,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="app-col flex min-w-0 flex-1 flex-col">
           <AppHeader user={user} badges={badges} groupNav={groupNav} navAlign={settings.nav_align} />
           {user.isAdmin && user.navLayout === "side" && <div className="hidden justify-end px-6 pt-3 lg:flex"><AdminViewSwitch mode={user.adminView} /></div>}
+          <ScrollAssist />
           <main className="mx-auto flex w-full max-w-[92rem] flex-1 flex-col px-3 py-7 pb-10 sm:px-5 lg:px-6">{children}</main>
           <footer className="relative z-40 px-4 pb-6 text-center text-xs text-muted"><span className="relative inline-block px-4 py-1.5"><span aria-hidden className="glow-pulse absolute inset-0 rounded-full bg-accent/50 blur-lg" /><span className="relative font-medium">Made by Ruan Carlos</span>{avatars.eggs.includes(user.id) && <GoldFooterEgg />}</span>{!avatars.eggs.includes(user.id) && <EggHunt />}</footer>
         </div>

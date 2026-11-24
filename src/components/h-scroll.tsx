@@ -29,7 +29,7 @@ export function HScroll({ children, className = "", label, role }: { children: R
     </button>
   );
   return (
-    <div className="relative min-w-0">
+    <div data-no-scroll-assist className="relative min-w-0">
       {edge.l && arrow("l")}
       <div ref={ref} role={role} aria-label={label} className={`no-sb overflow-x-auto ${edge.l ? "pl-9" : ""} ${edge.r ? "pr-9" : ""} ${className}`}>{children}</div>
       {edge.r && arrow("r")}

@@ -9,7 +9,7 @@ import { requirePerm } from "@/modules/auth/guard";
 import { logAudit } from "@/modules/audit/log";
 import type { ActionResult } from "@/modules/leads/actions";
 import { leftPortfolio } from "@/modules/deals/portfolio";
-import { claimInactive } from "./shuffler";
+import { claimInactive, claimInactiveLead } from "./shuffler";
 import { saveSalesWork, type SalesFinal } from "./save";
 import type { SaveInput } from "@/modules/leads/attend";
 import { UserError } from "@/modules/leads/sorter";
@@ -20,6 +20,15 @@ const fail = (message: string): ActionResult => ({ ok: false, message });
 export async function startSalesShuffleAction() {
   const me = await requirePerm("tab.shuffler_vendas");
   await claimInactive(me.id);
+  revalidatePath("/shuffler-vendas");
+  redirect("/shuffler-vendas");
+}
+
+/** "Atender" num lead inativo da lista: o vendedor puxa esse lead para o Shuffler Vendas. */
+export async function attendInactiveAction(leadId: number): Promise<ActionResult> {
+  const me = await requirePerm("tab.shuffler_vendas");
+  if (!Number.isInteger(leadId)) return fail("Pedido inválido.");
+  try { await claimInactiveLead(me.id, leadId); } catch (e) { return fail(e instanceof Error ? e.message : "Não foi possível atender."); }
   revalidatePath("/shuffler-vendas");
   redirect("/shuffler-vendas");
 }

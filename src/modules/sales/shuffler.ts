@@ -53,6 +53,28 @@ export async function claimInactive(userId: number, listId?: number): Promise<Sa
   });
 }
 
+/** O vendedor escolhe um lead inativo da lista (botão Atender): entra no Shuffler Vendas como se tivesse sido sorteado. */
+export async function claimInactiveLead(userId: number, leadId: number): Promise<SalesShuffle> {
+  const mine = await openShuffle(userId);
+  if (mine?.leadId === leadId) return mine;
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('seller_shuffle'))`);
+    const [l] = await tx.execute<{ id: number; locked_by: number | null; open_deal: boolean; held: boolean }>(sql`
+      select l.id, l.locked_by,
+        exists (select 1 from deals d where d.lead_id = l.id and d.stage not in ('ganho','perdido')) as open_deal,
+        exists (select 1 from seller_shuffles s where s.lead_id = l.id and s.user_id <> ${userId} and s.outcome is null and s.shown_at > now() - make_interval(mins => ${SALES_HOLD_MIN})) as held
+      from leads l where l.id = ${leadId} and l.kind = 'inativo' and not l.is_test`);
+    if (!l) throw new Error("Este lead não é um cliente inativo.");
+    if (l.open_deal) throw new Error("Este lead já está em negociação.");
+    if ((l.locked_by && l.locked_by !== userId) || l.held) throw new Error("Outra pessoa está atendendo este lead agora.");
+    await tx.execute(sql`update leads set locked_by = null, locked_at = null where locked_by = ${userId} and kind = 'inativo' and id <> ${leadId}`);
+    await tx.execute(sql`update seller_shuffles set outcome = 'released', done_at = now() where user_id = ${userId} and outcome is null`);
+    const [row] = await tx.execute<{ id: number }>(sql`insert into seller_shuffles (lead_id, user_id) values (${leadId}, ${userId}) returning id`);
+    await tx.execute(sql`update leads set locked_by = ${userId}, locked_at = now() where id = ${leadId}`);
+    return { id: row.id, leadId };
+  });
+}
+
 /** Quantos leads inativos ainda podem ser sorteados agora (para a tela inicial). */
 export async function inactiveStock(): Promise<number> {
   const [r] = await db.execute<{ n: number }>(sql`

@@ -1,8 +1,8 @@
 "use client";
 
 import { HScroll } from "@/components/h-scroll";
-import { Ban, CalendarCheck, Check, CircleSlash, Globe, Link2, MapPin, Pause, Trash2, Undo2, UserCheck, Users, Workflow } from "lucide-react";
-import { useContext } from "react";
+import { Ban, CalendarCheck, Check, ChevronDown, CircleSlash, Globe, Link2, MapPin, Pause, Trash2, Undo2, UserCheck, Users, Workflow } from "lucide-react";
+import { useContext, useEffect, useState } from "react";
 import { AvatarGlyph } from "@/components/avatar-glyph";
 import { TagIcons } from "@/components/tag-chip";
 import { TAG_ICONS } from "@/config/tag-icons";
@@ -26,16 +26,26 @@ export function FlashTag({ label, color, on, onClick, icon, Comp, hint, disabled
   );
 }
 
+/** Grupo de tags em cards: o cabeçalho minimiza/expande (com animação) e a escolha fica lembrada neste aparelho. */
 export function TagDeck({ title, hint, icon: I, children, count, total }: { title: string; hint?: string; icon?: typeof Workflow; children: React.ReactNode; count: number; total: number }) {
+  const key = `fey:tagdeck:${title}`;
+  const [open, setOpen] = useState(true);
+  useEffect(() => { try { if (localStorage.getItem(key) === "0") setOpen(false); } catch { /* sem armazenamento: segue aberto */ } }, [key]);
+  const toggle = () => setOpen((o) => { try { localStorage.setItem(key, o ? "0" : "1"); } catch { /* */ } return !o; });
   return (
     <section className="space-y-2.5">
-      <div className="flex flex-wrap items-center gap-2">
+      <button type="button" onClick={toggle} aria-expanded={open} className="flex w-full flex-wrap items-center gap-2 rounded-xl text-left transition hover:bg-sunk/60">
         <span className="grid size-7 place-items-center rounded-lg bg-grad-soft text-accent">{I ? <I size={15} aria-hidden /> : <Workflow size={15} aria-hidden />}</span>
         <h3 className="text-sm font-semibold">{title}</h3>
         {hint && <span className="text-xs text-muted">{hint}</span>}
         <span className="figure ml-auto rounded-full bg-sunk px-2 py-0.5 text-xs font-semibold text-muted">{count}/{total}</span>
+        <ChevronDown size={16} className={`text-muted transition-transform duration-300 ${open ? "" : "-rotate-90"}`} aria-hidden />
+      </button>
+      <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+        <div className={`min-h-0 ${open ? "overflow-visible" : "overflow-hidden"}`}>
+          <div className="grid grid-cols-2 gap-2.5 pb-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">{children}</div>
+        </div>
       </div>
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">{children}</div>
     </section>
   );
 }

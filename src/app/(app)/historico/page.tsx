@@ -124,7 +124,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                   {r.tags.length > 0 && <div className="flex flex-wrap gap-1.5">{r.tags.map((t) => <TagChip key={t.key + t.group} label={t.label} color={t.color} />)}</div>}
                   {r.notes && <p className="line-clamp-2 rounded-md bg-sunk px-2.5 py-1.5 text-xs text-muted">{r.notes}</p>}
                 </div>
-                {inDeal.has(r.lead_id) ? <span className="rounded-full bg-accent/12 px-2.5 py-1 text-xs font-semibold text-accent">Com os vendedores</span> : <AttendButton leadId={r.lead_id} compact />}
+                {inDeal.has(r.lead_id) ? <span className="rounded-full bg-accent/12 px-2.5 py-1 text-xs font-semibold text-accent">Vendas</span> : <AttendButton leadId={r.lead_id} compact />}
               </li>
             ))}
           </ul>

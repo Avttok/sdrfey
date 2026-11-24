@@ -12,7 +12,7 @@ import { AttendButton } from "@/components/attend-button";
 import { LeadFilters } from "@/components/lead-filters";
 import { LeadToolbar } from "@/components/lead-toolbar";
 import { TagChip } from "@/components/tag-chip";
-import { panelCls } from "@/components/ui";
+import { btnSmGhost, panelCls } from "@/components/ui";
 import { db, leads, users } from "@/db";
 import { bubbleHex } from "@/config/theme";
 import { fmtCnpj } from "@/lib/format";
@@ -64,7 +64,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
       </PageHead>
       {stat && (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {([["Na base", stat.all, Users, "text-accent"], ["Livres", stat.free, Sparkles, "text-ok"], ["Em atendimento agora", stat.busy, Activity, "text-warn"], ["Com os vendedores", stat.deals, Handshake, "text-accent"]] as const).map(([l, v, I, c], i) => (
+          {([["Na base", stat.all, Users, "text-accent"], ["Livres", stat.free, Sparkles, "text-ok"], ["Em atendimento agora", stat.busy, Activity, "text-warn"], ["Em vendas", stat.deals, Handshake, "text-accent"]] as const).map(([l, v, I, c], i) => (
             <div key={l} style={{ "--i": i } as React.CSSProperties} className={`${panelCls} stat-glow card-in flex items-center gap-3 p-4`}>
               <span className={`grid size-11 shrink-0 place-items-center rounded-xl bg-grad-soft ${c}`}><I size={19} aria-hidden /></span>
               <div className="min-w-0"><p className="truncate text-xs text-muted">{l}</p><p className="figure text-2xl font-bold leading-tight">{new Intl.NumberFormat("pt-BR").format(v)}</p></div>
@@ -96,13 +96,13 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                   {sellerView ? (l.deal_stage && <StageChip stage={l.deal_stage as DealStage} />) : <>
                     {l.locked_by_name && <PersonBubble userId={l.locked_by_id} name={l.locked_by_name} hex={bubbleHex(l.locked_by_accent, l.locked_by_id ?? 0, l.locked_roles ?? undefined)} prefix="Atendendo" />}
                     {l.owner_name && <PersonBubble userId={l.owner_id} name={l.owner_name} hex={bubbleHex(l.owner_accent, l.owner_id ?? 0, l.owner_roles ?? undefined)} />}
-                    {l.seller_name && <PersonBubble userId={l.seller_id} name={l.seller_name} hex={bubbleHex(l.seller_accent, l.seller_id ?? 0, l.seller_roles ?? undefined)} prefix="Vendas" />}
+                    {l.seller_name && <PersonBubble userId={l.seller_id} name={l.seller_name} hex={bubbleHex(l.seller_accent, l.seller_id ?? 0, l.seller_roles ?? undefined)} />}
                     {!l.owner_name && !l.locked_by_name && !l.seller_name && <span className="rounded-full border border-dashed border-line px-2 py-0.5 text-muted">Livre</span>}
                   </>}
                 </div>
                 <div className="flex items-center justify-end gap-2">
-                  {!sellerView && (l.deal_id ? <span className="rounded-full bg-accent/12 px-2.5 py-1 text-xs font-semibold text-accent">Com os vendedores</span> : !l.locked_by_name && me.permissions["tab.comecar"] && <AttendButton leadId={l.id} compact />)}
-                  <RoteiroLink leadId={l.id} compact /><Link href={`/leads/${l.id}`} className="rounded-full px-3 py-1 text-xs font-semibold text-accent transition hover:bg-accent/10">Abrir</Link>
+                  {!sellerView && (l.deal_id ? <span className="whitespace-nowrap rounded-full bg-accent/12 px-2.5 py-1 text-xs font-semibold text-accent">Vendas</span> : !l.locked_by_name && (l.kind === "inativo" ? !!me.permissions["tab.shuffler_vendas"] : !!me.permissions["tab.comecar"]) && <AttendButton leadId={l.id} sales={l.kind === "inativo"} compact />)}
+                  <RoteiroLink leadId={l.id} compact /><Link href={`/leads/${l.id}`} className={btnSmGhost}>Abrir</Link>
                 </div>
               </li>
             );
@@ -140,13 +140,13 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                   {sellerView ? (l.deal_stage && <StageChip stage={l.deal_stage as DealStage} />) : <>
                     {l.locked_by_name && <PersonBubble userId={l.locked_by_id} name={l.locked_by_name} hex={bubbleHex(l.locked_by_accent, l.locked_by_id ?? 0, l.locked_roles ?? undefined)} prefix="Atendendo" />}
                     {l.owner_name && <PersonBubble userId={l.owner_id} name={l.owner_name} hex={bubbleHex(l.owner_accent, l.owner_id ?? 0, l.owner_roles ?? undefined)} />}
-                    {l.seller_name && <PersonBubble userId={l.seller_id} name={l.seller_name} hex={bubbleHex(l.seller_accent, l.seller_id ?? 0, l.seller_roles ?? undefined)} prefix="Vendas" />}
+                    {l.seller_name && <PersonBubble userId={l.seller_id} name={l.seller_name} hex={bubbleHex(l.seller_accent, l.seller_id ?? 0, l.seller_roles ?? undefined)} />}
                     {!l.owner_name && !l.locked_by_name && !l.seller_name && <span className="rounded-full border border-dashed border-line px-2.5 py-0.5 text-xs text-muted">Livre</span>}
                   </>}
                 </div>
                 <div className="flex items-center gap-2">
-                  {!sellerView && (l.deal_id ? <span className="rounded-full bg-accent/12 px-2.5 py-1 text-xs font-semibold text-accent">Com os vendedores</span> : !l.locked_by_name && me.permissions["tab.comecar"] && <AttendButton leadId={l.id} compact />)}
-                  <RoteiroLink leadId={l.id} compact /><Link href={`/leads/${l.id}`} className="rounded-full px-3 py-1 text-xs font-semibold text-accent transition hover:bg-accent/10">Abrir</Link>
+                  {!sellerView && (l.deal_id ? <span className="whitespace-nowrap rounded-full bg-accent/12 px-2.5 py-1 text-xs font-semibold text-accent">Vendas</span> : !l.locked_by_name && (l.kind === "inativo" ? !!me.permissions["tab.shuffler_vendas"] : !!me.permissions["tab.comecar"]) && <AttendButton leadId={l.id} sales={l.kind === "inativo"} compact />)}
+                  <RoteiroLink leadId={l.id} compact /><Link href={`/leads/${l.id}`} className={btnSmGhost}>Abrir</Link>
                 </div>
               </div>
             </li>

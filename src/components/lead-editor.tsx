@@ -70,7 +70,7 @@ export function LeadEditor({ kpis, records, afterLeft, afterRight, lead, catalog
             {lead.tags.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{lead.tags.map((t) => <TagChip key={t.id} label={t.label} color={t.color} />)}</div>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {!sellerView && !lockedBy && inDeal && (dealSeller ? <PersonBubble name={dealSeller.name} hex={dealSeller.hex} prefix="Vendas" /> : <span className="rounded-full bg-accent/12 px-3 py-1.5 text-sm font-semibold text-accent">Com os vendedores</span>)}
+            {!sellerView && !lockedBy && inDeal && (dealSeller ? <PersonBubble name={dealSeller.name} hex={dealSeller.hex} /> : <span className="rounded-full bg-accent/12 px-3 py-1.5 text-sm font-semibold text-accent">Vendas</span>)}
             {sellerView ? (dealId ? <Link href={`/negociacoes/${dealId}`} className={btnPrimary}><Handshake size={16} aria-hidden /> Abrir negociação</Link> : null) : lockedBy ? <PersonBubble name={lockedBy.name} hex={lockedBy.hex} prefix="Em atendimento" /> : inDeal ? null : <><AttendButton leadId={lead.id} />{dealId ? <Link href={`/negociacoes/${dealId}`} className={btnGhost}><Handshake size={16} aria-hidden /> Abrir negociação</Link> : null}</>}
             {!sellerView && inDeal && !lockedBy && dealId ? <Link href={`/negociacoes/${dealId}`} className={btnGhost}><Handshake size={16} aria-hidden /> Abrir negociação</Link> : null}
             {!sellerView && canEdit && !lockedBy && <button type="button" className={`${btnGhost} !border-danger !bg-danger !text-white hover:brightness-110`} disabled={pending} onClick={() => setConfirmReset(true)}><RotateCcw size={15} aria-hidden /> Resetar lead</button>}
