@@ -23,7 +23,6 @@ import type { LeadView } from "@/modules/leads/view";
 import { saveScriptRunAction, type ScriptRunInput } from "@/modules/scripts/runs";
 import { attachRunAction } from "@/modules/touches/actions";
 import { Timer } from "@/components/call-ui";
-import { useTouchScope } from "@/lib/touch-bus";
 
 type Run = Omit<ScriptRunInput, "isTest">;
 
@@ -33,7 +32,6 @@ export function LeadCall({ eventId, knowledge, lead, scripts, goal, area, myName
   deal: { stage: string; quote: string | null; valueCents: number | null; nextAt: string | null; nextNote: string | null } | null;
   visit: { date: string | null; rep: string | null } | null;
 }) {
-  useTouchScope(lead.id, ["call"]); // a pergunta "como foi a ligação?" aparece aqui, na tela do roteiro
   const toast = useToast();
   const vocall = useVocall();
   const [talkingId, setTalkingId] = useState<number | null>(null);

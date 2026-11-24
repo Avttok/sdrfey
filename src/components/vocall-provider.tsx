@@ -8,7 +8,7 @@ import { qualificationLink, type EoxRef } from "@/modules/vocall/eox";
 
 export type VocallState = "off" | "idle" | "connecting" | "online" | "error";
 export type VocallCall = { telefone: string; empresa: string | null; estado: string | null; since: number; /** Momento em que a chamada acabou (congela o cronômetro). */ endedAt?: number; /** Formulário de Atendimento da EOX para qualificar esta ligação. */ qualUrl?: string | null; /** Procurando a qualificação pendente na central. */ qualLooking?: boolean };
-type Ctx = { configured: boolean; /** Manda ao VocallAgent o aviso "livre" (ficar disponível para a próxima ligação). */ release: () => Promise<void>; /** Pede ao VocallAgent para desligar a chamada em andamento. */ hangupCall: () => Promise<void>; /** Chamada acabou e o sistema ainda confere se há qualificação: nada de nova ligação até acabar. */ checking: boolean; /** Quantas consultas seguidas do ramal falharam (muitas = algo prendendo o VocallPhone). */ fails: number; /** Roteiro durante a ligação liberado (chave do Adm + permissão). */ roteiroOn: boolean; /** O VocallPhone está livre para ligar (consulta automática a cada 3 s). null = ainda consultando; false = ocupado ou liberando a última chamada. */ ready: boolean | null; /** Painel do telefone aberto. */ panel: boolean; setPanel: (open: boolean) => void; /** Texto colocado antes do número ao discar (para reconhecer o lead na chamada). */ prefix: string; state: VocallState; call: VocallCall | null; /** Liga: conecta ao VocallAgent só agora, pede a chamada e resolve true quando o VocallPhone confirma; false se não conectou ou não confirmou (aí vale copiar e colar no app). A conexão é cortada quando a chamada termina. */ dial: (phone: string, label?: string | null, eox?: EoxRef | null) => Promise<boolean>; /** Fecha o aviso da ligação que acabou. */ dismiss: () => void };
+type Ctx = { configured: boolean; /** Manda ao VocallAgent o aviso "livre" (ficar disponível para a próxima ligação). */ release: (result?: string) => Promise<void>; /** Pede ao VocallAgent para desligar a chamada em andamento. */ hangupCall: () => Promise<void>; /** Chamada acabou e o sistema ainda confere se há qualificação: nada de nova ligação até acabar. */ checking: boolean; /** Quantas consultas seguidas do ramal falharam (muitas = algo prendendo o VocallPhone). */ fails: number; /** Roteiro durante a ligação liberado (chave do Adm + permissão). */ roteiroOn: boolean; /** O VocallPhone está livre para ligar (consulta automática a cada 3 s). null = ainda consultando; false = ocupado ou liberando a última chamada. */ ready: boolean | null; /** Painel do telefone aberto. */ panel: boolean; setPanel: (open: boolean) => void; /** Texto colocado antes do número ao discar (para reconhecer o lead na chamada). */ prefix: string; state: VocallState; call: VocallCall | null; /** Liga: conecta ao VocallAgent só agora, pede a chamada e resolve true quando o VocallPhone confirma; false se não conectou ou não confirmou (aí vale copiar e colar no app). A conexão é cortada quando a chamada termina. */ dial: (phone: string, label?: string | null, eox?: EoxRef | null) => Promise<boolean>; /** Fecha o aviso da ligação que acabou. */ dismiss: () => void };
 const VocallCtx = createContext<Ctx>({ configured: false, release: async () => {}, hangupCall: async () => {}, checking: false, fails: 0, roteiroOn: true, ready: null, panel: false, setPanel: () => {}, prefix: "", state: "off", call: null, dial: async () => false, dismiss: () => {} });
 export const useVocall = () => useContext(VocallCtx);
 
@@ -238,20 +238,39 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, roteiroOn = true,
     sock.onclose = () => end(false);
   }), [host, port, secure, agentId, ramal, dac, senha]);
 
-  /** "Está tudo bem, pode ficar disponível": entra, manda `livre false` (o mesmo aviso que a EOX manda) e sai. Depois a consulta automática confirma. */
-  const release = useCallback(() => new Promise<void>((resolve) => {
-    let sock: WebSocket | null = null; let done = false; let t: ReturnType<typeof setTimeout> | undefined;
+  /**
+   * Libera o ramal. O que a página da EOX faz depois de salvar o Atendimento (HAR 24/11): entra no VocallAgent, recebe
+   * `aguardando_qualificacao`, pergunta à EOX o resultado salvo e manda `qualificar {id_qualificacao_pendente, qualificacao}`;
+   * a central responde `retorno_qualificacao` e `livre false`. Aqui: entra; se a central diz que há qualificação pendente, manda
+   * `qualificar` com o id da chamada; se já está livre, só confirma. `result` é o texto do resultado (a central só precisa de um).
+   */
+  const release = useCallback((result = "Caixa postal") => new Promise<void>((resolve) => {
+    let sock: WebSocket | null = null; let done = false; let sent = false; let t: ReturnType<typeof setTimeout> | undefined;
     const end = () => { if (done) return; done = true; clearTimeout(t); if (sock) { sock.onopen = sock.onmessage = sock.onerror = sock.onclose = null; try { sock.close(1000); } catch { /* já fechou */ } } setReady(null); setFails(0); resolve(); };
+    const send = (o: unknown) => { try { sock?.send(JSON.stringify(o)); } catch { /* sem conexão */ } };
+    const qualify = async () => {
+      if (sent) return; sent = true;
+      let id = srcId.current;
+      if (!id) {
+        try {
+          const r = await fetch("/api/vocall/qualificacao", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ telefone: dialDigits.current }), cache: "no-store" });
+          const j = (await r.json()) as { id?: string | null };
+          if (j.id && /^\d+$/.test(j.id)) id = j.id;
+        } catch { /* sem id */ }
+      }
+      if (id) send({ action: "qualificar", data: { id_qualificacao_pendente: id, qualificacao: result } }); else send({ action: "livre", data: { state: false } });
+      clearTimeout(t); t = setTimeout(end, 2_500);
+    };
     try { sock = new WebSocket(vocallUrl({ host, port, secure })); } catch { return end(); }
-    t = setTimeout(end, 5_000);
-    sock.onopen = () => sock?.send(JSON.stringify({ action: "login", data: { id: agentId, ramal, dac, senha } }));
+    t = setTimeout(end, 6_000);
+    sock.onopen = () => send({ action: "login", data: { id: agentId, ramal, dac, senha } });
     sock.onmessage = (ev) => {
       let m: { action?: string; erro?: unknown };
       try { m = JSON.parse(String(ev.data)); } catch { return; }
-      if (m.action !== "login") return;
-      if (m.erro) return end();
-      try { sock?.send(JSON.stringify({ action: "livre", data: { state: false } })); } catch { /* sem conexão */ }
-      clearTimeout(t); t = setTimeout(end, 1_200);
+      if (m.action === "login") { if (m.erro) return end(); clearTimeout(t); t = setTimeout(() => { if (!sent) { sent = true; send({ action: "livre", data: { state: false } }); clearTimeout(t); t = setTimeout(end, 1_500); } }, 1_500); }
+      else if (m.action === "aguardando_qualificacao") void qualify();
+      else if (m.action === "livre" && !sent) end(); // já estava livre
+      else if (m.action === "livre" || m.action === "retorno_qualificacao") { if (m.action === "livre") end(); }
     };
     sock.onerror = end; sock.onclose = end;
   }), [host, port, secure, agentId, ramal, dac, senha]);
