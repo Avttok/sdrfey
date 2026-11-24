@@ -22,6 +22,8 @@ const IDLE_MS = 25_000;   // conectado sem nenhuma chamada: corta
 const MAX_CALL_MS = 3 * 60 * 60_000; // trava de segurança: nenhuma conexão passa disso
 const QUAL_WAIT_MS = 6_000;  // chamada terminou e a central não pediu qualificação: corta
 const QUAL_KEEP_MS = 15 * 60_000; // o botão Qualificar fica no painel por até 15 min
+/** Resultado enviado à central quando o número não tem cadastro na EOX (libera o ramal sem abrir atendimento). */
+const NO_RECORD_QUAL = "Caixa postal";
 const GONE_MS = 8_000;        // sem nada a qualificar, o aviso de "encerrada" some
 
 /**
@@ -93,6 +95,11 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, roteiroOn = true,
     const origin = eoxRef.current?.origin || base || eoxBase || "";
     const ref = eoxRef.current ?? (parent ? { crmid: parent, setype: "Accounts" } : null);
     const url = id && origin && ref?.crmid ? qualificationLink(origin, ref, id) : null; // número sem cadastro na EOX: sem link
+    // número sem cadastro na EOX: não há atendimento a registrar. Avisa a central que está tudo certo para o ramal voltar a "Disponível".
+    const sock = ws.current;
+    if (!url && id && sock && sock.readyState === 1) {
+      try { sock.send(JSON.stringify({ action: "qualificar", data: { id_qualificacao_pendente: id, qualificacao: NO_RECORD_QUAL } })); await new Promise((r) => setTimeout(r, 1_500)); } catch { /* segue: a conexão é fechada logo abaixo */ }
+    }
     hangup("idle");
     if (!alive.current) return;
     setCall((c) => (c ? { ...c, qualUrl: url, qualLooking: false } : c));

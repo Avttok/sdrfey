@@ -189,7 +189,6 @@ export function PhoneDock() {
           )}
           {!open && inCall && <span className="relative text-sm"><Timer since={call!.since} endedAt={call!.endedAt} /></span>}
         </button>
-        {!open && ended && call!.qualUrl && <QualifyLink href={call!.qualUrl} compact />}
       </div>
 
       {open && (
