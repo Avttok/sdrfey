@@ -220,7 +220,7 @@ export function objecoes(back: string, foco: "visita" | "venda"): ScriptNode[] {
       `Entendi, e valeu por ser franco comigo. O que pesa mais pra você agora? Assim eu respondo o que realmente importa.`,
       `Entendi, e agradeço a franqueza. O que pesa mais para você neste momento? Assim posso responder ao que realmente importa.`,
       `Entendi, valeu por ser sincero! O que tá pesando mais pra você agora? Aí eu respondo o que importa de verdade.`,
-    ), [o("Preço", "obj_preco", "objecao"), o("Prazo de entrega", "obj_prazo", "objecao"), o("Qualidade e garantia", "obj_qualidade", "objecao"), o("Forma de pagamento", "obj_pagamento", "objecao"), o("Frete", "obj_frete", "objecao"), o("Pedido mínimo", "obj_minimo", "objecao"), o("Outras objeções…", "obj_menu2", "neutro")], `Escute até o fim, sem interromper, e esclareça antes de responder: muitas vezes o que ele diz não é o que ele quer dizer (Blount). ${PAR}`, "objecao"),
+    ), [o("Preço", "obj_preco", "objecao"), o("Prazo de entrega", "obj_prazo", "objecao"), o("Qualidade e garantia", "obj_qualidade", "objecao"), o("Forma de pagamento", "obj_pagamento", "objecao"), o("Frete", "obj_frete", "objecao"), o("Pedido mínimo", "obj_minimo", "objecao"), o("Perguntou o preço de cara", "obj_preco_cedo", "objecao"), o("Outras objeções…", "obj_menu2", "neutro")], `Escute até o fim, sem interromper, e esclareça antes de responder: muitas vezes o que ele diz não é o que ele quer dizer (Blount). ${PAR}`, "objecao"),
     fala("obj_menu2", "Outras objeções", T(
       `Certo. E fora isso, tem mais alguma coisa te preocupando?`,
       `Certo. Além disso, há mais alguma coisa que o preocupe?`,
@@ -230,7 +230,12 @@ export function objecoes(back: string, foco: "visita" | "venda"): ScriptNode[] {
       `Tá certo. E tem mais alguma coisa que eu deva saber?`,
       `Entendi. Há mais alguma coisa que eu deva saber?`,
       `Beleza! Tem mais alguma coisa que eu precise saber?`,
-    ), [o("Sem tempo agora", "obj_tempo", "objecao"), o("Estoque cheio, sem necessidade agora", "obj_estoque", "objecao"), o("Pediu para ligar mais tarde (próximo mês ou trimestre)", "obj_depois", "objecao"), o("Sem verba no momento", "obj_verba", "objecao"), o("Vai pensar", "obj_pensar_geral", "objecao"), o("Voltar às objeções principais", "obj_menu", "neutro")], undefined, "objecao"),
+    ), [o("Sem tempo agora", "obj_tempo", "objecao"), o("Estoque cheio, sem necessidade agora", "obj_estoque", "objecao"), o("Pediu para ligar mais tarde (próximo mês ou trimestre)", "obj_depois", "objecao"), o("Sem verba no momento", "obj_verba", "objecao"), o("Vai pensar", "obj_pensar_geral", "objecao"), o("Pede desconto maior", "obj_desconto", "objecao"), o("Só trabalha com uma marca", "obj_marca", "objecao"), o("A compra é centralizada em outra área", "obj_matriz", "objecao"), o("Mais objeções…", "obj_menu4", "neutro"), o("Voltar às objeções principais", "obj_menu", "neutro")], undefined, "objecao"),
+    fala("obj_menu4", "Ainda mais objeções", T(
+      "Certo. E tem mais alguma coisa que eu possa esclarecer?",
+      "Certo. Há mais alguma coisa que eu possa esclarecer?",
+      "Certo! Tem mais alguma coisa que eu possa te esclarecer?",
+    ), [o("Burocracia de cadastro", "obj_cadastro", "objecao"), o("Pede certificado ou laudo", "obj_certificado", "objecao"), o("Pede referências de clientes", "obj_referencia", "objecao"), o("Precisa de item sob medida", "obj_especial", "objecao"), o("Voltar às outras objeções", "obj_menu3", "neutro"), o("Voltar às objeções principais", "obj_menu", "neutro")], undefined, "objecao"),
     fala("obj_preco", "Acha caro", T(
       `Faz sentido olhar o preço com cuidado, e eu prefiro que você olhe mesmo. Mas me diz uma coisa, caro comparado com o quê? Com o que vocês pagam hoje ou com o que você esperava? Porque a nossa linha é premium, e eu dou 25% de desconto no pedido. O mínimo continua o mesmo, mas você leva mais produto.`,
       `É natural avaliar o preço com cuidado. Em comparação com o quê o valor parece alto? Com o que a empresa paga hoje, ou com o que esperava? Nossa linha é premium e damos 25% de desconto no pedido. O mínimo se mantém, mas vocês levam mais produto.`,
@@ -336,6 +341,46 @@ export function objecoes(back: string, foco: "visita" | "venda"): ScriptNode[] {
       `Claro, é uma decisão que merece reflexão. Para eu ajudar melhor, o que ainda precisa avaliar, o preço, o prazo ou a garantia? Posso ligar em dois dias, de manhã ou à tarde?`,
       `Claro, decisão importante a gente pensa mesmo! Pra eu te ajudar melhor, o que falta você ver, o preço, o prazo ou a garantia? Posso te ligar daqui a dois dias, de manhã ou à tarde?`,
     ), [o("Disse o que falta decidir", "obj_menu", "neutro"), o("Combinou o retorno", "@retorno", "ok", "Combinado retorno em 2 dias"), nao()], "“Vou pensar” quase sempre esconde uma dúvida: descubra qual é, com calma, sem pressionar."),
+    fala("obj_preco_cedo", "Perguntou o preço de cara", T(
+      "Justo perguntar, e eu vou ser direto. Como a gente fabrica uma linha grande, o valor muda bastante de um item pro outro, e um número solto não ia te ajudar. Me diz os dois ou três itens que você mais compra, que eu te devolvo o valor com 25% de desconto ainda hoje.",
+      "É justo perguntar, e serei direto. Como fabricamos uma linha ampla, o valor varia bastante de um item para outro, e um número solto não ajudaria. Se me informar os dois ou três itens que mais compra, devolvo o valor com 25% de desconto ainda hoje.",
+      "Justo perguntar, e vou ser direto! Como a gente fabrica uma linha grande, o valor muda bastante de um item pro outro, e um número solto não ia te ajudar. Me diz os dois ou três itens que você mais compra, que eu te devolvo o valor com 25% de desconto ainda hoje.",
+    ), [ok("Passou os itens", "Pediu o preço logo de cara e passou os itens"), o("Quer só a tabela", "@cotacao", "neutro", "Pediu somente o preço ou a tabela"), nao(), outra], "Preço dito sem contexto vira comparação injusta. Não fuja da pergunta: explique por que o valor depende do item e peça os itens de maior giro em troca do número."),
+    fala("obj_desconto", "Pede desconto maior", T(
+      "Faz sentido pedir, e eu gosto de quem negocia. O pedido já sai com 25% de desconto, que é a nossa condição de partida. Me diz uma coisa, se eu conseguir ajustar um pouquinho mais, isso resolve e a gente fecha o pedido hoje?",
+      "É legítimo pedir, e valorizo quem negocia. O pedido já sai com 25% de desconto, que é a nossa condição de partida. Se eu conseguir ajustar um pouco mais, isso resolve e podemos fechar o pedido hoje?",
+      "Faz sentido pedir, e eu curto quem negocia! O pedido já sai com 25% de desconto, que é a nossa condição de partida. Me diz uma coisa, se eu conseguir um tiquinho a mais, isso resolve e a gente fecha hoje?",
+    ), [ok("Fecha hoje se houver ajuste", "Fecharia com um ajuste no desconto"), o("Quer pensar", "obj_pensar_geral", "objecao"), nao("Só fecha com desconto bem maior"), outra], "Só ceda o 26% em troca de um compromisso (fechar o pedido), nunca de graça. Descubra se o desconto é o que de fato trava a compra antes de oferecer qualquer coisa."),
+    fala("obj_marca", "Só trabalha com uma marca", T(
+      "Entendi, é normal ter a marca de costume. Eu não quero que você mude nada de uma vez. O que essa marca entrega que você não abre mão? Se a gente também faz, eu te mostro com uma amostra, sem compromisso.",
+      "Entendo, é normal ter uma marca de costume. Não pretendo que você mude tudo de uma vez. O que essa marca entrega que a empresa não abre mão? Se também oferecemos, mostro com uma amostra, sem compromisso.",
+      "Entendi, é normal ter a marca de costume. Não quero que você mude nada de uma vez, viu? O que essa marca tem que você não abre mão? Se a gente também faz, eu te mostro com uma amostra, sem compromisso.",
+    ), [ok("Disse o que não abre mão", "Marca usada hoje e o que valoriza (anotar)"), ok("Topou testar uma amostra", "Aceitou testar uma amostra"), nao("Só compra a marca atual"), outra], "Não ataque a marca dele: descubra o que ela entrega e proponha uma amostra para comparar lado a lado."),
+    fala("obj_matriz", "A compra é centralizada", T(
+      "Entendi, então a compra passa por outra área ou pela matriz. Isso ajuda, porque me deixa falar com a pessoa certa. Quem cuida disso, e qual o melhor jeito de chegar nela? Se você puder me apresentar, eu cuido do resto.",
+      "Entendo, então a compra é centralizada em outra área ou na matriz. Isso ajuda, porque me permite falar com a pessoa certa. Quem cuida disso e qual a melhor forma de chegar até ela? Se puder me apresentar, eu cuido do restante.",
+      "Entendi, então a compra passa por outra área ou pela matriz. Isso ajuda, que aí eu falo com a pessoa certa. Quem cuida disso, e qual o melhor jeito de chegar nela? Se você puder me apresentar, eu cuido do resto.",
+    ), [o("Passou o contato de quem compra", "@retorno", "ok", "Compra centralizada: contato da matriz ou da área de compras anotado"), o("Não pode passar o contato", "@encerrar", "objecao", "Compra centralizada e sem contato"), outra], "Quem compra para várias unidades costuma decidir volume maior. Anote o nome, a área e o melhor horário, e cite quem indicou na próxima ligação."),
+    fala("obj_cadastro", "Burocracia de cadastro", T(
+      "Entendo, ninguém merece papelada. Do nosso lado é simples, a gente só pede os dados básicos da empresa e faz a análise de cadastro, e eu acompanho de perto pra não ficar parado. O que costuma travar aí, algum documento ou a aprovação interna?",
+      "Entendo, ninguém gosta de burocracia. Do nosso lado é simples, pedimos os dados básicos da empresa e fazemos a análise de cadastro, e eu acompanho de perto para não ficar parado. O que costuma travar aí, algum documento ou a aprovação interna?",
+      "Entendo, ninguém merece papelada! Do nosso lado é simples, a gente só pede os dados básicos da empresa e faz a análise de cadastro, e eu acompanho de perto pra não ficar parado. O que costuma travar aí, algum documento ou a aprovação interna?",
+    ), [ok("Explicou o que trava", "Cadastro: gargalo informado (anotar)"), nao(), outra], "Não prometa prazo de aprovação: diga que acompanha o processo. Descubra o gargalo real (documento, aprovação, sistema) e ofereça ajuda concreta."),
+    fala("obj_certificado", "Pede certificado ou laudo", T(
+      "Boa pergunta, é isso que dá segurança na compra. Qual norma ou certificado vocês precisam pro item? Eu levo pro nosso time técnico e te respondo com o que a gente tem de documentação, sem inventar nada.",
+      "Boa pergunta, é isso que dá segurança na compra. Qual norma ou certificado a empresa precisa para o item? Encaminho ao nosso time técnico e respondo com a documentação disponível, sem afirmar nada além do que temos.",
+      "Boa pergunta, é isso que dá segurança na compra! Qual norma ou certificado vocês precisam pro item? Levo pro nosso time técnico e te respondo com o que a gente tem de documentação, sem inventar nada.",
+    ), [o("Informou a norma ou o certificado", "@retorno", "ok", "Pediu certificado ou laudo: acionar o time técnico e retornar"), nao(), outra], "Nunca afirme que o item tem uma certificação que você não conferiu. Anote a norma pedida e retorne com a resposta do time técnico no prazo prometido."),
+    fala("obj_referencia", "Pede referências de clientes", T(
+      "Faz todo sentido querer conhecer quem vai fornecer. Posso te passar clientes que compram da gente num negócio parecido, e se preferir você começa por uma amostra pra ver a qualidade com os próprios olhos. O que te deixaria mais seguro?",
+      "Faz todo sentido querer conhecer quem vai fornecer. Posso indicar clientes que compram conosco em um negócio parecido e, se preferir, começar por uma amostra para avaliar a qualidade. O que deixaria você mais seguro?",
+      "Faz todo sentido querer conhecer quem vai fornecer! Posso te passar clientes que compram da gente num negócio parecido, e se preferir você começa por uma amostra pra ver a qualidade com os próprios olhos. O que te deixaria mais seguro?",
+    ), [ok("Topou amostra ou referência", "Pediu referências: aceitou amostra ou contato de cliente"), nao(), outra], "Só ofereça um cliente como referência com a autorização dele. Se não houver, a amostra é a melhor prova."),
+    fala("obj_especial", "Precisa de item sob medida", T(
+      "Boa, a gente fabrica, então isso é mais fácil do que parece. Me conta o que você precisa, medida, material e quantidade aproximada, que eu levo pro nosso time técnico ver se dá pra fazer e em quanto tempo.",
+      "Ótimo, como fabricamos, isso é mais simples do que parece. Pode me contar o que precisa, medida, material e quantidade aproximada? Levo ao nosso time técnico para avaliar a viabilidade e o prazo.",
+      "Boa, a gente fabrica, então isso é mais fácil do que parece! Me conta o que você precisa, medida, material e quantidade aproximada, que eu levo pro nosso time técnico ver se dá pra fazer e em quanto tempo.",
+    ), [o("Explicou o item", "@retorno", "ok", "Item sob medida: acionar o time técnico e retornar"), nao(), outra], "Anote medida, material, aplicação e quantidade, sem prometer prazo nem preço. O time técnico confirma a viabilidade."),
     fala("obj_nao", "Sem interesse", T(
       `Tudo bem, valeu pela sinceridade! Só pra eu entender e não te incomodar à toa, é porque vocês já estão bem atendidos ou porque o assunto não faz sentido pra vocês? Pergunto sem compromisso mesmo.`,
       `Tudo bem, agradeço a franqueza. Para eu compreender e não incomodar à toa, é porque já estão bem atendidos ou porque o assunto não faz sentido para a empresa? Pergunto sem compromisso.`,

@@ -429,6 +429,7 @@ const OPTION_TASKS: { node: RegExp; label: RegExp; tasks: ScriptTask[] }[] = [
   { node: /^ret_ultima$/, label: /um m[eê]s/i, tasks: [tk("ligar", "Retomar o contato (despedida)", 30)] },
   { node: /^motivo$/, label: /novo contato/i, tasks: [tk("ligar", "Retomar o contato", 30)] },
   { node: /^(duvida_tec|fid_tecnica|reat_tecnica)$/, label: /explicou/i, tasks: [tk("outro", "Acionar o time técnico", 0), tk("ligar", "Retornar com a resposta do time técnico", 1)] },
+  { node: /^(obj_certificado|obj_especial)$/, label: /informou|explicou/i, tasks: [tk("outro", "Acionar o time técnico", 0), tk("ligar", "Retornar com a resposta do time técnico", 1)] },
   { node: /^fid_pedido$/, label: /passou os dados/i, tasks: [tk("outro", "Verificar o pedido ou a entrega", 0), tk("ligar", "Retornar com a resposta sobre o pedido", 1)] },
   { node: /^fid_catalogo$/, label: /receber o cat/i, tasks: [tk("email", "Enviar o catálogo e a sugestão de itens", 0), LIGAR_2("Ligar para saber o que achou do catálogo")] },
   { node: /^fid_catalogo$/, label: /agora n/i, tasks: [tk("ligar", "Retomar o contato com novidades", 30)] },

@@ -1,7 +1,7 @@
 "use client";
 
 import { FactAsk, FactConflict, type FactsApi } from "@/components/lead-facts";
-import { ArrowLeft, Ear, Flame, Lightbulb, Mic, RotateCcw, ShieldAlert, NotebookPen, ShieldCheck, Sparkles, ThumbsUp, ChevronRight, Trophy, Volume2 } from "lucide-react";
+import { ArrowLeft, Ear, Flame, Lightbulb, Mic, RotateCcw, ShieldAlert, NotebookPen, ShieldCheck, Sparkles, ThumbsUp, ChevronRight, Trophy, Volume2, Search, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fillScript, sayOf, shortCompany, KIND_LABEL, moodOf, postureOf, OUTCOMES, TONE_KEYS, TONES, type ScriptDoc, type ScriptKind, type ScriptTone } from "@/config/scripts";
 import { btnGhost } from "@/components/ui";
@@ -77,6 +77,15 @@ export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, on
     if (op.note) { onNote?.(op.note); setNoted((l) => (l.includes(op.note!) ? l : [...l, op.note!])); }
     setTrail((t) => [...t, { id: op.to!, kind: op.kind, via: op.label }]);
   }, [node, by, onNote, facts]);
+
+  /** Busca de objeção: o operador salta direto para a resposta certa, sem navegar pelos menus. */
+  const [quick, setQuick] = useState(false);
+  const [q, setQ] = useState("");
+  useEffect(() => { setQuick(false); setQ(""); }, [node.id]);
+  const objections = useMemo(() => script.nodes.filter((n) => n.type === "fala" && moodOf(n) === "objecao" && !/^obj_menu/.test(n.id)), [script]);
+  const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const found = useMemo(() => { const k = norm(q.trim()); return objections.filter((n) => n.id !== node.id && (!k || norm(`${n.title} ${n.say}`).includes(k))).slice(0, 12); }, [objections, q, node.id]);
+  const jump = (id: string, title: string) => { setTrail((tr) => [...tr, { id, kind: "objecao", via: `Objeção: ${title}` }]); };
 
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -209,6 +218,26 @@ export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, on
               );
             })}
           </div>
+          {objections.length > 0 && (
+            <div className="pt-1">
+              {!quick ? (
+                <button type="button" className={btnGhost} onClick={() => setQuick(true)}><Search size={15} aria-hidden /> Buscar objeção</button>
+              ) : (
+                <div className="space-y-2 rounded-2xl border border-line bg-sunk/50 p-2.5">
+                  <div className="flex items-center gap-2">
+                    <Search size={15} aria-hidden className="shrink-0 text-muted" />
+                    <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="O que o lead disse? Ex.: caro, fornecedor, prazo" className="min-w-0 flex-1 rounded-lg border border-line bg-panel px-3 py-2 text-sm" aria-label="Buscar objeção" />
+                    <button type="button" className={btnGhost} onClick={() => { setQuick(false); setQ(""); }} aria-label="Fechar a busca"><X size={15} aria-hidden /></button>
+                  </div>
+                  {found.length === 0 ? <p className="px-1 text-sm text-muted">Nenhuma objeção com esse texto.</p> : (
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-2">
+                      {found.map((n) => <button key={n.id} type="button" onClick={() => jump(n.id, n.title)} className="flex items-center gap-2 rounded-xl border border-line bg-panel px-3 py-2 text-left text-sm font-medium transition hover:border-[#f97316]"><ShieldAlert size={15} aria-hidden style={{ color: "#ea580c" }} className="shrink-0" />{n.title}</button>)}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
