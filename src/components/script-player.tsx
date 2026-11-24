@@ -1,7 +1,7 @@
 "use client";
 
 import { FactAsk, FactConflict, type FactsApi } from "@/components/lead-facts";
-import { ArrowLeft, Ear, Flame, Lightbulb, Mic, RotateCcw, ShieldAlert, NotebookPen, ShieldCheck, Sparkles, ThumbsUp, ChevronRight, ChevronDown, Brain, Trophy, Volume2, Search, X, Wand2 } from "lucide-react";
+import { ArrowLeft, MessageCircle, Ear, Flame, Lightbulb, Mic, RotateCcw, ShieldAlert, NotebookPen, ShieldCheck, Sparkles, ThumbsUp, ChevronRight, ChevronDown, Brain, Trophy, Volume2, Search, X, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fillScript, sayOf, shortCompany, KIND_LABEL, moodOf, postureOf, OUTCOMES, TONE_KEYS, TONES, type ScriptDoc, type ScriptKind, type ScriptTone } from "@/config/scripts";
 import { btnGhost } from "@/components/ui";
@@ -174,18 +174,24 @@ export function ScriptPlayer({ persistKey, hideNoteBox, facts, script, vars, ext
           {vars.contatoCompleto && !onRename && <p className="text-xs text-muted">Falando com <b className="text-ink">{vars.contatoCompleto}</b></p>}
         </div>
       )}
-      {/* Objetivo + placar */}
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border px-3 py-2 lg:py-1.5" style={tint(goal.hex, 10, 35)}>
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl text-white shadow lg:size-8" style={{ background: goal.hex }}><goal.Icon size={20} aria-hidden /></span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: goal.hex }}>Objetivo · {goal.short}</p>
-          <p className="truncate text-sm font-semibold lg:hidden xl:block">{goal.mission}</p>
+      {/* HUD: objetivo, nível e barra de XP (cada etapa avança a barra; bons sinais dão pontos) */}
+      <div className="relative overflow-hidden rounded-3xl border p-3" style={tint(goal.hex, 9, 35)}>
+        <div aria-hidden className="pointer-events-none absolute -right-8 -top-10 size-32 rounded-full blur-2xl" style={{ background: `color-mix(in srgb, ${goal.hex} 28%, transparent)` }} />
+        <div className="relative flex flex-wrap items-center gap-3">
+          <span className="grid size-11 shrink-0 place-items-center rounded-2xl text-white shadow-lg" style={{ background: goal.hex, boxShadow: `0 6px 18px color-mix(in srgb, ${goal.hex} 40%, transparent)` }}><goal.Icon size={22} aria-hidden /></span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: goal.hex }}>Missão · {goal.short}</p>
+            <p className="truncate text-sm font-semibold lg:hidden xl:block">{goal.mission}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold">
+            {vars.contatoCompleto && !onRename && <span className="hidden items-center gap-1 rounded-full bg-panel/80 px-2.5 py-1 lg:inline-flex" title="Com quem você fala"><Mic size={13} aria-hidden /> <b>{vars.contatoCompleto}</b></span>}
+            <span className="inline-flex items-center gap-1 rounded-full bg-panel/80 px-2.5 py-1" title="Etapas da conversa"><Seg size={13} aria-hidden /> Nível {Math.floor(steps / 3) + 1}</span>
+            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1" style={{ ...tint("#22c55e", 16, 40), border: "1px solid" }} title="Bons sinais do lead"><Flame size={13} aria-hidden style={{ color: "#16a34a" }} /> {good}</span>
+            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1" style={{ ...tint("#f97316", 16, 40), border: "1px solid" }} title="Objeções enfrentadas"><ShieldCheck size={13} aria-hidden style={{ color: "#ea580c" }} /> {hurdles}</span>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
-          {vars.contatoCompleto && !onRename && <span className="hidden items-center gap-1 rounded-full bg-sunk px-2.5 py-1 lg:inline-flex" title="Com quem você fala"><Mic size={13} aria-hidden /> Falando com <b>{vars.contatoCompleto}</b></span>}
-          <span className="inline-flex items-center gap-1 rounded-full bg-sunk px-2.5 py-1" title="Etapa da conversa"><Seg size={13} aria-hidden /> Etapa {trail.length}</span>
-          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1" style={{ ...tint("#22c55e", 16, 40), border: "1px solid" }} title="Bons sinais do lead"><Flame size={13} aria-hidden style={{ color: "#16a34a" }} /> {good}</span>
-          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1" style={{ ...tint("#f97316", 16, 40), border: "1px solid" }} title="Objeções enfrentadas"><ShieldCheck size={13} aria-hidden style={{ color: "#ea580c" }} /> {hurdles}</span>
+        <div className="relative mt-2.5 h-2 overflow-hidden rounded-full bg-panel/70" role="progressbar" aria-label="Avanço da conversa" aria-valuemin={0} aria-valuemax={3} aria-valuenow={steps % 3}>
+          <span className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-500 ease-out" style={{ width: `${ended ? 100 : ((steps % 3) / 3) * 100 + 8}%`, background: `linear-gradient(90deg, ${goal.hex}, color-mix(in srgb, ${goal.hex} 55%, #fff))` }} />
         </div>
       </div>
 
@@ -245,8 +251,10 @@ export function ScriptPlayer({ persistKey, hideNoteBox, facts, script, vars, ext
             </div>
           ) : (
             <>
-              <div className="rounded-2xl px-4 py-4 sm:px-5 sm:py-5" style={{ ...tint(mood.hex, 8, 28), border: "1px solid" }}>
-                <p className="whitespace-pre-line text-xl font-medium leading-relaxed sm:text-2xl sm:leading-relaxed">{fillScript(sayOf(node, tone), vars)}</p>
+              <div className="relative rounded-3xl px-5 py-5 sm:px-6 sm:py-6" style={{ ...tint(mood.hex, 8, 28), border: "1px solid", borderLeft: `6px solid ${mood.hex}` }}>
+                <MessageCircle aria-hidden size={22} className="absolute right-4 top-4 opacity-25" style={{ color: mood.hex }} />
+                <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: mood.hex }}>Fale agora</p>
+                <p className="mt-1 whitespace-pre-line text-xl font-medium leading-relaxed sm:text-2xl sm:leading-relaxed">{fillScript(sayOf(node, tone), vars)}</p>
               </div>
               {extra?.(node.id, pick)}
             </>
