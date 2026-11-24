@@ -47,18 +47,18 @@ export function GoalPills({ items }: { items: Pill[] }) {
   const goals = items.filter((i) => i.qty && i.qty > 0);
   const total = goals.length ? Math.round((goals.reduce((a, g) => a + Math.min(1, g.value / g.qty!), 0) / goals.length) * 100) : null;
   return (
-    <div className="mx-auto flex w-full flex-col items-center gap-5">
+    <div className="mx-auto flex w-full max-w-md flex-col items-center gap-5">
       {total !== null && (
         <p className="sh-rise flex items-center gap-2 text-sm font-semibold text-muted" style={{ "--d": ".1s" } as React.CSSProperties}>
           Meta do dia <span className="figure rounded-full bg-grad px-3 py-0.5 text-base font-bold text-on-accent"><CountUp to={total} />%</span>
         </p>
       )}
-      <ul className="flex flex-wrap items-start justify-center gap-x-7 gap-y-5">
+      <ul className="grid w-full grid-cols-2 justify-items-center gap-x-4 gap-y-6">
         {items.map(({ icon, label, value, qty, plain }, i) => {
           const Icon = icon in EXTRA ? EXTRA[icon as keyof typeof EXTRA] : KIND_ICON[icon as GoalKind];
           const hasGoal = !!qty && qty > 0 && !plain, pct = hasGoal ? Math.min(100, (value / qty!) * 100) : 0, done = hasGoal && value >= qty!;
           return (
-            <li key={label} className="sh-rise flex w-32 flex-col items-center gap-2 text-center" style={{ "--d": `${0.2 + i * 0.12}s` } as React.CSSProperties}>
+            <li key={label} className="sh-rise flex w-full max-w-[9rem] flex-col items-center gap-2 text-center [&:last-child:nth-child(odd)]:col-span-2" style={{ "--d": `${0.2 + i * 0.12}s` } as React.CSSProperties}>
               <Ring pct={pct} done={done} plain={!hasGoal}>{done ? <Trophy size={30} aria-hidden /> : <Icon size={30} aria-hidden />}</Ring>
               <span className="figure leading-none"><b className="text-3xl"><CountUp to={value} /></b>{hasGoal && <span className="ml-1 text-sm font-medium text-muted">/ {qty}</span>}</span>
               <span className="text-sm font-semibold leading-tight">{label}</span>

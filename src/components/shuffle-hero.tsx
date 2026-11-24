@@ -35,7 +35,7 @@ export function ShuffleHero({ action, children, avatar, roles, empty, list, asid
           <span className="text-accent"><BrandMark size={92} color="currentColor" legacy={<FeyMark animated size={92} color="currentColor" />} /></span>
           <h1 className="sr-only"><Term>{title}</Term></h1>
         </div>
-        {aside ? <div className="grid w-full max-w-5xl items-center gap-8 lg:grid-cols-[minmax(0,1fr)_auto]"><div className="min-w-0">{children}</div><div className="lg:pl-6">{aside}</div></div> : <div className="w-full">{children}</div>}
+        {aside ? <div className="grid w-full max-w-5xl items-center gap-10 lg:grid-cols-2 lg:gap-0 lg:divide-x lg:divide-line/60"><div className="flex min-w-0 items-center justify-center lg:px-8">{children}</div><div className="flex min-w-0 items-center justify-center lg:px-8">{aside}</div></div> : <div className="w-full">{children}</div>}
         <form action={action} className="sh-rise flex flex-col items-center gap-3" style={{ "--d": ".5s" } as React.CSSProperties}>
           <div className="relative grid size-32 place-items-center">
             {[["-18deg", "-2.1rem", "0s"], ["16deg", "2.1rem", "-1.4s"]].map(([r, x, d]) => (
