@@ -1,3 +1,4 @@
+import { roteiroEnabled } from "@/modules/scripts/gate";
 import { loadKnowledge } from "@/modules/facts/queries";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -24,7 +25,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   if (!Number.isInteger(id)) notFound();
   const sp = await searchParams;
   const allowed = me.isAdmin || me.permissions["tab.leads"] || me.permissions["tab.negociacoes"] || me.permissions["tab.visitas"] || me.permissions["tab.tarefas"] || me.permissions["tab.tarefas_vendas"];
-  if (!allowed) notFound();
+  if (!allowed || !(await roteiroEnabled(me))) notFound();
   const lead = await getLeadView(id);
   if (!lead || lead.isTest) notFound();
   // vendedor só enxerga o que é dele ou está no grupo (mesma regra da tela do lead)

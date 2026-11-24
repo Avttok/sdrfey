@@ -67,6 +67,7 @@ function LeadStrip({ lead, onOpen }: { lead: PhoneLead; onOpen: () => void }) {
 
 /** Ficha completa do lead: dados, todos os números (com ligar e WhatsApp), tarefas e Ids. */
 function LeadSheet({ lead, others, onPick, onDial }: { lead: PhoneLead; others: PhoneLead[]; onPick: (l: PhoneLead) => void; onDial: (digits: string, personName: string | null) => void }) {
+  const { roteiroOn } = useVocall();
   const place = [lead.city, lead.uf].filter(Boolean).join(" / ");
   const row = "flex items-start gap-2 text-sm";
   const phones = lead.channels.filter((c) => c.kind === "phone");
@@ -110,7 +111,7 @@ function LeadSheet({ lead, others, onPick, onDial }: { lead: PhoneLead; others: 
       <ClientIds leadId={lead.id} eoxId={lead.eoxId} eoxCode={lead.eoxCode} sfId={lead.sfId} eoxUrl={lead.eoxUrl} canEdit={false} compact />
       <div className="grid grid-cols-2 gap-2">
         <Link href={`/leads/${lead.id}`} target="_blank" className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-line bg-panel text-sm font-semibold hover:border-accent"><ExternalLink size={14} aria-hidden /> Abrir lead</Link>
-        <Link href={`/roteiro/${lead.id}${lead.kind === "inativo" ? "?area=vendas" : "?area=sdr&goal=sdr"}`} target="_blank" className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-line bg-panel text-sm font-semibold hover:border-accent"><ScrollText size={14} aria-hidden /> Roteiro</Link>
+        {roteiroOn && <Link href={`/roteiro/${lead.id}${lead.kind === "inativo" ? "?area=vendas" : "?area=sdr&goal=sdr"}`} target="_blank" className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-line bg-panel text-sm font-semibold hover:border-accent"><ScrollText size={14} aria-hidden /> Roteiro</Link>}
       </div>
       {others.length > 0 && (
         <div className="space-y-1 border-t border-line pt-2">
@@ -175,7 +176,7 @@ export function PhoneDock() {
     const r = await createTaskAction({ area: lead.kind === "inativo" ? "vendas" : "sdr", kind: "ligar", title: `Ligar de novo: ${lead.tradeName ?? lead.company}`, due: toLocalInput(dueFromDays(days)), leadId: lead.id }).catch(() => ({ ok: false }));
     if (r.ok) { setRetried(days === 1 ? "amanhã" : `em ${days} dias`); toast("ok", "Tarefa de ligação criada."); } else toast("bad", "Não consegui criar a tarefa.");
   };
-  const script = lead ? `/roteiro/${lead.id}?${lead.kind === "inativo" ? "area=vendas" : "area=sdr&goal=sdr"}${lastCallTouch() ? `&evento=${lastCallTouch()}` : ""}` : null;
+  const script = lead && vocall.roteiroOn ? `/roteiro/${lead.id}?${lead.kind === "inativo" ? "area=vendas" : "area=sdr&goal=sdr"}${lastCallTouch() ? `&evento=${lastCallTouch()}` : ""}` : null;
   const blocked = lead ? blockedOf(lead) : false;
   const shownTab: Tab = inCall ? "lead" : tab;
 
@@ -231,7 +232,7 @@ export function PhoneDock() {
                   <div className="flex items-center gap-2"><span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${ended ? "bg-slate-500/15 text-muted" : "bg-ok/15 text-ok"}`}>{label}</span><Timer since={call!.since} endedAt={call!.endedAt} /></div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  {script ? <Link href={script} target="_blank" className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-line bg-sunk/60 text-xs font-bold hover:border-accent"><ScrollText size={17} className="text-accent" aria-hidden />Roteiro</Link> : <span className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-line text-xs text-muted"><ScrollText size={17} aria-hidden />Roteiro</span>}
+                  {!vocall.roteiroOn ? null : script ? <Link href={script} target="_blank" className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-line bg-sunk/60 text-xs font-bold hover:border-accent"><ScrollText size={17} className="text-accent" aria-hidden />Roteiro</Link> : <span className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-line text-xs text-muted"><ScrollText size={17} aria-hidden />Roteiro</span>}
                   {lead ? <Link href={`/leads/${lead.id}`} target="_blank" className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-line bg-sunk/60 text-xs font-bold hover:border-accent"><ExternalLink size={17} className="text-accent" aria-hidden />Lead</Link> : <span className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-line text-xs text-muted"><ExternalLink size={17} aria-hidden />Lead</span>}
                   <button type="button" onClick={() => { void navigator.clipboard?.writeText(callDigits); toast("info", "Número copiado."); }} className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-line bg-sunk/60 text-xs font-bold hover:border-accent"><Copy size={17} className="text-accent" aria-hidden />Copiar</button>
                 </div>

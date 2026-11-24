@@ -30,6 +30,8 @@ export const SETTING_DEFAULTS = {
   logo_anim: 1,
   logo_pace: 1,
   logo_text: 0,
+  /** 1 = roteiro durante a ligação ligado para todos. O Adm desliga para todos de uma vez ou por pessoa/cargo (Permissões). */
+  roteiro_on: 1,
   /** 1 = chat interno ligado para todos (botão flutuante). */
   chat_on: 1,
   /** 1 = consulta automática de CNPJ em segundo plano ligada (os shufflers não consultam sozinhos). */

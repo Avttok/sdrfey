@@ -1,3 +1,4 @@
+import { roteiroEnabled } from "@/modules/scripts/gate";
 import { loadKnowledge } from "@/modules/facts/queries";
 import { visibleUsers } from "@/modules/auth/visibility";
 import { hasAvailable, releaseExpiredLocks } from "@/modules/leads/sorter";
@@ -74,5 +75,5 @@ export default async function AttendPage() {
   }
 
   const previous = prev ? { by: prev.name ?? "Outra pessoa", at: new Date(prev.at).toISOString(), channels: prev.channels ?? [], note: prev.note } : null;
-  return <AttendFlow knowledge={await loadKnowledge(lead.id)} scriptGoal={picked.g} recos={recos} scripts={picked.list} autoEnrichOn={settings.auto_enrich === 1} lead={lead} catalog={catalog!} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={previous} doneToday={done?.n ?? 0} scheduledToday={sched?.n ?? 0} goals={goals} sellers={sellers} queue={{ on: settings.seller_queue_on === 1, nextId }} />;
+  return <AttendFlow roteiroOff={!(await roteiroEnabled(me))} knowledge={await loadKnowledge(lead.id)} scriptGoal={picked.g} recos={recos} scripts={picked.list} autoEnrichOn={settings.auto_enrich === 1} lead={lead} catalog={catalog!} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={previous} doneToday={done?.n ?? 0} scheduledToday={sched?.n ?? 0} goals={goals} sellers={sellers} queue={{ on: settings.seller_queue_on === 1, nextId }} />;
 }

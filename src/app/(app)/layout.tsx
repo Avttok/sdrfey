@@ -28,6 +28,7 @@ import { db, tags, users } from "@/db";
 import { tagIconKey } from "@/config/tag-icons";
 import { TagIconProvider } from "@/components/tag-chip";
 import { eq, isNotNull } from "drizzle-orm";
+import { roteiroEnabled } from "@/modules/scripts/gate";
 import { requireUser } from "@/modules/auth/guard";
 import { eggHolders } from "@/modules/achievements/stats";
 
@@ -53,8 +54,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const avatars = { byId: Object.fromEntries(av.map((a) => [a.id, a.avatar!])), byName: Object.fromEntries(av.map((a) => [a.name, a.avatar!])), eggs, me: user.id };
   const tagIcons = Object.fromEntries(tagRows.map((t) => [t.label.toUpperCase(), tagIconKey(t.icon, t.key, t.group)]));
   const [me] = vocallMe;
-  const dialer = vocall.on && vocall.host && me?.a && me?.r ? { cfg: { host: vocall.host, port: vocall.port, secure: vocall.secure, dac: vocall.dac, senha: vocall.senha, prefix: vocall.prefix }, agentId: me.a, ramal: me.r } : null;
-  const shell = (children: React.ReactNode) => (dialer ? <VocallProvider cfg={dialer.cfg} agentId={dialer.agentId} ramal={dialer.ramal} eoxBase={eoxBase}>{children}</VocallProvider> : <>{children}</>);
+  const canDial = user.isAdmin || !!user.permissions["fn.dialer"];
+  const roteiroOn = await roteiroEnabled(user);
+  const dialer = canDial && vocall.on && vocall.host && me?.a && me?.r ? { cfg: { host: vocall.host, port: vocall.port, secure: vocall.secure, dac: vocall.dac, senha: vocall.senha, prefix: vocall.prefix }, agentId: me.a, ramal: me.r } : null;
+  const shell = (children: React.ReactNode) => (dialer ? <VocallProvider cfg={dialer.cfg} agentId={dialer.agentId} ramal={dialer.ramal} eoxBase={eoxBase} roteiroOn={roteiroOn}>{children}</VocallProvider> : <>{children}</>);
   const perm = (k: string) => user.isAdmin || !!user.permissions[k];
   const quick: QuickKey[] = [
     ...(perm("tab.negociacoes") && (user.roles.includes("seller") || user.permissions["deals.team"]) ? ["new-deal" as const] : []),

@@ -30,6 +30,8 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "tab.shuffler_vendas", label: "Aba Vendas: Shuffler Vendas (leads inativos)", group: "Abas", defaults: ["seller", "manager"] },
 
   { key: "tab.exportar", label: "Aba Exportar (baixar planilhas)", group: "Abas", defaults: ["manager"] },
+  { key: "fn.dialer", label: "Função: Ligar pelo discador (VocallPhone) e ver o telefone do sistema", group: "Funções", defaults: ["user", "manager", "seller"] },
+  { key: "fn.roteiro", label: "Função: Roteiro durante a ligação", group: "Funções", defaults: ["user", "manager", "seller"] },
   { key: "export.leads", label: "Exportar: Leads (contatos, Receita, internet, tags e andamento)", group: "Funções", defaults: ["manager"] },
   { key: "export.negociacoes", label: "Exportar: Negociações (etapas, valores, cotações e pedidos)", group: "Funções", defaults: ["manager"] },
   { key: "export.visitas", label: "Exportar: Visitas", group: "Funções", defaults: ["manager"] },
@@ -105,7 +107,7 @@ export const DOMAINS: { key: PermissionDomain; label: string; hint: string }[] =
 ];
 const SDR_KEYS = new Set(["tab.comecar", "tab.historico", "tab.visitas", "tab.metas", "tab.lista_flow", "tab.tarefas", "tab.desempenho", "visits.team", "panel.agendamentos"]);
 const SALES_KEYS = new Set(["tab.negociacoes", "tab.transportadoras", "carriers.edit", "deals.team", "deals.delete", "panel.vendas"]);
-const GENERAL_KEYS = new Set(["tab.painel", "tab.leads", "tab.email", "tab.scripts", "chat.use"]);
+const GENERAL_KEYS = new Set(["tab.painel", "tab.leads", "tab.email", "tab.scripts", "chat.use", "fn.dialer", "fn.roteiro"]);
 export function domainOf(key: string): PermissionDomain {
   if (key.endsWith("_vendas") || SALES_KEYS.has(key)) return "Vendas";
   if (SDR_KEYS.has(key) || key.startsWith("panel.kpi.")) return "SDR";

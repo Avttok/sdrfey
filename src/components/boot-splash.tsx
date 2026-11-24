@@ -7,7 +7,6 @@ import { FeyMark } from "@/components/logo";
 /** Mesmo nome do cache usado em public/sw.js. */
 const CACHE = "sdrfey-static-v2";
 type Manifest = { v: string; files: { url: string; size: number }[] };
-const kb = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
 /**
  * Tela de carregamento ao abrir ou recarregar o site: confere o que o navegador já guardou e baixa só o que falta (JS, estilos, fontes, imagens).
@@ -15,7 +14,6 @@ const kb = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(1).replace(".
  */
 export function BootSplash() {
   const [pct, setPct] = useState(0);
-  const [info, setInfo] = useState("Conferindo o que já está guardado…");
   const [leaving, setLeaving] = useState(false);
   const [gone, setGone] = useState(false);
   const [late, setLate] = useState(false);
@@ -53,8 +51,7 @@ export function BootSplash() {
         let have = 0, total = 0;
         for (const f of files) { total += f.size; if (await cache.match(f.url)) have += f.size; else missing.push(f); }
         const need = total - have;
-        if (!missing.length) { setInfo(`Tudo pronto · ${files.length} arquivos já guardados`); return finish(); }
-        setInfo(`Guardando ${missing.length} arquivo${missing.length === 1 ? "" : "s"} (${kb(need)}) para o site abrir rápido`);
+        if (!missing.length) return finish();
         let got = 0, done = 0, i = 0;
         const worker = async () => {
           while (i < missing.length) {
@@ -62,7 +59,6 @@ export function BootSplash() {
             try { const r = await fetch(f.url, { cache: "reload" }); if (r.ok) await cache.put(f.url, r); } catch { /* tenta de novo na próxima abertura */ }
             got += f.size; done++;
             setPct(Math.min(99, Math.round((got / Math.max(1, need)) * 100)));
-            setInfo(`Guardando arquivos · ${done} de ${missing.length}`);
           }
         };
         await Promise.all(Array.from({ length: 6 }, worker));
@@ -84,7 +80,6 @@ export function BootSplash() {
           <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} className="h-2.5 w-full overflow-hidden rounded-full bg-line/70">
             <span className="block h-full rounded-full bg-grad transition-[width] duration-300 ease-out" style={{ width: `${Math.max(4, pct)}%` }} />
           </div>
-          <p className="figure text-xs text-muted">{pct}% · {info}</p>
           {late && <button type="button" onClick={() => { setLeaving(true); setTimeout(() => setGone(true), 450); }} className="mt-1 text-xs font-semibold text-accent underline">Entrar agora</button>}
         </div>
       </div>
