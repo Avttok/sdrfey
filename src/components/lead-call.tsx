@@ -93,8 +93,8 @@ export function LeadCall({ eventId, knowledge, lead, scripts, goal, area, myName
         </div>
       )}
       <PageHead icon={ScrollText} title="Roteiro com o lead" subtitle="Ligue para este cliente com o roteiro à frente. Ao terminar, o que ficou combinado vira tarefa." />
-      <div className="grid gap-4 lg:grid-cols-[22rem_1fr]">
-        <aside className="space-y-3">
+      <div className="lc-grid grid gap-4 lg:grid-cols-[22rem_1fr]">
+        <aside className="lc-aside space-y-3">
           <section className="space-y-2 rounded-2xl border border-line bg-panel p-4">
             <p className="text-lg font-bold leading-tight">{name}</p>
             {lead.tradeName && lead.company !== lead.tradeName && <p className="text-xs text-muted">{lead.company}</p>}

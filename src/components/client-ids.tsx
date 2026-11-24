@@ -2,6 +2,7 @@
 
 import { Check, Copy, ExternalLink, Pencil } from "lucide-react";
 import { useState } from "react";
+import { EoxMenu } from "@/components/eox-menu";
 import { EoxIcon, SalesforceIcon } from "@/components/brand-icons";
 import { useToast } from "@/components/toast";
 import { btnGhost, btnPrimary, inputCls } from "@/components/ui";
@@ -32,7 +33,7 @@ export function ClientIds({ leadId, eoxId, eoxCode, sfId, eoxUrl, canEdit = true
   return (
     <div className={`flex flex-wrap items-center ${compact ? "gap-1.5" : "gap-2"}`}>
       {eoxUrl && eoxId
-        ? <a href={eoxUrl} target="_blank" rel="noopener noreferrer" style={{ background: "#692E81", borderColor: "#692E81" }} className={`${chip} text-white hover:brightness-110`} title="Abrir o cadastro na EOX"><EoxIcon size={compact ? 13 : 16} /> EOX <ExternalLink size={compact ? 11 : 13} aria-hidden /></a>
+        ? <EoxMenu url={eoxUrl} size={compact ? "sm" : "md"} />
         : <span className={`${chip} border-dashed border-line text-muted`} title="Ainda sem o cadastro da EOX"><EoxIcon size={compact ? 12 : 15} /> EOX</span>}
       {sfUrl
         ? <a href={sfUrl} target="_blank" rel="noopener noreferrer" style={{ background: "#0070d2" }} className={`${chip} border-transparent text-white hover:brightness-110`} title="Abrir no Salesforce"><SalesforceIcon size={compact ? 13 : 16} /> Salesforce <ExternalLink size={compact ? 11 : 13} aria-hidden /></a>

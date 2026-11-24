@@ -33,3 +33,13 @@ export function qualificationLink(origin: string, ref: Pick<EoxRef, "crmid" | "s
   const q = new URLSearchParams({ module: "Atendimentos", view: "Edit", sourceuuid: pendingId, parent_id: ref && !contact ? ref.crmid : "", campanha: "undefined", origem_atendimento: "Telefone Ativo", contact_id: ref && contact ? ref.crmid : "0" });
   return `${origin}/index.php?${q.toString().replace(/\+/g, "%20")}`;
 }
+
+/** Os três lugares do cadastro na EOX (só muda o record). `origin` sem barra no fim. */
+export function eoxPlaces(origin: string, record: string): { key: "perfil" | "atendimentos" | "conversas"; label: string; href: string }[] {
+  const b = `${origin}/index.php?module=Accounts`;
+  return [
+    { key: "perfil", label: "Perfil", href: `${b}&view=Detail&record=${record}&referer=globalsearch` },
+    { key: "atendimentos", label: "Atendimentos", href: `${b}&relatedModule=Atendimentos&view=Detail&record=${record}&mode=showRelatedList&tab_label=Atendimentos` },
+    { key: "conversas", label: "Conversas", href: `${b}&relatedModule=PBXManager&view=Detail&record=${record}&mode=showRelatedList&tab_label=PBXManager` },
+  ];
+}

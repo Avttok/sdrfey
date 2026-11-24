@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { callNumber } from "@/components/call-number";
 import { estadoLabel, Timer } from "@/components/call-ui";
 import { ClientIds } from "@/components/client-ids";
+import { EoxMenu } from "@/components/eox-menu";
 import { EoxInfoCard } from "@/components/eox-info";
 import { useToast } from "@/components/toast";
 import { OutcomeChip } from "@/components/touch-timeline";
@@ -238,7 +239,7 @@ export function PhoneDock() {
 
       {open && (
         <section role="dialog" aria-label="Telefone" className={`card-in fixed z-[66] flex overflow-hidden rounded-3xl border border-line bg-panel shadow-2xl ${wide ? "inset-x-5 bottom-5 top-5" : "bottom-5 left-5 max-h-[min(44rem,calc(100dvh-2.5rem))] w-[24rem] max-w-[calc(100vw-2.5rem)]"}`}>
-          <div className="flex min-h-0 w-[24rem] max-w-full shrink-0 flex-col">
+          <div className={`flex min-h-0 max-w-full shrink-0 flex-col ${wide ? "w-[22rem]" : "w-[24rem]"}`}>
           <header className="relative overflow-hidden px-4 pb-3 pt-3.5 text-white" style={{ background: live ? "linear-gradient(135deg,#15803d,#166534)" : "linear-gradient(135deg,#6d28d9,#4c1d95)" }}>
             <div className="flex items-center gap-3">
               <span className="grid size-10 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/20">{live ? <PhoneCall size={19} aria-hidden className="script-shake" /> : <Phone size={19} aria-hidden />}</span>
@@ -346,11 +347,7 @@ function EoxMark({ size = 20 }: { size?: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="square" strokeLinejoin="miter"><path d="M18 4.5H7v15h11M7 12h9" /></svg>;
 }
 
-/** Abre a qualificação da ligação na EOX (nova aba). Roxo da EOX. */
-function QualifyLink({ href, compact = false }: { href: string; compact?: boolean }) {
-  return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center justify-center gap-2 font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98] ${compact ? "h-11 rounded-full px-4 text-sm shadow-xl" : "flex min-h-12 w-full rounded-2xl text-base"}`} style={{ background: "linear-gradient(135deg,#7a3a94,#692e81)" }}>
-      <span className="grid size-6 place-items-center rounded-md bg-white/20"><EoxMark size={compact ? 16 : 18} /></span> Qualificar no EOX
-    </a>
-  );
+/** Qualificar no EOX (botão principal) com a seta para Perfil, Atendimentos e Conversas. Roxo da EOX. */
+function QualifyLink({ href }: { href: string }) {
+  return <EoxMenu url={href} full size="lg" main={{ href, label: "Qualificar no EOX", icon: <span className="grid size-6 place-items-center rounded-md bg-white/20"><EoxMark size={18} /></span> }} />;
 }
