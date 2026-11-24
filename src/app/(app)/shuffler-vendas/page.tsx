@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { AttendFlow } from "@/components/attend-flow";
 import { GoalPills } from "@/components/goal-tiles";
 import { ShuffleHero } from "@/components/shuffle-hero";
+import { ListHint } from "@/components/list-hint";
 import { db } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
 import { getSettings } from "@/modules/settings/get";
@@ -41,6 +42,7 @@ export default async function SalesShufflePage() {
   const al = me.permissions["tab.lista_flow_vendas"] || me.isAdmin ? await activeList(me.id, "vendas") : null;
   return (
     <ShuffleHero list={al && al.count > 0 ? { action: startSalesListAction, name: al.name, count: al.count, href: "/lista-flow-vendas" } : undefined} title="Shuffler Vendas" avatar={me.avatar} roles={me.shownRoles} action={startSalesShuffleAction} empty={stock > 0 ? undefined : { hint: "Nenhum lead inativo livre agora. Quando o time liberar novos (ou algum voltar da espera), eles aparecem aqui." }}>
+      {!al && (me.permissions["tab.lista_flow_vendas"] || me.isAdmin) && <ListHint href="/lista-flow-vendas" />}
       <GoalPills items={[
         { icon: "shuffle", label: "Trabalhados hoje", value: r?.worked ?? 0 },
         { icon: "handshake", label: "Negociações abertas hoje", value: r?.deals ?? 0 },

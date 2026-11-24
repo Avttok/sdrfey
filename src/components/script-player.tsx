@@ -107,6 +107,7 @@ export function ScriptPlayer({ persistKey, hideNoteBox, facts, script, vars, ext
     if (op.fact && facts) void facts.record(op.fact.key, op.fact.value);
     if (op.note) { onNote?.(op.note); setNoted((l) => (l.includes(op.note!) ? l : [...l, op.note!])); }
     setTrail((t) => [...t, { id: to, kind: op.kind, via: back ? "Voltou ao roteiro" : op.label }]);
+    if (!back) { try { window.dispatchEvent(new CustomEvent("fey:script-answer", { detail: { label: op.label } })); } catch { /* sem window */ } }
   }, [node, by, onNote, facts, destOf, trail]);
 
   /** Busca de objeção: o operador salta direto para a resposta certa, sem navegar pelos menus. */

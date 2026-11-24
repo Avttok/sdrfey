@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { getSettings } from "@/modules/settings/get";
 import { ENRICH_LISTS, normList } from "@/config/enrich-lists";
 import { AGE_LISTS } from "./ages";
-import { enrichLead } from "./enrich";
+import { enrichLead, rwQueueSize, rwStep } from "./enrich";
 
 /** Lead que ainda não foi consultado e que não falhou nas últimas 6 horas. */
 let retryH = 6;
@@ -56,18 +56,29 @@ export async function enrichBatch(max: number, budgetMs = 25_000, userId: number
   const t0 = Date.now();
   const list = normList(listIn);
   let tried = 0, ok = 0, failed = 0;
-  retryH = (await getSettings()).enrich_retry_hours;
+  const cfg0 = await getSettings();
+  retryH = cfg0.enrich_retry_hours;
+  const fast = cfg0.enrich_fast === 1;
   while (tried < max && Date.now() - t0 < budgetMs) {
     const [next] = await db.execute<{ id: number }>(sql`select l.id from leads l where ${scopeWhere(list)} order by (exists (select 1 from deals d where d.lead_id = l.id and d.import_pending)) desc, ${list.startsWith("age:") ? sql`l.enriched_at asc` : sql`l.enrich_tried_at nulls first`}, md5(l.id::text) limit 1`);
-    if (!next) break;
+    if (!next) {
+      /* Pesquisa Rápida: sem CNPJ novo, usa o tempo para esvaziar a fila da ReceitaWS (e-mail e telefone) */
+      if (fast) {
+        const st = await rwStep();
+        if (st === "did") { tried++; ok++; continue; }
+        if (st === "wait") { await new Promise((r) => setTimeout(r, 4000)); tried++; continue; }
+      }
+      break;
+    }
     tried++;
     // marca antes: se a consulta travar ou cair, este lead não bloqueia a fila
     await db.execute(sql`update leads set enrich_tried_at = now() where id = ${next.id}`);
     try { (await enrichLead(next.id, userId, origin)).state === "ok" ? ok++ : failed++; } catch { failed++; }
-    await new Promise((r) => setTimeout(r, 1200));
+    if (fast) await rwStep();
+    await new Promise((r) => setTimeout(r, fast ? 400 : 1200));
   }
   const st = await enrichStats();
-  return { tried, ok, failed, left: st.lists[list] ?? 0 };
+  return { tried, ok, failed, left: (st.lists[list] ?? 0) + (fast ? await rwQueueSize() : 0) };
 }
 
 export async function autoEnrichOn(): Promise<boolean> {

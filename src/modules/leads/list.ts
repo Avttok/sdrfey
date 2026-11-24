@@ -56,7 +56,7 @@ export function parseFilters(sp: Record<string, string | string[] | undefined>):
   };
 }
 
-function where(f: LeadFilters): SQL | undefined {
+export function where(f: LeadFilters): SQL | undefined {
   const c: SQL[] = [sql`${leads.isTest} = false`];
   if (f.q) {
     const digits = f.q.replace(/\D/g, "");

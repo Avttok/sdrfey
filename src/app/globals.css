@@ -501,3 +501,8 @@ html.embed main { padding-top: 0.75rem; padding-bottom: 1.5rem; max-width: none;
 html.embed .lc-grid { grid-template-columns: minmax(0, 1fr) !important; }
 html.embed .lc-aside { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.75rem; align-items: start; }
 html.embed .lc-aside > * { margin: 0; }
+
+/* botão que chama atenção sem incomodar (dica de lista no shuffler) */
+@keyframes hint-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent, #6366f1) 45%, transparent); transform: scale(1); } 50% { box-shadow: 0 0 0 10px transparent; transform: scale(1.04); } }
+.hint-pulse { animation: hint-pulse 2.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .hint-pulse { animation: none; } }

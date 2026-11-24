@@ -6,6 +6,7 @@ import type { Metadata } from "next";
 import { and, eq, sql } from "drizzle-orm";
 import { AttendFlow } from "@/components/attend-flow";
 import { GoalTiles } from "@/components/goal-tiles";
+import { ListHint } from "@/components/list-hint";
 import { ShuffleHero } from "@/components/shuffle-hero";
 import { attendanceSessions, db, leads, users, visits } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
@@ -64,6 +65,7 @@ export default async function AttendPage() {
   if (!lead) {
     return (
       <ShuffleHero list={al && al.count > 0 ? { action: startSdrListAction, name: al.name, count: al.count, href: "/lista-flow" } : undefined} avatar={me.avatar} roles={me.shownRoles} action={startAction} empty={available ? undefined : { hint: "Todos os leads já foram trabalhados, estão com outra pessoa ou aguardando a hora de voltar. Avise o time e confira de novo daqui a pouco." }}>
+        {!al && (me.permissions["tab.lista_flow"] || me.isAdmin) && <ListHint href="/lista-flow" />}
         <GoalTiles items={[
           ...(goals.attended.on ? [{ k: "attended" as const, label: "Atendidos", value: done?.n ?? 0, qty: goals.attended.qty }] : []),
           ...(goals.scheduled.on ? [{ k: "scheduled" as const, label: "Agendados", value: sched?.n ?? 0, qty: goals.scheduled.qty }] : []),

@@ -184,6 +184,8 @@ export const leads = pgTable(
     enrichedAt: timestamp("enriched_at", { withTimezone: true }),
     /** Última tentativa de consulta automática de CNPJ (deu certo ou não): evita insistir no mesmo lead que falha. */
     enrichTriedAt: timestamp("enrich_tried_at", { withTimezone: true }),
+    /** Pesquisa Rápida: quando a ReceitaWS (só e-mail e telefone) já foi tentada para este lead. */
+    rwCheckedAt: timestamp("rw_checked_at", { withTimezone: true }),
 
     source: text("source"),
     /** Lote de importação que criou o lead (permite desfazer o lote). */

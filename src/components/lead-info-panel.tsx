@@ -1,7 +1,8 @@
 "use client";
 
 import { SocialLink, type SocialKind } from "@/components/brand-icons";
-import { MapPin, RefreshCw } from "lucide-react";
+import { Briefcase, Building2, CalendarCheck, CalendarClock, ChevronDown, ChevronUp, CircleCheck, Factory, Landmark, MapPin, RefreshCw, Scale, TriangleAlert, UserRound, Users, type LucideIcon } from "lucide-react";
+import { ClientIds } from "@/components/client-ids";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -65,33 +66,52 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false, showMap =
   // Só a fonte que respondeu: ReceitaWS; a BrasilAPI aparece apenas se a ReceitaWS não trouxe nada.
   const sources: ["ReceitaWS" | "BrasilAPI", typeof lead.receitaWs][] = lead.receitaWs ? [["ReceitaWS", lead.receitaWs]] : lead.brasilApi ? [["BrasilAPI", lead.brasilApi]] : [["ReceitaWS", null]];
 
+  const open = status ? status.toUpperCase() === "ATIVA" : null;
+  const net = [["site", lead.site], ["instagram", lead.instagram], ["facebook", lead.facebook], ["linkedin", lead.linkedin]].filter((x): x is [string, string] => !!x[1] && /^https?:\/\//i.test(x[1] as string));
+  const lastVisit = lead.visits.filter((v) => !v.canceled)[0];
   const companyBlock = (
-    <div className="space-y-3">
-      <h2 className="display text-xl">Dados da empresa</h2>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-        <dt className="text-muted">Razão social</dt><dd>{lead.company}</dd>
-        {lead.tradeName && <><dt className="text-muted">Fantasia</dt><dd>{lead.tradeName}</dd></>}
-        <dt className="text-muted">CNPJ</dt><dd><CopyVal text={lead.cnpj}>{fmtCnpj(lead.cnpj)}</CopyVal></dd>
-        <dt className="text-muted">Situação</dt>
-        <dd>{status ? <b className={status.toUpperCase() === "ATIVA" ? "text-ok" : "text-danger"}>{status.toUpperCase()}</b> : missing}</dd>
-        <dt className="text-muted">Atividade</dt><dd>{info?.activity ? (`${info.cnae ? `${info.cnae} - ` : ""}${info.activity}`) : missing}</dd>
-        <dt className="text-muted">Tempo de atividade</dt><dd>{ageText ? (ageText) : missing}</dd>
-        <dt className="text-muted">Capital</dt><dd>{info?.capital != null ? (fmtMoney(info.capital)) : missing}</dd>
-        <dt className="text-muted">Sócios</dt><dd>{info?.partners.length ? <ul className="space-y-0.5">{info.partners.map((p, i) => <li key={i}><b className="font-semibold">{p.name}</b>{cleanRole(p.role) ? <span className="text-muted"> · {cleanRole(p.role)}</span> : null}</li>)}</ul> : missing}</dd>
-        <dt className="text-muted">Endereço</dt><dd className="flex flex-wrap items-center gap-x-2 gap-y-1">{addressLine ? <CopyVal>{addressLine}</CopyVal> : missing}{!showMap && <a href={mapsHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent underline"><MapPin size={14} aria-hidden /> Google Maps</a>}</dd>
-        {(lead.site || lead.instagram || lead.facebook || lead.linkedin) && <><dt className="text-muted">Na internet</dt><dd className="flex flex-wrap gap-1.5">{[["site", lead.site], ["instagram", lead.instagram], ["facebook", lead.facebook], ["linkedin", lead.linkedin]].map(([k, u]) => u && /^https?:\/\//i.test(u) ? <SocialLink key={k} kind={k as SocialKind} href={u} /> : u ? <span key={k}>{k}: {u}</span> : null)}</dd></>}
-        <dt className="text-muted">Cidade</dt>
-        <dd className="flex flex-wrap items-center gap-2">{lead.city ? (`${lead.city}/${lead.uf}`) : missing}</dd>
-      </dl>
-      {lead.enrichedAt && <p className="text-xs text-muted">Consulta salva em {fmtDate(lead.enrichedAt)}. Use “Atualizar informações” para buscar de novo.</p>}
-      <div className="flex flex-wrap gap-2 pt-1">
+    <div className="space-y-4">
+      {/* capa: razão social inteira, fantasia, CNPJ e situação */}
+      <div className="relative overflow-hidden rounded-3xl border border-line bg-grad-soft p-4 sm:p-5">
+        <div aria-hidden className="pointer-events-none absolute -right-10 -top-12 size-40 rounded-full bg-accent/20 blur-2xl" />
+        <div className="relative flex flex-wrap items-start gap-3">
+          <span aria-hidden className="grid size-14 shrink-0 place-items-center rounded-2xl bg-grad text-on-accent shadow-lg shadow-accent/30"><Building2 size={26} /></span>
+          <div className="min-w-0 flex-1">
+            <h2 className="display break-words text-xl leading-tight sm:text-2xl">{lead.company}</h2>
+            {lead.tradeName && lead.tradeName.trim().toLowerCase() !== lead.company.trim().toLowerCase() && <p className="mt-0.5 break-words text-sm font-semibold text-muted">{lead.tradeName}</p>}
+            <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"><CopyVal text={lead.cnpj}><span className="figure">{fmtCnpj(lead.cnpj)}</span></CopyVal>{lead.city && <span className="inline-flex items-center gap-1 text-muted"><MapPin size={13} aria-hidden /> {lead.city}/{lead.uf}</span>}</p>
+          </div>
+          {status ? <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${open ? "bg-ok/15 text-ok" : "bg-danger/15 text-danger"}`}>{open ? <CircleCheck size={14} aria-hidden /> : <TriangleAlert size={14} aria-hidden />} {status.toUpperCase()}</span> : <span className="rounded-full bg-sunk px-3 py-1 text-xs font-bold">{missing}</span>}
+        </div>
+        <div className="relative mt-3 flex flex-wrap items-center gap-2">
+          <ClientIds leadId={lead.id} eoxId={lead.eoxId} eoxCode={lead.eoxCode} sfId={lead.sfId} eoxUrl={lead.eoxUrl} canEdit={false} compact menu={false} />
+          {net.map(([k, u]) => <SocialLink key={k} kind={k as SocialKind} href={u} />)}
+        </div>
+      </div>
+
+      {/* números que importam para a conversa */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <Tile icon={Factory} label="Porte">{info?.porte ?? (info?.isMei ? "MEI" : null) ?? missing}</Tile>
+        <Tile icon={Landmark} label="Capital social">{info?.capital != null ? fmtMoney(info.capital) : missing}</Tile>
+        <Tile icon={CalendarClock} label="Tempo de atividade">{ageText ?? missing}</Tile>
+        <Tile icon={CalendarCheck} label="Visitas">{lead.visits.length ? `${lead.visits.filter((v) => !v.canceled).length} · última ${fmtDate(lastVisit?.at ?? lead.visits[0].at)}` : "Nenhuma"}</Tile>
+      </div>
+
+      <div className="space-y-2.5 rounded-2xl border border-line p-3.5 text-sm">
+        <Row icon={Briefcase} label="Atividade">{info?.activity ? `${info.cnae ? `${info.cnae} - ` : ""}${info.activity}` : missing}</Row>
+        {info?.nature && <Row icon={Scale} label="Natureza jurídica">{info.nature}</Row>}
+        <Row icon={MapPin} label="Endereço"><span className="flex flex-wrap items-center gap-x-2 gap-y-1">{addressLine ? <CopyVal>{addressLine}</CopyVal> : missing}{!showMap && <a href={mapsHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent underline"><MapPin size={13} aria-hidden /> Abrir no mapa</a>}</span></Row>
+        <Row icon={Users} label="Sócios">{info?.partners.length ? <span className="flex flex-wrap gap-1.5">{info.partners.map((p, i) => <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-sunk px-2.5 py-1 text-xs"><UserRound size={12} aria-hidden className="text-accent" /><b className="font-semibold">{p.name}</b>{cleanRole(p.role) ? <span className="text-muted">· {cleanRole(p.role)}</span> : null}</span>)}</span> : missing}</Row>
+      </div>
+
+      {lead.enrichedAt && <p className="text-xs text-muted">Consulta da Receita salva em {fmtDate(lead.enrichedAt)}.</p>}
+      <div className="flex flex-wrap gap-2">
         <button type="button" disabled={pending} className={btnGhost} onClick={() => setConfirmRefresh(true)}>{pending ? <Spinner size={15} /> : <RefreshCw size={15} aria-hidden />} Atualizar informações</button>
-        <button type="button" className={btnGhost} onClick={() => setAll(!all)}>{all ? "Ocultar informações" : "Ver todas as informações"}</button>
+        <button type="button" className={btnGhost} onClick={() => setAll(!all)}>{all ? <ChevronUp size={15} aria-hidden /> : <ChevronDown size={15} aria-hidden />} {all ? "Ocultar informações" : "Ver todas as informações"}</button>
       </div>
       <ConfirmDialog open={confirmRefresh} icon={RefreshCw} title="Atualizar as informações?" confirmLabel="Sim, atualizar" cancelLabel="Não" onCancel={() => setConfirmRefresh(false)} onConfirm={() => { setConfirmRefresh(false); search(true); }}>
         Vamos consultar o CNPJ de novo e substituir os dados salvos desta empresa. Tem certeza?
       </ConfirmDialog>
-
     </div>
   );
   const allBlock = (
@@ -119,19 +139,21 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false, showMap =
   );
   const repBlock = (
     <div className="space-y-3">
-      <h2 className="display text-xl">Representante mais próximo</h2>
-      {rep ? (
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-          <dt className="text-muted">Representante</dt><dd>{rep.repName ? (rep.repName) : missing}</dd>
-          <dt className="text-muted">Equipe</dt><dd>{rep.team ? (rep.team) : missing}</dd>
-          <dt className="text-muted">Cidade/UF</dt><dd>{rep.city ? (`${rep.city}/${rep.uf}`) : missing}</dd>
-          <dt className="text-muted">Distância</dt><dd>{rep.km} km</dd>
-          <dt className="text-muted">Gestor</dt><dd>{rep.managerName ? (rep.managerName) : missing}</dd>
-          <dt className="text-muted">Código SAP</dt><dd>{rep.sapCode ? (rep.sapCode) : missing}</dd>
-        </dl>
-      ) : <p className="text-sm">{missing}{!lead.city && !searching ? <span className="ml-1 text-xs text-muted">(cidade do lead desconhecida)</span> : null}</p>}
+      <div className="rounded-3xl border border-line p-4">
+        <p className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-accent"><MapPin size={14} aria-hidden /> Representante mais próximo</p>
+        {rep ? (
+          <>
+            <div className="flex items-center gap-3">
+              <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-2xl bg-accent/15 text-accent"><UserRound size={22} /></span>
+              <div className="min-w-0 flex-1"><p className="break-words text-base font-bold leading-tight">{rep.repName ?? missing}</p><p className="text-xs text-muted">{[rep.team, rep.city ? `${rep.city}/${rep.uf}` : null].filter(Boolean).join(" · ")}</p></div>
+              <span className="figure shrink-0 rounded-full bg-grad px-3 py-1 text-sm font-bold text-on-accent">{rep.km} km</span>
+            </div>
+            <dl className="mt-3 grid grid-cols-2 gap-2 text-xs"><div className="rounded-xl bg-sunk px-3 py-2"><dt className="text-muted">Gestor</dt><dd className="font-semibold">{rep.managerName ?? "—"}</dd></div><div className="rounded-xl bg-sunk px-3 py-2"><dt className="text-muted">Código SAP</dt><dd className="font-semibold">{rep.sapCode ?? "—"}</dd></div></dl>
+          </>
+        ) : <p className="text-sm">{missing}{!lead.city && !searching ? <span className="ml-1 text-xs text-muted">(cidade do lead desconhecida)</span> : null}</p>}
+      </div>
       {showMap && (a?.street || lead.city) && (
-        <div className="overflow-hidden rounded-xl border border-line">
+        <div className="overflow-hidden rounded-3xl border border-line">
           <iframe title={`Mapa de ${lead.tradeName ?? lead.company}`} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="block h-60 w-full" src={`https://www.google.com/maps?q=${encodeURIComponent(mapsQuery)}&output=embed`} />
         </div>
       )}
@@ -156,4 +178,11 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false, showMap =
       {repBlock}
     </section>
   );
+}
+
+function Tile({ icon: Icon, label, children }: { icon: LucideIcon; label: string; children: React.ReactNode }) {
+  return <div className="rounded-2xl border border-line bg-sunk/50 p-3"><p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted"><Icon size={13} aria-hidden className="text-accent" /> {label}</p><p className="mt-1 break-words text-sm font-semibold leading-snug">{children}</p></div>;
+}
+function Row({ icon: Icon, label, children }: { icon: LucideIcon; label: string; children: React.ReactNode }) {
+  return <div className="flex items-start gap-3"><span aria-hidden className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-accent/12 text-accent"><Icon size={14} /></span><div className="min-w-0 flex-1"><p className="text-[11px] font-bold uppercase tracking-wider text-muted">{label}</p><div className="break-words">{children}</div></div></div>;
 }

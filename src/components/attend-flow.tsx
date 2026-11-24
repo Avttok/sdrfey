@@ -4,7 +4,7 @@ import { callNumber } from "@/components/call-number";
 import { CallResultMenu } from "@/components/call-result-menu";
 import { resolveTouchAction, startTouchAction } from "@/modules/touches/actions";
 import { flushTouches, pendingTouches, trackTouch, useTouchScope, type TouchDone } from "@/lib/touch-bus";
-import { Timer, UserRound, Flag, Ban, Building2, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Send, Plus, RotateCcw, History, SkipForward, ScrollText, Square, TriangleAlert, Trash2, X } from "lucide-react";
+import { Timer, UserRound, Flag, Ban, Building2, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Send, Plus, RotateCcw, History, SkipForward, ScrollText, Square, Tag, TriangleAlert, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ConfirmDialog, useConfirm } from "@/components/confirm-dialog";
@@ -101,7 +101,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
   const nextLead = () => (sales ? startSalesShuffleAction() : startAction());
   /** Sair do lead de propósito (Parar, Pular, Descartar): o batimento não pode tratar isso como inatividade. */
   /** Atendimento concluído ou deixado de propósito: apaga o que estava guardado para retomar. */
-  const clearSaved = () => { try { const p = `${sales ? "v" : "s"}${lead.id}`; localStorage.removeItem(`fey:attend:${p}`); localStorage.removeItem(`fey:pick:${p}`); for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k?.startsWith(`fey:trail:${p}:`)) localStorage.removeItem(k); } } catch { /* sem armazenamento */ } };
+  const clearSaved = () => { try { localStorage.removeItem(`fey:sent:${sales ? "v" : "s"}${lead.id}`); const p = `${sales ? "v" : "s"}${lead.id}`; localStorage.removeItem(`fey:attend:${p}`); localStorage.removeItem(`fey:pick:${p}`); for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k?.startsWith(`fey:trail:${p}:`)) localStorage.removeItem(k); } } catch { /* sem armazenamento */ } };
   const leaving = { get current() { return LEFT.has(lead.id); } };
   const leave = async <R extends { ok: boolean }>(fn: () => Promise<R>): Promise<R> => {
     LEFT.add(lead.id);
@@ -189,6 +189,12 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
    * (cada resposta do painel de resultado conta um contato). Ligar/desligar a tag também traz as perguntas pendentes.
    */
   const [done, setDone] = useState<Record<string, Set<string>>>({ email: new Set(), whatsapp: new Set(), ligacao: new Set() });
+  /** "Enviado" / "Ligação feita" por contato: fica guardado neste aparelho até o atendimento terminar. */
+  const sentStore = `fey:sent:${sales ? "v" : "s"}${lead.id}`;
+  const [sent, setSent] = useState<Set<string>>(new Set());
+  useEffect(() => { try { const raw = localStorage.getItem(sentStore); if (raw) setSent(new Set(JSON.parse(raw) as string[])); } catch { /* sem armazenamento */ } }, [sentStore]);
+  const markSent = (ch: "email" | "whatsapp" | "call", v: string) => setSent((cur) => { const n = new Set(cur).add(`${ch}:${ch === "email" ? v.trim().toLowerCase() : v.replace(/\D/g, "").slice(-8)}`); try { localStorage.setItem(sentStore, JSON.stringify([...n])); } catch { /* ok */ } return n; });
+  const isSent = (ch: "email" | "whatsapp" | "call", v: string) => sent.has(`${ch}:${ch === "email" ? v.trim().toLowerCase() : v.replace(/\D/g, "").slice(-8)}`);
   const keyOf = (ch: string, v: string) => (ch === "email" ? v.trim().toLowerCase() : v.replace(/\D/g, "").slice(-8));
   const CH_OF: Record<string, "email" | "whatsapp" | "call"> = { email: "email", whatsapp: "whatsapp", ligacao: "call" };
   const targetsOf = (k: string): string[] => (k === "email" ? goodEmails.map((e) => e.value) : k === "whatsapp" ? (goodPhones.filter((p) => p.value.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "").length === 11).length ? goodPhones.filter((p) => p.value.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "").length === 11) : goodPhones).map((p) => p.value) : goodPhones.map((p) => p.value));
@@ -265,6 +271,27 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
   /** Respostas do roteiro que trazem anotação entram na observação, sem repetir. */
   /** Cada transferência traz uma pessoa nova: o campo esvazia para o nome dela e o de quem falou antes fica na observação. Voltar um passo devolve o nome. */
   const beforeTransfer = useRef<{ name: string; id: number | null }[]>([]);
+  /** Resposta marcada no roteiro que diz como a ligação foi (caixa postal, número que não existe…): vale para o número em uso. */
+  const scriptCalled = useRef(new Set<string>());
+  useEffect(() => {
+    const on = (e: Event) => {
+      const label = String((e as CustomEvent<{ label: string }>).detail?.label ?? "");
+      const r = /caixa\s*postal|correio de voz/i.test(label) ? "caixa_postal"
+        : /n[úu]mero.*(n[ãa]o existe|inexistente|errado|inv[áa]lido|fora de servi)|n[ãa]o existe/i.test(label) ? "numero_errado"
+        : /^(n[ãa]o atendeu|ningu[ée]m atendeu)/i.test(label) ? "nao_atendeu"
+        : /ocupado|caiu/i.test(label) ? "ocupado" : null;
+      if (!r || step !== 3) return;
+      const ph = callPhone ?? (goodPhones.length === 1 ? goodPhones[0] : null);
+      if (!ph) { toast("warn", "Escolha o número que está ligando para o roteiro marcar o resultado nele."); return; }
+      const key = `${ph.id}:${r}`;
+      if (scriptCalled.current.has(key)) return;
+      scriptCalled.current.add(key);
+      markSent("call", ph.value);
+      void run(async () => { const t = await startTouchAction({ leadId: lead.id, channel: "call", target: ph.value, personId: ph.personId ?? null }); if (!t.ok) return { ok: false, message: "Não consegui registrar." }; return resolveTouchAction({ id: t.id, outcome: r }); }, r === "numero_errado" ? "Número marcado como inválido." : r === "caixa_postal" ? "Número marcado como caixa postal." : "Resultado registrado no número.");
+    };
+    window.addEventListener("fey:script-answer", on);
+    return () => window.removeEventListener("fey:script-answer", on);
+  }); // eslint-disable-line react-hooks/exhaustive-deps
   const onScriptStep = (nodeId: string, path: string[]) => {
     const n = path.filter((x) => x === "transferido").length; // quantas pessoas já foram passadas na linha
     const stack = beforeTransfer.current;
@@ -285,7 +312,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
   const copyAndOpen = async () => {
     await copyFormatted();
     const to = emailTo || goodEmails[0]?.value;
-    if (to) void trackTouch({ leadId: lead.id, channel: "email", target: to, label: lead.tradeName ?? lead.company, defer: true });
+    if (to) { markSent("email", to); void trackTouch({ leadId: lead.id, channel: "email", target: to, label: lead.tradeName ?? lead.company, defer: true }); }
     if (tpl && to) window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(renderTemplate(tpl.subject, vars))}`;
   };
 
@@ -316,6 +343,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
     try {
       if (html && typeof ClipboardItem !== "undefined") await navigator.clipboard.write([new ClipboardItem({ "text/html": new Blob([html], { type: "text/html" }), "text/plain": new Blob([htmlToText(html)], { type: "text/plain" }) })]);
       else await navigator.clipboard.writeText(html ? htmlToText(html) : renderTemplate(tpl.body, vars));
+      { const to = emailTo || goodEmails[0]?.value; if (to) markSent("email", to); }
       toast("ok", html ? "E-mail formatado copiado. Cole no corpo da mensagem (Ctrl+V)." : "Texto copiado.");
     } catch { toast("warn", "Não consegui copiar. Tente de novo."); }
   };
@@ -393,18 +421,24 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
             <ProductHints recos={recos} />
             <div className="grid gap-6 border-t border-line pt-5 lg:grid-cols-2">
             <section className="space-y-3">
-              <h2 className="display text-xl">Contatos</h2>
-              <ul className="space-y-1.5">
-                {[...phones, ...emails].map((c) => (
-                  <li key={c.id} className={`flex items-center gap-2 rounded-lg bg-sunk px-3 py-2 text-sm ${c.wrong ? "opacity-60 line-through" : ""}`}>
-                    {c.kind === "phone" ? <Phone size={15} aria-hidden /> : <Mail size={15} aria-hidden />}
-                    <span className="flex-1 break-all">{c.kind === "phone" ? fmtPhone(c.value) : c.value}<span className="ml-2 text-xs text-muted">{c.origin === "import" ? "" : c.origin}</span></span>
-                    <button type="button" aria-label="Copiar" onClick={() => copy(c.value, toast)}><Copy size={15} /></button>
-                    <button type="button" aria-label={c.wrong ? "Desmarcar como errado" : "Marcar como errado"} title={c.wrong ? "Desmarcar como errado" : "Marcar como errado"} onClick={() => run(() => markWrongAction(lead.id, c.id, !c.wrong))}><Ban size={15} /></button>
-                    <button type="button" aria-label="Remover" onClick={() => ask({ title: "Remover este contato?", body: `${c.kind === "phone" ? fmtPhone(c.value) : c.value} será removido do cadastro do lead.`, label: "Sim, remover", icon: Trash2, onConfirm: () => run(() => removeChannelAction(lead.id, c.id), "Contato removido.") })}><Trash2 size={15} /></button>
-                  </li>
-                ))}
-                {phones.length + emails.length === 0 && <li className="text-sm text-muted">Nenhum contato. Adicione abaixo ou use “Atualizar informações”.</li>}
+              <h2 className="display flex items-center gap-2 text-xl"><Phone size={18} aria-hidden className="text-accent" /> Contatos <span className="figure rounded-full bg-sunk px-2 py-0.5 text-xs font-semibold text-muted">{phones.length + emails.length}</span></h2>
+              <ul className="grid gap-2">
+                {[...phones, ...emails].map((c) => {
+                  const who = c.personId ? allPeople.find((x) => x.id === c.personId) : null;
+                  return (
+                    <li key={c.id} className={`lift flex items-center gap-3 rounded-2xl border border-line bg-sunk/50 px-3 py-2.5 ${c.wrong ? "opacity-60" : ""}`}>
+                      <span aria-hidden className={`grid size-10 shrink-0 place-items-center rounded-xl ${c.kind === "phone" ? "bg-accent/15 text-accent" : "bg-ok/15 text-ok"}`}>{c.kind === "phone" ? <Phone size={18} /> : <Mail size={18} />}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className={`block break-all text-base font-semibold leading-tight ${c.wrong ? "line-through" : ""}`}>{c.kind === "phone" ? fmtPhone(c.value) : c.value}</span>
+                        <span className="block text-xs text-muted">{c.wrong ? "Inválido · " : ""}{who ? who.name : c.origin === "import" ? "Cadastro" : c.origin}</span>
+                      </span>
+                      <button type="button" className={`${btnGhost} !px-2.5`} aria-label="Copiar" title="Copiar" onClick={() => copy(c.value, toast)}><Copy size={15} aria-hidden /></button>
+                      <button type="button" className={`${btnGhost} !px-2.5`} aria-label={c.wrong ? "Desmarcar como inválido" : "Marcar como inválido"} title={c.wrong ? "Desmarcar como inválido" : "Marcar como inválido"} onClick={() => run(() => markWrongAction(lead.id, c.id, !c.wrong))}><Ban size={15} aria-hidden /></button>
+                      <button type="button" className={`${btnGhost} !px-2.5 text-danger`} aria-label="Remover" title="Remover" onClick={() => ask({ title: "Remover este contato?", body: `${c.kind === "phone" ? fmtPhone(c.value) : c.value} será removido do cadastro do lead.`, label: "Sim, remover", icon: Trash2, onConfirm: () => run(() => removeChannelAction(lead.id, c.id), "Contato removido.") })}><Trash2 size={15} aria-hidden /></button>
+                    </li>
+                  );
+                })}
+                {phones.length + emails.length === 0 && <li className="rounded-2xl border border-dashed border-line px-4 py-6 text-center text-sm text-muted">Nenhum contato ainda. Adicione abaixo ou use “Atualizar informações”.</li>}
               </ul>
               <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); const v = newValue.trim(); if (!v) return; run(() => addChannelAction(lead.id, v.includes("@") ? "email" : "phone", v)); setNewValue(""); }}>
                 <input className={inputCls} placeholder="Novo telefone ou e-mail" value={newValue} onChange={(e) => setNewValue(e.target.value)} />
@@ -412,8 +446,8 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
               </form>
             </section>
             <section className="space-y-2">
-              <h2 className="display text-xl">Tags do lead</h2>
-              {lead.tags.length ? <div className="flex flex-wrap gap-1.5">{lead.tags.map((t) => <TagChip key={t.id} label={t.label} color={t.color} />)}</div> : <p className="text-sm text-muted">Nenhuma tag ainda.</p>}
+              <h2 className="display flex items-center gap-2 text-xl"><Tag size={18} aria-hidden className="text-accent" /> Tags do lead <span className="figure rounded-full bg-sunk px-2 py-0.5 text-xs font-semibold text-muted">{lead.tags.length}</span></h2>
+              {lead.tags.length ? <div className="flex flex-wrap gap-1.5">{lead.tags.map((t) => <TagChip key={t.id} label={t.label} color={t.color} />)}</div> : <p className="rounded-2xl border border-dashed border-line px-4 py-6 text-center text-sm text-muted">Nenhuma tag ainda.</p>}
             </section>
             </div>
             {resetDiscard}
@@ -440,26 +474,39 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
         )}
 
         {step === 1 && (
-          <section className="space-y-3">
+          <section className="space-y-4">
             <StepTitle i={1} />
             {goodEmails.length === 0 ? <p className="text-sm text-muted">Este lead não tem e-mail válido. Adicione no passo Contatos ou pule.</p> : (
-              <>
-                <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)]">
-                  <div className="space-y-3">
-                    <div className="grid gap-3">
-                  <label className="text-sm">Modelo<select className={inputCls} value={tplId} onChange={(e) => setTplId(Number(e.target.value))}>{templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></label>
-                      <label className="text-sm">Enviar para<select className={inputCls} value={emailTo} onChange={(e) => setEmailTo(e.target.value)}>{goodEmails.map((e) => <option key={e.id} value={e.value}>{e.value}</option>)}</select></label>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button type="button" className={btnPrimary} onClick={copyAndOpen}><Send size={16} aria-hidden /> Copiar e abrir e-mail</button>
-                      <button type="button" className={btnGhost} onClick={copyFormatted}><Copy size={16} aria-hidden /> Só copiar</button>
-                      {mail && <a href={mail} onClick={() => { const to = emailTo || goodEmails[0]?.value; if (to) void trackTouch({ leadId: lead.id, channel: "email", target: to, label: lead.tradeName ?? lead.company, defer: true }); }} className={btnGhost}><ExternalLink size={16} aria-hidden /> Abrir com texto simples</a>}
-                    </div>
-                    <p className="text-xs text-muted">“Copiar e abrir e-mail” copia o corpo formatado (negrito, cores e imagens) e abre o e-mail com destinatário e assunto prontos: é só colar com Ctrl+V.</p>
+              <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
+                <div className="space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted">Para quem enviar <span className="font-normal normal-case tracking-normal">· escolha um</span></p>
+                  <ul className="grid gap-2" role="radiogroup" aria-label="Destinatário">
+                    {goodEmails.map((e) => {
+                      const on = (emailTo || goodEmails[0].value) === e.value;
+                      return (
+                        <li key={e.id} className={`lift relative rounded-2xl border-2 px-3 py-3 transition ${on ? "border-accent bg-accent/10" : "border-line bg-sunk/60"}`}>
+                          <div className="flex items-center gap-3">
+                            <span aria-hidden className={`grid size-10 shrink-0 place-items-center rounded-xl ${on ? "bg-accent text-on-accent" : "bg-accent/15 text-accent"}`}><Mail size={18} /></span>
+                            <button type="button" role="radio" aria-checked={on} className="min-w-0 flex-1 text-left" onClick={() => setEmailTo(e.value)}>
+                              <span className="block break-all text-base font-semibold leading-tight">{e.value}</span>
+                              <span className="block text-xs text-muted">{e.personId ? allPeople.find((x) => x.id === e.personId)?.name ?? "Contato" : e.origin === "import" ? "Cadastro" : e.origin}</span>
+                            </button>
+                            <button type="button" className={`${btnGhost} !px-2.5 text-danger`} title="Marcar este e-mail como inválido" aria-label="Marcar este e-mail como inválido" onClick={() => run(() => markWrongAction(lead.id, e.id, true), "E-mail marcado como inválido.")}><Ban size={15} aria-hidden /></button>
+                          </div>
+                          {isSent("email", e.value) && <SentTag>Enviado</SentTag>}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <label className="block text-sm font-medium">Modelo<select className={inputCls} value={tplId} onChange={(e) => setTplId(Number(e.target.value))}>{templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></label>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" className={btnPrimary} onClick={copyAndOpen}><Send size={16} aria-hidden /> Copiar e abrir e-mail</button>
+                    <button type="button" className={btnGhost} onClick={copyFormatted}><Copy size={16} aria-hidden /> Só copiar</button>
                   </div>
-                  {tpl && <EmailPreview subject={renderTemplate(tpl.subject, vars)} html={tpl.bodyHtml ? renderHtml(tpl.bodyHtml, vars) : null} text={renderTemplate(tpl.body, vars)} />}
+                  <p className="text-xs text-muted">“Copiar e abrir e-mail” copia o corpo formatado (negrito, cores e imagens) e abre o e-mail com destinatário e assunto prontos: é só colar com Ctrl+V.</p>
                 </div>
-              </>
+                {tpl && <EmailPreview subject={renderTemplate(tpl.subject, vars)} html={tpl.bodyHtml ? renderHtml(tpl.bodyHtml, vars) : null} text={renderTemplate(tpl.body, vars)} />}
+              </div>
             )}
           </section>
         )}
@@ -469,10 +516,11 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
             <StepTitle i={2} />
             <ul className="space-y-1.5">
               {goodPhones.map((p) => (
-                <li key={p.id} className="lift flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-sunk/60 px-4 py-3"><span aria-hidden className="grid size-10 place-items-center rounded-xl bg-ok/15 text-ok"><MessageCircle size={18} /></span>
+                <li key={p.id} className="lift relative flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-sunk/60 px-4 py-3"><span aria-hidden className="grid size-10 place-items-center rounded-xl bg-ok/15 text-ok"><MessageCircle size={18} /></span>
                   <span className="flex-1"><CopyVal text={p.value}><span className="figure text-lg">{fmtPhone(p.value)}</span></CopyVal>{done.whatsapp?.has(keyOf("whatsapp", p.value)) && <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-ok/15 px-2 py-0.5 text-xs font-bold text-ok"><Check size={12} aria-hidden /> registrado</span>}</span>
-                  <a href={chatproUrl(p.value)} target="_blank" rel="noreferrer" onClick={() => { void trackTouch({ leadId: lead.id, channel: "whatsapp", target: p.value, label: lead.tradeName ?? lead.company, personId: p.personId ?? null, defer: true }); }} className={btnPrimary}><MessageCircle size={16} aria-hidden /> Abrir no ChatPro</a>
+                  <a href={chatproUrl(p.value)} target="_blank" rel="noreferrer" onClick={() => { markSent("whatsapp", p.value); void trackTouch({ leadId: lead.id, channel: "whatsapp", target: p.value, label: lead.tradeName ?? lead.company, personId: p.personId ?? null, defer: true }); }} className={btnPrimary}><MessageCircle size={16} aria-hidden /> Abrir no ChatPro</a>
                   <button type="button" className={`${btnGhost} !px-3 text-danger`} title="Marcar este número como inválido" aria-label="Marcar este número como inválido" onClick={() => run(() => markWrongAction(lead.id, p.id, true), "Número marcado como inválido.")}><Ban size={15} aria-hidden /> Inválido</button>
+                  {isSent("whatsapp", p.value) && <SentTag>Enviado</SentTag>}
                 </li>
               ))}
               {goodPhones.length === 0 && <li className="text-sm text-muted">Sem telefone válido.</li>}
@@ -491,7 +539,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                 const who = p.personId ? allPeople.find((x) => x.id === p.personId) : null;
                 const on = callPhone?.id === p.id;
                 return (
-                  <li key={p.id} className={`lift space-y-2.5 rounded-2xl border-2 px-3 py-3 transition ${on ? "border-accent bg-accent/10" : "border-line bg-sunk/60"}`}>
+                  <li key={p.id} className={`lift relative space-y-2.5 rounded-2xl border-2 px-3 py-3 transition ${on ? "border-accent bg-accent/10" : "border-line bg-sunk/60"}`}>
                     <div className="flex items-center gap-3">
                       <span aria-hidden className={`grid size-10 shrink-0 place-items-center rounded-xl ${on ? "bg-accent text-on-accent" : "bg-accent/15 text-accent"}`}><Phone size={18} /></span>
                       <button type="button" className="min-w-0 flex-1 text-left" onClick={() => { setCallId(on ? null : p.id); setSpoken(null); if (!on && p.personId) setTalkingId(p.personId); }} title="Usar este número no roteiro" aria-pressed={on}>
@@ -500,10 +548,11 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                       </button>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button type="button" disabled={vocall.configured && vocall.ready === false} className={`${btnPrimary} flex-1 disabled:opacity-50`} onClick={() => { setCallId(p.id); void callNumber(p.value, lead.tradeName ?? lead.company, toast, vocall, lead, p.personId ?? null); }}><Phone size={15} aria-hidden /> Ligar</button>
-                      <button type="button" className={`${btnGhost} !px-3`} aria-label="Copiar número" title="Copiar número" onClick={() => { void copy(p.value, toast); void trackTouch({ leadId: lead.id, channel: "call", target: p.value, label: lead.tradeName ?? lead.company, personId: p.personId ?? null, defer: true }); }}><Copy size={16} aria-hidden /></button>
+                      <button type="button" disabled={vocall.configured && vocall.ready === false} className={`${btnPrimary} flex-1 disabled:opacity-50`} onClick={() => { setCallId(p.id); markSent("call", p.value); void callNumber(p.value, lead.tradeName ?? lead.company, toast, vocall, lead, p.personId ?? null); }}><Phone size={15} aria-hidden /> Ligar</button>
+                      <button type="button" className={`${btnGhost} !px-3`} aria-label="Copiar número" title="Copiar número" onClick={() => { void copy(p.value, toast); markSent("call", p.value); void trackTouch({ leadId: lead.id, channel: "call", target: p.value, label: lead.tradeName ?? lead.company, personId: p.personId ?? null, defer: true }); }}><Copy size={16} aria-hidden /></button>
                       <CallResultMenu onPick={(r) => run(async () => { const t = await startTouchAction({ leadId: lead.id, channel: "call", target: p.value, personId: p.personId ?? null }); if (!t.ok) return { ok: false, message: "Não consegui registrar." }; return resolveTouchAction({ id: t.id, outcome: r }); }, r === "numero_errado" ? "Número marcado como inválido." : "Resultado registrado.")} />
                     </div>
+                    {isSent("call", p.value) && <SentTag>Ligação feita</SentTag>}
                   </li>
                 );
               })}
@@ -577,6 +626,11 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
       {dialog}
     </div>
   );
+}
+
+/** Etiqueta no canto direito do bloco de um contato depois da ação (Enviado / Ligação feita). */
+function SentTag({ children }: { children: React.ReactNode }) {
+  return <span className="pointer-events-none absolute right-2.5 top-2 inline-flex items-center gap-1 rounded-full bg-ok px-2 py-0.5 text-[11px] font-bold text-white shadow-sm"><Check size={11} aria-hidden /> {children}</span>;
 }
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {

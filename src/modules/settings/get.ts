@@ -74,6 +74,8 @@ export const SETTING_DEFAULTS = {
   enrich_minhareceita: 1,
   enrich_places: 0,
   enrich_site: 1,
+  /** Pesquisa Rápida: BrasilAPI e Minha Receita fazem a consulta; a ReceitaWS só completa e-mail e telefone, em fila. */
+  enrich_fast: 0,
 } as const;
 export type SettingKey = keyof typeof SETTING_DEFAULTS;
 

@@ -9,6 +9,7 @@ import { MobileNav } from "./mobile-nav";
 import { SideBar } from "./side-bar";
 import { UserMenu } from "./user-menu";
 import { NotificationBell } from "./notification-bell";
+import { GlobalSearch } from "./global-search";
 
 function navFor(user: CurrentUser) {
   return orderNav(visibleNav(user.permissions, user.isAdmin).filter((i) => i.href !== "/conta"), user.navOrder).map((i) => i.href);
@@ -25,6 +26,7 @@ export function AppHeader({ user, badges = {}, groupNav = true, navAlign = 0 }: 
         <div className="hidden min-w-0 flex-1 lg:block"><NavLinks align={navAlign} hrefs={navFor(user)} badges={badges} grouped={groupNav} custom={user.navCustom} tree={user.navTree} /></div>
         <div className="ml-auto flex items-center gap-2 lg:ml-0">
         {user.isAdmin && <div className="hidden sm:block"><AdminViewSwitch mode={user.adminView} /></div>}
+        <GlobalSearch />
         <NotificationBell />
         <UserMenu name={user.name} username={user.username} hex={accent.hex} onHex={accent.onAccent} accentKey={accent.key} roles={user.shownRoles} isAdmin={user.isAdmin} avatar={user.avatar} banner={user.banner} />
         </div>
