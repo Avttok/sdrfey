@@ -233,7 +233,7 @@ export function PhoneDock() {
                   <>
                     {call!.qualUrl
                       ? <QualifyLink href={call!.qualUrl} />
-                      : call!.qualLooking && <p className="flex items-center justify-center gap-2 text-sm text-muted"><Loader2 size={15} className="animate-spin" aria-hidden /> Procurando a qualificação…</p>}
+                      : (call!.qualLooking ? <p className="flex items-center justify-center gap-2 text-sm text-muted"><Loader2 size={15} className="animate-spin" aria-hidden /> Procurando a qualificação…</p> : <p className="text-center text-xs text-muted">Número sem cadastro na EOX: não há qualificação para abrir.</p>)}
                     {lead && <div className="space-y-1.5"><p className="flex items-center gap-1.5 text-xs font-semibold text-muted"><Clock size={13} aria-hidden /> Ligar de novo</p>{retried ? <p className="rounded-lg bg-ok/10 px-3 py-2 text-sm text-ok">Tarefa criada para {retried}.</p> : <div className="grid grid-cols-3 gap-1.5">{[[1, "Amanhã"], [3, "3 dias"], [7, "1 semana"]].map(([d, l]) => <button key={d} type="button" onClick={() => void retry(d as number)} className="min-h-9 rounded-lg border border-line text-xs font-semibold hover:border-accent">{l}</button>)}</div>}</div>}
                     <button type="button" onClick={() => { vocall.dismiss(); setPinned(null); setRetried(null); setNum(""); setTab("dial"); }} className="min-h-10 w-full rounded-xl border border-line text-sm font-semibold hover:border-accent">Nova ligação</button>
                   </>

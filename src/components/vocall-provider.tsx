@@ -92,7 +92,7 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, roteiroOn = true,
     }
     const origin = eoxRef.current?.origin || base || eoxBase || "";
     const ref = eoxRef.current ?? (parent ? { crmid: parent, setype: "Accounts" } : null);
-    const url = id && origin ? qualificationLink(origin, ref, id) : null;
+    const url = id && origin && ref?.crmid ? qualificationLink(origin, ref, id) : null; // número sem cadastro na EOX: sem link
     hangup("idle");
     if (!alive.current) return;
     setCall((c) => (c ? { ...c, qualUrl: url, qualLooking: false } : c));
