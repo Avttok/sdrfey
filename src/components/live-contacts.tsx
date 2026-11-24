@@ -48,7 +48,7 @@ export function LiveContacts({ onNote, leadId, people, channels, talkingId, onTa
         <div className="min-w-0 flex-1 leading-snug"><h3 className="text-sm font-bold">Contatos da ligação</h3><p className="text-xs text-muted">Anote quem aparecer: nome, cargo, e-mail e telefone. Salva no lead na hora.</p></div>
       </div>
       <div className={`mt-2.5 grid gap-2 ${onNote ? "grid-cols-2" : ""}`}>
-        {onNote && <button type="button" className={`${obsOpen ? btnPrimary : btnGhost} w-full !px-2 whitespace-nowrap`} onClick={() => setObsOpen(!obsOpen)} aria-expanded={obsOpen}><NotebookPen size={15} aria-hidden /> Anotar observação</button>}
+        {onNote && <button type="button" className={`${btnPrimary} w-full !px-2 whitespace-nowrap`} onClick={() => setObsOpen(!obsOpen)} aria-expanded={obsOpen}><NotebookPen size={15} aria-hidden /> Anotar observação</button>}
         <button type="button" className={`${open ? btnGhost : btnPrimary} w-full !px-2 whitespace-nowrap`} onClick={() => setOpen(!open)} aria-expanded={open}>{open ? <><X size={15} aria-hidden /> Fechar</> : <><UserPlus size={15} aria-hidden /> Anotar contato</>}</button>
       </div>
       {onNote && obsOpen && <div className="mt-3"><ObservationForm onAdd={(t) => { onNote(t); toast("ok", "Observação anotada."); }} onClose={() => setObsOpen(false)} /></div>}

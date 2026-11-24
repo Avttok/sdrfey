@@ -490,7 +490,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                 return (
                   <li key={p.id} className={`lift flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border-2 px-3 py-2.5 transition ${on ? "border-accent bg-accent/10" : "border-line bg-sunk/60"}`}>
                     <span aria-hidden className={`grid size-10 shrink-0 place-items-center rounded-xl ${on ? "bg-accent text-on-accent" : "bg-accent/15 text-accent"}`}><Phone size={18} /></span>
-                    <button type="button" className="min-w-0 flex-1 text-left" onClick={() => { setCallId(on ? null : p.id); setSpoken(null); if (!on && p.personId) setTalkingId(p.personId); }} title="Usar este número no roteiro" aria-pressed={on}>
+                    <button type="button" className="min-w-[11rem] flex-1 whitespace-nowrap text-left" onClick={() => { setCallId(on ? null : p.id); setSpoken(null); if (!on && p.personId) setTalkingId(p.personId); }} title="Usar este número no roteiro" aria-pressed={on}>
                       <span className="figure block text-lg leading-tight">{fmtPhone(p.value)}</span>
                       <span className="block truncate text-xs text-muted">{who ? <><UserRound size={11} aria-hidden className="mr-0.5 inline" />{who.name}{who.roleTitle ? ` · ${who.roleTitle}` : ""}</> : "Sem contato indexado"}</span>
                     </button>
