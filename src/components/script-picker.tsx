@@ -7,13 +7,14 @@ import { GOALS, SEGMENTS, type ScriptDoc, type ScriptGoal } from "@/config/scrip
 import { OBJECTIVES, objectivesFor, suggestObjective, type ObjectiveArea, type ObjectiveId } from "@/config/objectives";
 import { loadScriptAction } from "@/modules/scripts/actions";
 import { HScroll } from "./h-scroll";
+import { BannerRain } from "./banner-rain";
 import { ScriptPlayer, type ScriptRun, type ScriptVars } from "./script-player";
 import { GOAL_THEME, SEGMENT_ICON, tint } from "./script-theme";
 
 /** Escolha da fase (prospecção, venda, retorno) e do tipo de cliente, em botões com ícone; depois roda o roteiro. Shuffler e página Scripts. */
 const OBJ_ICON: Record<ObjectiveId, typeof Target> = { agendar: CalendarCheck, qualificar: BadgeCheck, dados: ClipboardCheck, visita: MapPin, cotacao: FileText, fechar: Handshake, retorno: PhoneCall, fidelizar: Heart, reativar: RefreshCw };
 
-export function ScriptPicker({ facts, scripts, vars, goal, segmentHint, extra, onNote, onRun, onStep, endExtra, area, onRename, savedPerson }: { /** Com a área (SDR ou Vendas), a ligação começa por "Escolha seu objetivo". */ area?: ObjectiveArea; onRename?: (name: string, alsoSaved: boolean) => void; savedPerson?: boolean; facts?: FactsApi; onStep?: (nodeId: string, path: string[]) => void; endExtra?: (ctx: { runId: string }) => React.ReactNode; scripts: ScriptDoc[]; vars: ScriptVars; extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; goal?: ScriptGoal; segmentHint?: string | null; onNote?: (note: string) => void; onRun?: (run: ScriptRun) => void }) {
+export function ScriptPicker({ hideNoteBox, facts, scripts, vars, goal, segmentHint, extra, onNote, onRun, onStep, endExtra, area, onRename, savedPerson }: { hideNoteBox?: boolean; /** Com a área (SDR ou Vendas), a ligação começa por "Escolha seu objetivo". */ area?: ObjectiveArea; onRename?: (name: string, alsoSaved: boolean) => void; savedPerson?: boolean; facts?: FactsApi; onStep?: (nodeId: string, path: string[]) => void; endExtra?: (ctx: { runId: string }) => React.ReactNode; scripts: ScriptDoc[]; vars: ScriptVars; extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; goal?: ScriptGoal; segmentHint?: string | null; onNote?: (note: string) => void; onRun?: (run: ScriptRun) => void }) {
   const [g, setG] = useState<ScriptGoal>(goal ?? "sdr");
   /** Objetivo da ligação, escolhido antes de começar. Sem a área, o seletor não aparece e vale a categoria de sempre. */
   const [obj, setObj] = useState<ObjectiveId | null>(null);
@@ -53,10 +54,12 @@ export function ScriptPicker({ facts, scripts, vars, goal, segmentHint, extra, o
             const d = OBJECTIVES[k]; const Icon = OBJ_ICON[k]; const top = k === sug;
             if (top) return (
               <button key={k} type="button" onClick={() => choose(k)} style={{ background: `linear-gradient(135deg, ${d.hex}, color-mix(in srgb, ${d.hex} 62%, #000))`, boxShadow: `0 10px 30px -10px ${d.hex}` }} className="group relative col-span-full flex items-center gap-4 overflow-hidden rounded-3xl border-2 border-white/30 px-5 py-5 text-left text-white transition hover:-translate-y-0.5 hover:brightness-110 active:scale-[0.99]">
-                <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide" style={{ color: d.hex }}><Star size={12} aria-hidden /> Recomendado para este lead</span>
-                <span className="grid size-16 shrink-0 place-items-center rounded-2xl bg-white/25 shadow-inner"><Icon size={32} aria-hidden /></span>
-                <span className="min-w-0 flex-1 pt-4"><span className="block text-2xl font-extrabold leading-tight">{d.label}</span><span className="mt-1 block text-sm opacity-95">{d.hint}</span></span>
-                <span className="hidden shrink-0 items-center gap-1 rounded-xl bg-white/25 px-4 py-2.5 text-sm font-bold sm:inline-flex">Começar <ChevronRight size={16} aria-hidden /></span>
+                <BannerRain roles={["seller", "user"]} count={18} />
+                <span className="relative grid size-16 shrink-0 place-items-center rounded-2xl bg-white/25 shadow-inner"><Icon size={32} aria-hidden /></span>
+                <span className="relative min-w-0 flex-1">
+                  <span className="mb-1.5 inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide" style={{ color: d.hex }}><Star size={12} aria-hidden /> Recomendado para este lead</span>
+                  <span className="block text-2xl font-extrabold leading-tight">{d.label}</span><span className="mt-1 block text-sm opacity-95">{d.hint}</span>
+                </span>
               </button>
             );
             return (
@@ -96,7 +99,7 @@ export function ScriptPicker({ facts, scripts, vars, goal, segmentHint, extra, o
           );
         })}
       </HScroll></div>}
-      {current && needs !== null ? <p className="rounded-xl bg-sunk px-3 py-6 text-center text-sm text-muted" role="status">{failed ? "Não consegui carregar este roteiro. Escolha outro ou tente de novo." : "Carregando o roteiro…"}</p> : current ? <ScriptPlayer facts={facts} script={current} vars={vars} objective={obj ?? undefined} onRename={onRename} savedPerson={savedPerson} extra={extra} onNote={onNote} onRun={onRun} onStep={onStep} endExtra={endExtra} floatingCenter /> : <p className="text-sm text-muted">Sem script para esta fase.</p>}
+      {current && needs !== null ? <p className="rounded-xl bg-sunk px-3 py-6 text-center text-sm text-muted" role="status">{failed ? "Não consegui carregar este roteiro. Escolha outro ou tente de novo." : "Carregando o roteiro…"}</p> : current ? <ScriptPlayer hideNoteBox={hideNoteBox} facts={facts} script={current} vars={vars} objective={obj ?? undefined} onRename={onRename} savedPerson={savedPerson} extra={extra} onNote={onNote} onRun={onRun} onStep={onStep} endExtra={endExtra} floatingCenter /> : <p className="text-sm text-muted">Sem script para esta fase.</p>}
     </div>
   );
 }

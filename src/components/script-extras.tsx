@@ -33,18 +33,23 @@ export function SpeakerRow({ name, canFixSaved, onRename }: { name: string; /** 
   );
 }
 
-/** Observação livre a qualquer momento da conversa. Entra na observação do lead e no histórico do roteiro. */
-export function ObservationBox({ onAdd }: { onAdd: (text: string) => void }) {
-  const [open, setOpen] = useState(false);
+/** Formulário da observação livre: entra na observação do lead e no histórico do roteiro. */
+export function ObservationForm({ onAdd, onClose }: { onAdd: (text: string) => void; onClose: () => void }) {
   const [v, setV] = useState("");
   const add = () => { const t = v.trim().slice(0, 200); if (!t) return; onAdd(t); setV(""); };
-  if (!open) return <button type="button" className={btnGhost} onClick={() => setOpen(true)}><NotebookPen size={15} aria-hidden /> Anotar observação</button>;
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-sunk/50 p-2.5">
       <NotebookPen size={15} aria-hidden className="shrink-0 text-muted" />
-      <input autoFocus value={v} maxLength={200} aria-label="Observação" placeholder="Ex.: pediu retorno às 15h, o dono é o Carlos" className={`${inputCls} min-w-40 flex-1`} onChange={(e) => setV(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } if (e.key === "Escape") setOpen(false); }} />
+      <input autoFocus value={v} maxLength={200} aria-label="Observação" placeholder="Ex.: pediu retorno às 15h, o dono é o Carlos" className={`${inputCls} min-w-40 flex-1`} onChange={(e) => setV(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } if (e.key === "Escape") onClose(); }} />
       <button type="button" onClick={add} disabled={!v.trim()} className={`${btnPrimary} !min-h-9 !px-3`}><Plus size={15} aria-hidden /> Adicionar</button>
-      <button type="button" onClick={() => setOpen(false)} className={`${btnGhost} !min-h-9 !px-3`} aria-label="Fechar"><X size={15} aria-hidden /></button>
+      <button type="button" onClick={onClose} className={`${btnGhost} !min-h-9 !px-3`} aria-label="Fechar"><X size={15} aria-hidden /></button>
     </div>
   );
+}
+
+/** Observação livre a qualquer momento da conversa (versão com botão próprio, para telas sem o painel de contatos). */
+export function ObservationBox({ onAdd }: { onAdd: (text: string) => void }) {
+  const [open, setOpen] = useState(false);
+  if (!open) return <button type="button" className={btnGhost} onClick={() => setOpen(true)}><NotebookPen size={15} aria-hidden /> Anotar observação</button>;
+  return <ObservationForm onAdd={onAdd} onClose={() => setOpen(false)} />;
 }

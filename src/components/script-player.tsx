@@ -1,7 +1,7 @@
 "use client";
 
 import { FactAsk, FactConflict, type FactsApi } from "@/components/lead-facts";
-import { ArrowLeft, Ear, Flame, Lightbulb, Mic, RotateCcw, ShieldAlert, NotebookPen, ShieldCheck, Sparkles, ThumbsUp, ChevronRight, Trophy, Volume2, Search, X, Wand2 } from "lucide-react";
+import { ArrowLeft, Ear, Flame, Lightbulb, Mic, RotateCcw, ShieldAlert, NotebookPen, ShieldCheck, Sparkles, ThumbsUp, ChevronRight, ChevronDown, Brain, Trophy, Volume2, Search, X, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fillScript, sayOf, shortCompany, KIND_LABEL, moodOf, postureOf, OUTCOMES, TONE_KEYS, TONES, type ScriptDoc, type ScriptKind, type ScriptTone } from "@/config/scripts";
 import { btnGhost } from "@/components/ui";
@@ -28,7 +28,7 @@ const CONFETTI = ["#f59e0b", "#22c55e", "#0ea5e9", "#8b5cf6", "#f43f5e"];
  * O roteiro da ligação. O balão mostra EXATAMENTE o que você diz ao lead (com o nome dele já no lugar);
  * a dica é só para você (não se fala). Depois toque no que o lead respondeu e o roteiro avança.
  */
-export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, onRun, onStep, endExtra, floatingCenter = false, objective, onRename, savedPerson = false }: { /** Objetivo escolhido antes da ligação: as respostas com destino por objetivo seguem o caminho dele. */ objective?: string; /** Corrigir o nome de quem fala (aparece a linha "Falando com" com o botão). O segundo valor pede corrigir também o contato guardado. */ onRename?: (name: string, alsoSaved: boolean) => void; /** O nome atual é de um contato já guardado no lead. */ savedPerson?: boolean; /** Dados do lead: perguntas do roteiro e respostas que gravam no lead. */ facts?: FactsApi; /** avisa a cada passo novo, com o caminho percorrido (para o painel acompanhar quem está na linha) */ onStep?: (nodeId: string, path: string[]) => void; /** painel no fim da ligação (ex.: as tarefas que ela gerou); recebe o código da ligação */ endExtra?: (ctx: { runId: string }) => React.ReactNode; /** botão flutuante "Centralizar" acima do chat (só nas etapas dos shufflers) */ floatingCenter?: boolean; script: ScriptDoc; vars: ScriptVars; /** painel extra no passo atual (ex.: o campo do nome de quem fala); recebe `pick` para escolher uma resposta */ extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; onOutcome?: (o: NonNullable<ScriptDoc["nodes"][number]["outcome"]>) => void; /** chamado com a anotação sugerida quando o operador escolhe uma resposta que tem nota */ onNote?: (note: string) => void; /** chamado a cada resposta escolhida, com o retrato do andamento (para guardar no lead) */ onRun?: (run: ScriptRun) => void }) {
+export function ScriptPlayer({ hideNoteBox, facts, script, vars, extra, onOutcome, onNote, onRun, onStep, endExtra, floatingCenter = false, objective, onRename, savedPerson = false }: { /** As anotações ficam fora do roteiro (ao lado, em Contatos da ligação). */ hideNoteBox?: boolean; /** Objetivo escolhido antes da ligação: as respostas com destino por objetivo seguem o caminho dele. */ objective?: string; /** Corrigir o nome de quem fala (aparece a linha "Falando com" com o botão). O segundo valor pede corrigir também o contato guardado. */ onRename?: (name: string, alsoSaved: boolean) => void; /** O nome atual é de um contato já guardado no lead. */ savedPerson?: boolean; /** Dados do lead: perguntas do roteiro e respostas que gravam no lead. */ facts?: FactsApi; /** avisa a cada passo novo, com o caminho percorrido (para o painel acompanhar quem está na linha) */ onStep?: (nodeId: string, path: string[]) => void; /** painel no fim da ligação (ex.: as tarefas que ela gerou); recebe o código da ligação */ endExtra?: (ctx: { runId: string }) => React.ReactNode; /** botão flutuante "Centralizar" acima do chat (só nas etapas dos shufflers) */ floatingCenter?: boolean; script: ScriptDoc; vars: ScriptVars; /** painel extra no passo atual (ex.: o campo do nome de quem fala); recebe `pick` para escolher uma resposta */ extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; onOutcome?: (o: NonNullable<ScriptDoc["nodes"][number]["outcome"]>) => void; /** chamado com a anotação sugerida quando o operador escolhe uma resposta que tem nota */ onNote?: (note: string) => void; /** chamado a cada resposta escolhida, com o retrato do andamento (para guardar no lead) */ onRun?: (run: ScriptRun) => void }) {
   /** Módulos da galeria encaixados durante a ligação (ids com prefixo g1:, g2:…). */
   const [injected, setInjected] = useState<ScriptNode[]>([]);
   const by = useMemo(() => new Map([...script.nodes, ...injected].map((n) => [n.id, n])), [script, injected]);
@@ -192,7 +192,6 @@ export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, on
         <span className="inline-flex gap-1 rounded-xl border border-line bg-panel p-1">
           {TONE_KEYS.map((k) => <button key={k} type="button" role="radio" aria-checked={tone === k} title={TONES[k].hint} onClick={() => setTone(k)} className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${tone === k ? "bg-grad text-on-accent shadow-sm" : "text-muted hover:bg-sunk hover:text-ink"}`}>{TONES[k].label}</button>)}
         </span>
-        <span className="text-xs text-muted">{TONES[tone].hint}. O caminho é o mesmo; troque quando quiser.</span>
       </div>
 
       {/* Palco */}
@@ -200,11 +199,9 @@ export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, on
         <div className="flex items-center gap-2.5 px-4 py-2.5 text-white" style={{ background: mood.hex }}>
           <span className="grid size-8 place-items-center rounded-full bg-white/25"><mood.Icon size={17} aria-hidden className={moodOf(node) === "objecao" ? "script-shake" : ""} /></span>
           <div className="min-w-0 flex-1 leading-tight"><p className="truncate text-sm font-bold">{node.title}</p><p className="text-[11px] opacity-90">{mood.hint}</p></div>
-          {!ended && <span className="inline-flex items-center gap-1 rounded-full bg-white/25 px-2.5 py-1 text-[11px] font-bold"><Mic size={12} aria-hidden /> Você fala</span>}
         </div>
 
         <div className="space-y-3 p-4 sm:p-5">
-          {moodOf(node) === "objecao" && !ended && <p className="flex items-center gap-2 text-sm font-semibold" style={{ color: "#ea580c" }}><ShieldAlert size={16} aria-hidden /> O lead levantou uma objeção. Respire, escute e responda com calma.</p>}
           {ended ? (
             <div className="relative flex flex-col items-center gap-3 py-2 text-center">
               {success && (
@@ -228,22 +225,37 @@ export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, on
             </div>
           ) : (
             <>
-              <div className="relative rounded-2xl rounded-tl-sm px-4 py-3.5" style={{ ...tint(mood.hex, 9, 30), border: "1px solid" }}>
-                <p className="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] font-bold uppercase tracking-wider" style={{ color: mood.hex }}><span className="flex items-center gap-1.5"><Volume2 size={12} aria-hidden /> Diga ao lead</span><span className="rounded-full bg-panel/70 px-2.5 py-0.5 normal-case tracking-normal text-ink" title="Como você deve soar nesta fala"><span aria-hidden className="mr-1 text-sm">{postureOf(node).emoji}</span>Postura: {postureOf(node).text}</span></p>
-                <p className="whitespace-pre-line text-lg font-medium leading-relaxed sm:text-xl">{fillScript(sayOf(node, tone), vars)}</p>
+              <div className="rounded-2xl px-4 py-4 sm:px-5 sm:py-5" style={{ ...tint(mood.hex, 8, 28), border: "1px solid" }}>
+                <p className="whitespace-pre-line text-xl font-medium leading-relaxed sm:text-2xl sm:leading-relaxed">{fillScript(sayOf(node, tone), vars)}</p>
               </div>
-              {node.tip && <p className="flex items-start gap-2 rounded-xl border border-dashed border-line bg-sunk/60 px-3 py-2 text-sm"><Lightbulb size={16} aria-hidden className="mt-0.5 shrink-0 text-warn" /><span><b className="text-warn">Dica só para você</b>: {node.tip}</span></p>}
-              {facts && node.ask?.length ? <FactAsk facts={facts} ask={node.ask} nodeId={node.id} /> : null}
               {extra?.(node.id, pick)}
             </>
           )}
         </div>
       </div>
 
+      {/* Apoio, fechado por padrão: não polui a fala */}
+      {!ended && (node.tip || (facts && node.ask?.length)) && (
+        <div className="space-y-2">
+          {node.tip && (
+            <details className="group rounded-2xl border border-line bg-panel">
+              <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 px-3 text-sm font-semibold text-muted transition hover:text-ink"><Lightbulb size={15} aria-hidden className="text-warn" /> Dica para esta fala<ChevronDown size={15} aria-hidden className="ml-auto transition group-open:rotate-180" /></summary>
+              <p className="px-3 pb-3 text-sm"><span aria-hidden className="mr-1">{postureOf(node).emoji}</span><b>Postura:</b> {postureOf(node).text}. {node.tip}</p>
+            </details>
+          )}
+          {facts && node.ask?.length ? (
+            <details className="group rounded-2xl border border-line bg-panel">
+              <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 px-3 text-sm font-semibold text-muted transition hover:text-ink"><Brain size={15} aria-hidden className="text-accent" /> Guardar o que ele disse<ChevronDown size={15} aria-hidden className="ml-auto transition group-open:rotate-180" /></summary>
+              <div className="px-3 pb-3"><FactAsk facts={facts} ask={node.ask} nodeId={node.id} /></div>
+            </details>
+          ) : null}
+        </div>
+      )}
+
       {/* Respostas */}
       {!ended && (
         <div className="space-y-2 tall:lg:sticky tall:lg:bottom-0 tall:lg:z-10 tall:lg:-mx-4 tall:lg:max-h-[36dvh] tall:lg:overflow-y-auto tall:lg:border-t tall:lg:border-line tall:lg:bg-panel/95 tall:lg:px-4 tall:lg:pb-2 tall:lg:pt-2.5 tall:lg:backdrop-blur">
-          <p className="flex items-center gap-2 text-sm font-bold"><Ear size={16} aria-hidden className="text-accent" /> O que o lead respondeu? <span className="hidden text-xs font-normal text-muted sm:inline">(toque ou use as teclas 1, 2, 3…)</span></p>
+          <p className="flex items-center gap-2 text-sm font-bold"><Ear size={16} aria-hidden className="text-accent" /> O que o lead respondeu?</p>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14.5rem),1fr))] gap-2">
             {node.options.map((op, i) => {
               const k = KIND[op.kind]; const Icon = k.Icon; const dest = destOf(op); const off = !dest || (dest === "§voltar" ? !trail.some((x) => x.ret) : !by.has(dest));
@@ -293,7 +305,7 @@ export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, on
         </div>
       )}
 
-      <ObservationBox onAdd={(text) => { onNote?.(text); setNoted((l) => (l.includes(text) ? l : [...l, text])); }} />
+      {!hideNoteBox && <ObservationBox onAdd={(text) => { onNote?.(text); setNoted((l) => (l.includes(text) ? l : [...l, text])); }} />}
       {noted.length > 0 && <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted"><NotebookPen size={13} aria-hidden /> Anotado na observação: {noted.map((n) => <span key={n} className="rounded-full bg-sunk px-2 py-0.5 font-medium text-ink">{n}</span>)}</p>}
       {steps > 0 && (
         <div className="flex flex-wrap items-center gap-2">

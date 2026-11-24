@@ -19,7 +19,7 @@ import { RunTasks } from "@/components/run-tasks";
 import { saveScriptRunAction } from "@/modules/scripts/runs";
 import type { ScriptRun } from "@/components/script-player";
 import { TalkingTo } from "@/components/talking-to";
-import { ContactPill, LiveContacts } from "@/components/live-contacts";
+import { LiveContacts } from "@/components/live-contacts";
 import { renamePersonAction, type CapturedChannel, type CapturedPerson } from "@/modules/leads/capture";
 import { guessSegment, type ScriptDoc, type ScriptGoal } from "@/config/scripts";
 import { LeadInfoPanel } from "@/components/lead-info-panel";
@@ -214,27 +214,10 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
   };
   /** Canal que cada etapa do shuffler cuida (E-mail, WhatsApp, Ligação); a de Finalizar aceita os três (tags dos meios de contato). */
   const STEP_CHANNEL: Record<number, "email" | "whatsapp" | "call" | undefined> = { 1: "email", 2: "whatsapp", 3: "call" };
-  useTouchScope(lead.id, step === 4 ? ["email", "whatsapp", "call"] : STEP_CHANNEL[step] ? [STEP_CHANNEL[step]!] : []);
-  /** Etapa para onde a pessoa quis ir, esperando responder as perguntas pendentes. */
-  const advanceTo = useRef<number | null>(null);
-  useEffect(() => {
-    const f = () => {
-      const to = advanceTo.current; const ch = STEP_CHANNEL[step];
-      if (to == null || !ch || pendingTouches(lead.id, ch) > 0) return;
-      advanceTo.current = null; setTimeout(() => goRef.current(to), 0);
-    };
-    window.addEventListener("fey:touch-change", f);
-    return () => window.removeEventListener("fey:touch-change", f);
-  }); // eslint-disable-line react-hooks/exhaustive-deps
+  useTouchScope(lead.id, step === 4 ? ["email", "whatsapp", "call"] : []); // as perguntas "como foi?" só aparecem na última etapa, depois de dar tempo ao retorno
   const goRef = useRef<(n: number) => void>(() => {});
   const go = (n: number) => {
     if (step === 0 && n > 0) void startedAction(lead.id);
-    if (n > step) {
-      // ao avançar, pergunta o resultado do que foi enviado nesta etapa; só segue quando responder ou pular
-      const ch = STEP_CHANNEL[step];
-      if (ch) { flushTouches(lead.id, ch, true); if (pendingTouches(lead.id, ch) > 0) { advanceTo.current = n; return; } }
-    }
-    advanceTo.current = null;
     const to = Math.min(Math.max(n, 0), STEPS.length - 1);
     dir.current = to >= step ? "fwd" : "back";
     setStep(to);
@@ -461,7 +444,6 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                 </div>
               </>
             )}
-            <UsedToggle on={used.has("email")} onClick={() => toggleUsed("email")} label="E-mail enviado" Icon={Mail} color="#0ea5e9" />
           </section>
         )}
 
@@ -477,7 +459,6 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
               ))}
               {goodPhones.length === 0 && <li className="text-sm text-muted">Sem telefone válido.</li>}
             </ul>
-            <UsedToggle on={used.has("whatsapp")} onClick={() => toggleUsed("whatsapp")} label="WhatsApp enviado" Icon={MessageCircle} color="#22c55e" />
           </section>
         )}
 
@@ -513,21 +494,20 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                   <Info label="Sócios" wide>{lead.info?.partners.length ? <ul className="flex flex-wrap gap-x-3 gap-y-0.5">{lead.info.partners.map((q, i) => <li key={i}><b>{q.name}</b>{cleanRole(q.role) ? <span className="text-muted"> · {cleanRole(q.role)}</span> : null}</li>)}</ul> : <span className="text-warn">Sem informação</span>}</Info>
                   <Info label="Atividade" wide>{lead.info?.activity ? `${lead.info.cnae ? `${lead.info.cnae} - ` : ""}${lead.info.activity}` : <span className="text-warn">Sem informação</span>}</Info>
                 </div>
-                <LiveContacts openSignal={contactSignal} leadId={lead.id} people={allPeople} channels={allChannels} talkingId={callPerson?.id ?? null} onTalking={(id) => { setTalkingId(id); setSpoken(null); }} onSaved={(p, ch) => { setExtraPeople((l) => [...l.filter((x) => x.id !== p.id), p]); setExtraChannels((l) => [...l, ...ch]); }} />
+                <LiveContacts onNote={addNote} openSignal={contactSignal} leadId={lead.id} people={allPeople} channels={allChannels} talkingId={callPerson?.id ?? null} onTalking={(id) => { setTalkingId(id); setSpoken(null); }} onSaved={(p, ch) => { setExtraPeople((l) => [...l.filter((x) => x.id !== p.id), p]); setExtraChannels((l) => [...l, ...ch]); }} />
                 <ProductHints recos={recos} />
-                <UsedToggle on={used.has("ligacao")} onClick={() => toggleUsed("ligacao")} label="Ligação feita" Icon={Phone} color="#8b5cf6" />
               </div>
               <div className="order-1 space-y-3 lg:order-2">
                 <p className="flex items-center gap-2 px-1 text-xs font-bold uppercase tracking-wider text-accent"><ScrollText size={14} aria-hidden /> Roteiro da ligação <span className="font-normal normal-case tracking-normal text-muted">· leia a fala, escute e toque no que o lead respondeu</span></p>
                 <div className="space-y-3">
                 {scripts.length > 0
-                  ? <ScriptPicker key={lead.id} area={sales ? "vendas" : "sdr"} onRename={renameSpeaker} savedPerson={talkingKnownId != null} facts={facts} scripts={scripts} goal={scriptGoal ?? (sales ? "vendas" : "sdr")} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} extra={(nid, pick) => (nid === "abertura" || nid === "nome" || nid === "transferido") ? (
+                  ? <ScriptPicker hideNoteBox key={lead.id} area={sales ? "vendas" : "sdr"} onRename={renameSpeaker} savedPerson={talkingKnownId != null} facts={facts} scripts={scripts} goal={scriptGoal ?? (sales ? "vendas" : "sdr")} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} extra={(nid, pick) => (nid === "abertura" || nid === "nome" || nid === "transferido") ? (
                   <TalkingTo value={spoken ?? callPerson?.name ?? ""} people={allPeople} knownId={allPeople.find((x) => x.name.trim().toLowerCase() === talkingTo.toLowerCase())?.id ?? null} leadId={lead.id}
                   onChange={(v) => { setSpoken(v); const m = allPeople.find((x) => x.name.trim().toLowerCase() === v.trim().toLowerCase()); if (m) setTalkingId(m.id); }}
                   onEnter={() => pick(0)} onSaved={(p) => { setExtraPeople((l) => [...l.filter((x) => x.id !== p.id), p]); setTalkingId(p.id); setSpoken(null); }} />
                 ) : null} vars={{ empresa: vars.empresa, contato: vars.contato, contatoCompleto: talkingTo || null, cidade: vars.cidade, meunome: vars.meu_nome }} onNote={addNote} onRun={keepRun} onStep={onScriptStep} endExtra={lead.isTest ? undefined : ({ runId }) => <RunTasks runId={runId} area={sales ? "vendas" : "sdr"} />} />
                   : <p className="text-sm text-muted">{roteiroOff ? "O roteiro está desligado para você (o Adm pode ligar em Ligações ou Permissões)." : "Ainda não há roteiros. O Adm pode criar em Scripts."}</p>}
-                <div className="flex flex-wrap items-center gap-2"><ReviewToggle facts={facts} /><ContactPill onClick={() => setContactSignal((n) => n + 1)} /></div>
+                <div className="flex flex-wrap items-center gap-2"><ReviewToggle facts={facts} /></div>
                 <LeadKnowledge facts={facts} units={knowledge.units} goalIsSales={!!sales} />
                 </div>
               </div>
@@ -579,11 +559,6 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return <div><p className="mb-1.5 text-sm font-medium">{title}</p><div className="flex flex-wrap gap-2">{children}</div></div>;
 }
-/** "Feito?": o mesmo cartão das tags (ligado colorido, desligado pontilhado), para o Shuffler inteiro falar a mesma língua. */
-function UsedToggle({ on, onClick, label, Icon, color }: { on: boolean; onClick: () => void; label: string; Icon: typeof Mail; color: string }) {
-  return <div className="mt-6 w-full sm:w-64"><FlashTag label={label} color={color} on={on} onClick={onClick} Comp={Icon} /></div>;
-}
-
 function Info({ label, children, wide }: { label: string; children: React.ReactNode; wide?: boolean }) {
   return <div className={wide ? "sm:col-span-2" : ""}><p className="text-xs text-muted">{label}</p><div className="mt-0.5">{children}</div></div>;
 }

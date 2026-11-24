@@ -9,7 +9,6 @@ const TYPE: Record<string, string> = { Customer: "Cliente", Prospect: "Prospect"
 /** O que a EOX sabe deste cliente (vem da planilha de Empresas). Compacto = poucas linhas, para o telefone flutuante. */
 export function EoxInfoCard({ info, syncedAt, compact }: { info: Record<string, string> | null; syncedAt?: string | null; compact?: boolean }) {
   if (!info || !Object.keys(info).length) return compact ? null : <p className="text-sm text-muted">Sem dados da EOX ainda. Importe a planilha de Empresas em Admin → Integração com a EOX.</p>;
-  const blocked = /^sim$/i.test(info["Discagens bloqueadas"] ?? "");
   const last = date(info["Data Último Faturamento"]) ?? date(info["Data Último Pedido"]);
   const lastValue = money(info["Valor Último Faturamento"]) ?? money(info["Valor Último Pedido"]);
   const chips = [TYPE[info["Tipo"]] ?? info["Tipo"], info["Avaliação"], info["Classificação ABC"] ? `ABC ${info["Classificação ABC"]}` : null, info["Segmento"]].filter(Boolean) as string[];
@@ -26,7 +25,6 @@ export function EoxInfoCard({ info, syncedAt, compact }: { info: Record<string, 
   const shown = rows.filter((r): r is [string, string] => !!r[1]).slice(0, compact ? 3 : 20);
   return (
     <div className="space-y-2.5">
-      {blocked && <div className="flex items-start gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400"><Ban className="mt-0.5 size-4 shrink-0" aria-hidden /><span><b>Discagem bloqueada na EOX</b>{info["Motivo bloqueio"] ? ` · ${info["Motivo bloqueio"]}` : ""}</span></div>}
       <div className="flex flex-wrap items-center gap-1.5">
         {chips.map((c) => <span key={c} className="rounded-full border border-line px-2 py-0.5 text-xs font-medium">{c}</span>)}
         {seller && <span className="inline-flex items-center gap-1 text-xs text-muted"><UserRound className="size-3.5" aria-hidden />{seller}</span>}

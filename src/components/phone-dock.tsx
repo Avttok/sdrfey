@@ -23,7 +23,6 @@ type Recent = { digits: string; label: string };
 type Tab = "dial" | "lead" | "recent";
 
 const initials = (s: string) => s.replace(/[^\p{L}\s]/gu, "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "#";
-const blockedOf = (l: PhoneLead) => /^sim$/i.test(l.eoxInfo?.["Discagens bloqueadas"] ?? "");
 const ago = (iso: string) => { const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000); return d <= 0 ? "hoje" : d === 1 ? "ontem" : `há ${d} dias`; };
 
 /** Reconhece o lead pelo número: espera a pessoa parar de digitar, evita pedidos repetidos e descarta resposta velha. */
@@ -47,7 +46,6 @@ const Chip = ({ tone, children }: { tone: "accent" | "ok" | "danger" | "muted"; 
 
 /** Faixa compacta do lead reconhecido, na aba Discar. */
 function LeadStrip({ lead, onOpen }: { lead: PhoneLead; onOpen: () => void }) {
-  const blocked = blockedOf(lead);
   return (
     <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 rounded-2xl border border-line bg-sunk/60 p-2.5 text-left transition hover:border-accent">
       <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-xl bg-grad text-sm font-black text-on-accent">{initials(lead.tradeName ?? lead.company)}</span>
@@ -55,7 +53,6 @@ function LeadStrip({ lead, onOpen }: { lead: PhoneLead; onOpen: () => void }) {
         <span className="block truncate font-bold leading-tight">{lead.tradeName ?? lead.company}</span>
         <span className="mt-1 flex flex-wrap items-center gap-1.5">
           <Chip tone="accent">{lead.kind === "inativo" ? "Cliente" : "Prospecção"}</Chip>
-          {blocked && <Chip tone="danger">Discagem bloqueada</Chip>}
           {lead.person && <Chip tone="ok">{lead.person.name.split(" ")[0]}{lead.person.role ? ` · ${lead.person.role}` : ""}</Chip>}
           {lead.touch && <span className="text-[11px] text-muted">{lead.touch.attempts}× · {lead.touch.lastOutcome ? "" : "sem resultado · "}{ago(lead.touch.lastAt)}</span>}
         </span>
@@ -82,7 +79,6 @@ function LeadSheet({ lead, others, onPick, onDial }: { lead: PhoneLead; others: 
           <div className="mt-1.5 flex flex-wrap gap-1.5"><Chip tone="accent">{lead.kind === "inativo" ? "Cliente (Vendas)" : "Prospecção"}</Chip>{lead.dealStage && <Chip tone="ok">{STAGE[lead.dealStage] ?? lead.dealStage}</Chip>}</div>
         </div>
       </div>
-      {blockedOf(lead) && <p className="flex items-start gap-2 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger"><Ban size={15} className="mt-0.5 shrink-0" aria-hidden /><span><b>Discagem bloqueada na EOX</b>{lead.eoxInfo?.["Motivo bloqueio"] ? ` · ${lead.eoxInfo["Motivo bloqueio"]}` : ""}</span></p>}
       {lead.person && <p className="flex items-center gap-2 rounded-xl bg-ok/10 px-3 py-2 text-sm"><UserRound size={15} className="shrink-0 text-ok" aria-hidden /><span><b>{lead.person.name}</b>{lead.person.role && <span className="text-muted"> · {lead.person.role}</span>}<span className="text-muted"> · costuma atender neste número</span></span></p>}
       {lead.touch && <p className="flex flex-wrap items-center gap-2 rounded-xl border border-line px-3 py-2 text-sm"><History size={15} className="shrink-0 text-muted" aria-hidden /><span>Este número: <b>{lead.touch.attempts}</b> ligação(ões)</span><OutcomeChip channel="call" outcome={lead.touch.lastOutcome} /><span className="text-xs text-muted">{ago(lead.touch.lastAt)}</span></p>}
       <EoxInfoCard info={lead.eoxInfo} compact />
@@ -148,6 +144,8 @@ export function PhoneDock() {
   const ended = !!call?.endedAt;
   const live = inCall && !ended;
   const label = estadoLabel(call?.estado ?? null, ended);
+  // terminou qualquer ligação: o número digitado sai da caixa
+  useEffect(() => { if (ended) { setNum(""); setPinned(null); } }, [ended]);
 
   const press = useCallback((k: string) => { if (/\d/.test(k)) { setNum((n) => (n.replace(/\D/g, "").length >= 13 ? n : n.replace(/\D/g, "") + k)); setPinned(null); } }, []);
   const remember = (d: string, l: string) => {
@@ -173,7 +171,6 @@ export function PhoneDock() {
     if (r.ok) { setRetried(days === 1 ? "amanhã" : `em ${days} dias`); toast("ok", "Tarefa de ligação criada."); } else toast("bad", "Não consegui criar a tarefa.");
   };
   const script = lead && vocall.roteiroOn ? `/roteiro/${lead.id}?${lead.kind === "inativo" ? "area=vendas" : "area=sdr&goal=sdr"}${lastCallTouch() ? `&evento=${lastCallTouch()}` : ""}` : null;
-  const blocked = lead ? blockedOf(lead) : false;
   const shownTab: Tab = inCall ? "lead" : tab;
 
   return (
@@ -278,9 +275,8 @@ export function PhoneDock() {
 
           {!inCall && shownTab === "dial" && (
             <footer className="space-y-1.5 border-t border-line bg-panel p-3">
-              {blocked && <p className="flex items-center gap-1.5 text-xs font-semibold text-danger"><Ban size={13} aria-hidden /> A EOX bloqueou a discagem deste cliente. Vai pedir confirmação.</p>}
               <button type="button" onClick={() => void dialTo(digits)} disabled={digits.length < 8 || dialing || !vocall.ready} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40" style={{ background: "linear-gradient(135deg,#16a34a,#15803d)" }}>
-                {dialing ? <Loader2 size={20} className="animate-spin" aria-hidden /> : <Phone size={20} aria-hidden />} {dialing ? "Ligando…" : "Ligar"}
+                {dialing || !vocall.ready ? <Loader2 size={20} className="animate-spin" aria-hidden /> : <Phone size={20} aria-hidden />} {dialing ? "Ligando…" : !vocall.ready ? "Conectando…" : "Ligar"}
               </button>
             </footer>
           )}

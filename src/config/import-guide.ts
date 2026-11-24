@@ -102,7 +102,7 @@ export const EOX_EMPRESAS_GUIDE: GuideCol[] = [
   { col: "Nome Fantasia", what: "Entra se o lead ainda não tem (ou sempre, se marcar “sobrescrever”)." },
   { col: "Endereço / Número / Bairro / CEP / Cidade / Estado Faturamento", what: "Endereço de faturamento. Completa o que está vazio no lead." },
   { col: "Tipo", what: "Customer = cliente da Fey; Prospect = ainda não comprou. Aparece no retrato da EOX e define Vendas × Prospecção em leads criados.", values: ["Customer", "Prospect", "Lead"] },
-  { col: "Discagens bloqueadas", what: "Sim = a EOX proíbe ligar. O Ligar pergunta antes e o sorteio pula o lead.", values: ["Sim", "Não"] },
+  { col: "Discagens bloqueadas", what: "Sim = a EOX proíbe ligar. O sorteio pula o lead.", values: ["Sim", "Não"] },
   { col: "Motivo bloqueio", what: "Por que a discagem foi bloqueada." },
   { col: "Código Vendedor / Descrição Vendedor / Responsável", what: "Quem cuida do cliente na EOX." },
   { col: "Classificação ABC, Segmento, Porte, Avaliação", what: "Retrato do cliente na EOX." },

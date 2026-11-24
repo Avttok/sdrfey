@@ -13,7 +13,6 @@ import { parseEoxUrl } from "@/modules/vocall/eox";
 export const callNumber = async (digits: string, label: string | null, toast: ReturnType<typeof useToast>, vocall: ReturnType<typeof useVocall>, lead?: { id: number; eoxUrl: string | null; eoxInfo?: Record<string, string> | null }, personId?: number | null) => {
   /** Cada ligação vira um registro daquele número; o painel pergunta como foi. */
   const track = (viaVocall = false) => { if (lead) void trackTouch({ leadId: lead.id, channel: "call", target: digits, label, personId: personId ?? null, defer: viaVocall, waitEnd: viaVocall }); };
-  if (/^sim$/i.test(lead?.eoxInfo?.["Discagens bloqueadas"] ?? "") && !window.confirm(`A EOX marca a discagem deste cliente como BLOQUEADA${lead?.eoxInfo?.["Motivo bloqueio"] ? ` (${lead.eoxInfo["Motivo bloqueio"]})` : ""}.\n\nLigar mesmo assim?`)) return;
   if (vocall.configured) {
     // sem o link do cadastro da EOX o Atendimento da EOX abre em branco: procura agora pelo CNPJ (se a integração estiver ligada)
     let url = lead?.eoxUrl ?? null;
