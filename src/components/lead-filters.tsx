@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, ListFilter, Search, Tag, X } from "lucide-react";
+import { Building2, Layers, ListFilter, Search, Tag, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { DateInput } from "@/components/date-input";
@@ -13,10 +13,10 @@ import type { TagCatalog } from "@/modules/leads/view";
 
 type Person = { id: number; name: string };
 
-const LABEL: Record<string, string> = { owner: "Responsável", uf: "Estado", city: "Cidade", phone: "Telefone", email: "E-mail", status: "Situação cadastral", from: "Alterado de", to: "Alterado até", visit: "Visita" };
+const LABEL: Record<string, string> = { owner: "Responsável", uf: "Estado", city: "Cidade", phone: "Telefone", email: "E-mail", status: "Situação cadastral", tipo: "Tipo", lote: "Importação", eox: "Código EOX", cnpj: "Consulta de CNPJ", servido: "Atendimento", retorno: "Retorno combinado", from: "Alterado de", to: "Alterado até", visit: "Visita" };
 
 /** Filtros da aba Leads: busca grande, filtros em seções e as escolhas ativas como bolhas removíveis. */
-export function LeadFilters({ catalog, people, ufs, sellerView }: { sellerView?: boolean; catalog: TagCatalog; people: Person[]; ufs: string[] }) {
+export function LeadFilters({ catalog, people, ufs, sellerView, batches = [] }: { sellerView?: boolean; batches?: { id: number; label: string }[]; catalog: TagCatalog; people: Person[]; ufs: string[] }) {
   const router0 = useRouter();
   const [navPending, startNav] = useTransition();
   useBusyWhile(navPending);
@@ -46,7 +46,7 @@ export function LeadFilters({ catalog, people, ufs, sellerView }: { sellerView?:
   const simple = Object.keys(LABEL).filter((k) => sp.get(k));
   const activeCount = selected.length + simple.length + (sp.get("q") ? 1 : 0);
   const labelOf = (ref: string) => { const [g, k] = ref.split(":"); return catalog.find((c) => c.key === g)?.tags.find((t) => t.key === k); };
-  const valueOf = (k: string) => { const v = sp.get(k)!; if (k === "owner") return v === "-" ? "Sem responsável" : people.find((p) => String(p.id) === v)?.name ?? v; if (k === "phone" || k === "email") return v === "1" ? "Tem" : "Não tem"; if (k === "from" || k === "to") return `${v.slice(8)}/${v.slice(5, 7)}/${v.slice(0, 4)}`; return v; };
+  const valueOf = (k: string) => { if (k === "tipo") return sp.get("tipo") === "inativo" ? "Inativo (já cliente)" : "Prospecção (novo)"; if (k === "lote") return batches.find((b) => String(b.id) === sp.get("lote"))?.label ?? `#${sp.get("lote")}`; if (k === "eox") return sp.get("eox") === "1" ? "Tem" : "Não tem"; if (k === "cnpj") return sp.get("cnpj") === "1" ? "Consultado" : "Sem consulta"; if (k === "servido") return sp.get("servido") === "1" ? "Já atendido" : "Nunca atendido"; if (k === "retorno") return sp.get("retorno") === "1" ? "Tem" : "Não tem"; const v = sp.get(k)!; if (k === "owner") return v === "-" ? "Sem responsável" : people.find((p) => String(p.id) === v)?.name ?? v; if (k === "phone" || k === "email") return v === "1" ? "Tem" : "Não tem"; if (k === "from" || k === "to") return `${v.slice(8)}/${v.slice(5, 7)}/${v.slice(0, 4)}`; return v; };
   const filterGroups = catalog.filter((g) => ["temperatura", "meio", "qualificacao", "agenda", "situacao", "porte"].includes(g.key) && g.tags.length);
 
   const field = (label: string, node: React.ReactNode) => <label className="block text-sm"><span className="mb-1 block text-xs font-medium text-muted">{label}</span>{node}</label>;
@@ -76,6 +76,20 @@ export function LeadFilters({ catalog, people, ufs, sellerView }: { sellerView?:
               ))}
             </div>
           </Section>
+          {!sellerView && (
+            <Section icon={Layers} title="Tipo e origem">
+              <div className="grid gap-x-6 gap-y-5 md:grid-cols-2 xl:grid-cols-3">
+                <FilterGroup title="Tipo de lead"><div className="flex flex-wrap gap-1.5">{([["", "Todos"], ["prospect", "Prospecção (novos)"], ["inativo", "Inativos (já clientes)"]] as const).map(([k, l]) => <Pill key={k} on={(sp.get("tipo") ?? "") === k} onClick={() => set("tipo", k)}>{l}</Pill>)}</div></FilterGroup>
+                <FilterGroup title="Importação" hint="de qual planilha veio"><select aria-label="Importação" className={inputCls} value={sp.get("lote") ?? ""} onChange={(e) => set("lote", e.target.value)}><option value="">Todas</option>{batches.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}</select></FilterGroup>
+                <FilterGroup title="Situação no sistema"><div className="space-y-2">
+                  <Tri3 label="Já atendido" v={({ "1": "sim", "0": "nao" } as Record<string, Tri>)[sp.get("servido") ?? ""] ?? ""} set={(t) => set("servido", t === "sim" ? "1" : t === "nao" ? "0" : "")} labels={["Tudo", "Sim", "Nunca"]} />
+                  <Tri3 label="Código EOX" v={({ "1": "sim", "0": "nao" } as Record<string, Tri>)[sp.get("eox") ?? ""] ?? ""} set={(t) => set("eox", t === "sim" ? "1" : t === "nao" ? "0" : "")} />
+                  <Tri3 label="Consulta de CNPJ" v={({ "1": "sim", "0": "nao" } as Record<string, Tri>)[sp.get("cnpj") ?? ""] ?? ""} set={(t) => set("cnpj", t === "sim" ? "1" : t === "nao" ? "0" : "")} labels={["Tudo", "Feita", "Falta"]} />
+                  <Tri3 label="Retorno combinado" v={({ "1": "sim", "0": "nao" } as Record<string, Tri>)[sp.get("retorno") ?? ""] ?? ""} set={(t) => set("retorno", t === "sim" ? "1" : t === "nao" ? "0" : "")} />
+                </div></FilterGroup>
+              </div>
+            </Section>
+          )}
           <Section icon={Building2} title="Empresa e contato">
             <div className="grid gap-x-6 gap-y-5 md:grid-cols-2 xl:grid-cols-3">
               <FilterGroup title="Situação cadastral" span="md:col-span-2 xl:col-span-2"><div className="flex flex-wrap gap-1.5">{["", "ATIVA", "BAIXADA", "INAPTA", "SUSPENSA", "NULA"].map((st) => <Pill key={st} on={(sp.get("status") ?? "") === st} onClick={() => set("status", st)}>{st ? st[0] + st.slice(1).toLowerCase() : "Todas"}</Pill>)}</div></FilterGroup>

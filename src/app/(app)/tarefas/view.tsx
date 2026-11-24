@@ -40,7 +40,7 @@ export async function TasksView({ searchParams, area }: { searchParams: Promise<
       <div className="space-y-5">
         <PageHead icon={History} title="Histórico de roteiros" subtitle={`Todos os roteiros ${area === "sdr" ? "do SDR" : "de Vendas"}${other ? ` de ${other}` : ""}: terminados, convertidos, agendados e parados no meio.`} />
         {tabs}
-        <ScriptHistory h={h} area={area} base={base} status={st} days={days} viewing={viewing !== me.id ? viewing : null} />
+        <ScriptHistory admin={me.isAdmin} h={h} area={area} base={base} status={st} days={days} viewing={viewing !== me.id ? viewing : null} />
       </div>
     );
   }

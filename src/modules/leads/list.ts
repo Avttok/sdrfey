@@ -22,6 +22,18 @@ export type LeadFilters = {
   /** Atalho de situação: livres para sorteio, em atendimento agora ou com os vendedores. */
   show?: "livres" | "atendimento" | "vendedores";
   sort?: "nome" | "novos";
+  /** Tipo do lead: novo (Prospecção) ou já cliente da Fey (Inativo). */
+  tipo?: "prospect" | "inativo";
+  /** Lote de importação que criou o lead. */
+  lote?: number;
+  /** Tem (1) ou não tem (0) Código EOX válido. */
+  eox?: "1" | "0";
+  /** Consulta de CNPJ feita (1) ou não (0). */
+  cnpj?: "1" | "0";
+  /** Já foi atendido alguma vez (1) ou nunca (0). */
+  servido?: "1" | "0";
+  /** Tem retorno combinado (1) ou não (0). */
+  retorno?: "1" | "0";
   page: number;
 };
 
@@ -37,6 +49,9 @@ export function parseFilters(sp: Record<string, string | string[] | undefined>):
     phone: flag("phone"), email: flag("email"), status: one("status"), from: date("from"), to: date("to"), visit: one("visit"),
     show: (["livres", "atendimento", "vendedores"] as const).find((x) => x === one("show")),
     sort: (["nome", "novos"] as const).find((x) => x === one("sort")),
+    tipo: (["prospect", "inativo"] as const).find((x) => x === one("tipo")),
+    lote: /^\d+$/.test(one("lote") ?? "") ? Number(one("lote")) : undefined,
+    eox: flag("eox"), cnpj: flag("cnpj"), servido: flag("servido"), retorno: flag("retorno"),
     page: Math.max(1, Number(one("page")) || 1),
   };
 }
@@ -64,6 +79,12 @@ function where(f: LeadFilters): SQL | undefined {
   if (f.show === "livres") c.push(sql`${leads.lockedBy} is null and ${leads.ownerId} is null and not ${openDeal}`);
   if (f.show === "atendimento") c.push(sql`${leads.lockedBy} is not null`);
   if (f.show === "vendedores") c.push(openDeal);
+  if (f.tipo) c.push(sql`${leads.kind} = ${f.tipo}`);
+  if (f.lote) c.push(sql`${leads.importBatchId} = ${f.lote}`);
+  if (f.eox) c.push(f.eox === "1" ? sql`${leads.eoxId} ~ '^\\d{7,}$'` : sql`(${leads.eoxId} is null or ${leads.eoxId} !~ '^\\d{7,}$')`);
+  if (f.cnpj) c.push(f.cnpj === "1" ? sql`${leads.enrichedAt} is not null` : sql`${leads.enrichedAt} is null`);
+  if (f.servido) c.push(f.servido === "1" ? sql`${leads.timesServed} > 0` : sql`${leads.timesServed} = 0`);
+  if (f.retorno) c.push(f.retorno === "1" ? sql`${leads.returnAt} is not null` : sql`${leads.returnAt} is null`);
   if (f.owner === "-") c.push(sql`${leads.ownerId} is null`);
   else if (f.owner && /^\d+$/.test(f.owner)) c.push(sql`${leads.ownerId} = ${Number(f.owner)}`);
   if (f.uf) c.push(sql`${leads.uf} = ${f.uf}`);

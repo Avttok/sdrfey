@@ -77,7 +77,7 @@ export async function setActiveListAction(kindRaw: unknown, id: number | null): 
 export async function deleteListAction(kindRaw: unknown, id: number): Promise<ActionResult> {
   const kind = kindOf(kindRaw);
   const me = await requirePerm(permOf(kind));
-  await db.delete(leadLists).where(and(eq(leadLists.id, id), eq(leadLists.ownerId, me.id), eq(leadLists.kind, kind)));
+  await db.delete(leadLists).where(me.isAdmin ? and(eq(leadLists.id, id), eq(leadLists.kind, kind)) : and(eq(leadLists.id, id), eq(leadLists.ownerId, me.id), eq(leadLists.kind, kind)));
   paths(kind);
   return { ok: true, message: "Lista excluída. Os leads voltaram a ficar livres." };
 }

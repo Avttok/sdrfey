@@ -31,17 +31,19 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const sellerView = isSellerOnly(me.roles);
   const sp = await searchParams;
   const filters = { ...parseFilters(sp), sellerScope: sellerView ? me.id : undefined };
-  const [catalog, people, ufRows, { total, rows, pages }, [stat]] = await Promise.all([
+  const [catalog, people, ufRows, { total, rows, pages }, [stat], batchRows] = await Promise.all([
     getTagCatalog(),
     db.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.active, true), visibleUsers(me))).orderBy(asc(users.name)),
     db.selectDistinct({ uf: leads.uf }).from(leads).where(sql`${leads.uf} is not null`).orderBy(asc(leads.uf)),
     listLeads(filters),
-    sellerView ? Promise.resolve([null]) : db.execute<{ all: number; free: number; busy: number; deals: number }>(sql`
+    sellerView ? Promise.resolve([null]) : db.execute<{ all: number; free: number; busy: number; deals: number; prospect: number; inativo: number }>(sql`
       select count(*)::int as "all",
         count(*) filter (where locked_by is null and owner_id is null and not exists (select 1 from deals d where d.lead_id = leads.id and d.stage not in ('ganho','perdido')))::int as free,
         count(*) filter (where locked_by is not null)::int as busy,
+        count(*) filter (where kind = 'prospect')::int as prospect, count(*) filter (where kind = 'inativo')::int as inativo,
         count(*) filter (where exists (select 1 from deals d where d.lead_id = leads.id and d.stage not in ('ganho','perdido')))::int as deals
       from leads where not is_test`),
+    sellerView ? Promise.resolve([] as { id: number; file_name: string; created_at: Date; inserted: number }[]) : db.execute<{ id: number; file_name: string; created_at: Date; inserted: number }>(sql`select id, file_name, created_at, inserted from import_batches where kind in ('leads', 'inativos') and undone_at is null order by id desc limit 40`),
   ]);
 
   const pageHref = (n: number) => {
@@ -71,7 +73,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
         </div>
       )}
       <Suspense fallback={null}>
-        <LeadFilters sellerView={sellerView} catalog={catalog} people={people} ufs={ufRows.map((r) => r.uf!).filter(Boolean)} />
+        <LeadFilters sellerView={sellerView} catalog={catalog} people={people} ufs={ufRows.map((r) => r.uf!).filter(Boolean)} batches={[...batchRows].map((b) => ({ id: b.id, label: `${b.file_name} · ${new Date(b.created_at).toLocaleDateString("pt-BR")} · ${b.inserted}` }))} />
       </Suspense>
 
       <Suspense fallback={null}><LeadToolbar total={total} counts={stat ?? undefined} /></Suspense>

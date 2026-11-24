@@ -58,7 +58,7 @@ export async function snoozeTaskAction(id: number, days: number): Promise<{ ok: 
 export async function deleteTaskAction(id: number): Promise<{ ok: boolean }> {
   const me = await requireUser();
   if (!Number.isInteger(id)) return { ok: false };
-  const r = await db.delete(tasks).where(and(eq(tasks.id, id), eq(tasks.userId, me.id))).returning({ id: tasks.id });
+  const r = await db.delete(tasks).where(me.isAdmin ? eq(tasks.id, id) : and(eq(tasks.id, id), eq(tasks.userId, me.id))).returning({ id: tasks.id });
   refresh();
   return { ok: r.length > 0 };
 }

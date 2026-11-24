@@ -46,6 +46,7 @@ export async function purgeCategoryAction(input: { key: PurgeKey; scope: "all" |
   const n = await db.transaction(async (tx) => {
     const n = await del(tx, TABLE[cat.key].table, where);
     if (cat.key === "chat" && f.data.scope === "all" && !f.data.before) await del(tx, "chat_reads", sql``);
+    if (cat.key === "coins") await del(tx, "shop_purchases", f.data.before ? sql`where at < ${new Date(`${f.data.before}T00:00:00-03:00`).toISOString()}::timestamptz` : sql``);
     await logAudit(tx, { userId: me.id, entity: "purge", action: "apagou categoria", field: cat.label, newValue: `${n} registro(s)`, meta: { categoria: cat.key, escopo: f.data.scope === "test" ? "só de teste" : "tudo", anterioresA: f.data.before, apagados: n } });
     return n;
   });

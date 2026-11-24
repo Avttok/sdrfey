@@ -1,5 +1,7 @@
 import { ChevronDown, Clock, ExternalLink, Pause, ScrollText, SkipForward } from "lucide-react";
 import Link from "next/link";
+import { AdminDelete } from "@/components/admin/admin-delete";
+import { deleteScriptRunAction } from "@/modules/scripts/admin-delete";
 import { OUTCOMES } from "@/config/scripts";
 import type { TaskArea } from "@/config/tasks";
 import { RUN_ORDER, RUN_STATUS, type RunHistory, type RunStatus } from "@/modules/scripts/history";
@@ -10,7 +12,7 @@ const mmss = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.floor(
 const when = (iso: string) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
 
 /** Painel do histórico de roteiros (SDR ou Vendas): números, filtros, desempenho por roteiro e a lista com o caminho de cada ligação. */
-export function ScriptHistory({ h, area, base, status, days, viewing }: { h: RunHistory; area: TaskArea; base: string; status: RunStatus | null; days: number; viewing: number | null }) {
+export function ScriptHistory({ h, area, base, status, days, viewing, admin = false }: { admin?: boolean; h: RunHistory; area: TaskArea; base: string; status: RunStatus | null; days: number; viewing: number | null }) {
   const href = (o: { status?: RunStatus | null; days?: number; more?: boolean }) => {
     const q = new URLSearchParams({ aba: "historico" });
     const st = o.status === undefined ? status : o.status; if (st) q.set("status", st);
@@ -81,6 +83,7 @@ export function ScriptHistory({ h, area, base, status, days, viewing }: { h: Run
                 )}
                 {r.notes.length > 0 && <ul className="list-disc space-y-0.5 pl-5 text-muted">{r.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>}
                 <Link href={`/leads/${r.leadId}`} className="inline-flex items-center gap-1.5 text-xs font-bold text-accent hover:underline"><ExternalLink size={12} aria-hidden /> Abrir o lead</Link>
+                {admin && <AdminDelete compact label="Apagar roteiro" title="Apagar este roteiro feito?" body={`O registro do roteiro “${r.scriptTitle}” com ${r.company} será apagado do histórico.`} action={deleteScriptRunAction.bind(null, r.id)} />}
               </div>
             </details>
           );

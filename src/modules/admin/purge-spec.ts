@@ -1,5 +1,5 @@
 /** Categorias que o Adm pode apagar de uma vez. Só metadados (a tela e as ações usam a mesma lista). */
-export type PurgeKey = "leads" | "deals" | "quotes" | "visits" | "interactions" | "sessions" | "tags" | "channels" | "people" | "chat" | "audit" | "reps" | "products" | "terms" | "liveSnaps" | "enrichLog" | "notifications" | "termSwaps" | "importBatches" | "skips";
+export type PurgeKey = "leads" | "deals" | "quotes" | "visits" | "interactions" | "sessions" | "tags" | "channels" | "people" | "chat" | "audit" | "reps" | "products" | "terms" | "liveSnaps" | "enrichLog" | "notifications" | "termSwaps" | "importBatches" | "skips" | "carriers" | "callScripts" | "tasks" | "touches" | "sellerShuffles" | "leadLists" | "leadFacts" | "fieldEvents" | "announcements" | "coins" | "emailTemplates" | "scripts" | "fieldSuggestions";
 
 export type PurgeCategory = {
   key: PurgeKey;
@@ -25,6 +25,19 @@ export const PURGE_CATEGORIES: PurgeCategory[] = [
   { key: "visits", label: "Visitas", hint: "Visitas agendadas (representantes e vendedores).", test: true, time: true, group: "Vendas" },
   { key: "interactions", label: "Interações", hint: "Cada ligação, WhatsApp ou e-mail registrado.", cascade: "Zera também o realizado das metas de ligações e atendidos.", test: true, time: true, group: "Atendimento" },
   { key: "sessions", label: "Atendimentos (sessões)", hint: "As passagens pelo Shuffler: tempo médio, atendidos e pulados.", test: true, time: true, group: "Atendimento" },
+  { key: "carriers", label: "Transportadoras", hint: "A tabela de transportadoras e fretes importada.", test: false, time: true, group: "Vendas" },
+  { key: "callScripts", label: "Histórico de roteiros", hint: "Cada roteiro feito numa ligação (caminho, respostas e resultado).", cascade: "As tarefas que esses roteiros criaram continuam; apague em Tarefas se quiser.", test: true, time: true, group: "Atendimento" },
+  { key: "tasks", label: "Tarefas", hint: "As tarefas de SDR e Vendas (abertas e feitas).", test: false, time: true, group: "Atendimento" },
+  { key: "touches", label: "Contatos registrados (“Como foi?”)", hint: "Cada e-mail, WhatsApp ou ligação com o resultado marcado.", test: true, time: true, group: "Atendimento" },
+  { key: "sellerShuffles", label: "Sorteios do Shuffler Vendas", hint: "As passagens dos vendedores pelo Shuffler Vendas.", test: true, time: true, group: "Atendimento" },
+  { key: "leadLists", label: "Listas do Lista Flow", hint: "As listas montadas de leads.", cascade: "Os leads continuam cadastrados; só some a lista.", test: false, time: true, group: "Atendimento" },
+  { key: "leadFacts", label: "Dados dos leads (preenchidos pelo roteiro)", hint: "Os campos que o roteiro e a equipe preencheram nos leads.", test: false, time: true, group: "Clientes" },
+  { key: "fieldEvents", label: "Histórico dos dados dos leads", hint: "O diário de cada mudança nos dados dos leads.", test: true, time: true, group: "Clientes" },
+  { key: "announcements", label: "Avisos globais", hint: "Os cards que caem do topo para todos.", test: false, time: true, group: "Sistema" },
+  { key: "coins", label: "Moedas e compras da loja", hint: "O extrato de moedas e as compras.", cascade: "Os saldos de todos voltam a zero.", test: false, time: true, group: "Sistema" },
+  { key: "emailTemplates", label: "Modelos de e-mail", hint: "Os textos prontos de e-mail.", test: false, time: false, group: "Sistema" },
+  { key: "scripts", label: "Roteiros de ligação (os textos)", hint: "Os roteiros criados em Scripts. Dá para restaurar os de fábrica depois.", cascade: "O histórico de roteiros já feitos continua.", test: false, time: false, group: "Sistema" },
+  { key: "fieldSuggestions", label: "Sugestões de campos", hint: "Campos novos sugeridos pelos roteiros.", test: false, time: true, group: "Sistema" },
   { key: "chat", label: "Chat", hint: "Todas as mensagens, reações e leituras.", test: false, time: true, group: "Sistema" },
   { key: "audit", label: "Registro de atividades", hint: "O histórico de tudo que mudou no sistema.", cascade: "Perde-se o “quem fez o quê”. Fica só o registro desta exclusão.", test: false, time: true, group: "Sistema" },
   { key: "reps", label: "Representantes", hint: "A lista de representantes (as visitas já guardam uma cópia).", test: false, time: false, group: "Sistema" },
@@ -76,5 +89,18 @@ export const PURGE_SQL: Record<PurgeKey, { table: string; time?: string; test?: 
   termSwaps: { table: "term_swaps", time: "at" },
   importBatches: { table: "import_batches", time: "created_at" },
   skips: { table: "lead_skips", time: "until" },
+  carriers: { table: "carriers", time: "created_at" },
+  callScripts: { table: "call_scripts", time: "started_at", test: "is_test" },
+  tasks: { table: "tasks", time: "created_at" },
+  touches: { table: "contact_events", time: "at", test: "is_test" },
+  sellerShuffles: { table: "seller_shuffles", time: "shown_at", test: "is_test" },
+  leadLists: { table: "lead_lists", time: "created_at" },
+  leadFacts: { table: "lead_facts", time: "created_at" },
+  fieldEvents: { table: "field_events", time: "created_at", test: "is_test" },
+  announcements: { table: "announcements", time: "created_at" },
+  coins: { table: "coin_ledger", time: "created_at" },
+  emailTemplates: { table: "email_templates" },
+  scripts: { table: "scripts" },
+  fieldSuggestions: { table: "field_suggestions", time: "created_at" },
 };
 

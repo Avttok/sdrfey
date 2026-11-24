@@ -9,14 +9,15 @@ import { useBusyWhile } from "@/components/toast";
 const nf = new Intl.NumberFormat("pt-BR");
 
 /** Atalhos de situação, ordem e jeito de ver (cartões ou lista) da aba Leads. Tudo vai para o endereço, então dá para compartilhar o link. */
-export function LeadToolbar({ total, counts }: { total: number; counts?: { all: number; free: number; busy: number; deals: number } }) {
+export function LeadToolbar({ total, counts }: { total: number; counts?: { all: number; free: number; busy: number; deals: number; prospect?: number; inativo?: number } }) {
   const router = useRouter(); const path = usePathname(); const sp = useSearchParams();
   const [pending, start] = useTransition(); useBusyWhile(pending);
   const set = (k: string, v: string) => { const p = new URLSearchParams(sp.toString()); v ? p.set(k, v) : p.delete(k); if (k !== "view") p.delete("page"); start(() => router.replace(`${path}?${p}`, { scroll: false })); };
-  const show = sp.get("show") ?? "", sort = sp.get("sort") ?? "", view = sp.get("view") === "lista" ? "lista" : "cards";
+  const tipo = sp.get("tipo") ?? "", show = sp.get("show") ?? "", sort = sp.get("sort") ?? "", view = sp.get("view") === "lista" ? "lista" : "cards";
   const presets = counts ? ([["", "Todos", counts.all], ["livres", "Livres", counts.free], ["atendimento", "Em atendimento", counts.busy], ["vendedores", "Com os vendedores", counts.deals]] as const) : null;
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      {counts && counts.prospect !== undefined && <div role="group" aria-label="Tipo de lead" className="flex flex-wrap gap-1.5 rounded-full border border-line bg-panel p-1">{([["", "Todos os tipos", counts.all], ["prospect", "Prospecção", counts.prospect], ["inativo", "Inativos", counts.inativo ?? 0]] as const).map(([k, l, n]) => <button key={k} type="button" aria-pressed={tipo === k} onClick={() => set("tipo", k)} className={`rounded-full px-3 py-1 text-sm font-bold ${tipo === k ? "bg-grad text-on-accent" : "text-muted hover:text-ink"}`}>{l} <span className="figure text-xs opacity-80">{nf.format(n)}</span></button>)}</div>}
       {presets && <div role="group" aria-label="Situação do lead" className="flex flex-wrap gap-1.5">{presets.map(([k, l, n]) => <Pill key={k} on={show === k} count={n} onClick={() => set("show", k)}>{l}</Pill>)}</div>}
       <p className="ml-auto text-sm font-medium text-muted"><span className="figure text-ink">{nf.format(total)}</span> {total === 1 ? "resultado" : "resultados"}</p>
       <Segmented label="Ordenar" value={(sort || "recentes") as "recentes" | "nome" | "novos"} onChange={(v) => set("sort", v === "recentes" ? "" : v)} options={[["recentes", "Atividade", <Sparkles key="a" size={14} aria-hidden />], ["novos", "Novos", <Clock3 key="n" size={14} aria-hidden />], ["nome", "A–Z", <ArrowDownAZ key="z" size={14} aria-hidden />]] as const} />
