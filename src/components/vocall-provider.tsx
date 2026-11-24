@@ -148,7 +148,7 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, roteiroOn = true,
         if (/^atendid/i.test(d.estado ?? "") && !answeredAt.current) answeredAt.current = Date.now();
         clearTimeout(timers.current.idle); clearTimeout(timers.current.clear);
         callWait.current.splice(0).forEach((r) => r(true));
-        setCall((c) => ({ telefone: String(d.telefone ?? c?.telefone ?? ""), empresa: dialLabel.current ?? (d.cliente && typeof d.cliente === "object" ? d.cliente.label : null) ?? c?.empresa ?? null, // o nome completo é o nosso: a central devolve o rótulo cortado estado: d.estado ?? null, since: c && c.telefone === d.telefone ? c.since : Date.now() }));
+        setCall((c) => ({ telefone: String(d.telefone ?? c?.telefone ?? ""), empresa: dialLabel.current ?? (d.cliente && typeof d.cliente === "object" ? d.cliente.label : null) ?? c?.empresa ?? null, estado: d.estado ?? null, since: c && c.telefone === d.telefone ? c.since : Date.now() }));
         if (d.estado === "Finalizado") finish("Finalizado");
       } else if (m.action === "livre") {
         const st = (m.data as { state?: unknown } | undefined)?.state;
