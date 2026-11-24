@@ -290,6 +290,7 @@ export function PhoneDock() {
           {!inCall && shownTab === "dial" && (
             <footer className="space-y-1.5 border-t border-line bg-panel p-3">
               {blocked && <p className="flex items-center gap-1.5 text-xs font-semibold text-danger"><Ban size={13} aria-hidden /> A EOX bloqueou a discagem deste cliente. Vai pedir confirmação.</p>}
+              {vocall.held && !dialing && vocall.health.status === "down" && <ReleaseRow />}
               {vocall.health.status === "down" && <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{vocall.health.reason ?? "O VocallPhone não respondeu."} </p>}
               <button type="button" onClick={() => void dialTo(digits)} disabled={digits.length < 8 || dialing} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40" style={{ background: "linear-gradient(135deg,#16a34a,#15803d)" }}>
                 {dialing ? <Loader2 size={20} className="animate-spin" aria-hidden /> : <Phone size={20} aria-hidden />} {dialing ? "Ligando…" : "Ligar"}
@@ -300,5 +301,21 @@ export function PhoneDock() {
         </section>
       )}
     </>
+  );
+}
+
+/** A central segura o ramal até receber o `qualificar`. Quem salvou a qualificação na EOX libera aqui, com o mesmo texto. */
+function ReleaseRow() {
+  const vocall = useVocall();
+  const [label, setLabel] = useState("Caixa postal");
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="space-y-1.5 rounded-lg border border-warn/50 bg-warn/10 p-2.5">
+      <p className="text-xs font-semibold">A central ainda segura o ramal. Se você já salvou a qualificação na EOX, informe a mesma e libere.</p>
+      <div className="flex gap-1.5">
+        <input value={label} onChange={(e) => setLabel(e.target.value)} aria-label="Qualificação salva na EOX" className="min-h-9 min-w-0 flex-1 rounded-lg border border-line bg-panel px-2 text-sm" />
+        <button type="button" disabled={busy || !label.trim()} onClick={() => { setBusy(true); void vocall.release(label).finally(() => setBusy(false)); }} className="inline-flex min-h-9 items-center gap-1 rounded-lg bg-accent px-3 text-sm font-bold text-on-accent disabled:opacity-50">{busy ? "Liberando…" : "Liberar ramal"}</button>
+      </div>
+    </div>
   );
 }
