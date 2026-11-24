@@ -16,7 +16,7 @@ export function PhoneActions({ lead, value, label, personId }: { lead: LeadRef; 
   return (
     <span className="flex flex-wrap items-center gap-2">
       <span className="figure font-medium">{fmtPhone(value)}</span>
-      <button type="button" onClick={() => void callNumber(value.replace(/\D/g, ""), label, toast, vocall, lead, personId ?? null)} className="inline-flex items-center gap-1 rounded-full bg-accent/12 px-2 py-0.5 text-xs font-semibold text-accent hover:brightness-110"><Phone size={12} aria-hidden /> Ligar</button>
+      <button type="button" disabled={vocall.configured && vocall.ready === false} onClick={() => void callNumber(value.replace(/\D/g, ""), label, toast, vocall, lead, personId ?? null)} className="inline-flex items-center gap-1 rounded-full bg-accent/12 px-2 py-0.5 text-xs font-semibold text-accent hover:brightness-110"><Phone size={12} aria-hidden /> Ligar</button>
       <a href={chatproUrl(value)} target="_blank" rel="noreferrer" onClick={() => void trackTouch({ leadId: lead.id, channel: "whatsapp", target: value, label, personId: personId ?? null })} className="inline-flex items-center gap-1 rounded-full bg-ok/15 px-2 py-0.5 text-xs font-semibold text-ok hover:brightness-110"><MessageCircle size={12} aria-hidden /> WhatsApp</a>
     </span>
   );

@@ -119,7 +119,7 @@ export function LeadCall({ eventId, knowledge, lead, scripts, goal, area, myName
             <ul className="space-y-2">{phones.map((p) => (
               <li key={p.id} className="flex items-center gap-2 rounded-xl bg-sunk p-2">
                 <span className="min-w-0 flex-1 truncate font-semibold">{fmtPhone(p.value)}</span>
-                <button type="button" className={`${btnGhost} !min-h-9 !px-3`} onClick={() => { const pe = p.personId ? lead.people.find((x) => x.id === p.personId) : null; if (pe) setTalkingId(pe.id); void callNumber(p.value.replace(/\D/g, ""), pe?.name ?? name, toast, vocall, lead, pe?.id ?? null); }}><Phone size={15} aria-hidden /> Ligar</button>
+                <button type="button" disabled={vocall.configured && vocall.ready === false} className={`${btnGhost} !min-h-9 !px-3 disabled:opacity-50`} onClick={() => { const pe = p.personId ? lead.people.find((x) => x.id === p.personId) : null; if (pe) setTalkingId(pe.id); void callNumber(p.value.replace(/\D/g, ""), pe?.name ?? name, toast, vocall, lead, pe?.id ?? null); }}><Phone size={15} aria-hidden /> Ligar</button>
                 <button type="button" aria-label="Copiar número" className={`${btnGhost} !min-h-9 !px-2.5`} onClick={() => void copy(p.value, toast)}><Copy size={15} aria-hidden /></button>
               </li>))}</ul>
           </section>

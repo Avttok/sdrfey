@@ -498,7 +498,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                       <span className="figure block text-lg leading-tight">{fmtPhone(p.value)}</span>
                       <span className="block truncate text-xs text-muted">{who ? <><UserRound size={11} aria-hidden className="mr-0.5 inline" />{who.name}{who.roleTitle ? ` · ${who.roleTitle}` : ""}</> : "Sem contato indexado"}</span>
                     </button>
-                    <button type="button" className={btnPrimary} onClick={() => { setCallId(p.id); void callNumber(p.value, lead.tradeName ?? lead.company, toast, vocall, lead, p.personId ?? null); }}><Phone size={15} aria-hidden /> Ligar</button>
+                    <button type="button" disabled={vocall.configured && vocall.ready === false} className={`${btnPrimary} disabled:opacity-50`} onClick={() => { setCallId(p.id); void callNumber(p.value, lead.tradeName ?? lead.company, toast, vocall, lead, p.personId ?? null); }}><Phone size={15} aria-hidden /> Ligar</button>
                     <button type="button" className={btnGhost} aria-label="Copiar número" onClick={() => { void copy(p.value, toast); void trackTouch({ leadId: lead.id, channel: "call", target: p.value, label: lead.tradeName ?? lead.company, personId: p.personId ?? null, defer: true }); }}><Copy size={15} aria-hidden /> Copiar</button>
                   </li>
                 );
