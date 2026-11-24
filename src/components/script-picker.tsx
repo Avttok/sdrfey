@@ -14,12 +14,22 @@ import { GOAL_THEME, SEGMENT_ICON, tint } from "./script-theme";
 /** Escolha da fase (prospecção, venda, retorno) e do tipo de cliente, em botões com ícone; depois roda o roteiro. Shuffler e página Scripts. */
 const OBJ_ICON: Record<ObjectiveId, typeof Target> = { agendar: CalendarCheck, qualificar: BadgeCheck, dados: ClipboardCheck, visita: MapPin, cotacao: FileText, fechar: Handshake, retorno: PhoneCall, fidelizar: Heart, reativar: RefreshCw };
 
-export function ScriptPicker({ hideNoteBox, facts, scripts, vars, goal, segmentHint, extra, onNote, onRun, onStep, endExtra, area, onRename, savedPerson }: { hideNoteBox?: boolean; /** Com a área (SDR ou Vendas), a ligação começa por "Escolha seu objetivo". */ area?: ObjectiveArea; onRename?: (name: string, alsoSaved: boolean) => void; savedPerson?: boolean; facts?: FactsApi; onStep?: (nodeId: string, path: string[]) => void; endExtra?: (ctx: { runId: string }) => React.ReactNode; scripts: ScriptDoc[]; vars: ScriptVars; extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; goal?: ScriptGoal; segmentHint?: string | null; onNote?: (note: string) => void; onRun?: (run: ScriptRun) => void }) {
+export function ScriptPicker({ persistKey, hideNoteBox, facts, scripts, vars, goal, segmentHint, extra, onNote, onRun, onStep, endExtra, area, onRename, savedPerson }: { persistKey?: string; hideNoteBox?: boolean; /** Com a área (SDR ou Vendas), a ligação começa por "Escolha seu objetivo". */ area?: ObjectiveArea; onRename?: (name: string, alsoSaved: boolean) => void; savedPerson?: boolean; facts?: FactsApi; onStep?: (nodeId: string, path: string[]) => void; endExtra?: (ctx: { runId: string }) => React.ReactNode; scripts: ScriptDoc[]; vars: ScriptVars; extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; goal?: ScriptGoal; segmentHint?: string | null; onNote?: (note: string) => void; onRun?: (run: ScriptRun) => void }) {
   const [g, setG] = useState<ScriptGoal>(goal ?? "sdr");
   /** Objetivo da ligação, escolhido antes de começar. Sem a área, o seletor não aparece e vale a categoria de sempre. */
   const [obj, setObj] = useState<ObjectiveId | null>(null);
   const choose = (k: ObjectiveId) => { setObj(k); setG(OBJECTIVES[k].goal); setId(null); setCarry(null); };
   useEffect(() => { if (goal) setG(goal); }, [goal]); // outro lead pode pedir outra categoria
+  // recarregou a página: volta ao objetivo e ao roteiro que estavam em uso
+  const pickKey = persistKey ? `fey:pick:${persistKey}` : null;
+  useEffect(() => {
+    if (!pickKey) return;
+    try {
+      const j = JSON.parse(localStorage.getItem(pickKey) ?? "null") as { at: number; obj: string; id: number | null } | null;
+      if (!j || Date.now() - j.at > 12 * 3_600_000 || !(j.obj in OBJECTIVES)) return;
+      const k = j.obj as ObjectiveId; setObj(k); setG(OBJECTIVES[k].goal); setId(j.id ?? null);
+    } catch { /* sem armazenamento */ }
+  }, [pickKey]);
   /** Scripts que chegaram sem os passos (para a tela abrir rápido) e foram buscados ao escolher. */
   const [full, setFull] = useState<Record<number, ScriptDoc>>({});
   const list = useMemo(() => scripts.filter((s) => s.goal === g).map((s) => full[s.id] ?? s), [scripts, g, full]);
@@ -27,6 +37,7 @@ export function ScriptPicker({ hideNoteBox, facts, scripts, vars, goal, segmentH
   /** Ao trocar de fase, o tipo de cliente acompanha: Prospecção · Auto center vira Venda · Auto center. */
   const [carry, setCarry] = useState<string | null>(null);
   const current = list.find((s) => s.id === id) ?? (carry ? list.find((s) => s.segment === carry) : undefined) ?? list.find((s) => s.segment === segmentHint) ?? list.find((s) => s.segment === "geral") ?? list[0];
+  useEffect(() => { if (!pickKey || !obj) return; try { localStorage.setItem(pickKey, JSON.stringify({ at: Date.now(), obj, id: current?.id ?? null })); } catch { /* sem armazenamento */ } }, [pickKey, obj, current?.id]);
   const [failed, setFailed] = useState(false);
   const needs = current && current.nodes.length === 0 ? current.id : null;
   useEffect(() => {
@@ -99,7 +110,7 @@ export function ScriptPicker({ hideNoteBox, facts, scripts, vars, goal, segmentH
           );
         })}
       </HScroll></div>}
-      {current && needs !== null ? <p className="rounded-xl bg-sunk px-3 py-6 text-center text-sm text-muted" role="status">{failed ? "Não consegui carregar este roteiro. Escolha outro ou tente de novo." : "Carregando o roteiro…"}</p> : current ? <ScriptPlayer hideNoteBox={hideNoteBox} facts={facts} script={current} vars={vars} objective={obj ?? undefined} onRename={onRename} savedPerson={savedPerson} extra={extra} onNote={onNote} onRun={onRun} onStep={onStep} endExtra={endExtra} floatingCenter /> : <p className="text-sm text-muted">Sem script para esta fase.</p>}
+      {current && needs !== null ? <p className="rounded-xl bg-sunk px-3 py-6 text-center text-sm text-muted" role="status">{failed ? "Não consegui carregar este roteiro. Escolha outro ou tente de novo." : "Carregando o roteiro…"}</p> : current ? <ScriptPlayer persistKey={persistKey} hideNoteBox={hideNoteBox} facts={facts} script={current} vars={vars} objective={obj ?? undefined} onRename={onRename} savedPerson={savedPerson} extra={extra} onNote={onNote} onRun={onRun} onStep={onStep} endExtra={endExtra} floatingCenter /> : <p className="text-sm text-muted">Sem script para esta fase.</p>}
     </div>
   );
 }

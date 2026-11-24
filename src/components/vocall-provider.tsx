@@ -45,6 +45,8 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, roteiroOn = true,
   const hinted = useRef(true);
   /** A central disse que esta chamada não tem qualificação (retorno "Desconhecido"). */
   const noQual = useRef(false);
+  /** Id da chamada na central (id_chamada) = sourceuuid do formulário de qualificação da EOX. */
+  const srcId = useRef<string | null>(null);
   /** Último estado do ramal informado pelo VocallAgent (undefined = ainda não informou). false = livre. */
   const livre = useRef<string | false | null | undefined>(undefined);
   /** O VocallPhone está livre? Consulta própria, fora da conexão da chamada. */
@@ -77,9 +79,9 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, roteiroOn = true,
   const askQual = useCallback(async (knownId?: string) => {
     clearTimeout(timers.current.qual);
     setCall((c) => (c ? { ...c, qualLooking: true } : c));
-    let id: string | null = knownId && /^\d+$/.test(knownId) ? knownId : null;
+    let id: string | null = knownId && /^\d+$/.test(knownId) ? knownId : srcId.current;
     let parent: string | null = null, base = "", empresa: string | null = null;
-    if (!noQual.current || id) {
+    if (!id || !eoxRef.current) {
       try {
         const r = await fetch("/api/vocall/qualificacao", { method: "POST", cache: "no-store" });
         const j = (await r.json()) as { id: string | null; parent?: string | null; eoxBase?: string | null; empresa?: string | null };
@@ -102,7 +104,7 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, roteiroOn = true,
     setCall((c) => (c ? { ...c, estado, endedAt: c.endedAt ?? Date.now() } : c));
     clearTimeout(timers.current.clear);
     clearTimeout(timers.current.qual);
-    timers.current.qual = setTimeout(() => void askQual(), QUAL_WAIT_MS); // se ela não pedir, procura mesmo assim e corta
+    timers.current.qual = setTimeout(() => void askQual(), 800); // o id da chamada já é o sourceuuid: o botão Qualificar sai logo
   }, [askQual]);
 
   /** Garante uma conexão com login feito. Devolve o socket pronto ou null. */
@@ -130,7 +132,8 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, roteiroOn = true,
         // conectou mas ninguém ligou: não deixa aberto
         clearTimeout(timers.current.idle); timers.current.idle = setTimeout(() => hangup("idle"), IDLE_MS);
       } else if (m.action === "chamada" && m.data) {
-        const d = m.data as { telefone?: string; estado?: string; cliente?: { label?: string } | false };
+        const d = m.data as { telefone?: string; estado?: string; id_chamada?: string | number; cliente?: { label?: string } | false };
+        if (/^\d+$/.test(String(d.id_chamada ?? ""))) srcId.current = String(d.id_chamada);
         if (/^atendid/i.test(d.estado ?? "") && !answeredAt.current) answeredAt.current = Date.now();
         clearTimeout(timers.current.idle); clearTimeout(timers.current.clear);
         callWait.current.splice(0).forEach((r) => r(true));
@@ -196,7 +199,7 @@ export function VocallProvider({ cfg, agentId, ramal, eoxBase, roteiroOn = true,
   }, [connect, hangup, prefix, waitLivre]);
 
   const dial = useCallback(async (phone: string, label?: string | null, eox?: EoxRef | null) => {
-    eoxRef.current = eox ?? null; answeredAt.current = null; hinted.current = false; noQual.current = false; dialLabel.current = label ?? null;
+    eoxRef.current = eox ?? null; srcId.current = null; answeredAt.current = null; hinted.current = false; noQual.current = false; dialLabel.current = label ?? null;
     const digits = phone.replace(/\D/g, "");
     if (digits.length < 8) return false;
     setPanel(true); // ligou: o discador abre sozinho; se a pessoa minimizar, o botão flutuante mostra a chamada

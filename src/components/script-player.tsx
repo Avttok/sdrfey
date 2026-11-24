@@ -28,12 +28,31 @@ const CONFETTI = ["#f59e0b", "#22c55e", "#0ea5e9", "#8b5cf6", "#f43f5e"];
  * O roteiro da ligação. O balão mostra EXATAMENTE o que você diz ao lead (com o nome dele já no lugar);
  * a dica é só para você (não se fala). Depois toque no que o lead respondeu e o roteiro avança.
  */
-export function ScriptPlayer({ hideNoteBox, facts, script, vars, extra, onOutcome, onNote, onRun, onStep, endExtra, floatingCenter = false, objective, onRename, savedPerson = false }: { /** As anotações ficam fora do roteiro (ao lado, em Contatos da ligação). */ hideNoteBox?: boolean; /** Objetivo escolhido antes da ligação: as respostas com destino por objetivo seguem o caminho dele. */ objective?: string; /** Corrigir o nome de quem fala (aparece a linha "Falando com" com o botão). O segundo valor pede corrigir também o contato guardado. */ onRename?: (name: string, alsoSaved: boolean) => void; /** O nome atual é de um contato já guardado no lead. */ savedPerson?: boolean; /** Dados do lead: perguntas do roteiro e respostas que gravam no lead. */ facts?: FactsApi; /** avisa a cada passo novo, com o caminho percorrido (para o painel acompanhar quem está na linha) */ onStep?: (nodeId: string, path: string[]) => void; /** painel no fim da ligação (ex.: as tarefas que ela gerou); recebe o código da ligação */ endExtra?: (ctx: { runId: string }) => React.ReactNode; /** botão flutuante "Centralizar" acima do chat (só nas etapas dos shufflers) */ floatingCenter?: boolean; script: ScriptDoc; vars: ScriptVars; /** painel extra no passo atual (ex.: o campo do nome de quem fala); recebe `pick` para escolher uma resposta */ extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; onOutcome?: (o: NonNullable<ScriptDoc["nodes"][number]["outcome"]>) => void; /** chamado com a anotação sugerida quando o operador escolhe uma resposta que tem nota */ onNote?: (note: string) => void; /** chamado a cada resposta escolhida, com o retrato do andamento (para guardar no lead) */ onRun?: (run: ScriptRun) => void }) {
+export function ScriptPlayer({ persistKey, hideNoteBox, facts, script, vars, extra, onOutcome, onNote, onRun, onStep, endExtra, floatingCenter = false, objective, onRename, savedPerson = false }: { /** Guarda o ponto da conversa no navegador para retomar depois de recarregar a página. */ persistKey?: string; /** As anotações ficam fora do roteiro (ao lado, em Contatos da ligação). */ hideNoteBox?: boolean; /** Objetivo escolhido antes da ligação: as respostas com destino por objetivo seguem o caminho dele. */ objective?: string; /** Corrigir o nome de quem fala (aparece a linha "Falando com" com o botão). O segundo valor pede corrigir também o contato guardado. */ onRename?: (name: string, alsoSaved: boolean) => void; /** O nome atual é de um contato já guardado no lead. */ savedPerson?: boolean; /** Dados do lead: perguntas do roteiro e respostas que gravam no lead. */ facts?: FactsApi; /** avisa a cada passo novo, com o caminho percorrido (para o painel acompanhar quem está na linha) */ onStep?: (nodeId: string, path: string[]) => void; /** painel no fim da ligação (ex.: as tarefas que ela gerou); recebe o código da ligação */ endExtra?: (ctx: { runId: string }) => React.ReactNode; /** botão flutuante "Centralizar" acima do chat (só nas etapas dos shufflers) */ floatingCenter?: boolean; script: ScriptDoc; vars: ScriptVars; /** painel extra no passo atual (ex.: o campo do nome de quem fala); recebe `pick` para escolher uma resposta */ extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; onOutcome?: (o: NonNullable<ScriptDoc["nodes"][number]["outcome"]>) => void; /** chamado com a anotação sugerida quando o operador escolhe uma resposta que tem nota */ onNote?: (note: string) => void; /** chamado a cada resposta escolhida, com o retrato do andamento (para guardar no lead) */ onRun?: (run: ScriptRun) => void }) {
   /** Módulos da galeria encaixados durante a ligação (ids com prefixo g1:, g2:…). */
   const [injected, setInjected] = useState<ScriptNode[]>([]);
   const by = useMemo(() => new Map([...script.nodes, ...injected].map((n) => [n.id, n])), [script, injected]);
   const [trail, setTrail] = useState<{ id: string; kind?: ScriptKind; via?: string; ret?: string }[]>([{ id: script.startId }]);
   useEffect(() => { setTrail([{ id: script.startId }]); setInjected([]); }, [script.id, script.startId]);
+  // recarregou a página no meio da ligação: volta ao passo onde estava (e aos módulos encaixados)
+  const trailKey = persistKey ? `fey:trail:${persistKey}:${script.id}` : null;
+  useEffect(() => {
+    if (!trailKey) return;
+    try {
+      const j = JSON.parse(localStorage.getItem(trailKey) ?? "null") as { at: number; trail: typeof trail; injected: ScriptNode[] } | null;
+      if (!j || Date.now() - j.at > 12 * 3_600_000 || !Array.isArray(j.trail) || j.trail.length < 2) return;
+      const known = new Map([...script.nodes, ...(j.injected ?? [])].map((n) => [n.id, n]));
+      const ok: typeof trail = [];
+      for (const t of j.trail) { if (!known.has(t.id)) break; ok.push(t); }
+      if (ok.length < 2 || ok[0].id !== script.startId) return;
+      setInjected(j.injected ?? []); setTrail(ok);
+    } catch { /* sem armazenamento */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trailKey, script.id, script.startId]);
+  useEffect(() => {
+    if (!trailKey) return;
+    try { if (trail.length > 1) localStorage.setItem(trailKey, JSON.stringify({ at: Date.now(), trail, injected })); } catch { /* sem armazenamento */ }
+  }, [trailKey, trail, injected]);
   const node = by.get(trail[trail.length - 1].id) ?? script.nodes[0];
   const ended = node.type === "fim";
   useEffect(() => { if (ended && node.outcome) onOutcome?.(node.outcome); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [node.id]);

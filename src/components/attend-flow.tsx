@@ -98,15 +98,19 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
   const home = sales ? "/shuffler-vendas" : "/atender";
   const nextLead = () => (sales ? startSalesShuffleAction() : startAction());
   /** Sair do lead de propósito (Parar, Pular, Descartar): o batimento não pode tratar isso como inatividade. */
+  /** Atendimento concluído ou deixado de propósito: apaga o que estava guardado para retomar. */
+  const clearSaved = () => { try { const p = `${sales ? "v" : "s"}${lead.id}`; localStorage.removeItem(`fey:attend:${p}`); localStorage.removeItem(`fey:pick:${p}`); for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k?.startsWith(`fey:trail:${p}:`)) localStorage.removeItem(k); } } catch { /* sem armazenamento */ } };
   const leaving = { get current() { return LEFT.has(lead.id); } };
   const leave = async <R extends { ok: boolean }>(fn: () => Promise<R>): Promise<R> => {
     LEFT.add(lead.id);
-    const r = await fn(); if (!r.ok) LEFT.delete(lead.id); return r; // se lançar (redirect do servidor ao parar), segue "saindo": a tela já está trocando
+    let r: R; try { r = await fn(); } catch (e) { clearSaved(); throw e; }
+    if (!r.ok) LEFT.delete(lead.id); else clearSaved();
+    return r; // se lançar (redirect do servidor ao parar), segue "saindo": a tela já está trocando
   };
   const skipThis = () => (sales ? finishSalesShuffleAction(sales.shuffleId, "skipped", "") : skipAction(lead.id));
   const releaseThis = () => (sales ? finishSalesShuffleAction(sales.shuffleId, "released", "").then(async (r) => { if (r.ok) { router.replace("/shuffler-vendas"); router.refresh(); } return r; }) : releaseAction(lead.id));
   const discardThis = () => (sales ? finishSalesShuffleAction(sales.shuffleId, "no_interest", "Descartado no atendimento") : discardAction(lead.id, "Descartado no atendimento"));
-  const saveThis = (p: ReturnType<typeof payload>) => (sales ? saveSalesShuffleAction(sales.shuffleId, p as never, (dest === "visit" || dest === "sdr" ? dest : "none")) : saveAction(p as never));
+  const saveThis = (p: ReturnType<typeof payload>) => (sales ? saveSalesShuffleAction(sales.shuffleId, p as never, (dest === "visit" || dest === "sdr" ? dest : "none")) : saveAction(p as never)).then((r) => { if (r.ok) clearSaved(); return r; });
   const [newValue, setNewValue] = useState("");
   const [tplId, setTplId] = useState(templates[0]?.id ?? 0);
   const [emailTo, setEmailTo] = useState("");
@@ -202,15 +206,8 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
     return () => window.removeEventListener("fey:touch-done", on);
   }); // eslint-disable-line react-hooks/exhaustive-deps
   const toggleUsed = (key: string) => {
-    const ch = CH_OF[key];
-    if (!ch) { toggle(used, key, setUsed); return; }
-    flushTouches(lead.id, ch, true);
-    if (used.has(key)) { toggle(used, key, setUsed); return; }
-    const miss = missingOf(key);
-    if (miss.length === 0) { toggle(used, key, setUsed); return; }
-    const total = targetsOf(key).length;
-    const what = key === "email" ? "e-mails" : key === "whatsapp" ? "WhatsApps" : "números";
-    toast("warn", pendingTouches(lead.id, ch) ? `Responda como foi cada contato. Faltam ${miss.length} de ${total} ${what}.` : `Faltam ${miss.length} de ${total} ${what} para marcar.`);
+    // sem obrigação: qualquer meio de contato pode ser marcado ou desmarcado à vontade
+    toggle(used, key, setUsed);
   };
   /** Canal que cada etapa do shuffler cuida (E-mail, WhatsApp, Ligação); a de Finalizar aceita os três (tags dos meios de contato). */
   const STEP_CHANNEL: Record<number, "email" | "whatsapp" | "call" | undefined> = { 1: "email", 2: "whatsapp", 3: "call" };
@@ -223,6 +220,24 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
     setStep(to);
   };
   goRef.current = go;
+
+  /** Recarregou a página no meio do atendimento: guarda no navegador o que já foi preenchido e volta de onde parou. */
+  const saveKey = `fey:attend:${sales ? "v" : "s"}${lead.id}`;
+  const restored = useRef(false);
+  useEffect(() => {
+    try {
+      const j = JSON.parse(localStorage.getItem(saveKey) ?? "null") as { at: number; step: number; used: string[]; temperature: string | null; qualification: "qualificado" | "desqualificado" | null; situations: string[]; note: string; visit: string; visitDate: string; visitLink: string; visitPublic: boolean; dest: "none" | "sellers" | "reps" | "visit" | "sdr"; sellerId: number | null } | null;
+      if (j && Date.now() - j.at < 12 * 3_600_000) {
+        setStep(Math.min(Math.max(Number(j.step) || 0, 0), STEPS.length - 1)); setUsed(new Set(j.used ?? [])); setTemperature(j.temperature ?? null); setQualification(j.qualification ?? null);
+        setSituations(new Set(j.situations ?? [])); setNote(j.note ?? ""); setVisit(j.visit ?? ""); setVisitDate(j.visitDate ?? ""); setVisitLink(j.visitLink ?? ""); setVisitPublic(!!j.visitPublic); setDest(j.dest ?? "none"); setSellerId(j.sellerId ?? null);
+      }
+    } catch { /* sem armazenamento */ }
+    restored.current = true;
+  }, [saveKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!restored.current) return;
+    try { localStorage.setItem(saveKey, JSON.stringify({ at: Date.now(), step, used: [...used], temperature, qualification, situations: [...situations], note, visit, visitDate, visitLink, visitPublic, dest, sellerId })); } catch { /* sem armazenamento */ }
+  }, [saveKey, step, used, temperature, qualification, situations, note, visit, visitDate, visitLink, visitPublic, dest, sellerId]);
 
   const tpl = templates.find((t) => t.id === tplId);
   /** Telefone em uso na ligação: se ele tem um contato indexado, o roteiro fala com essa pessoa. */
@@ -501,7 +516,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                 <p className="flex items-center gap-2 px-1 text-xs font-bold uppercase tracking-wider text-accent"><ScrollText size={14} aria-hidden /> Roteiro da ligação <span className="font-normal normal-case tracking-normal text-muted">· leia a fala, escute e toque no que o lead respondeu</span></p>
                 <div className="space-y-3">
                 {scripts.length > 0
-                  ? <ScriptPicker hideNoteBox key={lead.id} area={sales ? "vendas" : "sdr"} onRename={renameSpeaker} savedPerson={talkingKnownId != null} facts={facts} scripts={scripts} goal={scriptGoal ?? (sales ? "vendas" : "sdr")} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} extra={(nid, pick) => (nid === "abertura" || nid === "nome" || nid === "transferido") ? (
+                  ? <ScriptPicker persistKey={`${sales ? "v" : "s"}${lead.id}`} hideNoteBox key={lead.id} area={sales ? "vendas" : "sdr"} onRename={renameSpeaker} savedPerson={talkingKnownId != null} facts={facts} scripts={scripts} goal={scriptGoal ?? (sales ? "vendas" : "sdr")} segmentHint={guessSegment(lead.tradeName, lead.company, lead.info?.activity)} extra={(nid, pick) => (nid === "abertura" || nid === "nome" || nid === "transferido") ? (
                   <TalkingTo value={spoken ?? callPerson?.name ?? ""} people={allPeople} knownId={allPeople.find((x) => x.name.trim().toLowerCase() === talkingTo.toLowerCase())?.id ?? null} leadId={lead.id}
                   onChange={(v) => { setSpoken(v); const m = allPeople.find((x) => x.name.trim().toLowerCase() === v.trim().toLowerCase()); if (m) setTalkingId(m.id); }}
                   onEnter={() => pick(0)} onSaved={(p) => { setExtraPeople((l) => [...l.filter((x) => x.id !== p.id), p]); setTalkingId(p.id); setSpoken(null); }} />

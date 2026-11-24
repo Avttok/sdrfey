@@ -38,10 +38,10 @@ export function ObservationForm({ onAdd, onClose }: { onAdd: (text: string) => v
   const [v, setV] = useState("");
   const add = () => { const t = v.trim().slice(0, 200); if (!t) return; onAdd(t); setV(""); };
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-sunk/50 p-2.5">
+    <div className="flex items-center gap-2 rounded-2xl border border-line bg-sunk/50 p-2.5">
       <NotebookPen size={15} aria-hidden className="shrink-0 text-muted" />
-      <input autoFocus value={v} maxLength={200} aria-label="Observação" placeholder="Ex.: pediu retorno às 15h, o dono é o Carlos" className={`${inputCls} min-w-40 flex-1`} onChange={(e) => setV(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } if (e.key === "Escape") onClose(); }} />
-      <button type="button" onClick={add} disabled={!v.trim()} className={`${btnPrimary} !min-h-9 !px-3`}><Plus size={15} aria-hidden /> Adicionar</button>
+      <input autoFocus value={v} maxLength={200} aria-label="Observação" placeholder="Ex.: pediu retorno às 15h, o dono é o Carlos" className={`${inputCls} min-w-0 flex-1`} onChange={(e) => setV(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } if (e.key === "Escape") onClose(); }} />
+      <button type="button" onClick={add} disabled={!v.trim()} className={`${btnPrimary} !min-h-9 !px-3`} aria-label="Adicionar"><Plus size={15} aria-hidden /><span className="max-sm:hidden">Adicionar</span></button>
       <button type="button" onClick={onClose} className={`${btnGhost} !min-h-9 !px-3`} aria-label="Fechar"><X size={15} aria-hidden /></button>
     </div>
   );

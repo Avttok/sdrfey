@@ -43,13 +43,13 @@ export function LiveContacts({ onNote, leadId, people, channels, talkingId, onTa
 
   return (
     <section ref={box} className="rounded-2xl border border-line bg-panel p-3" aria-label="Contatos desta ligação">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="grid size-8 place-items-center rounded-xl bg-accent/15 text-accent"><UserRound size={16} aria-hidden /></span>
-        <div className="min-w-0 flex-1 leading-tight"><h3 className="text-sm font-bold">Contatos da ligação</h3><p className="text-xs text-muted">Anote quem aparecer: nome, cargo, e-mail e telefone. Salva no lead na hora.</p></div>
-        <div className="flex flex-wrap items-center gap-2">
-          {onNote && <button type="button" className={obsOpen ? btnPrimary : btnGhost} onClick={() => setObsOpen(!obsOpen)} aria-expanded={obsOpen}><NotebookPen size={15} aria-hidden /> Anotar observação</button>}
-          <button type="button" className={open ? btnGhost : btnPrimary} onClick={() => setOpen(!open)} aria-expanded={open}>{open ? <><X size={15} aria-hidden /> Fechar</> : <><UserPlus size={15} aria-hidden /> Anotar contato</>}</button>
-        </div>
+      <div className="flex items-start gap-2.5">
+        <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent"><UserRound size={16} aria-hidden /></span>
+        <div className="min-w-0 flex-1 leading-snug"><h3 className="text-sm font-bold">Contatos da ligação</h3><p className="text-xs text-muted">Anote quem aparecer: nome, cargo, e-mail e telefone. Salva no lead na hora.</p></div>
+      </div>
+      <div className={`mt-2.5 grid gap-2 ${onNote ? "grid-cols-2" : ""}`}>
+        {onNote && <button type="button" className={`${obsOpen ? btnPrimary : btnGhost} w-full !px-2 whitespace-nowrap`} onClick={() => setObsOpen(!obsOpen)} aria-expanded={obsOpen}><NotebookPen size={15} aria-hidden /> Anotar observação</button>}
+        <button type="button" className={`${open ? btnGhost : btnPrimary} w-full !px-2 whitespace-nowrap`} onClick={() => setOpen(!open)} aria-expanded={open}>{open ? <><X size={15} aria-hidden /> Fechar</> : <><UserPlus size={15} aria-hidden /> Anotar contato</>}</button>
       </div>
       {onNote && obsOpen && <div className="mt-3"><ObservationForm onAdd={(t) => { onNote(t); toast("ok", "Observação anotada."); }} onClose={() => setObsOpen(false)} /></div>}
 
