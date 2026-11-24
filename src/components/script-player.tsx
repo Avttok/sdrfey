@@ -1,10 +1,14 @@
 "use client";
 
 import { FactAsk, FactConflict, type FactsApi } from "@/components/lead-facts";
-import { ArrowLeft, Ear, Flame, Lightbulb, Mic, RotateCcw, ShieldAlert, NotebookPen, ShieldCheck, Sparkles, ThumbsUp, ChevronRight, Trophy, Volume2, Search, X } from "lucide-react";
+import { ArrowLeft, Ear, Flame, Lightbulb, Mic, RotateCcw, ShieldAlert, NotebookPen, ShieldCheck, Sparkles, ThumbsUp, ChevronRight, Trophy, Volume2, Search, X, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fillScript, sayOf, shortCompany, KIND_LABEL, moodOf, postureOf, OUTCOMES, TONE_KEYS, TONES, type ScriptDoc, type ScriptKind, type ScriptTone } from "@/config/scripts";
 import { btnGhost } from "@/components/ui";
+import { entryOf, moduleOf, baseId } from "@/config/script-modules";
+import { suggestModules, visitedModules, type ModuleStat } from "@/config/script-suggest";
+import { loadModuleAction, suggestDataAction } from "@/modules/scripts/learn";
+import type { ScriptNode } from "@/config/scripts";
 import { HScroll } from "./h-scroll";
 import { ObservationBox, SpeakerRow } from "./script-extras";
 import { GOAL_THEME, MOODS, OUTCOME_ICON, SEGMENT_ICON, tint } from "./script-theme";
@@ -25,9 +29,11 @@ const CONFETTI = ["#f59e0b", "#22c55e", "#0ea5e9", "#8b5cf6", "#f43f5e"];
  * a dica é só para você (não se fala). Depois toque no que o lead respondeu e o roteiro avança.
  */
 export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, onRun, onStep, endExtra, floatingCenter = false, objective, onRename, savedPerson = false }: { /** Objetivo escolhido antes da ligação: as respostas com destino por objetivo seguem o caminho dele. */ objective?: string; /** Corrigir o nome de quem fala (aparece a linha "Falando com" com o botão). O segundo valor pede corrigir também o contato guardado. */ onRename?: (name: string, alsoSaved: boolean) => void; /** O nome atual é de um contato já guardado no lead. */ savedPerson?: boolean; /** Dados do lead: perguntas do roteiro e respostas que gravam no lead. */ facts?: FactsApi; /** avisa a cada passo novo, com o caminho percorrido (para o painel acompanhar quem está na linha) */ onStep?: (nodeId: string, path: string[]) => void; /** painel no fim da ligação (ex.: as tarefas que ela gerou); recebe o código da ligação */ endExtra?: (ctx: { runId: string }) => React.ReactNode; /** botão flutuante "Centralizar" acima do chat (só nas etapas dos shufflers) */ floatingCenter?: boolean; script: ScriptDoc; vars: ScriptVars; /** painel extra no passo atual (ex.: o campo do nome de quem fala); recebe `pick` para escolher uma resposta */ extra?: (nodeId: string, pick: (i: number) => void) => React.ReactNode; onOutcome?: (o: NonNullable<ScriptDoc["nodes"][number]["outcome"]>) => void; /** chamado com a anotação sugerida quando o operador escolhe uma resposta que tem nota */ onNote?: (note: string) => void; /** chamado a cada resposta escolhida, com o retrato do andamento (para guardar no lead) */ onRun?: (run: ScriptRun) => void }) {
-  const by = useMemo(() => new Map(script.nodes.map((n) => [n.id, n])), [script]);
-  const [trail, setTrail] = useState<{ id: string; kind?: ScriptKind; via?: string }[]>([{ id: script.startId }]);
-  useEffect(() => setTrail([{ id: script.startId }]), [script.id, script.startId]);
+  /** Módulos da galeria encaixados durante a ligação (ids com prefixo g1:, g2:…). */
+  const [injected, setInjected] = useState<ScriptNode[]>([]);
+  const by = useMemo(() => new Map([...script.nodes, ...injected].map((n) => [n.id, n])), [script, injected]);
+  const [trail, setTrail] = useState<{ id: string; kind?: ScriptKind; via?: string; ret?: string }[]>([{ id: script.startId }]);
+  useEffect(() => { setTrail([{ id: script.startId }]); setInjected([]); }, [script.id, script.startId]);
   const node = by.get(trail[trail.length - 1].id) ?? script.nodes[0];
   const ended = node.type === "fim";
   useEffect(() => { if (ended && node.outcome) onOutcome?.(node.outcome); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [node.id]);
@@ -63,7 +69,7 @@ export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, on
   const [noted, setNoted] = useState<string[]>([]);
   const [runId, setRunId] = useState(() => crypto.randomUUID());
   useEffect(() => { setNoted([]); setRunId(crypto.randomUUID()); }, [script.id, script.startId]);
-  const restart = () => { setTrail([{ id: script.startId }]); setNoted([]); setRunId(crypto.randomUUID()); };
+  const restart = () => { setInjected([]); setTrail([{ id: script.startId }]); setNoted([]); setRunId(crypto.randomUUID()); };
   useEffect(() => {
     if (!onRun || trail.length < 2) return;
     const steps = trail.map((t, i) => { const n = by.get(t.id); return { id: t.id, title: n?.title ?? t.id, mood: n ? moodOf(n) : "apoio", say: n ? fillScript(sayOf(n, tone), vars) : "", answer: trail[i + 1]?.via ?? null, kind: trail[i + 1]?.kind ?? null }; });
@@ -75,21 +81,48 @@ export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, on
   const destOf = useCallback((op: ScriptDoc["nodes"][number]["options"][number]) => (objective && op.goto?.[objective]) || op.to, [objective]);
   const pick = useCallback((i: number) => {
     const op = node.options[i];
-    const to = op ? destOf(op) : null;
+    const to0 = op ? destOf(op) : null;
+    const back = to0 === "§voltar" ? [...trail].reverse().find((x) => x.ret)?.ret ?? null : null;
+    const to = back ?? to0;
     if (!op || !to || !by.has(to)) return;
     if (op.fact && facts) void facts.record(op.fact.key, op.fact.value);
     if (op.note) { onNote?.(op.note); setNoted((l) => (l.includes(op.note!) ? l : [...l, op.note!])); }
-    setTrail((t) => [...t, { id: to, kind: op.kind, via: op.label }]);
-  }, [node, by, onNote, facts, destOf]);
+    setTrail((t) => [...t, { id: to, kind: op.kind, via: back ? "Voltou ao roteiro" : op.label }]);
+  }, [node, by, onNote, facts, destOf, trail]);
 
   /** Busca de objeção: o operador salta direto para a resposta certa, sem navegar pelos menus. */
   const [quick, setQuick] = useState(false);
   const [q, setQ] = useState("");
   useEffect(() => { setQuick(false); setQ(""); }, [node.id]);
-  const objections = useMemo(() => script.nodes.filter((n) => n.type === "fala" && moodOf(n) === "objecao" && !/^obj_menu/.test(n.id)), [script]);
+  const objections = useMemo(() => [...script.nodes, ...injected].filter((n) => n.type === "fala" && moodOf(n) === "objecao" && !/^obj_menu/.test(n.id)), [script, injected]);
   const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const found = useMemo(() => { const k = norm(q.trim()); return objections.filter((n) => n.id !== node.id && (!k || norm(`${n.title} ${n.say}`).includes(k))).slice(0, 12); }, [objections, q, node.id]);
   const jump = (id: string, title: string) => { setTrail((tr) => [...tr, { id, kind: "objecao", via: `Objeção: ${title}` }]); };
+
+  /** Sugestões de módulos: regras de partida + o que as ligações guardadas mostram. */
+  const [sdata, setSdata] = useState<{ stats: Record<string, ModuleStat>; gallery: string[] }>({ stats: {}, gallery: [] });
+  useEffect(() => { let live = true; suggestDataAction(script.goal, script.segment).then((d) => live && setSdata(d)).catch(() => {}); return () => { live = false; }; }, [script.goal, script.segment]);
+  const inScript = useMemo(() => new Set(script.nodes.map((n) => moduleOf(n.id)?.key).filter((k): k is string => !!k)), [script]);
+  const ids = trail.map((t) => baseId(t.id));
+  const suggestions = useMemo(() => {
+    const visited = visitedModules(ids);
+    const objs = ids.map((i) => moduleOf(i)).filter((m) => m?.category === "objecao").map((m) => m!.key);
+    const loadable = [...new Set([...inScript, ...sdata.gallery])];
+    return suggestModules({ goal: script.goal, objective: objective ?? null, visited, current: moduleOf(node.id)?.key ?? null, objections: objs, good, hurdles }, loadable, sdata.stats, 3).map((s) => ({ ...s, gallery: !inScript.has(s.key) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trail, sdata, inScript, objective, script.goal]);
+  const [taking, setTaking] = useState<string | null>(null);
+  const take = async (s: { key: string; title: string; gallery: boolean }) => {
+    if (taking) return; const via = `Sugestão: ${s.title}`;
+    if (!s.gallery) { const e = entryOf(script.nodes, s.key); if (e) setTrail((tr) => [...tr, { id: e, kind: "neutro", via }]); return; }
+    setTaking(s.key);
+    const prefix = `g${injected.length ? Math.max(...injected.map((n) => Number(/^g(\d+):/.exec(n.id)?.[1] ?? 0))) + 1 : 1}:`;
+    const m = await loadModuleAction(s.key, script.segment, prefix).catch(() => null);
+    setTaking(null);
+    if (!m) return;
+    setInjected((l) => [...l, ...m.nodes]);
+    setTrail((tr) => [...tr, { id: m.entry, kind: "neutro", via, ret: tr[tr.length - 1].id }]);
+  };
 
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -213,7 +246,7 @@ export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, on
           <p className="flex items-center gap-2 text-sm font-bold"><Ear size={16} aria-hidden className="text-accent" /> O que o lead respondeu? <span className="hidden text-xs font-normal text-muted sm:inline">(toque ou use as teclas 1, 2, 3…)</span></p>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14.5rem),1fr))] gap-2">
             {node.options.map((op, i) => {
-              const k = KIND[op.kind]; const Icon = k.Icon; const dest = destOf(op); const off = !dest || !by.has(dest);
+              const k = KIND[op.kind]; const Icon = k.Icon; const dest = destOf(op); const off = !dest || (dest === "§voltar" ? !trail.some((x) => x.ret) : !by.has(dest));
               return (
                 <button key={i} type="button" disabled={off} onClick={() => pick(i)} style={{ ...tint(k.hex, 9, 45), ["--c" as string]: `color-mix(in srgb, ${k.hex} 55%, transparent)` }}
                   className="script-ans flex min-h-14 items-center gap-3 lg:min-h-[3.5rem] rounded-2xl border-2 px-3 py-2.5 text-left font-medium disabled:opacity-50">
@@ -224,6 +257,19 @@ export function ScriptPlayer({ facts, script, vars, extra, onOutcome, onNote, on
               );
             })}
           </div>
+          {suggestions.length > 0 && (
+            <div className="rounded-2xl border border-accent/30 bg-accent/5 p-2.5" aria-label="Sugestões para este momento">
+              <p className="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-accent"><Wand2 size={13} aria-hidden /> Sugestões para agora <span className="font-normal normal-case text-muted">(você decide)</span></p>
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-2">
+                {suggestions.map((s) => (
+                  <button key={s.key} type="button" disabled={!!taking} onClick={() => void take(s)} title={s.why} className="rounded-xl border border-line bg-panel px-3 py-2 text-left transition hover:border-accent disabled:opacity-60">
+                    <span className="flex items-center gap-1.5 text-sm font-bold">{s.title}{s.gallery && <span className="rounded-full bg-sunk px-1.5 text-[10px] font-semibold text-muted">galeria</span>}</span>
+                    <span className="mt-0.5 block text-xs text-muted">{taking === s.key ? "Carregando…" : s.why}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {objections.length > 0 && (
             <div className="pt-1">
               {!quick ? (
