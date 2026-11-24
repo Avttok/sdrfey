@@ -228,6 +228,9 @@ export function PhoneDock() {
   const [qDone, setQDone] = useState<number | null>(null);
   const [releasing, setReleasing] = useState(false);
   useEffect(() => { if (!inCall) setSheet(false); }, [inCall]);
+  // a ligação acabou: fecha o painel lateral (roteiro/lead) e volta ao tamanho normal
+  useEffect(() => { if (ended) setSide(null); }, [ended]);
+  const [eoxOpened, setEoxOpened] = useState(false);
   const checking = vocall.checking;
   // verde = conectado, amarelo = qualificação pendente, vermelho = em ligação, cinza = desconectado
   const status = live || calling ? { dot: "bg-red-500 animate-pulse", text: calling ? "Ligando…" : "Em ligação" }
@@ -236,6 +239,7 @@ export function PhoneDock() {
     : { dot: "bg-slate-400", text: vocall.fails >= 1 ? "Desconectado" : "Conectando…" };
   useEffect(() => { if (!open) setSide(null); }, [open]);
 
+  const broken = !vocall.ready && !checking && vocall.fails >= 1;
   const contactName = lead?.person?.name ?? null;
   const companyName = lead ? (lead.tradeName ?? lead.company) : call?.empresa ?? null;
   const qualified = !!call && qDone === call.since;
@@ -243,7 +247,9 @@ export function PhoneDock() {
   const newCall = async () => {
     if (releasing) return;
     setReleasing(true);
-    try { await vocall.release(); } finally { setReleasing(false); }
+    let ok = false;
+    try { ok = await vocall.release(); } finally { setReleasing(false); }
+    if (!ok) toast("warn", "O VocallPhone não confirmou que está livre. Se continuar bloqueado, use o botão EOX no discador.");
     vocall.dismiss(); setPinned(null); setRetried(null); setNum(""); setTab("dial"); setSheet(false);
   };
   const tile = "flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl bg-sunk text-xs font-bold transition hover:bg-accent/10 active:scale-95";
@@ -323,7 +329,7 @@ export function PhoneDock() {
                       {call!.qualUrl
                         ? <QualifyLink href={call!.qualUrl} done={qualified} onOpen={() => setQDone(call!.since)} />
                         : call!.qualLooking
-                          ? <p className="flex items-center justify-center gap-2 py-2 text-sm text-muted"><Loader2 size={15} className="animate-spin" aria-hidden /> Procurando a qualificação…</p>
+                          ? null
                           : <p className="rounded-xl bg-sunk px-3 py-2 text-center text-xs text-muted">Número sem cadastro na EOX: não há qualificação para abrir.</p>}
                       <button type="button" disabled={checking || needQual || releasing} onClick={() => void newCall()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-base font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:shadow-none" style={{ background: "linear-gradient(135deg,#16a34a,#15803d)" }}>
                         {checking || releasing ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <Phone size={18} aria-hidden />} {checking ? "Conferindo a qualificação…" : releasing ? "Liberando o ramal…" : "Nova ligação"}
@@ -356,18 +362,18 @@ export function PhoneDock() {
 
               {!inCall && !calling && shownTab === "dial" && (
                 <>
-                  <div className="relative rounded-3xl bg-sunk px-3 py-4 text-center">
+                  <div className="relative rounded-3xl bg-sunk px-3 py-4 text-center transition focus-within:ring-2 focus-within:ring-accent/40">
                     <input ref={inputRef} aria-label="Número para ligar" type="tel" inputMode="numeric" autoComplete="off" placeholder="Digite o número" value={digits ? fmtPhone(digits) : ""}
                       onChange={(e) => { setNum(e.target.value.replace(/\D/g, "").slice(0, 13)); setPinned(null); }}
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void dialTo(digits); } }}
                       onPaste={(e) => { e.preventDefault(); const t = e.clipboardData.getData("text").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "").slice(0, 13); setNum(t); setPinned(null); }}
-                      className="figure w-full bg-transparent px-11 text-center text-[1.75rem] font-bold tracking-wide caret-transparent outline-none placeholder:text-base placeholder:font-medium placeholder:text-muted/70" />
+                      className="figure w-full appearance-none rounded-none border-0 bg-transparent px-11 text-center text-[1.75rem] font-bold tracking-wide caret-transparent shadow-none outline-none ring-0 focus:border-0 focus:shadow-none focus:outline-none focus:ring-0 focus-visible:outline-none placeholder:text-base placeholder:font-medium placeholder:text-muted/70" />
                     {digits && <button type="button" onClick={() => { setNum(""); setPinned(null); inputRef.current?.focus(); }} aria-label="Apagar o número todo" title="Apagar tudo" className="absolute left-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-xl text-muted transition hover:bg-danger/10 hover:text-danger"><Eraser size={18} aria-hidden /></button>}
                     {digits && <button type="button" onClick={() => { setNum(digits.slice(0, -1)); setPinned(null); }} aria-label="Apagar último dígito" className="absolute right-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-xl text-muted transition hover:bg-accent/10 hover:text-ink"><Delete size={18} aria-hidden /></button>}
                   </div>
                   {digits.length >= 8 && (found.loading
                     ? <p className="flex items-center justify-center gap-2 py-1 text-xs text-muted"><Loader2 size={13} className="animate-spin" aria-hidden /> Procurando o lead…</p>
-                    : lead ? <div className="space-y-1.5"><LeadStrip lead={lead} onOpen={() => setTab("lead")} />{script && <button type="button" onClick={() => openScript(script)} className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-sunk text-sm font-semibold transition hover:bg-accent/10"><ScrollText size={15} className="text-accent" aria-hidden /> Abrir o roteiro e se preparar</button>}</div>
+                    : lead ? <div className="space-y-1.5"><LeadStrip lead={lead} onOpen={() => setTab("lead")} /></div>
                     : <p className="rounded-xl border border-dashed border-line px-3 py-2 text-center text-xs text-muted">Número sem lead cadastrado. A ligação sai, sem ficha.</p>)}
                   <div className="grid grid-cols-3 gap-2" role="group" aria-label="Teclado">
                     {KEYS.map(([k, sub]) => (
@@ -397,10 +403,13 @@ export function PhoneDock() {
 
             {!inCall && !calling && shownTab === "dial" && (
               <footer className="space-y-2 border-t border-line bg-panel p-3">
-                {!vocall.ready && !checking && vocall.fails >= 1 && <p role="alert" className="rounded-xl bg-warn/15 px-3 py-2 text-center text-sm font-semibold text-warn">Não consegui conectar ao VocallPhone. Por favor, feche todas as janelas do EOX no seu navegador.</p>}
-                <button type="button" onClick={() => void dialTo(digits)} disabled={digits.length < 8 || dialing || !vocall.ready || checking} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:shadow-none" style={{ background: "linear-gradient(135deg,#16a34a,#15803d)" }}>
+                {broken && <p role="alert" className="rounded-xl bg-warn/15 px-3 py-2 text-center text-sm font-semibold text-warn">Não consegui conectar ao VocallPhone. Por favor, feche todas as janelas do EOX no seu navegador.</p>}
+                {broken ? (
+                  <a href={vocall.eoxBase || "https://fey.vocallcontact.com.br/"} target="_blank" rel="noopener noreferrer" onClick={() => setEoxOpened(true)} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98]" style={{ background: "linear-gradient(135deg,#7a3a94,#692e81)" }}><span className="grid size-7 place-items-center rounded-md bg-white/20"><EoxMark size={20} /></span> EOX</a>
+                ) : (                <button type="button" onClick={() => void dialTo(digits)} disabled={digits.length < 8 || dialing || !vocall.ready || checking} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold text-white shadow-lg transition hover:brightness-110 active:scale-[0.98] disabled:opacity-40 disabled:shadow-none" style={{ background: "linear-gradient(135deg,#16a34a,#15803d)" }}>
                   {dialing || !vocall.ready ? <Loader2 size={20} className="animate-spin" aria-hidden /> : <Phone size={20} aria-hidden />} {dialing ? "Ligando…" : !vocall.ready ? "Conectando…" : "Ligar"}
-                </button>
+                </button>)}
+                {broken && eoxOpened && <p className="rounded-xl bg-sunk px-3 py-2 text-center text-xs text-muted">Quando aparecer <b>“Livre 00:01”</b> no canto superior direito do site da EOX, feche a aba da EOX.</p>}
               </footer>
             )}
           </div>

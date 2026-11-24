@@ -225,7 +225,7 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
     return () => { v.removeEventListener("resize", f); v.removeEventListener("scroll", f); window.removeEventListener("resize", f); };
   }, []);
   const btnBottom = (vv?.inset ?? 0) + 20;
-  const panelStyle = vv ? { bottom: btnBottom + 60, height: Math.max(180, Math.min(544, vv.h - 60 - 20 - 16 - 8)) } : undefined;
+  const panelStyle = vv ? { bottom: btnBottom, height: Math.max(220, Math.min(704, vv.h - 40)) } : undefined;
   const toastRef = useRef(toast);
   toastRef.current = toast;
   const fails = useRef(0);
@@ -405,7 +405,7 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
         <div className={`flex min-w-0 max-w-[85%] flex-col ${mine ? "items-end" : "items-start"}`}>
           {first && <p className={`mb-0.5 flex flex-wrap items-center gap-1.5 px-1 text-[11px] text-muted ${mine ? "justify-end" : ""}`}><button type="button" disabled={!m.userId} onClick={() => m.userId && setProfile({ id: m.userId, hex: m.hex })} className={`font-medium hover:underline ${chatStyle(m.style).nameCls}`} style={chatStyle(m.style).name}>{mine ? "Você" : m.name.split(" ")[0]}</button><span className="text-[10px] font-normal opacity-70">{hm.format(new Date(m.at))}</span></p>}
           <div className="min-w-0 max-w-full">
-            <div title={hm.format(new Date(m.at))} style={chatStyle(m.style).bubble ?? undefined} className={`min-w-0 max-w-full rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm ${mine ? "rounded-br-md" : "rounded-bl-md"} ${chatStyle(m.style).bubble ? "" : mine ? "bg-grad text-on-accent" : "border border-line bg-panel"}`}>
+            <div title={hm.format(new Date(m.at))} style={chatStyle(m.style).bubble ?? undefined} className={`min-w-0 max-w-full rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm ${mine ? "rounded-br-md" : "rounded-bl-md"} ${chatStyle(m.style).bubble ? "" : mine ? "bg-grad text-on-accent" : "bg-panel ring-1 ring-line"}`}>
               {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
               {m.share && S && (
                 <button type="button" onClick={() => setInfo(m.id)} className={`${m.body ? "mt-2" : ""} flex w-full min-w-0 items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition ${mine ? "border-white/30 bg-white/15 hover:bg-white/25" : "border-line bg-sunk hover:border-accent/50"}`}>
@@ -429,10 +429,10 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
   return (
     <>
       {open && (
-        <section aria-label="Chat" style={panelStyle} className="fixed inset-x-3 bottom-20 z-40 flex h-[min(42rem,calc(100vh-7rem))] max-h-[calc(100%-1rem)] flex-col overflow-hidden rounded-3xl border border-line bg-panel shadow-2xl sm:inset-x-auto sm:right-5 sm:w-[min(36rem,calc(100vw-2.5rem))]">
-          <header className="flex items-center gap-2.5 border-b border-line bg-sunk/50 px-4 py-3">
-            <span className="grid size-10 place-items-center rounded-2xl bg-grad text-on-accent shadow"><MessageCircle size={18} aria-hidden /></span>
-            <div className="min-w-0 flex-1"><h2 className="text-sm font-semibold leading-tight">{shop ? "Loja do chat" : channel.startsWith("dm:") ? `Conversa com ${dms.find((d) => d.key === channel)?.name ?? "…"}` : `Chat · ${cur?.label}`}</h2><p className="truncate text-[11px] text-muted">{shop ? "Gaste suas moedas no seu estilo" : channel.startsWith("dm:") ? "Conversa direta" : cur?.hint}</p></div>
+        <section aria-label="Chat" style={panelStyle} className="card-in pointer-events-auto fixed inset-x-3 bottom-5 z-40 flex h-[min(44rem,calc(100dvh-2.5rem))] flex-col overflow-hidden rounded-[1.75rem] border border-line bg-panel shadow-2xl sm:inset-x-auto sm:right-5 sm:w-[min(28rem,calc(100vw-2.5rem))]">
+          <header className="flex items-center gap-2.5 bg-grad-soft px-4 py-3.5">
+            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-grad text-on-accent shadow-md"><MessageCircle size={20} aria-hidden /></span>
+            <div className="min-w-0 flex-1"><h2 className="display text-base leading-tight">{shop ? "Loja do chat" : channel.startsWith("dm:") ? `Conversa com ${dms.find((d) => d.key === channel)?.name ?? "…"}` : `Chat · ${cur?.label}`}</h2><p className="truncate text-[11px] text-muted">{shop ? "Gaste suas moedas no seu estilo" : channel.startsWith("dm:") ? "Conversa direta" : cur?.hint}</p></div>
             <button type="button" aria-label="Loja de moedas" aria-pressed={shop} title="Loja" className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${shop ? "bg-grad text-on-accent" : "text-muted hover:bg-sunk hover:text-ink"}`} onClick={() => setShop((v) => !v)}><Coins size={15} aria-hidden /> Loja</button>
             {isAdmin && (
               <div className="relative">
@@ -448,15 +448,15 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
                 )}
               </div>
             )}
-            <button type="button" aria-label="Fechar chat" className="rounded-lg p-1.5 text-muted hover:bg-sunk" onClick={() => setOpen(false)}><X size={17} /></button>
+            <button type="button" aria-label="Fechar chat" className="grid size-9 place-items-center rounded-xl text-muted transition hover:bg-panel hover:text-ink" onClick={() => setOpen(false)}><X size={18} /></button>
           </header>
           {offline && <p role="status" className="flex items-center gap-2 bg-warn/15 px-4 py-1.5 text-xs font-medium text-warn"><WifiOff size={13} aria-hidden /> Sem conexão com o servidor. Tentando de novo…</p>}
           {shop && <ChatShop myName={myName} meId={meId} />}
           {!shop && (
             <div className="relative">
-              <HScroll role="tablist" label="Grupos e conversas" className="flex items-center gap-1.5 border-b border-line px-3 py-2">
+              <HScroll role="tablist" label="Grupos e conversas" className="flex items-center gap-1.5 border-b border-line/70 px-3 py-2.5">
                 {allChannels.map((c) => (
-                  <button key={c.key} type="button" role="tab" aria-selected={channel === c.key} onClick={() => setChannel(c.key)} className={`relative shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${channel === c.key ? "bg-grad text-on-accent shadow-sm" : "bg-sunk text-muted hover:text-ink"}`}>
+                  <button key={c.key} type="button" role="tab" aria-selected={channel === c.key} onClick={() => setChannel(c.key)} className={`relative shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${channel === c.key ? "bg-grad text-on-accent shadow-sm" : "bg-sunk text-muted hover:bg-accent/10 hover:text-ink"}`}>
                     {c.key.startsWith("dm:") && <span aria-hidden className="mr-1 inline-block size-1.5 rounded-full" style={{ background: dms.find((d) => d.key === c.key)?.hex }} />}{c.label}{unread[c.key] ? <span className="figure ml-1.5 rounded-full bg-danger px-1.5 text-[10px] font-bold leading-4 text-white">{unread[c.key]}</span> : null}
                   </button>
                 ))}
@@ -474,27 +474,27 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
               )}
             </div>
           )}
-          {!shop && <div ref={scroller} onScroll={(e) => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }} className="min-h-0 flex-1 overflow-y-auto bg-sunk/30 px-4 py-4">
+          {!shop && <div ref={scroller} onScroll={(e) => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }} className="min-h-0 flex-1 overflow-y-auto bg-sunk/40 px-4 py-4">
             {!loaded && <p className="flex items-center justify-center gap-2 py-8 text-sm text-muted"><Loader2 size={15} className="animate-spin" aria-hidden /> Carregando…</p>}
             {loaded && more && <button type="button" onClick={loadOlder} className="mx-auto mb-2 block rounded-lg px-3 py-1 text-xs text-muted hover:bg-sunk">Ver mensagens anteriores</button>}
             {loaded && msgs.length === 0 && <p className="py-10 text-center text-sm text-muted">Nenhuma mensagem ainda. Comece a conversa!</p>}
             {rows}
           </div>}
-          {!shop && <footer className="relative border-t border-line bg-panel p-3">
+          {!shop && <footer className="relative border-t border-line/70 bg-panel p-3">
             {picker && <SharePicker onClose={() => setPicker(false)} onPick={(p) => { setPicked(p); setPicker(false); }} />}
             {picked && (() => { const K = KIND_META[picked.kind]; return <div className="mb-2 flex items-center gap-2 rounded-xl bg-sunk px-3 py-1.5 text-xs"><K.Icon size={14} aria-hidden className="shrink-0 text-accent" /><span className="min-w-0 flex-1 truncate"><b>{K.label}:</b> {picked.label}</span><button type="button" aria-label="Remover anexo" onClick={() => setPicked(null)} className="rounded p-0.5 hover:bg-line"><X size={13} /></button></div>; })()}
             <div className="flex items-end gap-1.5">
               <button type="button" aria-label="Compartilhar lead, negociação ou cotação" title="Compartilhar" onClick={() => setPicker(true)} className="grid size-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-sunk hover:text-accent"><Paperclip size={18} aria-hidden /></button>
-              <textarea value={draft} rows={1} maxLength={2000} placeholder={channel.startsWith("dm:") ? "Mensagem direta…" : "Escreva uma mensagem…"} aria-label="Mensagem" onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }} className="max-h-28 min-h-10 flex-1 resize-none rounded-2xl border border-line bg-sunk px-3.5 py-2.5 text-sm outline-none transition focus:border-accent focus:bg-panel" />
-              <button type="button" aria-label="Enviar" disabled={sending || (!draft.trim() && !picked)} onClick={send} className="grid size-10 shrink-0 place-items-center rounded-xl bg-grad text-on-accent transition disabled:opacity-50">{sending ? <Loader2 size={17} className="animate-spin" aria-hidden /> : <Send size={17} aria-hidden />}</button>
+              <textarea value={draft} rows={1} maxLength={2000} placeholder={channel.startsWith("dm:") ? "Mensagem direta…" : "Escreva uma mensagem…"} aria-label="Mensagem" onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }} className="max-h-28 min-h-11 flex-1 resize-none rounded-2xl bg-sunk px-4 py-3 text-sm outline-none ring-0 transition placeholder:text-muted/70 focus:bg-sunk focus:ring-2 focus:ring-accent/30" />
+              <button type="button" aria-label="Enviar" disabled={sending || (!draft.trim() && !picked)} onClick={send} className="grid size-11 shrink-0 place-items-center rounded-2xl bg-grad text-on-accent shadow-md transition hover:brightness-110 active:scale-95 disabled:opacity-40 disabled:shadow-none">{sending ? <Loader2 size={17} className="animate-spin" aria-hidden /> : <Send size={17} aria-hidden />}</button>
             </div>
           </footer>}
         </section>
       )}
-      <button type="button" aria-label={open ? "Fechar chat" : total ? `Abrir chat (${total} não lidas)` : "Abrir chat"} aria-expanded={open} onClick={() => setOpen(!open)} className="pointer-events-auto relative grid size-14 place-items-center rounded-full bg-grad text-on-accent shadow-xl transition hover:scale-105 active:scale-95">
-        {open ? <X size={24} aria-hidden /> : <MessageCircle size={24} aria-hidden />}
-        {!open && total > 0 && <span className="figure absolute -right-1 -top-1 min-w-5 rounded-full border-2 border-bg bg-danger px-1 text-center text-[11px] font-bold leading-4 text-white">{total > 99 ? "99+" : total}</span>}
-      </button>
+      {!open &&       <button type="button" aria-label={open ? "Fechar chat" : total ? `Abrir chat (${total} não lidas)` : "Abrir chat"} aria-expanded={open} onClick={() => setOpen(!open)} className="pointer-events-auto relative grid size-14 place-items-center rounded-full bg-grad text-on-accent shadow-xl transition hover:scale-105 active:scale-95">
+        <MessageCircle size={24} aria-hidden />
+        {total > 0 && <span className="figure absolute -right-1 -top-1 min-w-5 rounded-full border-2 border-bg bg-danger px-1 text-center text-[11px] font-bold leading-4 text-white">{total > 99 ? "99+" : total}</span>}
+      </button>}
       {dialog}
       {info !== null && <InfoDialog messageId={info} onClose={() => setInfo(null)} />}
       {profile && <ProfileDialog userId={profile.id} hex={profile.hex} isAdmin={isAdmin} onClose={() => setProfile(null)} onPurged={() => void poll(true)} />}
