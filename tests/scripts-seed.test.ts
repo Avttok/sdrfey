@@ -42,6 +42,13 @@ describe("revisão dos textos de fábrica", async () => {
     }
   });
 
+  it("soa como conversa: sem dois-pontos nas falas e sem frases de manual", () => {
+    for (const b of all) for (const n of b.nodes) if (n.type === "fala") for (const [tone, t] of texts(n)) {
+      expect(/:/.test(t), `${b.key}/${n.id}:${tone} dois-pontos`).toBe(false);
+      expect(re("em duas frases|só uma pergunta|me tira uma curiosidade|vou ser transparente já de cara|só me conta").test(t), `${b.key}/${n.id}:${tone} frase de manual`).toBe(false);
+    }
+  });
+
   it("os dados que o roteiro grava existem no catálogo e vêm da lista", () => {
     for (const b of all) for (const n of b.nodes) {
       for (const a of n.ask ?? []) expect(FIELD_SEED_BY_KEY.has(a.key), `${b.key}/${n.id} pergunta ${a.key}`).toBe(true);
