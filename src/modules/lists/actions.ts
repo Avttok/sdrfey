@@ -140,3 +140,19 @@ export async function startSalesListAction() {
   revalidatePath("/shuffler-vendas");
   redirect("/shuffler-vendas");
 }
+
+/** Clique numa carta de lista do Shuffler: ativa a lista escolhida e já sorteia dela. */
+export async function startListByIdAction(kindRaw: unknown, id: number) {
+  const kind = kindOf(kindRaw);
+  const me = await requirePerm(kind === "sdr" ? "tab.comecar" : "tab.shuffler_vendas");
+  const [mine] = await db.select({ id: leadLists.id }).from(leadLists).where(and(eq(leadLists.id, id), eq(leadLists.ownerId, me.id), eq(leadLists.kind, kind), isNull(leadLists.sharedAt))).limit(1);
+  if (!mine) return fail("Esta lista não está mais disponível.");
+  await db.transaction(async (tx) => {
+    await tx.update(leadLists).set({ active: false }).where(and(eq(leadLists.ownerId, me.id), eq(leadLists.kind, kind)));
+    await tx.update(leadLists).set({ active: true }).where(eq(leadLists.id, id));
+  });
+  if (kind === "sdr") await claimNext(me.id, { listId: id }); else await claimInactive(me.id, id);
+  const to = kind === "sdr" ? "/atender" : "/shuffler-vendas";
+  revalidatePath(to);
+  redirect(to);
+}

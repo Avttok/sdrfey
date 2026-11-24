@@ -65,7 +65,7 @@ export default async function AttendPage() {
 
   if (!lead) {
     return (
-      <ShuffleHero aside={myL ? <ListCards href="/lista-flow" lists={myL.map((l) => ({ id: l.id, name: l.name, count: l.count, active: l.active }))} /> : undefined} list={al && al.count > 0 ? { action: startSdrListAction, name: al.name, count: al.count, href: "/lista-flow" } : undefined} avatar={me.avatar} roles={me.shownRoles} action={startAction} empty={available ? undefined : { hint: "Todos os leads já foram trabalhados, estão com outra pessoa ou aguardando a hora de voltar. Avise o time e confira de novo daqui a pouco." }}>
+      <ShuffleHero aside={myL ? <ListCards href="/lista-flow" kind="sdr" lists={myL.map((l) => ({ id: l.id, name: l.name, count: l.count, active: l.active, total: l.total, filters: l.filters }))} /> : undefined} list={al && al.count > 0 ? { action: startSdrListAction, name: al.name, count: al.count, href: "/lista-flow" } : undefined} avatar={me.avatar} roles={me.shownRoles} action={startAction} empty={available ? undefined : { hint: "Todos os leads já foram trabalhados, estão com outra pessoa ou aguardando a hora de voltar. Avise o time e confira de novo daqui a pouco." }}>
         <GoalTiles items={[
           ...(goals.attended.on ? [{ k: "attended" as const, label: "Atendidos", value: done?.n ?? 0, qty: goals.attended.qty }] : []),
           ...(goals.scheduled.on ? [{ k: "scheduled" as const, label: "Agendados", value: sched?.n ?? 0, qty: goals.scheduled.qty }] : []),

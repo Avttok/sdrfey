@@ -32,13 +32,13 @@ function Ring({ pct, done, plain, children }: { pct: number; done: boolean; plai
   const R = 46, C = 2 * Math.PI * R;
   const id = `gr${Math.round(pct)}${done ? "d" : ""}${plain ? "p" : ""}`;
   return (
-    <span className={`relative grid size-28 place-items-center ${done ? "goal-done" : ""}`}>
+    <span className={`relative grid size-24 place-items-center ${done ? "goal-done" : ""}`}>
       <svg viewBox="0 0 110 110" className="absolute inset-0 -rotate-90" aria-hidden>
         <defs><linearGradient id={id} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor={done ? "#34d399" : "var(--accent)"} /><stop offset="100%" stopColor={done ? "#16a34a" : "color-mix(in srgb, var(--accent) 55%, #fff)"} /></linearGradient></defs>
-        <circle cx="55" cy="55" r={R} fill="none" stroke="currentColor" strokeWidth="7" className="text-line" opacity=".7" />
+        <circle cx="55" cy="55" r={R} fill="none" stroke="currentColor" strokeWidth="6" className="text-line" opacity=".35" />
         {!plain && <circle cx="55" cy="55" r={R} fill="none" stroke={`url(#${id})`} strokeWidth="7" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={on ? C * (1 - pct / 100) : C} style={{ transition: "stroke-dashoffset 1.2s cubic-bezier(.2,.8,.2,1)", filter: "drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 55%, transparent))" }} />}
       </svg>
-      <span className={`relative grid size-[4.6rem] place-items-center rounded-full shadow-lg ${done ? "bg-ok text-white" : "bg-grad text-on-accent"}`}>{children}</span>
+      <span className={`relative grid size-[3.9rem] place-items-center rounded-full shadow-lg ${done ? "bg-ok text-white" : "bg-grad text-on-accent"}`}>{children}</span>
     </span>
   );
 }
@@ -47,20 +47,20 @@ export function GoalPills({ items }: { items: Pill[] }) {
   const goals = items.filter((i) => i.qty && i.qty > 0);
   const total = goals.length ? Math.round((goals.reduce((a, g) => a + Math.min(1, g.value / g.qty!), 0) / goals.length) * 100) : null;
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col items-center gap-5">
+    <div className="mx-auto flex w-full max-w-md flex-col items-center gap-4">
       {total !== null && (
         <p className="sh-rise flex items-center gap-2 text-sm font-semibold text-muted" style={{ "--d": ".1s" } as React.CSSProperties}>
           Meta do dia <span className="figure rounded-full bg-grad px-3 py-0.5 text-base font-bold text-on-accent"><CountUp to={total} />%</span>
         </p>
       )}
-      <ul className="grid w-full grid-cols-2 justify-items-center gap-x-4 gap-y-6">
+      <ul className="grid w-full grid-cols-2 justify-items-center gap-x-4 gap-y-4">
         {items.map(({ icon, label, value, qty, plain }, i) => {
           const Icon = icon in EXTRA ? EXTRA[icon as keyof typeof EXTRA] : KIND_ICON[icon as GoalKind];
           const hasGoal = !!qty && qty > 0 && !plain, pct = hasGoal ? Math.min(100, (value / qty!) * 100) : 0, done = hasGoal && value >= qty!;
           return (
             <li key={label} className="sh-rise flex w-full max-w-[9rem] flex-col items-center gap-2 text-center [&:last-child:nth-child(odd)]:col-span-2" style={{ "--d": `${0.2 + i * 0.12}s` } as React.CSSProperties}>
-              <Ring pct={pct} done={done} plain={!hasGoal}>{done ? <Trophy size={30} aria-hidden /> : <Icon size={30} aria-hidden />}</Ring>
-              <span className="figure leading-none"><b className="text-3xl"><CountUp to={value} /></b>{hasGoal && <span className="ml-1 text-sm font-medium text-muted">/ {qty}</span>}</span>
+              <Ring pct={pct} done={done} plain={!hasGoal}>{done ? <Trophy size={26} aria-hidden /> : <Icon size={26} aria-hidden />}</Ring>
+              <span className="figure leading-none"><b className="text-2xl"><CountUp to={value} /></b>{hasGoal && <span className="ml-1 text-sm font-medium text-muted">/ {qty}</span>}</span>
               <span className="text-sm font-semibold leading-tight">{label}</span>
               {hasGoal && <span className={`text-xs ${done ? "font-bold text-ok" : "text-muted"}`}>{done ? "Meta batida!" : `faltam ${qty! - value}`}</span>}
             </li>

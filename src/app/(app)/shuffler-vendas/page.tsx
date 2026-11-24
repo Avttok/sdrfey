@@ -43,7 +43,7 @@ export default async function SalesShufflePage() {
   const al = listOk ? await activeList(me.id, "vendas") : null;
   const myL = listOk ? await myLists(me.id, "vendas") : null;
   return (
-    <ShuffleHero aside={myL ? <ListCards href="/lista-flow-vendas" lists={myL.map((l) => ({ id: l.id, name: l.name, count: l.count, active: l.active }))} /> : undefined} list={al && al.count > 0 ? { action: startSalesListAction, name: al.name, count: al.count, href: "/lista-flow-vendas" } : undefined} title="Shuffler Vendas" avatar={me.avatar} roles={me.shownRoles} action={startSalesShuffleAction} empty={stock > 0 ? undefined : { hint: "Nenhum lead inativo livre agora. Quando o time liberar novos (ou algum voltar da espera), eles aparecem aqui." }}>
+    <ShuffleHero aside={myL ? <ListCards href="/lista-flow-vendas" kind="vendas" lists={myL.map((l) => ({ id: l.id, name: l.name, count: l.count, active: l.active, total: l.total, filters: l.filters }))} /> : undefined} list={al && al.count > 0 ? { action: startSalesListAction, name: al.name, count: al.count, href: "/lista-flow-vendas" } : undefined} title="Shuffler Vendas" avatar={me.avatar} roles={me.shownRoles} action={startSalesShuffleAction} empty={stock > 0 ? undefined : { hint: "Nenhum lead inativo livre agora. Quando o time liberar novos (ou algum voltar da espera), eles aparecem aqui." }}>
       <GoalPills items={[
         { icon: "shuffle", label: "Trabalhados hoje", value: r?.worked ?? 0 },
         { icon: "handshake", label: "Negociações abertas hoje", value: r?.deals ?? 0 },
