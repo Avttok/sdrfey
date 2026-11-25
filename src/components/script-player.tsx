@@ -228,6 +228,11 @@ export function ScriptPlayer({ persistKey, hideNoteBox, facts, script, vars, ext
         </div>
 
         <div className="space-y-3 p-4 sm:p-5">
+          {steps > 0 && (
+            <button type="button" onClick={() => setTrail((t) => t.slice(0, -1))} title="Clicou na resposta errada? Volta para a fala anterior" className="inline-flex min-h-10 items-center gap-2 rounded-xl border-2 px-3.5 text-sm font-bold shadow-sm transition hover:-translate-y-0.5 active:scale-[0.98]" style={{ ...tint(mood.hex, 14, 55), color: `color-mix(in srgb, ${mood.hex} 75%, var(--ink))` }}>
+              <ArrowLeft size={16} aria-hidden /> Voltar um passo
+            </button>
+          )}
           {ended ? (
             <div className="relative flex flex-col items-center gap-3 py-2 text-center">
               {success && (
