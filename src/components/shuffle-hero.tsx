@@ -30,20 +30,20 @@ export function ShuffleHero({ action, children, avatar, roles, empty, list, asid
           <div className="sh-rise" style={{ "--d": ".35s" } as React.CSSProperties}><RefreshButton /></div>
         </div>
       ) : (
-      <div className="relative -my-3 flex min-h-[26rem] flex-1 flex-col items-center justify-center gap-5 overflow-y-auto overflow-x-hidden p-4 text-center sm:gap-6 sm:p-6">
+      <div className="relative -my-3 flex min-h-[26rem] flex-1 flex-col items-center justify-center gap-8 overflow-y-auto overflow-x-hidden lg:overflow-visible p-4 text-center sm:gap-9 sm:p-8">
         <div className="sh-rise flex flex-col items-center gap-4">
-          <span className="text-accent"><BrandMark size={72} color="currentColor" legacy={<FeyMark animated size={72} color="currentColor" />} /></span>
+          <span className="text-accent"><BrandMark size={92} color="currentColor" legacy={<FeyMark animated size={92} color="currentColor" />} /></span>
           <h1 className="sr-only"><Term>{title}</Term></h1>
         </div>
-        {aside ? <div className="grid w-full max-w-5xl items-center gap-10 lg:grid-cols-2 lg:gap-0"><div className="flex min-w-0 items-center justify-center lg:px-8">{children}</div><div className="flex min-w-0 items-center justify-center lg:px-8">{aside}</div></div> : <div className="w-full">{children}</div>}
+        {aside ? <div className="grid w-full items-center gap-10 lg:w-[min(94vw,120rem)] lg:grid-cols-2 lg:gap-0"><div className="flex min-w-0 items-center justify-center lg:justify-start lg:pl-[3%] lg:pr-4">{children}</div><div className="flex min-w-0 items-center justify-center lg:justify-end lg:pl-4 lg:pr-[3%]">{aside}</div></div> : <div className="w-full">{children}</div>}
         <form action={action} className="sh-rise flex flex-col items-center gap-3" style={{ "--d": ".5s" } as React.CSSProperties}>
-          <div className="relative grid size-28 place-items-center">
+          <div className="relative grid size-32 place-items-center">
             {[["-18deg", "-2.1rem", "0s"], ["16deg", "2.1rem", "-1.4s"]].map(([r, x, d]) => (
               <span key={r} aria-hidden className="sh-card absolute h-20 w-14 rounded-xl border border-accent/30 bg-panel/80 shadow-lg backdrop-blur-sm" style={{ "--r": r, "--x": x, "--d": d } as React.CSSProperties} />
             ))}
             <span className="sh-card relative" style={{ "--d": "-.7s" } as React.CSSProperties}>
-              <SubmitButton className="sh-go !size-[5.5rem] !rounded-[1.75rem] !p-0 shadow-2xl shadow-accent/50">
-                <Shuffle size={38} aria-hidden /><span className="sr-only">Iniciar o shuffler</span>
+              <SubmitButton className="sh-go !size-[6.5rem] !rounded-[2rem] !p-0 shadow-2xl shadow-accent/50">
+                <Shuffle size={44} aria-hidden /><span className="sr-only">Iniciar o shuffler</span>
               </SubmitButton>
             </span>
           </div>
