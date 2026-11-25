@@ -9,6 +9,7 @@ import { requirePerm } from "@/modules/auth/guard";
 import { logAudit } from "@/modules/audit/log";
 import type { ActionResult } from "@/modules/leads/actions";
 import { leftPortfolio } from "@/modules/deals/portfolio";
+import { hasRole } from "@/config/roles";
 import { claimInactive, claimInactiveLead } from "./shuffler";
 import { saveSalesWork, type SalesFinal } from "./save";
 import type { SaveInput } from "@/modules/leads/attend";
@@ -19,6 +20,7 @@ const fail = (message: string): ActionResult => ({ ok: false, message });
 /** "Iniciar": sorteia o próximo lead inativo (ou volta ao que já está em mãos). */
 export async function startSalesShuffleAction() {
   const me = await requirePerm("tab.shuffler_vendas");
+  if (!hasRole(me.roles, "seller")) redirect("/painel"); // operador SDR nunca puxa lead inativo
   await claimInactive(me.id);
   revalidatePath("/shuffler-vendas");
   redirect("/shuffler-vendas");
@@ -27,6 +29,7 @@ export async function startSalesShuffleAction() {
 /** "Atender" num lead inativo da lista: o vendedor puxa esse lead para o Shuffler Vendas. */
 export async function attendInactiveAction(leadId: number): Promise<ActionResult> {
   const me = await requirePerm("tab.shuffler_vendas");
+  if (!hasRole(me.roles, "seller")) return fail("Só vendedores puxam leads para o Shuffler Vendas.");
   if (!Number.isInteger(leadId)) return fail("Pedido inválido.");
   try { await claimInactiveLead(me.id, leadId); } catch (e) { return fail(e instanceof Error ? e.message : "Não foi possível atender."); }
   revalidatePath("/shuffler-vendas");

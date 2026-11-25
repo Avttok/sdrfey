@@ -30,6 +30,7 @@ export const dynamic = "force-dynamic";
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const me = await requirePerm("tab.leads");
   const sellerView = isSellerOnly(me.roles);
+  const canSales = !sellerView && hasRole(me.roles, "seller") && !!me.permissions["tab.shuffler_vendas"];
   const sp = await searchParams;
   const filters = { ...parseFilters(sp), sellerScope: sellerView ? me.id : undefined };
   const [catalog, people, ufRows, { total, rows, pages }, [stat], batchRows] = await Promise.all([
@@ -102,7 +103,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                   </>}
                 </div>
                 <div className="flex items-center justify-end gap-2">
-                  {!sellerView && (l.deal_id ? <span className="whitespace-nowrap rounded-full bg-accent/12 px-2.5 py-1 text-xs font-semibold text-accent">Vendas</span> : !l.locked_by_name && (l.kind === "inativo" ? !!me.permissions["tab.shuffler_vendas"] : !!me.permissions["tab.comecar"]) && <AttendButton leadId={l.id} sales={l.kind === "inativo"} compact />)}
+                  {!sellerView && (l.deal_id ? <span className="whitespace-nowrap rounded-full bg-accent/12 px-2.5 py-1 text-xs font-semibold text-accent">Vendas</span> : !l.locked_by_name && <>{l.kind === "inativo" ? (canSales && <AttendButton leadId={l.id} sales compact />) : <>{!!me.permissions["tab.comecar"] && <AttendButton leadId={l.id} compact />}{canSales && <AttendButton leadId={l.id} sales ghost label="Vendas" compact />}</>}</>)}
                   <RoteiroLink leadId={l.id} compact /><Link href={`/leads/${l.id}`} className={btnSmGhost}>Abrir</Link>
                 </div>
               </li>
@@ -147,7 +148,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                   </>}
                 </div>
                 <div className="flex items-center gap-2">
-                  {!sellerView && (l.deal_id ? <span className="whitespace-nowrap rounded-full bg-accent/12 px-2.5 py-1 text-xs font-semibold text-accent">Vendas</span> : !l.locked_by_name && (l.kind === "inativo" ? !!me.permissions["tab.shuffler_vendas"] : !!me.permissions["tab.comecar"]) && <AttendButton leadId={l.id} sales={l.kind === "inativo"} compact />)}
+                  {!sellerView && (l.deal_id ? <span className="whitespace-nowrap rounded-full bg-accent/12 px-2.5 py-1 text-xs font-semibold text-accent">Vendas</span> : !l.locked_by_name && <>{l.kind === "inativo" ? (canSales && <AttendButton leadId={l.id} sales compact />) : <>{!!me.permissions["tab.comecar"] && <AttendButton leadId={l.id} compact />}{canSales && <AttendButton leadId={l.id} sales ghost label="Vendas" compact />}</>}</>)}
                   <RoteiroLink leadId={l.id} compact /><Link href={`/leads/${l.id}`} className={btnSmGhost}>Abrir</Link>
                 </div>
               </div>

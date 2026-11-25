@@ -8,7 +8,7 @@ import { deleteRecordAction } from "@/modules/admin/purge";
 import { LeadEditor } from "@/components/lead-editor";
 import { bubbleHex } from "@/config/theme";
 import { db, users } from "@/db";
-import { isSellerOnly } from "@/config/roles";
+import { hasRole, isSellerOnly } from "@/config/roles";
 import { sql } from "drizzle-orm";
 import { requirePerm } from "@/modules/auth/guard";
 import { getLeadCommercial } from "@/modules/deals/lead-commercial";
@@ -26,6 +26,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const lead = await getLeadView(id);
   if (!lead || lead.isTest) notFound();
   const sellerView = isSellerOnly(me.roles);
+  const [kindRow] = await db.execute<{ kind: string }>(sql`select kind from leads where id = ${id}`);
+  const inactive = kindRow?.kind === "inativo";
   let dealId: number | null = null;
   let ownDeal = false;
   if (sellerView) {
@@ -55,7 +57,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const touchCounts = { ligacao: Number(tc.find((r) => r.channel === "call")?.n ?? 0), whatsapp: Number(tc.find((r) => r.channel === "whatsapp")?.n ?? 0), email: Number(tc.find((r) => r.channel === "email")?.n ?? 0) };
   return (
     <div className="space-y-4">
-      <LeadEditor tagCounts={tagCounts} touchCounts={touchCounts} adminDelete={me.isAdmin ? (<AdminDelete label="Apagar lead (Adm)" title={`Apagar ${lead.tradeName ?? lead.company}?`} body="O cadastro e tudo ligado a ele serão apagados: negociações, cotações, visitas, interações, tags, contatos e atendimentos." action={deleteRecordAction.bind(null, { kind: "lead", id, withHistory: false })} then="/leads" />) : null} kpis={<LeadKpis comm={comm} runs={scriptRuns} people={lead.people.length} channels={lead.channels.filter((c) => !c.wrong).length} lastAt={null} />} records={<LeadRecords comm={comm} runs={scriptRuns} showVisits={sellerView} />} dealSeller={dealSeller} sellerView={sellerView} dealId={dealId} meId={me.id} showMap={me.mapMode === "map"} lead={lead} catalog={catalog} owners={owners} canEdit={!!me.permissions["lead.edit"] || ownDeal} inDeal={!!anyDeal} canRelease={!!me.permissions["lead.release"]} lockedBy={locker[0] ? { name: locker[0].name, hex: bubbleHex(locker[0].accent, locker[0].id, locker[0].roles) } : null} />
+      <LeadEditor canSales={!sellerView && hasRole(me.roles, "seller") && !!me.permissions["tab.shuffler_vendas"]} inactive={inactive} canAttend={!!me.permissions["tab.comecar"]} tagCounts={tagCounts} touchCounts={touchCounts} adminDelete={me.isAdmin ? (<AdminDelete label="Apagar lead (Adm)" title={`Apagar ${lead.tradeName ?? lead.company}?`} body="O cadastro e tudo ligado a ele serão apagados: negociações, cotações, visitas, interações, tags, contatos e atendimentos." action={deleteRecordAction.bind(null, { kind: "lead", id, withHistory: false })} then="/leads" />) : null} kpis={<LeadKpis comm={comm} runs={scriptRuns} people={lead.people.length} channels={lead.channels.filter((c) => !c.wrong).length} lastAt={null} />} records={<LeadRecords comm={comm} runs={scriptRuns} showVisits={sellerView} />} dealSeller={dealSeller} sellerView={sellerView} dealId={dealId} meId={me.id} showMap={me.mapMode === "map"} lead={lead} catalog={catalog} owners={owners} canEdit={!!me.permissions["lead.edit"] || ownDeal} inDeal={!!anyDeal} canRelease={!!me.permissions["lead.release"]} lockedBy={locker[0] ? { name: locker[0].name, hex: bubbleHex(locker[0].accent, locker[0].id, locker[0].roles) } : null} />
     </div>
   );
 }

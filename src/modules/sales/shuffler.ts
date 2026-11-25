@@ -53,7 +53,7 @@ export async function claimInactive(userId: number, listId?: number): Promise<Sa
   });
 }
 
-/** O vendedor escolhe um lead inativo da lista (botão Atender): entra no Shuffler Vendas como se tivesse sido sorteado. */
+/** O vendedor escolhe um lead da lista (botão Atender), inativo ou do SDR: entra no Shuffler Vendas como se tivesse sido sorteado. */
 export async function claimInactiveLead(userId: number, leadId: number): Promise<SalesShuffle> {
   const mine = await openShuffle(userId);
   if (mine?.leadId === leadId) return mine;
@@ -63,8 +63,10 @@ export async function claimInactiveLead(userId: number, leadId: number): Promise
       select l.id, l.locked_by,
         exists (select 1 from deals d where d.lead_id = l.id and d.stage not in ('ganho','perdido')) as open_deal,
         exists (select 1 from seller_shuffles s where s.lead_id = l.id and s.user_id <> ${userId} and s.outcome is null and s.shown_at > now() - make_interval(mins => ${SALES_HOLD_MIN})) as held
-      from leads l where l.id = ${leadId} and l.kind = 'inativo' and not l.is_test`);
-    if (!l) throw new Error("Este lead não é um cliente inativo.");
+      from leads l where l.id = ${leadId} and not l.is_test`);
+    if (!l) throw new Error("Lead não encontrado.");
+    const [gone] = await tx.execute<{ x: number }>(sql`select 1 as x where ${leftPortfolio(sql`${leadId}`)}`);
+    if (gone) throw new Error("Este cliente já saiu da carteira e fica bloqueado.");
     if (l.open_deal) throw new Error("Este lead já está em negociação.");
     if ((l.locked_by && l.locked_by !== userId) || l.held) throw new Error("Outra pessoa está atendendo este lead agora.");
     await tx.execute(sql`update leads set locked_by = null, locked_at = null where locked_by = ${userId} and kind = 'inativo' and id <> ${leadId}`);
