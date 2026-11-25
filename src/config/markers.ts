@@ -13,7 +13,7 @@ export const MARKERS: Marker[] = [
   { key: "linkedin", label: "LinkedIn", color: "#0a66c2", hint: "Tem LinkedIn", aliases: ["linkedin", "linked in"] },
   { key: "celular", label: "Celular", color: "#22c55e", hint: "Tem número de celular (provável WhatsApp)", aliases: ["celular", "celulares", "whatsapp", "zap", "movel"] },
   { key: "telefone", label: "Telefone", color: "#0ea5e9", hint: "Tem algum telefone válido", aliases: ["telefone", "telefones", "fone", "tel"] },
-  { key: "email", label: "E-mail", color: "#8b5cf6", hint: "Tem e-mail válido", aliases: ["email", "e-mail", "emails", "mail"] },
+  { key: "email", label: "E-mail", color: "#ef4444", hint: "Tem e-mail válido", aliases: ["email", "e-mail", "emails", "mail"] },
   { key: "contato", label: "Pessoa de contato", color: "#a855f7", hint: "Tem nome de contato ou pessoa cadastrada", aliases: ["contato", "pessoa", "pessoa de contato", "decisor", "comprador"] },
   { key: "endereco", label: "Endereço", color: "#06b6d4", hint: "Tem endereço e CEP", aliases: ["endereco", "cep", "endereço"] },
   { key: "consultado", label: "CNPJ consultado", color: "#6366f1", hint: "A consulta de CNPJ já foi feita", aliases: ["consultado", "cnpj consultado", "enriquecido", "pesquisado"] },

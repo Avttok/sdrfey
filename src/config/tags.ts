@@ -63,7 +63,7 @@ export const TAG_GROUPS_SEED: TagGroupSeed[] = [
     tags: [
       { key: "ligacao", label: "Ligação", color: "#0ea5e9" },
       { key: "whatsapp", label: "WhatsApp", color: "#22c55e" },
-      { key: "email", label: "Email", color: "#8b5cf6" },
+      { key: "email", label: "Email", color: "#ef4444" },
       { key: "pessoalmente", label: "Pessoalmente", color: "#f97316" },
       { key: "representante", label: "Representante", color: "#14b8a6" },
       { key: "bot", label: "BOT", color: "#64748b", autoOnly: true },

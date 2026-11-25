@@ -2,7 +2,7 @@ import { BadgeDollarSign, FileText, ListTodo, Mail, MessageCircle, PhoneCall, ty
 import { TASK_KINDS, dueBucket, type TaskKind } from "@/config/tasks";
 
 export const TASK_ICON: Record<TaskKind, LucideIcon> = { ligar: PhoneCall, email: Mail, whatsapp: MessageCircle, cotacao: FileText, pedido: BadgeDollarSign, outro: ListTodo };
-export const TASK_HEX: Record<TaskKind, string> = { ligar: "#8b5cf6", email: "#0ea5e9", whatsapp: "#22c55e", cotacao: "#f59e0b", pedido: "#16a34a", outro: "#64748b" };
+export const TASK_HEX: Record<TaskKind, string> = { ligar: "#0ea5e9", email: "#ef4444", whatsapp: "#22c55e", cotacao: "#f59e0b", pedido: "#16a34a", outro: "#64748b" };
 
 export function KindBadge({ kind, size = 14 }: { kind: TaskKind; size?: number }) {
   const Icon = TASK_ICON[kind] ?? ListTodo; const hex = TASK_HEX[kind] ?? "#64748b";

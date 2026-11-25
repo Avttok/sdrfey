@@ -41,7 +41,7 @@ type Template = { id: number; name: string; subject: string; body: string; bodyH
 const STEPS = ["Perfil", "E-mail", "WhatsApp", "Ligação", "Finalizar"] as const;
 const STEP_ICON = [UserRound, Mail, MessageCircle, Phone, Flag] as const;
 /** Cada etapa tem sua cor, como os objetivos do roteiro. */
-const STEP_HEX = ["#6366f1", "#ec4899", "#22c55e", "#0ea5e9", "#f59e0b"] as const;
+const STEP_HEX = ["#6366f1", "#ef4444", "#22c55e", "#0ea5e9", "#f59e0b"] as const;
 const stTint = (hex: string, a = 18, b = 4) => `linear-gradient(145deg, color-mix(in srgb, ${hex} ${a}%, var(--panel)), color-mix(in srgb, ${hex} ${b}%, var(--panel)) 70%)`;
 const stIcon = (hex: string) => `linear-gradient(135deg, ${hex}, color-mix(in srgb, ${hex} 62%, #000))`;
 const STEP_HINT = ["Conheça a empresa e confira os contatos", "Envie o e-mail com o modelo certo", "Chame no WhatsApp com um toque", "Copie o número e ligue", "Registre o resultado e siga em frente"] as const;
