@@ -28,16 +28,18 @@ export function EnrichDock({ side }: { side?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const running = useRef(false);
+  const openRef = useRef(false), onRef = useRef(false), lastLoad = useRef(0);
   const put = (r: DockData) => { setD(r); publishEnrich(r); };
 
   /* acompanha o estado (4 s) e o relógio (1 s); atende a tela do Adm */
   useEffect(() => {
     let alive = true;
-    const load = async () => { if (document.visibilityState === "hidden" && running.current) return; try { const r = await dockApi(); if (alive) put(r); } catch { /* tenta de novo */ } };
-    void load();
-    const t = setInterval(load, 4000), c = setInterval(() => setNow(Date.now()), 1000);
+    /* painel fechado e parado: consulta o banco só a cada 30 s (cada consulta conta vários milhares de leads) */
+    const load = async (force = false) => { if (document.visibilityState === "hidden" && running.current) return; if (!force && !openRef.current && !onRef.current && Date.now() - lastLoad.current < 30_000) return; lastLoad.current = Date.now(); try { const r = await dockApi(); if (alive) put(r); } catch { /* tenta de novo */ } };
+    void load(true);
+    const t = setInterval(() => void load(), 4000), c = setInterval(() => setNow(Date.now()), 1000);
     const onSet = (e: Event) => { if (alive) put((e as CustomEvent<DockData>).detail); };
-    const onAsk = () => void load();
+    const onAsk = () => void load(true);
     window.addEventListener(ENRICH_SET, onSet); window.addEventListener(ENRICH_ASK, onAsk);
     return () => { alive = false; clearInterval(t); clearInterval(c); window.removeEventListener(ENRICH_SET, onSet); window.removeEventListener(ENRICH_ASK, onAsk); };
   }, []);
@@ -62,6 +64,7 @@ export function EnrichDock({ side }: { side?: boolean }) {
 
   if (!d) return null;
   const on = d.state.on;
+  openRef.current = open; onRef.current = on;
   const { done, total, pending, failed } = d.stats;
   const pct = total ? Math.round((done / total) * 100) : 0;
   const seg = (n: number) => `${total ? (n / total) * 100 : 0}%`;

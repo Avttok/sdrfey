@@ -22,6 +22,8 @@ const config: NextConfig = {
     return [
       { source: "/:path*", headers: securityHeaders },
       // o service worker nunca fica preso em cache: atualizações chegam na próxima abertura
+      // fontes e imagens do site têm nome fixo e nunca mudam: o aparelho guarda por 1 ano e não pergunta mais
+      { source: "/vendor/:path*", headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }] },
       { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }, { key: "Service-Worker-Allowed", value: "/" }] },
     ];
   },

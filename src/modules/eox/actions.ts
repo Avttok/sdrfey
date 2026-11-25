@@ -66,6 +66,7 @@ export async function resolveEoxLinkAction(digits: string, leadId: number | null
 export type EoxCoverage = { total: number; withCode: number; withId: number; withInfo: number; blocked: number; customers: number; lastSyncAt: string | null };
 /** Quantos leads já têm cada número da EOX e o retrato do cadastro (para o painel da integração). */
 export async function eoxCoverage(): Promise<EoxCoverage> {
+  await requireAdmin();
   const [r] = await db.execute<{ total: number; with_code: number; with_id: number; with_info: number; blocked: number; customers: number; last_sync: string | null }>(sql`
     select count(*)::int as total, count(*) filter (where eox_id ~ '^\\d{7,}$' and eox_id is distinct from eox_code)::int as with_code, count(*) filter (where eox_code is not null)::int as with_id,
       count(*) filter (where eox_info is not null)::int as with_info, count(*) filter (where eox_info->>'Discagens bloqueadas' ilike 'sim')::int as blocked,
