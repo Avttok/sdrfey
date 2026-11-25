@@ -1,4 +1,5 @@
 import { eq, sql } from "drizzle-orm";
+import { notify } from "@/modules/notifications/notify";
 import { db, presence, settings, users } from "@/db";
 import { DAEMON_KEY, DAEMON_OFFLINE_MIN, type DaemonState } from "@/config/enrich-daemon";
 import { logAudit } from "@/modules/audit/log";
@@ -29,6 +30,7 @@ async function enforceOffline(s: Stored, meId: number): Promise<Stored> {
   const next: Stored = { ...s, on: false, stoppedWhy: `Parou sozinha: quem iniciou ficou offline por mais de ${DAEMON_OFFLINE_MIN} minutos.` };
   await write(next, meId);
   await logAudit(db, { userId: meId, entity: "setting", action: "consulta contínua de CNPJ parou (iniciador offline)" });
+  await notify(s.by, { kind: "consulta", title: "A consulta de CNPJ parou", body: next.stoppedWhy, href: "/admin/consulta-cnpj" });
   return next;
 }
 

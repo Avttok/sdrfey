@@ -6,6 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { hasSellerPart } from "@/config/roles";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { notify } from "@/modules/notifications/notify";
 import { db, leadPeople, leads, visits } from "@/db";
 import { diffToAudit, logAudit } from "@/modules/audit/log";
 import { requirePerm, requireUser } from "@/modules/auth/guard";
@@ -150,6 +151,7 @@ export async function setVisitStatusAction(leadId: number, visitId: number, stat
     await tx.update(visits).set({ status, confirmedAt: status === "pendente" ? null : v.confirmedAt ?? new Date(), confirmedBy: status === "pendente" ? null : v.confirmedBy ?? me.id }).where(eq(visits.id, visitId));
     await logAudit(tx, { userId: me.id, leadId, entity: "visit", action: "alterou", field: "Andamento da visita", oldValue: v.status, newValue: status, meta: { visita: v.code } });
   });
+  if (v.userId && v.userId !== me.id && status !== "pendente") await notify(v.userId, { kind: "visita", title: status === "confirmada" ? "Visita confirmada" : "Visita realizada", body: v.code, href: `/leads/${leadId}` });
   revalidatePath(`/leads/${leadId}`);
   revalidatePath("/visitas");
   revalidatePath("/painel");

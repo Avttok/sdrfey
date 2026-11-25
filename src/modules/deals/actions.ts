@@ -129,6 +129,12 @@ export async function closeDealAction(id: number, input: { won: boolean; quoteId
     await tx.insert(dealEvents).values({ dealId: id, userId: me.id, kind: input.won ? "ganho" : "perdido", note: input.won ? (quote ? `Cotação ${quote.number ?? `#${quote.id}`}` : null) : reason, valueCents: input.won ? cents : null });
     await logAudit(tx, { userId: me.id, leadId: deal.leadId, entity: "deal", action: input.won ? "faturou" : "perdeu negócio", field: "Negociação", newValue: input.won ? cents : reason, meta: { negociacao: id, cotacao: quote?.number ?? null } });
   });
+  if (input.won) {
+    const [lead] = await db.select({ company: leads.company }).from(leads).where(eq(leads.id, deal.leadId));
+    const reais = cents ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(cents / 100) : "";
+    const who = [deal.sdrId, deal.sellerId].filter((u): u is number => !!u && u !== me.id);
+    if (who.length) await notify(who, { kind: "venda", title: "Venda fechada! 🎉", body: [lead?.company, reais].filter(Boolean).join(" · "), href: `/negociacoes/${id}` });
+  }
   refresh(id);
   return { ok: true, message: input.won ? "Faturado! 🎉" : "Negociação encerrada como perdida." };
 }

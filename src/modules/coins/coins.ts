@@ -4,6 +4,7 @@ import { getSettings } from "@/modules/settings/get";
 import { ACHIEVEMENTS, groupsFor } from "@/config/achievements";
 import { SHOP_BY_KEY, achievementCoins } from "@/config/shop";
 import { chatStyles, coinLedger, db, shopPurchases } from "@/db";
+import { notify } from "@/modules/notifications/notify";
 import { achievementsOf } from "@/modules/achievements/stats";
 
 const g = globalThis as unknown as { __coinSync?: Map<number, number> };
@@ -34,7 +35,11 @@ export async function syncCoins(uid: number, roles: readonly string[]): Promise<
   const { list } = await achievementsOf(uid, roles);
   const got = list.filter((a) => a.earned);
   if (got.length) {
-    await db.insert(coinLedger).values(got.map((a) => ({ userId: uid, amount: blocked ? 0 : achievementCoins(a.goal), reason: `Conquista: ${a.name}`, ref: `ach:${a.key}` }))).onConflictDoNothing();
+    const fresh = await db.insert(coinLedger).values(got.map((a) => ({ userId: uid, amount: blocked ? 0 : achievementCoins(a.goal), reason: `Conquista: ${a.name}`, ref: `ach:${a.key}` }))).onConflictDoNothing().returning({ ref: coinLedger.ref, amount: coinLedger.amount });
+    // avisa só das novas (até 4, o resto vira um aviso só)
+    const news = fresh.map((f) => ({ a: got.find((x) => `ach:${x.key}` === f.ref), coins: f.amount })).filter((x) => x.a);
+    for (const { a, coins } of news.slice(0, 4)) await notify(uid, { kind: "conquista", title: `Conquista desbloqueada: ${a!.name}`, body: coins > 0 ? `${a!.desc} +${coins} moedas.` : a!.desc, href: "/conquistas" });
+    if (news.length > 4) await notify(uid, { kind: "conquista", title: `Mais ${news.length - 4} conquistas desbloqueadas`, href: "/conquistas" });
   }
 }
 
