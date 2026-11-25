@@ -53,10 +53,10 @@ export function EoxDockPanel({ side }: { side?: boolean }) {
     let alive = true;
     (async () => {
       while (alive) {
-        let go = false;
-        try { const r = await eoxTickApi(); if (alive) put(r); go = r.go; } catch { await new Promise((x) => setTimeout(x, 5000)); go = true; }
+        let go = false, wait = 1.5;
+        try { const r = await eoxTickApi(); if (alive) put(r); go = r.go; wait = r.wait ?? 1.5; } catch { await new Promise((x) => setTimeout(x, 5000)); go = true; }
         if (!go) break;
-        await new Promise((x) => setTimeout(x, 1500));
+        await new Promise((x) => setTimeout(x, wait * 1000));
       }
       running.current = false;
     })();

@@ -18,21 +18,18 @@ async function read(): Promise<Stored> {
 async function write(v: Stored, by: number) {
   await db.insert(settings).values({ key: EOX_DAEMON_KEY, value: v, updatedBy: by }).onConflictDoUpdate({ target: settings.key, set: { value: v, updatedAt: new Date(), updatedBy: by } });
 }
-/** Quem começou ficou mais de 10 min sem dar sinal? Então a consulta para sozinha. */
-async function enforceOffline(s: Stored, meId: number): Promise<Stored> {
-  if (!s.on || s.by == null || s.by === meId) return s;
+/** Roda sem parar até o Adm cancelar. Se quem iniciou saiu (ficou offline), o próximo Adm com o painel aberto assume o laço. */
+async function starterGone(s: Stored): Promise<boolean> {
+  if (s.by == null) return true;
   const [p] = await db.select({ t: presence.lastSeenAt }).from(presence).where(eq(presence.userId, s.by));
-  if (p && Date.now() - p.t.getTime() < DAEMON_OFFLINE_MIN * 60_000) return s;
-  const next: Stored = { ...s, on: false, stoppedWhy: `Parou sozinha: quem iniciou ficou offline por mais de ${DAEMON_OFFLINE_MIN} minutos.` };
-  await write(next, meId);
-  await logAudit(db, { userId: meId, entity: "setting", action: "consulta contínua da EOX parou (iniciador offline)" });
-  await notify(s.by, { kind: "consulta", title: "A consulta da EOX parou", body: next.stoppedWhy ?? "", href: "/admin/consulta-eox" });
-  return next;
+  return !p || Date.now() - p.t.getTime() >= DAEMON_OFFLINE_MIN * 60_000;
 }
+async function enforceOffline(s: Stored, _meId: number): Promise<Stored> { return s; }
 async function toState(s: Stored, meId: number): Promise<EoxDaemonState> {
+  const gone = s.on && s.by !== meId && (await starterGone(s));
   let byName: string | null = null;
   if (s.by != null) [{ n: byName } = { n: null }] = await db.select({ n: users.name }).from(users).where(eq(users.id, s.by));
-  return { on: s.on, by: s.by, byName, mine: s.on && s.by === meId, scope: s.scope, since: s.since, stoppedWhy: s.on ? null : s.stoppedWhy ?? null };
+  return { on: s.on, by: s.by, byName, mine: s.on && (s.by === meId || gone), scope: s.scope, since: s.since, stoppedWhy: s.on ? null : s.stoppedWhy ?? null };
 }
 const iso = (d: unknown) => new Date(d as string).toISOString();
 
@@ -64,14 +61,17 @@ export async function eoxStop(me: { id: number }): Promise<EoxDock> {
   await logAudit(db, { userId: me.id, entity: "setting", action: "desligou a consulta contínua da EOX", field: "Consulta EOX" });
   return eoxDock(me);
 }
-/** Um passo: consulta um bloco (só quem iniciou executa). */
-export async function eoxTick(me: { id: number }): Promise<EoxDock & { go: boolean }> {
-  const s = await enforceOffline(await read(), me.id);
-  if (!s.on || s.by !== me.id) return { ...(await eoxDock(me)), go: false };
+/** Um passo: consulta um bloco. Não para sozinho: fila vazia ou EOX recusando só faz esperar e tentar de novo. */
+export async function eoxTick(me: { id: number }): Promise<EoxDock & { go: boolean; wait: number }> {
+  const s = await read();
+  if (!s.on) return { ...(await eoxDock(me)), go: false, wait: 0 };
+  if (s.by !== me.id) {
+    if (!(await starterGone(s))) return { ...(await eoxDock(me)), go: false, wait: 0 };
+    await write({ ...s, by: me.id }, me.id); // assume o laço de quem saiu
+  }
   const r = await eoxBatch(null, 42_000, me.id, s.scope);
   const data = await eoxDock(me);
-  if (r.tried === 0) { await write({ ...s, on: false, stoppedWhy: "Acabou: nada pendente nesta lista." }, me.id); return { ...(await eoxDock(me)), go: false }; }
-  /* a EOX recusou tudo (sessão, endereço ou campo do CNPJ errados): para em vez de bater à toa */
-  if (r.ok === 0 && r.tried >= 10) { const why = data.rows[0]?.why ?? "sem resposta"; await write({ ...s, on: false, stoppedWhy: `Parou: nenhuma consulta deu certo (${why}).` }, me.id); return { ...(await eoxDock(me)), go: false }; }
-  return { ...data, go: data.state.on };
+  if (r.tried === 0) return { ...data, go: true, wait: 30 }; // fila vazia: fica de olho (leads novos entram sozinhos)
+  if (r.ok === 0 && r.tried >= 10) return { ...data, go: true, wait: 60 }; // EOX recusando: espera e tenta de novo
+  return { ...data, go: true, wait: 2 };
 }

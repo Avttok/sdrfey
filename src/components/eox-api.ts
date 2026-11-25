@@ -11,7 +11,7 @@ export const eoxDockApi = () => call<EoxDock>("dock");
 export const eoxStartApi = (scope: string) => call<EoxDock>("start", scope);
 export const eoxStopApi = () => call<EoxDock>("stop");
 export const eoxPreviewApi = (query: string) => call<EoxPreview>("preview", undefined, query);
-export const eoxTickApi = () => call<EoxDock & { go: boolean }>("tick");
+export const eoxTickApi = () => call<EoxDock & { go: boolean; wait?: number }>("tick");
 
 /** Ponte entre o painel flutuante (que roda a consulta) e a tela do Adm: as duas mostram o mesmo estado. */
 export const EOX_STATE = "eox:state", EOX_SET = "eox:set", EOX_ASK = "eox:ask", DOCK_OPEN = "dock:open";
