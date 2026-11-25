@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { Modal } from "@/components/modal";
 import { btnGhost, btnPrimary } from "@/components/ui";
 import { describeFilters, type ListFilters } from "@/config/lists";
+import { listIcon } from "@/components/list-visual";
 import { startListByIdAction } from "@/modules/lists/actions";
 
 type Item = { id: number; name: string; count: number; active: boolean; total?: number; filters?: ListFilters };
@@ -34,13 +35,17 @@ export function ListCards({ href, lists, kind }: { href: string; lists: Item[]; 
   return (
     <div className="sh-rise flex w-full max-w-xs flex-col items-center gap-3 text-center" style={{ "--d": ".4s" } as React.CSSProperties}>
       <span className="relative block h-44 w-full">
-        {cards.map((l, i) => (
-          <button key={l.id} type="button" onClick={() => { setErr(""); setOpen(l); }} aria-label={`Abrir a lista ${l.name}`} className="sh-card absolute left-1/2 top-2 -ml-[3.4rem] flex h-36 w-[6.8rem] cursor-pointer flex-col items-center justify-between rounded-2xl border-2 bg-panel p-2.5 shadow-xl transition hover:-translate-y-1" style={{ "--r": `${spread[i] * 13}deg`, "--x": `${spread[i] * 4.2}rem`, "--d": `${-i * 0.7}s`, zIndex: l.active ? 3 : i, borderColor: l.active ? "var(--accent)" : "var(--line)" } as React.CSSProperties}>
-            <span className={`grid size-10 place-items-center rounded-xl ${l.active ? "bg-grad text-on-accent" : "bg-accent/15 text-accent"}`}><ListChecks size={20} aria-hidden /></span>
-            <span className="line-clamp-2 w-full break-words text-xs font-bold leading-tight">{l.name}</span>
-            <span className="figure text-[11px] font-semibold text-muted">{l.count.toLocaleString("pt-BR")} leads</span>
+        {cards.map((l, i) => {
+          const hex = l.filters?.color ?? "var(--accent)"; const Icon = listIcon(l.filters?.icon);
+          return (
+          <button key={l.id} type="button" onClick={() => { setErr(""); setOpen(l); }} aria-label={`Abrir a lista ${l.name}`} className="sh-card absolute left-1/2 top-2 -ml-[3.4rem] flex h-36 w-[6.8rem] cursor-pointer flex-col items-center justify-between overflow-hidden rounded-2xl border-2 p-2.5 shadow-xl transition hover:-translate-y-1" style={{ background: `linear-gradient(145deg, color-mix(in srgb, ${hex} ${l.active ? 30 : 18}%, var(--panel)), color-mix(in srgb, ${hex} 5%, var(--panel)) 75%)`, "--r": `${spread[i] * 13}deg`, "--x": `${spread[i] * 4.2}rem`, "--d": `${-i * 0.7}s`, zIndex: l.active ? 3 : i, borderColor: `color-mix(in srgb, ${hex} ${l.active ? 90 : 50}%, transparent)` } as React.CSSProperties}>
+            <Icon aria-hidden size={64} strokeWidth={1.4} className="pointer-events-none absolute -bottom-2 -right-2 -rotate-12 opacity-[.14]" style={{ color: hex }} />
+            <span className="relative grid size-10 place-items-center rounded-xl text-white" style={{ background: `linear-gradient(135deg, ${hex}, color-mix(in srgb, ${hex} 62%, #000))` }}><Icon size={20} aria-hidden /></span>
+            <span className="relative line-clamp-2 w-full break-words text-xs font-bold leading-tight">{l.name}</span>
+            <span className="figure relative text-[11px] font-semibold text-muted">{l.count.toLocaleString("pt-BR")} leads</span>
           </button>
-        ))}
+          );
+        })}
       </span>
       <Link href={href} className="text-sm"><b className="block text-base">Suas listas</b><span className="text-muted underline-offset-2 hover:underline">Toque numa carta para começar · gerenciar listas</span></Link>
       {open && (

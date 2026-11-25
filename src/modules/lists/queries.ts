@@ -32,7 +32,7 @@ export async function fillList(tx: Pick<typeof db, "execute">, kind: ListKind, f
   const rows = await tx.execute<{ lead_id: number }>(sql`
     insert into lead_list_items (lead_id, list_id)
     select l.id, ${listId} from leads l where ${eligible(kind, userId)} and ${free(listId)} and ${listCondition(f)}
-    order by l.id limit ${LIST_MAX_LEADS}
+    order by ${f.order === "newest" ? sql`l.id desc` : f.order === "oldest" ? sql`l.id` : sql`random()`} limit ${Math.min(LIST_MAX_LEADS, f.size)}
     on conflict (lead_id) do nothing returning lead_id`);
   return rows.length;
 }

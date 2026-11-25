@@ -19,5 +19,14 @@ export function listCondition(f: ListFilters): SQL {
   if (f.enriched === "yes") c.push(sql`l.enriched_at is not null`);
   if (f.enriched === "no") c.push(sql`l.enriched_at is null`);
   if (f.untouched) c.push(sql`not exists (select 1 from interactions i where i.lead_id = l.id)`);
+  if (f.active) c.push(sql`upper(coalesce(l.registration_status, '')) like 'ATIV%'`);
+  if (f.mobile) c.push(sql`exists (select 1 from lead_channels ch where ch.lead_id = l.id and ch.kind = 'phone' and not ch.wrong and length(regexp_replace(regexp_replace(ch.value, '[^0-9]', '', 'g'), '^55(?=[0-9]{10,11}$)', '')) = 11)`);
+  if (f.age !== "any") {
+    const opened = sql`(case when l.brasilapi_data->>'data_inicio_atividade' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' then (l.brasilapi_data->>'data_inicio_atividade')::date end)`;
+    if (f.age === "new") c.push(sql`${opened} > current_date - interval '2 years'`);
+    if (f.age === "mid") c.push(sql`${opened} between current_date - interval '10 years' and current_date - interval '2 years'`);
+    if (f.age === "old") c.push(sql`${opened} < current_date - interval '10 years'`);
+  }
+  if (f.quiet) c.push(sql`not exists (select 1 from interactions i where i.lead_id = l.id and i.at > now() - make_interval(days => ${f.quiet}))`);
   return c.length ? sql.join(c.map((x) => sql`(${x})`), sql` and `) : sql`true`;
 }
