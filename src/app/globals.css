@@ -542,3 +542,17 @@ html.embed .lc-aside > * { margin: 0; }
 
 /* janelas, menus e listas flutuantes: vidro mais fosco para nunca ficarem transparentes sobre o conteúdo */
 [role="dialog"].card-surface, [role="alertdialog"].card-surface, [role="menu"].card-surface, [role="listbox"].card-surface { background-color: color-mix(in srgb, var(--panel) 84%, transparent); }
+
+/* ===== Desempenho gráfico ===== */
+/* borrões decorativos (blur-2xl/3xl) custam caro na GPU: viram um degradê radial, que parece igual e custa quase nada */
+.rounded-full.blur-2xl, .rounded-full.blur-3xl { filter: none !important; -webkit-mask-image: radial-gradient(closest-side, #000 20%, transparent 100%); mask-image: radial-gradient(closest-side, #000 20%, transparent 100%); }
+/* o blur do vidro nunca passa de 24px (raios grandes pesam muito) */
+.backdrop-blur-3xl, .backdrop-blur-2xl { --tw-backdrop-blur: blur(24px); }
+[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"] { -webkit-backdrop-filter: blur(24px) saturate(1.4); backdrop-filter: blur(24px) saturate(1.4); }
+/* aba escondida: nada de animação rodando em segundo plano */
+html[data-hidden] *, html[data-hidden] *::before, html[data-hidden] *::after { animation-play-state: paused !important; }
+/* modo leve (aparelho fraco ou fps baixo): vidro com blur curto e sem animações decorativas em loop */
+html[data-lite] .card-surface, html[data-lite] [role="dialog"], html[data-lite] [role="alertdialog"], html[data-lite] [role="menu"], html[data-lite] [role="listbox"], html[data-lite] [class*="backdrop-blur"] { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+html[data-lite] .card-surface { background-color: color-mix(in srgb, var(--panel) 82%, transparent); }
+html[data-lite] .aurora-blob, html[data-lite] .sh-card, html[data-lite] .glow-pulse, html[data-lite] .sh-go, html[data-lite] .sh-go::after, html[data-lite] .gold-bar::after, html[data-lite] .step-ping, html[data-lite] .pf-shine, html[data-lite] .fx-breathe { animation: none !important; }
+html[data-lite] .aurora-blob { display: none; }
