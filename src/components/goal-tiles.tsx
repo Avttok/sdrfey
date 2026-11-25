@@ -22,50 +22,59 @@ export function CountUp({ to }: { to: number }) {
 const EXTRA = { shuffle: Shuffle, handshake: Handshake, inactive: UserX } as const;
 export type Pill = { icon: GoalKind | keyof typeof EXTRA; label: string; value: number; qty?: number; plain?: boolean };
 
+const HEX: Record<string, string> = { attended: "#6366f1", scheduled: "#f59e0b", calls: "#10b981", converted: "#ec4899", shuffle: "#6366f1", handshake: "#f59e0b", inactive: "#64748b" };
+const tint = (hex: string, a: number, b: number) => `linear-gradient(145deg, color-mix(in srgb, ${hex} ${a}%, var(--panel)), color-mix(in srgb, ${hex} ${b}%, var(--panel)) 70%)`;
+
 /**
- * Metas do dia como medalhas: um anel que se preenche (com brilho) em volta do ícone, o número sobe contando
- * e, batida a meta, o anel fica verde com troféu. Sem caixas por trás, no estilo das conquistas.
+ * Metas do dia no estilo dos objetivos do roteiro: cartas em degradê da cor de cada meta, ícone gigante de marca d'água,
+ * brilho no canto, número que sobe contando, barra de progresso e, batida a meta, a carta fica verde com troféu.
  */
-function Ring({ pct, done, plain, children }: { pct: number; done: boolean; plain: boolean; children: React.ReactNode }) {
+function GoalCard({ icon, label, value, qty, plain, i }: Pill & { i: number }) {
+  const Icon = icon in EXTRA ? EXTRA[icon as keyof typeof EXTRA] : KIND_ICON[icon as GoalKind];
+  const hasGoal = !!qty && qty > 0 && !plain, pct = hasGoal ? Math.min(100, (value / qty!) * 100) : 0, done = hasGoal && value >= qty!;
+  const hex = done ? "#22c55e" : HEX[icon] ?? "#6366f1";
   const [on, setOn] = useState(false);
-  useEffect(() => { const t = setTimeout(() => setOn(true), 120); return () => clearTimeout(t); }, []);
-  const R = 46, C = 2 * Math.PI * R;
-  const id = `gr${Math.round(pct)}${done ? "d" : ""}${plain ? "p" : ""}`;
+  useEffect(() => { const t = setTimeout(() => setOn(true), 150 + i * 90); return () => clearTimeout(t); }, [i]);
   return (
-    <span className={`relative grid size-28 place-items-center ${done ? "goal-done" : ""}`}>
-      <svg viewBox="0 0 110 110" className="absolute inset-0 -rotate-90" aria-hidden>
-        <defs><linearGradient id={id} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor={done ? "#34d399" : "var(--accent)"} /><stop offset="100%" stopColor={done ? "#16a34a" : "color-mix(in srgb, var(--accent) 55%, #fff)"} /></linearGradient></defs>
-        <circle cx="55" cy="55" r={R} fill="none" stroke="currentColor" strokeWidth="6" className="text-line" opacity=".35" />
-        {!plain && <circle cx="55" cy="55" r={R} fill="none" stroke={`url(#${id})`} strokeWidth="7" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={on ? C * (1 - pct / 100) : C} style={{ transition: "stroke-dashoffset 1.2s cubic-bezier(.2,.8,.2,1)", filter: "drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 55%, transparent))" }} />}
-      </svg>
-      <span className={`relative grid size-[4.6rem] place-items-center rounded-full shadow-lg ${done ? "bg-ok text-white" : "bg-grad text-on-accent"}`}>{children}</span>
-    </span>
+    <li className="sh-rise group relative flex min-h-[10.5rem] flex-col justify-between gap-3 overflow-hidden rounded-3xl border-2 p-4 text-left transition duration-200 hover:-translate-y-1 [&:last-child:nth-child(odd)]:col-span-2"
+      style={{ "--d": `${0.2 + i * 0.1}s`, background: tint(hex, 22, 6), borderColor: `color-mix(in srgb, ${hex} 55%, transparent)`, boxShadow: done ? `0 10px 30px -14px ${hex}` : undefined } as React.CSSProperties}>
+      <Icon aria-hidden size={110} strokeWidth={1.4} className="pointer-events-none absolute -bottom-5 -right-3 -rotate-12 opacity-[.13] transition duration-300 group-hover:scale-110 group-hover:-rotate-6" style={{ color: hex }} />
+      <span aria-hidden className="pointer-events-none absolute -right-8 -top-8 size-28 rounded-full opacity-30 blur-2xl" style={{ background: hex }} />
+      <div className="relative flex items-center gap-3">
+        <span className="grid size-11 shrink-0 place-items-center rounded-2xl text-white shadow-md" style={{ background: `linear-gradient(135deg, ${hex}, color-mix(in srgb, ${hex} 62%, #000))` }}>{done ? <Trophy size={22} aria-hidden /> : <Icon size={22} aria-hidden />}</span>
+        <span className="min-w-0 text-sm font-bold leading-tight">{label}</span>
+      </div>
+      <div className="relative">
+        <span className="figure leading-none"><b className="text-4xl font-extrabold"><CountUp to={value} /></b>{hasGoal && <span className="ml-1.5 text-sm font-semibold text-muted">/ {qty}</span>}</span>
+        {hasGoal ? (
+          <>
+            <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-sunk/80" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100} aria-label={label}><div className="h-full rounded-full transition-[width] duration-1000 ease-out" style={{ width: on ? `${pct}%` : "0%", background: `linear-gradient(90deg, ${hex}, color-mix(in srgb, ${hex} 60%, #fff))` }} /></div>
+            <p className={`mt-1.5 text-xs ${done ? "font-bold text-ok" : "text-muted"}`}>{done ? "Meta batida!" : `faltam ${qty! - value}`}</p>
+          </>
+        ) : <p className="mt-1.5 text-xs text-muted">sem meta definida</p>}
+      </div>
+    </li>
   );
 }
 
 export function GoalPills({ items }: { items: Pill[] }) {
   const goals = items.filter((i) => i.qty && i.qty > 0);
   const total = goals.length ? Math.round((goals.reduce((a, g) => a + Math.min(1, g.value / g.qty!), 0) / goals.length) * 100) : null;
+  const R = 22, C = 2 * Math.PI * R;
   return (
-    <div className="flex w-full max-w-md flex-col items-center gap-5">
+    <div className="flex w-full max-w-lg flex-col items-stretch gap-4">
       {total !== null && (
-        <p className="sh-rise flex items-center gap-2 text-sm font-semibold text-muted" style={{ "--d": ".1s" } as React.CSSProperties}>
-          Meta do dia <span className="figure rounded-full bg-grad px-3 py-0.5 text-base font-bold text-on-accent"><CountUp to={total} />%</span>
-        </p>
+        <div className="sh-rise relative flex items-center gap-4 overflow-hidden rounded-3xl border-2 p-4 text-white shadow-xl" style={{ "--d": ".1s", background: total >= 100 ? "linear-gradient(135deg, #22c55e, color-mix(in srgb, #22c55e 62%, #000))" : "linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 62%, #000))", borderColor: "transparent" } as React.CSSProperties}>
+          <Trophy aria-hidden size={120} strokeWidth={1.3} className="pointer-events-none absolute -bottom-6 -right-4 -rotate-12 opacity-[.15]" />
+          <span className="relative grid size-16 shrink-0 place-items-center">
+            <svg viewBox="0 0 56 56" className="absolute inset-0 -rotate-90" aria-hidden><circle cx="28" cy="28" r={R} fill="none" stroke="rgba(255,255,255,.28)" strokeWidth="6" /><circle cx="28" cy="28" r={R} fill="none" stroke="#fff" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(Math.min(100, total) / 100) * C} ${C}`} className="transition-[stroke-dasharray] duration-1000" /></svg>
+            <span className="figure relative text-sm font-extrabold"><CountUp to={total} />%</span>
+          </span>
+          <div className="relative min-w-0"><p className="text-xs font-bold uppercase tracking-wider opacity-90">Meta do dia</p><p className="text-lg font-extrabold leading-tight">{total >= 100 ? "Todas as metas batidas!" : total >= 50 ? "Mais da metade, continue!" : "Bora começar!"}</p></div>
+        </div>
       )}
-      <ul className="grid w-full grid-cols-2 justify-items-center gap-x-4 gap-y-6">
-        {items.map(({ icon, label, value, qty, plain }, i) => {
-          const Icon = icon in EXTRA ? EXTRA[icon as keyof typeof EXTRA] : KIND_ICON[icon as GoalKind];
-          const hasGoal = !!qty && qty > 0 && !plain, pct = hasGoal ? Math.min(100, (value / qty!) * 100) : 0, done = hasGoal && value >= qty!;
-          return (
-            <li key={label} className="sh-rise flex w-full max-w-[9rem] flex-col items-center gap-2 text-center [&:last-child:nth-child(odd)]:col-span-2" style={{ "--d": `${0.2 + i * 0.12}s` } as React.CSSProperties}>
-              <Ring pct={pct} done={done} plain={!hasGoal}>{done ? <Trophy size={30} aria-hidden /> : <Icon size={30} aria-hidden />}</Ring>
-              <span className="figure leading-none"><b className="text-3xl"><CountUp to={value} /></b>{hasGoal && <span className="ml-1 text-sm font-medium text-muted">/ {qty}</span>}</span>
-              <span className="text-sm font-semibold leading-tight">{label}</span>
-              {hasGoal && <span className={`text-xs ${done ? "font-bold text-ok" : "text-muted"}`}>{done ? "Meta batida!" : `faltam ${qty! - value}`}</span>}
-            </li>
-          );
-        })}
+      <ul className="grid w-full grid-cols-2 gap-3">
+        {items.map((it, i) => <GoalCard key={it.label} {...it} i={i} />)}
       </ul>
     </div>
   );

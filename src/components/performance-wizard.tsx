@@ -60,8 +60,8 @@ export function PerformanceWizard({ kind, sections, people, team }: { kind: Kind
   const dl = (fmt: "xlsx" | "csv" | "pdf") => { window.location.href = `/api/desempenho?${qs()}&format=${fmt}${fmt === "csv" && sheet ? `&sheet=${sheet}` : ""}`; };
 
   return (
-    <div className="space-y-5">
-      <ol className={`grid gap-2 ${STEPS.length === 4 ? "grid-cols-4" : "grid-cols-5"}`} aria-label="Passos">
+    <div className="w-full min-w-0 max-w-full space-y-5">
+      <ol className={`grid gap-2 ${STEPS.length === 4 ? "grid-cols-[repeat(4,minmax(0,1fr))]" : "grid-cols-[repeat(5,minmax(0,1fr))]"}`} aria-label="Passos">
         {STEPS.map((s, i) => {
           const done = i < step, cur = i === step;
           return (
@@ -75,8 +75,8 @@ export function PerformanceWizard({ kind, sections, people, team }: { kind: Kind
         })}
       </ol>
 
-      <div className={cur_ === "periodo" || cur_ === "conteudo" || cur_ === "pessoas" ? "grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_21rem]" : ""}>
-      <section key={step} className="fx-rise min-h-[26rem] rounded-3xl border border-line bg-panel p-5 shadow-xl sm:p-8">
+      <div className={cur_ === "periodo" || cur_ === "conteudo" || cur_ === "pessoas" ? "grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_21rem]" : "min-w-0 max-w-full"}>
+      <section key={step} className="fx-rise min-h-[26rem] min-w-0 max-w-full rounded-3xl border border-line bg-panel p-5 shadow-xl sm:p-8">
         {cur_ === "periodo" && (
           <div className="space-y-5">
             <div><h2 className="display text-2xl">Qual período?</h2><p className="text-sm text-muted">Escolha um atalho ou defina as datas.</p></div>
@@ -126,11 +126,11 @@ export function PerformanceWizard({ kind, sections, people, team }: { kind: Kind
             {pending || !prev ? <p className="flex items-center gap-2 py-8 text-muted"><Loader2 className="animate-spin" size={18} aria-hidden /> Montando a prévia…</p>
               : prev.error ? <p className="font-semibold text-red-500">{prev.error}</p> : (
                 <>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+                  <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-3 sm:grid-cols-[repeat(3,minmax(0,1fr))] xl:grid-cols-[repeat(6,minmax(0,1fr))]">
                     {prev.summary?.slice(0, 6).map((m, i) => <MetricCard key={m.label} i={i} I={[Target, TrendingUp, BarChart3, Phone, Handshake, Clock][i % 6]} t={m.label} v={m.value} s={m.hint} hex={["#6366f1", "#10b981", "#0ea5e9", "#f59e0b", "#ec4899", "#8b5cf6"][i % 6]} featured={i === 0} />)}
                   </div>
                   {prev.sheets?.map((s) => (
-                    <div key={s.id} className="overflow-hidden rounded-2xl border-2" style={{ borderColor: `color-mix(in srgb, ${secStyle(s.id).hex} 45%, transparent)` }}>
+                    <div key={s.id} className="min-w-0 max-w-full overflow-hidden rounded-2xl border-2" style={{ borderColor: `color-mix(in srgb, ${secStyle(s.id).hex} 45%, transparent)` }}>
                       <div className="flex items-center justify-between px-3.5 py-2 text-sm font-bold" style={{ background: tint(secStyle(s.id).hex, 22, 6) }}><span className="inline-flex items-center gap-2"><span className="grid size-6 place-items-center rounded-lg text-white" style={{ background: secStyle(s.id).hex }}>{(() => { const I = secStyle(s.id).I; return <I size={14} aria-hidden />; })()}</span>{s.name}</span><span className="text-xs font-medium text-muted">{s.total} linha{s.total === 1 ? "" : "s"}</span></div>
                       <HScroll><table className="w-full min-w-max text-sm"><thead><tr>{s.cols.map((c) => <th key={c} className="whitespace-nowrap px-4 py-2 text-left text-muted">{c}</th>)}</tr></thead><tbody>{s.rows.map((r, i) => <tr key={i} className="border-t border-line">{r.map((v, j) => <td key={j} className="whitespace-nowrap px-4 py-2">{v}</td>)}</tr>)}{!s.rows.length && <tr><td className="px-3 py-3 text-muted" colSpan={s.cols.length}>Sem dados neste período.</td></tr>}</tbody></table></HScroll>
                     </div>

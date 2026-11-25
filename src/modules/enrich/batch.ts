@@ -10,13 +10,14 @@ let retryH = 6;
 const retry = () => sql`make_interval(hours => ${retryH})`;
 const PENDING_ = () => sql`not l.is_test and l.enriched_at is null and (l.enrich_tried_at is null or l.enrich_tried_at < now() - ${retry()})`;
 
-export type EnrichStats = { /** Pesquisa Rápida: leads esperando a ReceitaWS (e-mail e telefone) */ rwQueue: number; total: number; done: number; pending: number; failed: number; older: Record<number, number>; /** quantos leads há em cada lista (por chave) */ lists: Record<string, number> };
+export type EnrichStats = { /** Pesquisa Rápida: leads esperando a ReceitaWS (e-mail e telefone) */ rwQueue: number; total: number; done: number; pending: number; failed: number; older: Record<number, number>; /** quantos leads há em cada lista (por chave) */ lists: Record<string, number>; /** não consultados por estado */ ufs: Record<string, number> };
 
 const phoneOk = sql`exists (select 1 from lead_channels c where c.lead_id = l.id and c.kind = 'phone' and not c.wrong)`;
 const emailOk = sql`exists (select 1 from lead_channels c where c.lead_id = l.id and c.kind = 'email' and not c.wrong)`;
 const blank = (col: string) => sql.raw(`coalesce(btrim(l.${col}), '') = ''`);
 /** Condição de cada lista (sem a trava de "não repetir logo"). */
 const listCond = (key: string) => {
+  if (key.startsWith("uf:")) return sql`l.enriched_at is null and l.uf = ${key.slice(3)}`;
   if (key.startsWith("age:")) return sql`l.enriched_at is not null and l.enriched_at < now() - make_interval(days => ${Number(key.slice(4))})`;
   switch (key) {
     case "deal_open": return sql`exists (select 1 from deals d where d.lead_id = l.id and d.stage not in ('ganho','perdido'))`;
@@ -29,6 +30,16 @@ const listCond = (key: string) => {
     case "no_city": return sql`(${blank("city")} or ${blank("uf")})`;
     case "no_status": return sql`${blank("registration_status")}`;
     case "no_web": return sql`${blank("site")} and ${blank("instagram")} and ${blank("facebook")} and ${blank("linkedin")}`;
+    case "fresh": return sql`l.enriched_at is null and l.created_at > now() - interval '7 days'`;
+    case "unworked": return sql`l.enriched_at is null and not exists (select 1 from interactions i where i.lead_id = l.id)`;
+    case "qualified": return sql`l.enriched_at is null and exists (select 1 from lead_tags lt join tags t on t.id = lt.tag_id where lt.lead_id = l.id and t.key = 'qualificado')`;
+    case "no_mobile": return sql`not exists (select 1 from lead_channels c where c.lead_id = l.id and c.kind = 'phone' and not c.wrong and length(regexp_replace(c.value, '[^0-9]', '', 'g')) >= 11)`;
+    case "one_phone": return sql`(select count(*) from lead_channels c where c.lead_id = l.id and c.kind = 'phone' and not c.wrong) = 1`;
+    case "no_trade": return sql`${blank("trade_name")}`;
+    case "retry_failed": return sql`l.enriched_at is null and l.enrich_tried_at is not null`;
+    case "no_brasilapi": return sql`l.enriched_at is not null and l.brasilapi_data is null`;
+    case "customers": return sql`exists (select 1 from deals d where d.lead_id = l.id and d.stage = 'ganho')`;
+    case "contacted_stale": return sql`l.enriched_at is not null and l.enriched_at < now() - interval '30 days' and exists (select 1 from interactions i where i.lead_id = l.id)`;
     case "not_active": return sql`l.registration_status is not null and l.registration_status not ilike 'ativ%'`;
     default: return sql`true`;
   }
@@ -47,9 +58,11 @@ export async function enrichStats(): Promise<EnrichStats> {
       count(*) filter (where ${PENDING_()})::int as pending,
       count(*) filter (where l.enriched_at is null and l.enrich_tried_at is not null and l.enrich_tried_at >= now() - ${retry()})::int as failed
     from leads l where not l.is_test`);
+  const ufRows = await db.execute<{ uf: string; n: number }>(sql`select l.uf, count(*)::int as n from leads l where ${PENDING_()} and l.uf ~ '^[A-Z]{2}$' group by 1 order by 2 desc`);
+  const ufs = Object.fromEntries([...ufRows].map((u) => [u.uf, u.n]));
   const older: Record<number, number> = { 7: r?.o7 ?? 0, 14: r?.o14 ?? 0, 21: r?.o21 ?? 0, 30: r?.o30 ?? 0, 60: r?.o60 ?? 0, 90: r?.o90 ?? 0 };
   const lists = Object.fromEntries(ENRICH_LISTS.map((x, i) => [x.key, Number(r?.[`l${i}`] ?? 0)]));
-  return { rwQueue: r?.rwq ?? 0, total: r?.total ?? 0, done: r?.done ?? 0, pending: r?.pending ?? 0, failed: r?.failed ?? 0, older, lists };
+  return { rwQueue: r?.rwq ?? 0, total: r?.total ?? 0, done: r?.done ?? 0, pending: r?.pending ?? 0, failed: r?.failed ?? 0, older, lists: { ...lists, ...Object.fromEntries(Object.entries(ufs).map(([u, n]) => [`uf:${u}`, n])) }, ufs };
 }
 
 /** Consulta até `max` leads, um de cada vez (as APIs gratuitas limitam o ritmo), parando quando passar de `budgetMs`. */

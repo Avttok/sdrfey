@@ -40,16 +40,21 @@ export type PreviousAttendance = { by: string; at: string; channels: string[]; n
 type Template = { id: number; name: string; subject: string; body: string; bodyHtml: string | null };
 const STEPS = ["Perfil", "E-mail", "WhatsApp", "Ligação", "Finalizar"] as const;
 const STEP_ICON = [UserRound, Mail, MessageCircle, Phone, Flag] as const;
+/** Cada etapa tem sua cor, como os objetivos do roteiro. */
+const STEP_HEX = ["#6366f1", "#ec4899", "#22c55e", "#0ea5e9", "#f59e0b"] as const;
+const stTint = (hex: string, a = 18, b = 4) => `linear-gradient(145deg, color-mix(in srgb, ${hex} ${a}%, var(--panel)), color-mix(in srgb, ${hex} ${b}%, var(--panel)) 70%)`;
+const stIcon = (hex: string) => `linear-gradient(135deg, ${hex}, color-mix(in srgb, ${hex} 62%, #000))`;
 const STEP_HINT = ["Conheça a empresa e confira os contatos", "Envie o e-mail com o modelo certo", "Chame no WhatsApp com um toque", "Copie o número e ligue", "Registre o resultado e siga em frente"] as const;
 
 /** Título de cada etapa: ícone, nome e uma linha de ajuda. */
 function StepTitle({ i }: { i: number }) {
-  const I = STEP_ICON[i];
+  const I = STEP_ICON[i], hex = STEP_HEX[i];
   return (
-    <div className="step-title flex items-center gap-3">
-      <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-grad text-on-accent shadow-md shadow-accent/25"><I size={20} aria-hidden /></span>
-      <div className="min-w-0 flex-1"><h2 className="display text-xl leading-tight">{STEPS[i]}</h2><p className="text-xs text-muted">{STEP_HINT[i]}</p></div>
-      <span className="figure shrink-0 rounded-full bg-accent/12 px-3 py-1 text-xs font-bold text-accent">Etapa {i + 1} de {STEPS.length}</span>
+    <div className="step-title relative flex items-center gap-3 overflow-hidden rounded-2xl border-2 p-3" style={{ background: stTint(hex, 22, 5), borderColor: `color-mix(in srgb, ${hex} 45%, transparent)` }}>
+      <I aria-hidden size={80} strokeWidth={1.4} className="pointer-events-none absolute -bottom-4 -right-2 -rotate-12 opacity-[.13]" style={{ color: hex }} />
+      <span className="relative grid size-12 shrink-0 place-items-center rounded-2xl text-white shadow-md" style={{ background: stIcon(hex) }}><I size={22} aria-hidden /></span>
+      <div className="relative min-w-0 flex-1"><h2 className="display text-xl leading-tight">{STEPS[i]}</h2><p className="text-xs text-muted">{STEP_HINT[i]}</p></div>
+      <span className="figure relative shrink-0 rounded-full px-3 py-1 text-xs font-bold text-white" style={{ background: hex }}>Etapa {i + 1} de {STEPS.length}</span>
     </div>
   );
 }
@@ -416,8 +421,9 @@ export function AttendFlow({ touched = [], knowledge, autoEnrichOn = false, lead
         <b className="text-ink">{lead.company}</b> não está com a situação ATIVA na Receita, então provavelmente não consegue negociar. Quer atender mesmo assim ou procurar um novo lead? Se buscar outro, este some só para você por 24 h e não conta na meta.
       </ConfirmDialog>
       {/* topo: empresa, metas do dia e passos */}
-      <header className={`${panelCls} fx-rise relative overflow-hidden p-5 sm:p-6`}>
-        <div aria-hidden className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-accent/15 blur-2xl" /><div aria-hidden className="pointer-events-none absolute -bottom-20 -left-10 size-48 rounded-full bg-accent/10 blur-3xl" />
+      <header className="fx-rise relative overflow-hidden rounded-3xl border-2 p-5 shadow-sm sm:p-6" style={{ background: stTint(STEP_HEX[step], 20, 4), borderColor: `color-mix(in srgb, ${STEP_HEX[step]} 45%, transparent)` }}>
+        <Building2 aria-hidden size={170} strokeWidth={1.2} className="pointer-events-none absolute -bottom-8 -right-6 -rotate-12 opacity-[.08]" style={{ color: STEP_HEX[step] }} />
+        <div aria-hidden className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full opacity-25 blur-3xl transition-colors duration-500" style={{ background: STEP_HEX[step] }} />
         {step !== 4 && <div className="relative flex flex-wrap items-start gap-x-8 gap-y-4">
           <div className="min-w-0 flex-1">
             <p className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-accent"><span className="inline-flex items-center gap-1.5"><Building2 size={14} aria-hidden /> Lead sorteado</span><span className="inline-flex items-center gap-1 rounded-full bg-accent/12 px-2 py-0.5 normal-case tracking-normal" title="Tempo neste lead"><Timer size={12} aria-hidden /><Elapsed since={openedAt.current} /></span></p>
@@ -433,7 +439,7 @@ export function AttendFlow({ touched = [], knowledge, autoEnrichOn = false, lead
           {visible.map((i, pos) => { const st = STEPS[i]; const SI = STEP_ICON[i]; const cur = i === step; const done = i < step; return (
             <li key={st} className={`flex items-center ${pos < visible.length - 1 ? "flex-1" : ""}`}>
               <button type="button" onClick={() => go(i)} aria-current={cur ? "step" : undefined} className="group flex flex-col items-center gap-1.5">
-                <span className={`relative grid size-11 place-items-center rounded-2xl text-sm font-bold transition-all duration-300 ${cur ? "-translate-y-0.5 scale-110 bg-grad text-on-accent shadow-lg shadow-accent/40" : done ? "bg-accent/20 text-accent" : "bg-sunk text-muted group-hover:-translate-y-0.5 group-hover:bg-line"}`}>
+                <span style={cur ? { background: stIcon(STEP_HEX[i]), boxShadow: `0 8px 20px -8px ${STEP_HEX[i]}` } : done ? { background: `color-mix(in srgb, ${STEP_HEX[i]} 22%, transparent)`, color: STEP_HEX[i] } : undefined} className={`relative grid size-11 place-items-center rounded-2xl text-sm font-bold transition-all duration-300 ${cur ? "-translate-y-0.5 scale-110 text-white" : done ? "" : "bg-sunk text-muted group-hover:-translate-y-0.5 group-hover:bg-line"}`}>
                   {cur && <span aria-hidden className="step-ping absolute inset-0 rounded-2xl" />}
                   {done ? <Check size={18} aria-hidden /> : <SI size={18} aria-hidden />}
                 </span>
@@ -445,7 +451,7 @@ export function AttendFlow({ touched = [], knowledge, autoEnrichOn = false, lead
         </ol>
       </header>
 
-      <div key={step} className={`${panelCls} stagger p-5 sm:p-6 ${dir.current === "fwd" ? "step-fwd" : "step-back"}`}>
+      <div key={step} style={{ borderColor: `color-mix(in srgb, ${STEP_HEX[step]} 35%, var(--line))`, boxShadow: `inset 0 4px 0 ${STEP_HEX[step]}` }} className={`${panelCls} stagger p-5 sm:p-6 ${dir.current === "fwd" ? "step-fwd" : "step-back"}`}>
         {step === 0 && (
           <div className="space-y-6">
             <LeadInfoPanel lead={lead} wide showMap={showMap} autoSearch={!autoEnrichOn} />

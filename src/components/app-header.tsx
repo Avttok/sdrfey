@@ -19,7 +19,7 @@ function navFor(user: CurrentUser) {
 export function AppHeader({ user, badges = {}, groupNav = true, navAlign = 0 }: { user: CurrentUser; badges?: Record<string, number>; groupNav?: boolean; navAlign?: number }) {
   const accent = resolveAccent(user.accent, user.shownRoles);
   return (
-    <header className={`sticky top-0 z-20 border-b border-line bg-panel ${user.navLayout === "side" ? "lg:hidden" : ""}`}>
+    <header data-nav className={`sticky top-0 z-20 border-b border-line bg-panel ${user.navLayout === "side" ? "lg:hidden" : ""}`}>
       <div className="mx-auto flex w-full max-w-[92rem] items-center gap-x-3 px-3 py-2.5 sm:px-5 lg:px-6">
         <Link href="/painel" aria-label="SDR FEY, ir para o início" className="flex items-center transition hover:scale-[1.03]"><Logo /></Link>
         <MobileNav hrefs={navFor(user)} badges={badges} grouped={groupNav} custom={user.navCustom} tree={user.navTree} />

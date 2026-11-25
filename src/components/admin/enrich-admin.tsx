@@ -1,14 +1,16 @@
 "use client";
 
-import { Activity, CheckCircle2, Clock, DatabaseZap, History as HistoryIcon, ListOrdered, Loader2, Pause, Play, RotateCcw, Sparkles, TriangleAlert, XCircle, Zap } from "lucide-react";
+import { Activity, CheckCircle2, Clock, DatabaseZap, ExternalLink, History as HistoryIcon, ListOrdered, Loader2, Mail, Pause, Phone, Play, RotateCcw, Search, ShieldCheck, Sparkles, TriangleAlert, XCircle, Zap } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
-import { ENRICH_GROUPS, ENRICH_LISTS, ENRICH_LIST_BY_KEY } from "@/config/enrich-lists";
+import { ENRICH_GROUPS, ENRICH_LISTS, listMeta } from "@/config/enrich-lists";
+import { DashBlock, DashSection, MetricCard, MetricRing } from "@/components/dash-ui";
+import { LeadLink, ListChoice, StatusChip, iconTile, listVisual, tint } from "@/components/enrich-visual";
 import { ENRICH_STATE, askEnrich, setEnrich } from "@/components/enrich-bridge";
 import type { DockData } from "@/modules/enrich/daemon-actions";
 import { startApi, stopApi } from "@/components/enrich-api";
 import type { EnrichStats } from "@/modules/enrich/batch";
-import { enrichLiveAction, enrichLogAction, retryFailedEnrichAction, runEnrichBatchAction, setAutoEnrichAction } from "@/modules/enrich/admin";
+import { enrichLiveAction, enrichLogAction, enrichOneAction, findLeadsAction, retryFailedEnrichAction, runEnrichBatchAction, setAutoEnrichAction, type FoundLead } from "@/modules/enrich/admin";
 import type { Live, LogRow } from "@/modules/enrich/live";
 
 const ORIGIN: Record<string, string> = { lote: "Lote (Adm)", cron: "Tarefa agendada", manual: "Botão Atualizar", auto: "Shuffler/lead", novo: "Nova negociação" };
@@ -25,7 +27,7 @@ function LogLine({ r, now }: { r: LogRow; now: number }) {
     <li className="flex items-start gap-3 px-3.5 py-2.5 text-sm">
       {r.ok ? <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-accent" aria-hidden /> : <XCircle size={16} className="mt-0.5 shrink-0 text-danger" aria-hidden />}
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{r.company}</p>
+        <LeadLink id={r.leadId} className="font-medium">{r.company}</LeadLink>
         <p className="truncate text-xs text-muted">{cnpjF(r.cnpj)} · {ORIGIN[r.origin] ?? r.origin}{r.by ? ` · ${r.by}` : ""} · {(r.ms / 1000).toFixed(1)} s{r.ok ? ` · ${r.status ?? "ok"}${r.phones + r.emails ? ` · +${r.phones} tel, +${r.emails} e-mail` : ""}` : ""}</p>
         {!r.ok && r.why && <p className="mt-0.5 text-xs text-danger/90">{r.why}</p>}
       </div>
@@ -81,6 +83,11 @@ export function EnrichAdmin({ initial, on: on0, cronReady, live: live0 }: { init
   const loop = !!dock?.state.on;
   const [log, setLog] = useState("");
   const [pending, start] = useTransition();
+  const [group, setGroup] = useState<(typeof ENRICH_GROUPS)[number] | "Por estado">("Fila");
+  const [q, setQ] = useState("");
+  const [found, setFound] = useState<FoundLead[] | null>(null);
+  const [one, setOne] = useState<{ id: number; msg: string; ok: boolean } | null>(null);
+  const [oneBusy, setOneBusy] = useState<number | null>(null);
   const pct = live.stats.total ? Math.round((live.stats.done / live.stats.total) * 100) : 0;
 
   const once = async (size = 10) => {
@@ -97,22 +104,85 @@ export function EnrichAdmin({ initial, on: on0, cronReady, live: live0 }: { init
     try { const r = await (loop ? stopApi() : startApi(scope)); setEnrich(r); setDock(r); setStats(r.stats); setLog(loop ? "Consulta contínua parada." : ""); } catch { setLog("Não consegui mudar o modo contínuo. Tente de novo."); } finally { setBusy(false); }
   };
 
+  const cnt = (dock?.stats ?? stats).lists ?? {};
+  const ufs = Object.entries((dock?.stats ?? stats).ufs ?? {});
+  const curKey = loop ? dock!.state.scope : scope;
+  const cur = listVisual(curKey);
+  const search = (v: string) => { setQ(v); setOne(null); if (v.trim().length < 2) { setFound(null); return; } void findLeadsAction(v).then(setFound).catch(() => setFound([])); };
+  const runOne = async (id: number) => { setOneBusy(id); try { const r = await enrichOneAction(id); setOne({ id, msg: r.message, ok: r.ok }); if (r.lead) setFound((f) => (f ?? []).map((x) => (x.id === id ? r.lead! : x))); } catch { setOne({ id, msg: "Não consegui consultar agora.", ok: false }); } finally { setOneBusy(null); } };
+  const fd = live.found;
+
   return (
-    <div className="space-y-4">
-      <section className={`${panelCls} stat-glow space-y-4 p-5`}>
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-          <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-grad-soft text-accent"><DatabaseZap size={26} aria-hidden /></span>
+    <div className="space-y-5">
+      <section className="relative overflow-hidden rounded-3xl border-2 p-5 sm:p-6" style={{ background: tint(live.running || loop ? cur.hex : "#6366f1", 22, 5), borderColor: `color-mix(in srgb, ${live.running || loop ? cur.hex : "#6366f1"} 50%, transparent)` }}>
+        <DatabaseZap aria-hidden size={190} strokeWidth={1.2} className="pointer-events-none absolute -bottom-10 -right-6 -rotate-12 opacity-[.1]" style={{ color: cur.hex }} />
+        <div className="relative flex flex-wrap items-center gap-x-6 gap-y-4">
+          <span className="relative grid size-24 shrink-0 place-items-center"><MetricRing value={pct} color={cur.hex} size="size-24" /><span className="figure absolute text-xl font-extrabold">{pct}%</span></span>
           <div className="min-w-56 flex-1">
-            <p className="figure flex flex-wrap items-baseline gap-x-2 text-3xl font-bold leading-none">{live.stats.done.toLocaleString("pt-BR")}<span className="text-base font-medium text-muted">de {live.stats.total.toLocaleString("pt-BR")} consultados</span></p>
-            <p className="mt-1.5 text-sm text-muted">{live.stats.pending.toLocaleString("pt-BR")} esperando · {live.stats.failed.toLocaleString("pt-BR")} sem resposta (tento de novo em 6 h){live.stats.rwQueue > 0 && <> · {live.stats.rwQueue.toLocaleString("pt-BR")} na fila da ReceitaWS (e-mail e telefone)</>}</p>
+            <p className="figure flex flex-wrap items-baseline gap-x-2 text-4xl font-extrabold leading-none">{live.stats.done.toLocaleString("pt-BR")}<span className="text-base font-medium text-muted">de {live.stats.total.toLocaleString("pt-BR")} consultados</span></p>
+            <p className="mt-2 text-sm text-muted">{live.stats.pending.toLocaleString("pt-BR")} esperando · {live.stats.failed.toLocaleString("pt-BR")} sem resposta (tento de novo em 6 h){live.stats.rwQueue > 0 && <> · {live.stats.rwQueue.toLocaleString("pt-BR")} na fila da ReceitaWS (e-mail e telefone)</>}</p>
+            <div className="mt-3 h-3 overflow-hidden rounded-full bg-sunk/80" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Leads consultados"><div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.max(pct, live.stats.done ? 1 : 0)}%`, background: iconTile(cur.hex) }} /></div>
           </div>
-          <div className="flex shrink-0 items-center gap-3">
-            <span className="figure text-3xl font-bold leading-none text-accent">{pct}%</span>
-            <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${live.running ? "bg-grad-soft text-accent" : "bg-sunk text-muted"}`}><span className={`size-1.5 rounded-full ${live.running ? "animate-pulse bg-accent" : "bg-muted"}`} />{live.running ? "Consultando agora" : "Parado"}</span>
-          </div>
+          <span className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-bold ${live.running || loop ? "bg-white text-black shadow" : "bg-sunk text-muted"}`}><span className={`size-2 rounded-full ${live.running || loop ? "animate-pulse bg-ok" : "bg-muted"}`} />{loop ? `Contínuo: ${cur.label}` : live.running ? "Consultando agora" : "Parada"}</span>
         </div>
-        <div className="h-3 overflow-hidden rounded-full bg-sunk" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Leads consultados"><div className="h-full rounded-full bg-grad transition-all duration-700" style={{ width: `${Math.max(pct, live.stats.done ? 1 : 0)}%` }} /></div>
       </section>
+
+      <DashSection I={Zap} title="Ritmo e resultado" hint="o que a consulta está fazendo e trazendo" hex="#6366f1">
+        <MetricCard i={0} featured I={Zap} t="Ritmo (10 min)" v={`${live.rate.perMin.toFixed(1).replace(".", ",")}/min`} s={`${live.rate.m10} consultas nos últimos 10 min`} hex="#6366f1" />
+        <MetricCard i={1} I={Clock} t="Tempo para acabar" v={live.rate.etaMin == null ? "—" : live.rate.etaMin >= 120 ? `${Math.round(live.rate.etaMin / 60)} h` : `${live.rate.etaMin} min`} s={live.rate.etaMin == null ? "sem consultas recentes" : "no ritmo atual"} hex="#0ea5e9" />
+        <MetricCard i={2} I={CheckCircle2} t="Acerto (24 h)" v={live.rate.okPct == null ? "—" : `${live.rate.okPct}%`} s={`${live.rate.h24} consultas · média ${live.rate.avgMs == null ? "—" : (live.rate.avgMs / 1000).toFixed(1).replace(".", ",") + " s"}`} hex="#22c55e" bar={live.rate.okPct ?? undefined} hot={live.rate.okPct != null && live.rate.okPct < 60} />
+        <MetricCard i={3} I={Sparkles} t="Prontos p/ shuffler" v={live.stats.ready.toLocaleString("pt-BR")} s="consultados e sem contato (prioridade)" hex="#f59e0b" />
+        <MetricCard i={4} I={Phone} t="Telefones achados (24 h)" v={fd.phones.toLocaleString("pt-BR")} s={fd.avgPhones != null ? `${fd.avgPhones.toLocaleString("pt-BR")} por consulta` : "—"} hex="#10b981" />
+        <MetricCard i={5} I={Mail} t="E-mails achados (24 h)" v={fd.emails.toLocaleString("pt-BR")} s="novos nos cadastros" hex="#ec4899" />
+        <MetricCard i={6} I={ShieldCheck} t="CNPJ ativos (24 h)" v={fd.active.toLocaleString("pt-BR")} s={`${fd.inactive.toLocaleString("pt-BR")} não ativos`} hex="#14b8a6" bar={fd.active + fd.inactive ? Math.round((fd.active / (fd.active + fd.inactive)) * 100) : undefined} />
+        <MetricCard i={7} I={TriangleAlert} t="Sem resposta agora" v={live.stats.failed.toLocaleString("pt-BR")} s="voltam à fila em 6 h" hex="#ef4444" hot={live.stats.failed > 0 && live.stats.failed > live.stats.done * 0.1} />
+      </DashSection>
+
+      <DashBlock I={Search} title="Consultar um lead agora" hex="#0ea5e9">
+        <div className="space-y-3">
+          <label className="relative block"><Search size={16} aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" /><input className={`${inputCls} pl-10`} value={q} onChange={(e) => search(e.target.value)} placeholder="Nome da empresa, nome fantasia ou CNPJ…" aria-label="Buscar lead para consultar" /></label>
+          {found && (
+            <ul className="space-y-2">
+              {found.map((f) => (
+                <li key={f.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-line bg-bg p-3">
+                  <div className="min-w-0 flex-1"><LeadLink id={f.id} className="text-[15px]">{f.company}</LeadLink><p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted"><span className="figure">{cnpjF(f.cnpj)}</span>{(f.city || f.uf) && <span>· {[f.city, f.uf].filter(Boolean).join("/")}</span>}<StatusChip s={f.status} /><span>· {f.enrichedAt ? `consultado há ${ago(f.enrichedAt, now)}` : "nunca consultado"}</span></p>
+                    {one?.id === f.id && <p className={`mt-1 text-xs font-medium ${one.ok ? "text-ok" : "text-danger"}`}>{one.msg}</p>}</div>
+                  <button type="button" className={btnGhost} disabled={oneBusy === f.id} onClick={() => void runOne(f.id)}>{oneBusy === f.id ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <RotateCcw size={15} aria-hidden />} Consultar</button>
+                  <a href={`/leads/${f.id}`} className={btnPrimary}><ExternalLink size={15} aria-hidden /> Abrir lead</a>
+                </li>
+              ))}
+              {!found.length && <li className="rounded-xl bg-sunk/60 px-3 py-4 text-center text-sm text-muted">Nenhum lead com esse nome ou CNPJ.</li>}
+            </ul>
+          )}
+        </div>
+      </DashBlock>
+
+      <DashBlock I={ListOrdered} title="Escolha a fila para consultar" hex={cur.hex}>
+        <div className="space-y-4">
+          <div role="tablist" aria-label="Tipo de fila" className="flex w-fit flex-wrap gap-1 rounded-xl border border-line bg-sunk/60 p-1 text-sm font-semibold">
+            {[...ENRICH_GROUPS, "Por estado" as const].map((g) => <button key={g} type="button" role="tab" aria-selected={group === g} onClick={() => setGroup(g)} className={`rounded-lg px-3.5 py-1.5 transition ${group === g ? "bg-panel text-accent shadow-sm" : "text-muted hover:text-ink"}`}>{g}</button>)}
+          </div>
+          {group === "Por estado" ? (
+            <ul role="radiogroup" aria-label="Estados" className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+              {ufs.map(([u, n]) => <li key={u}><ListChoice compact k={`uf:${u}`} count={n} selected={curKey === `uf:${u}`} disabled={busy || loop} onPick={() => setScope(`uf:${u}`)} /></li>)}
+              {!ufs.length && <li className="col-span-full rounded-xl bg-sunk/60 px-3 py-4 text-center text-sm text-muted">Nenhum estado com leads esperando.</li>}
+            </ul>
+          ) : (
+            <ul role="radiogroup" aria-label={group} className="stagger grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+              {ENRICH_LISTS.filter((l) => l.group === group).map((l) => <li key={l.key}><ListChoice k={l.key} count={cnt[l.key] ?? 0} selected={curKey === l.key} disabled={busy || loop} onPick={() => setScope(l.key)} /></li>)}
+            </ul>
+          )}
+          <p className="rounded-xl bg-sunk/60 px-3.5 py-2.5 text-sm text-muted"><b className="text-ink">{cur.label}:</b> {listMeta(curKey)?.hint}</p>
+          <div className="flex flex-wrap items-end gap-3">
+            <button type="button" className={btnPrimary} disabled={busy || loop} onClick={() => void once(10)}>{busy && !loop ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Zap size={16} aria-hidden />} Consultar um lote (10)</button>
+            {loop
+              ? <button type="button" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-danger/40 bg-danger/10 px-4 py-2 text-[15px] font-semibold text-danger transition hover:bg-danger/20" disabled={busy} onClick={() => void toggleLoop()}>{busy ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Pause size={16} aria-hidden />} Parar modo contínuo</button>
+              : <button type="button" className={btnGhost} disabled={busy} onClick={() => void toggleLoop()}><Play size={16} aria-hidden /> Modo contínuo (1 em 1)</button>}
+            <button type="button" className={btnGhost} disabled={busy || loop || pending} onClick={() => start(async () => { await retryFailedEnrichAction(); const r = await runEnrichBatchAction(1); setStats(r.stats); })}><RotateCcw size={15} aria-hidden /> Tentar os sem resposta de novo</button>
+          </div>
+          <div className="space-y-1 text-sm text-muted" aria-live="polite">{loop && <p className="flex items-center gap-1.5"><Loader2 size={13} className="shrink-0 animate-spin" aria-hidden /> Contínuo ativo{dock?.state.byName && !dock.state.mine ? ` (iniciado por ${dock.state.byName})` : ""}: roda em qualquer página, também pelo painel lateral.</p>}{log && <p>{log}</p>}</div>
+        </div>
+      </DashBlock>
 
       <section className={`${panelCls} flex flex-wrap items-center gap-4 p-5`}>
         <div className="min-w-0 flex-1"><h2 className="font-semibold">Consulta automática</h2><p className="text-sm text-muted">Ligada: a tarefa agendada consulta os leads pendentes e os shufflers deixam de consultar sozinhos (o botão “Atualizar informações” continua).</p>
@@ -120,81 +190,53 @@ export function EnrichAdmin({ initial, on: on0, cronReady, live: live0 }: { init
             <ol className="list-decimal space-y-1 px-3 pb-3 pl-7 text-muted">
               <li>Na Vercel: Settings → Environment Variables → crie <b className="text-ink">CRON_SECRET</b> com um texto longo e aleatório (ex.: 40 letras e números).</li>
               <li>Faça um Redeploy. A Vercel passa a chamar <b className="text-ink">/api/cron/enrich</b> sozinha uma vez por dia (09:00 UTC).</li>
-              <li>No plano Hobby o cron só roda 1 vez por dia; para consultar mais, use o lote e o modo contínuo abaixo (funcionam sem o CRON_SECRET).</li>
+              <li>No plano Hobby o cron só roda 1 vez por dia; para consultar mais, use o lote e o modo contínuo acima (funcionam sem o CRON_SECRET).</li>
             </ol></details></div>
-        <button type="button" role="switch" aria-checked={on} disabled={pending} onClick={() => start(async () => { const n = !on; setOn(n); await setAutoEnrichAction(n); })} className={`relative h-8 w-14 shrink-0 rounded-full transition ${on ? "bg-grad" : "bg-sunk border border-line"}`}><span className={`absolute top-1 size-6 rounded-full bg-white shadow transition-all ${on ? "left-7" : "left-1"}`} /></button>
-      </section>
-
-      <section className={`${panelCls} space-y-3 p-5`}>
-        <h2 className="font-semibold">Consultar agora</h2>
-        <label className="block max-w-md text-sm"><span className="mb-1 block text-muted">Qual lista de leads consultar</span>
-          <select className={inputCls} value={loop ? dock!.state.scope : scope} disabled={busy || loop} onChange={(e) => setScope(e.target.value)}>
-            {ENRICH_GROUPS.map((g) => <optgroup key={g} label={g}>{ENRICH_LISTS.filter((l) => l.group === g).map((l) => <option key={l.key} value={l.key}>{l.label} ({(((dock?.stats ?? stats).lists ?? {})[l.key] ?? 0).toLocaleString("pt-BR")})</option>)}</optgroup>)}
-          </select>
-          <span className="mt-1 block text-xs text-muted">{ENRICH_LIST_BY_KEY.get(loop ? dock!.state.scope : scope)?.hint}</span></label>
-        <div className="flex flex-wrap items-end gap-3">
-                    <button type="button" className={btnPrimary} disabled={busy || loop} onClick={() => void once(10)}>{busy && !loop ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Zap size={16} aria-hidden />} Consultar um lote (10)</button>
-          {loop
-            ? <button type="button" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-danger/40 bg-danger/10 px-4 py-2 text-[15px] font-semibold text-danger transition hover:bg-danger/20" disabled={busy} onClick={() => void toggleLoop()}>{busy ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Pause size={16} aria-hidden />} Parar contínuo</button>
-            : <button type="button" className={btnGhost} disabled={busy} onClick={() => void toggleLoop()}><Play size={16} aria-hidden /> Modo contínuo (1 em 1)</button>}
-          <button type="button" className={btnGhost} disabled={busy || loop || pending} onClick={() => start(async () => { await retryFailedEnrichAction(); const r = await runEnrichBatchAction(1); setStats(r.stats); })}><RotateCcw size={15} aria-hidden /> Tentar os sem resposta de novo</button>
-        </div>
-        <div className="space-y-1 text-sm text-muted" aria-live="polite">{loop && <p className="flex items-center gap-1.5"><Loader2 size={13} className="shrink-0 animate-spin" aria-hidden /> Contínuo ativo{dock?.state.byName && !dock.state.mine ? ` (iniciado por ${dock.state.byName})` : ""}: roda em qualquer página, também pelo painel flutuante, até acabar ou você parar.</p>}{log && <p>{log}</p>}</div>
+        <button type="button" role="switch" aria-checked={on} aria-label="Consulta automática" disabled={pending} onClick={() => start(async () => { const n = !on; setOn(n); await setAutoEnrichAction(n); })} className={`relative h-8 w-14 shrink-0 rounded-full transition ${on ? "bg-grad" : "border border-line bg-sunk"}`}><span className={`absolute top-1 size-6 rounded-full bg-white shadow transition-all ${on ? "left-7" : "left-1"}`} /></button>
       </section>
 
       <div role="tablist" aria-label="Visão" className="flex w-fit gap-1 rounded-xl border border-line bg-panel p-1 text-sm font-medium">
-        {([["live", "Ao vivo", Activity], ["hist", "Histórico", HistoryIcon]] as const).map(([k, l, I]) => <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 transition ${tab === k ? "bg-grad-soft text-accent" : "text-muted hover:text-ink"}`}><I size={15} aria-hidden />{l}</button>)}
+        {([["live", "Ao vivo", Activity], ["hist", "Histórico", HistoryIcon]] as const).map(([k, l, I]) => <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 transition ${tab === k ? "bg-grad-soft text-accent" : "text-muted hover:text-ink"}`}><I size={15} aria-hidden /> {l}</button>)}
       </div>
 
       {tab === "hist" ? <History /> : (
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Tile icon={Zap} label="Ritmo (10 min)" value={`${live.rate.perMin.toFixed(1).replace(".", ",")}/min`} hint={`${live.rate.m10} consultas nos últimos 10 min`} />
-            <Tile icon={Clock} label="Tempo para acabar" value={live.rate.etaMin == null ? "—" : live.rate.etaMin >= 120 ? `${Math.round(live.rate.etaMin / 60)} h` : `${live.rate.etaMin} min`} hint={live.rate.etaMin == null ? "sem consultas recentes" : "no ritmo atual"} />
-            <Tile icon={CheckCircle2} label="Acerto (24 h)" value={live.rate.okPct == null ? "—" : `${live.rate.okPct}%`} hint={`${live.rate.h24} consultas · média ${live.rate.avgMs == null ? "—" : (live.rate.avgMs / 1000).toFixed(1).replace(".", ",") + " s"}`} tone={live.rate.okPct != null && live.rate.okPct < 60 ? "bad" : undefined} />
-            <Tile icon={Sparkles} label="Prontos p/ shuffler" value={live.stats.ready.toLocaleString("pt-BR")} hint="consultados e sem contato (têm prioridade)" />
-          </div>
-
-          <section className={`${panelCls} p-4`}>
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1"><h2 className="text-sm font-semibold">Últimas 24 horas</h2>
-              <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted"><span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2.5 rounded-sm bg-accent" />consultadas</span><span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2.5 rounded-sm bg-danger/70" />sem resposta</span><span>{live.lastOkAt ? `última ok há ${ago(live.lastOkAt, now)}` : "nenhuma consulta ainda"}</span></p></div>
+          <DashBlock I={Clock} title="Últimas 24 horas" hex="#6366f1">
+            <p className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted"><span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2.5 rounded-sm bg-accent" />consultadas</span><span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2.5 rounded-sm bg-danger/70" />sem resposta</span></p>
             {(() => { const max = Math.max(1, ...live.hours.map((h) => h.ok + h.fail)); return (
               <div aria-label="Consultas por hora" className="grid gap-x-1" style={{ gridTemplateColumns: `repeat(${live.hours.length}, minmax(0, 1fr))` }}>
                 {live.hours.map((h, i) => (
-                  <div key={`b${i}`} className="flex h-24 flex-col justify-end border-b border-line" title={`${h.h}: ${h.ok} ok, ${h.fail} sem resposta`}>
+                  <div key={`b${i}`} className="flex h-28 flex-col justify-end border-b border-line" title={`${h.h}: ${h.ok} ok, ${h.fail} sem resposta`}>
                     <div className="flex w-full flex-col justify-end overflow-hidden rounded-t" style={{ height: `${((h.ok + h.fail) / max) * 100}%`, minHeight: h.ok + h.fail ? 4 : 0 }}><div className="bg-danger/70" style={{ flex: h.fail }} /><div className="bg-grad" style={{ flex: h.ok }} /></div>
                   </div>
                 ))}
                 {live.hours.map((h, i) => <span key={`l${i}`} className="figure mt-1.5 h-3 overflow-visible whitespace-nowrap text-center text-[10px] leading-3 text-muted">{i % 3 === 0 ? h.h : ""}</span>)}
               </div>); })()}
-          </section>
+          </DashBlock>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <section className={`${panelCls} overflow-hidden`}>
-              <h2 className="flex items-center gap-2 border-b border-line px-4 py-3 text-sm font-semibold"><ListOrdered size={16} className="text-accent" aria-hidden /> Próximos da fila</h2>
-              <ol className="divide-y divide-line/70">
-                {live.queue.map((q, i) => <li key={q.id} className="flex items-center gap-3 px-4 py-2 text-sm"><span className="figure w-5 text-xs text-muted">{i + 1}</span><div className="min-w-0 flex-1"><p className="truncate font-medium">{q.company}</p><p className="text-xs text-muted">{cnpjF(q.cnpj)}{q.priorTry ? ` · já tentado há ${ago(q.priorTry, now)}` : ""}</p></div>{i === 0 && <span className="rounded-full bg-grad-soft px-2 py-0.5 text-xs font-semibold text-accent">próximo</span>}</li>)}
+            <DashBlock I={ListOrdered} title="Próximos da fila" hex="#6366f1">
+              <ol className="-mx-1 divide-y divide-line/70">
+                {live.queue.map((q, i) => <li key={q.id} className="flex items-center gap-3 px-1 py-2 text-sm"><span className="figure w-5 text-xs text-muted">{i + 1}</span><div className="min-w-0 flex-1"><LeadLink id={q.id} className="font-medium">{q.company}</LeadLink><p className="text-xs text-muted">{cnpjF(q.cnpj)}{q.priorTry ? ` · já tentado há ${ago(q.priorTry, now)}` : ""}</p></div></li>)}
                 {!live.queue.length && <li className="p-6 text-center text-sm text-muted">Fila vazia: todos foram consultados.</li>}
               </ol>
-            </section>
-            <section className={`${panelCls} overflow-hidden`}>
-              <h2 className="flex items-center gap-2 border-b border-line px-4 py-3 text-sm font-semibold"><TriangleAlert size={16} className="text-danger" aria-hidden /> Falharam (últimas 6 h)</h2>
-              <ul className="divide-y divide-line/70">
-                {live.failed.map((f) => <li key={f.id} className="px-4 py-2 text-sm"><div className="flex items-center justify-between gap-2"><p className="truncate font-medium">{f.company}</p><span className="figure shrink-0 text-xs text-muted">há {ago(f.at, now)} · {f.tries}x</span></div><p className="truncate text-xs text-muted">{cnpjF(f.cnpj)}</p>{f.why && <p className="text-xs text-danger/90">{f.why}</p>}</li>)}
+            </DashBlock>
+            <DashBlock I={TriangleAlert} title="Falharam (últimas 6 h)" hex="#ef4444">
+              <ul className="-mx-1 divide-y divide-line/70">
+                {live.failed.map((f) => <li key={f.id} className="px-1 py-2 text-sm"><div className="flex items-center justify-between gap-2"><LeadLink id={f.id} className="font-medium">{f.company}</LeadLink><span className="figure shrink-0 text-xs text-muted">há {ago(f.at, now)} · {f.tries}x</span></div><p className="text-xs text-muted">{cnpjF(f.cnpj)}{f.why ? ` · ${f.why}` : ""}</p><button type="button" className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline disabled:opacity-50" disabled={oneBusy === f.id} onClick={() => void runOne(f.id)}>{oneBusy === f.id ? <Loader2 size={12} className="animate-spin" aria-hidden /> : <RotateCcw size={12} aria-hidden />} Consultar de novo</button>{one?.id === f.id && <span className={`ml-2 text-xs ${one.ok ? "text-ok" : "text-danger"}`}>{one.msg}</span>}</li>)}
                 {!live.failed.length && <li className="p-6 text-center text-sm text-muted">Nenhuma falha recente.</li>}
               </ul>
-            </section>
+            </DashBlock>
           </div>
 
-          <section className={`${panelCls} overflow-hidden`}>
-            <h2 className="flex items-center gap-2 border-b border-line px-4 py-3 text-sm font-semibold"><Activity size={16} className="text-accent" aria-hidden /> Acontecendo agora <span className="ml-auto text-xs font-normal text-muted">atualiza a cada 3 s</span></h2>
-            <ul className="divide-y divide-line/70">{live.recent.map((r) => <LogLine key={r.id} r={r} now={now} />)}{!live.recent.length && <li className="p-6 text-center text-sm text-muted">Nenhuma consulta registrada ainda.</li>}</ul>
-          </section>
+          <DashBlock I={Activity} title="Acontecendo agora" hex="#10b981">
+            <ul className="-mx-3 divide-y divide-line/70">{live.recent.map((r) => <LogLine key={r.id} r={r} now={now} />)}{!live.recent.length && <li className="p-6 text-center text-sm text-muted">Nenhuma consulta registrada ainda.</li>}</ul>
+          </DashBlock>
 
           {(live.origins.length > 0 || live.topWhy.length > 0) && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <section className={`${panelCls} p-4`}><h2 className="mb-2 text-sm font-semibold">Quem consultou (24 h)</h2><ul className="space-y-1.5 text-sm">{live.origins.map((o) => <li key={o.origin} className="flex justify-between"><span>{ORIGIN[o.origin] ?? o.origin}</span><span className="figure text-muted">{o.ok}/{o.n} ok</span></li>)}</ul></section>
-              <section className={`${panelCls} p-4`}><h2 className="mb-2 text-sm font-semibold">Motivos de falha (24 h)</h2><ul className="space-y-1.5 text-sm">{live.topWhy.map((w) => <li key={w.why} className="flex justify-between gap-3"><span className="truncate">{w.why}</span><span className="figure text-muted">{w.n}x</span></li>)}{!live.topWhy.length && <li className="text-muted">Sem falhas.</li>}</ul></section>
+              <DashBlock I={Sparkles} title="Quem consultou (24 h)" hex="#8b5cf6"><ul className="space-y-1.5 text-sm">{live.origins.map((o) => <li key={o.origin} className="flex justify-between"><span>{ORIGIN[o.origin] ?? o.origin}</span><span className="figure text-muted">{o.ok}/{o.n} ok</span></li>)}</ul></DashBlock>
+              <DashBlock I={TriangleAlert} title="Motivos de falha (24 h)" hex="#f59e0b"><ul className="space-y-1.5 text-sm">{live.topWhy.map((w) => <li key={w.why} className="flex justify-between gap-3"><span className="truncate">{w.why}</span><span className="figure text-muted">{w.n}x</span></li>)}{!live.topWhy.length && <li className="text-muted">Nenhuma falha.</li>}</ul></DashBlock>
             </div>
           )}
         </>

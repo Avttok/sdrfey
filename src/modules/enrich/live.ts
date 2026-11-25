@@ -15,6 +15,8 @@ export type Live = {
   hours: { h: string; ok: number; fail: number }[];
   origins: { origin: string; n: number; ok: number }[];
   topWhy: { why: string; n: number }[];
+  /** o que as consultas das últimas 24 h trouxeram */
+  found: { phones: number; emails: number; active: number; inactive: number; avgPhones: number | null };
 };
 
 const PENDING = sql`not l.is_test and l.enriched_at is null and (l.enrich_tried_at is null or l.enrich_tried_at < now() - interval '6 hours')`;
@@ -25,7 +27,7 @@ const LOG_SELECT = sql`select g.id, g.lead_id, l.company, l.cnpj, g.at, g.origin
 const toRow = (r: Record<string, unknown>): LogRow => ({ id: Number(r.id), leadId: Number(r.lead_id), company: String(r.company), cnpj: String(r.cnpj), at: iso(r.at)!, origin: String(r.origin), ok: !!r.ok, ms: Number(r.ms), by: (r.by as string) ?? null, status: (r.status as string) ?? null, phones: Number(r.phones), emails: Number(r.emails), why: (r.why as string) ?? null });
 
 export async function liveData(): Promise<Live> {
-  const [stats, [ready], [rt], queue, recent, failed, hours, origins, topWhy, [last]] = await Promise.all([
+  const [stats, [ready], [rt], queue, recent, failed, hours, origins, topWhy, [last], [fd]] = await Promise.all([
     enrichStats(),
     db.execute<{ n: number }>(sql`select count(*)::int as n from leads l where not l.is_test and l.enriched_at is not null and not exists (select 1 from interactions i where i.lead_id = l.id)`),
     db.execute<{ m10: number; h1: number; h24: number; ok24: number; avg: number | null; last15: number; ok10: number }>(sql`
@@ -45,6 +47,9 @@ export async function liveData(): Promise<Live> {
     db.execute<{ origin: string; n: number; ok: number }>(sql`select origin, count(*)::int as n, count(*) filter (where ok)::int as ok from enrich_log where at > now() - interval '24 hours' group by 1 order by 2 desc`),
     db.execute<{ why: string; n: number }>(sql`select left(why, 90) as why, count(*)::int as n from enrich_log where not ok and why is not null and at > now() - interval '24 hours' group by 1 order by 2 desc limit 5`),
     db.execute<{ at: Date | null }>(sql`select max(at) as at from enrich_log where ok`),
+    db.execute<{ ph: number; em: number; act: number; ina: number; n: number }>(sql`select coalesce(sum(phones),0)::int as ph, coalesce(sum(emails),0)::int as em,
+      count(*) filter (where ok and status ilike 'ativ%')::int as act, count(*) filter (where ok and status is not null and status not ilike 'ativ%')::int as ina, count(*) filter (where ok)::int as n
+      from enrich_log where at > now() - interval '24 hours'`),
   ]);
   const perMin = (rt?.ok10 ?? 0) / 10;
   return {
@@ -59,6 +64,7 @@ export async function liveData(): Promise<Live> {
     hours: [...hours],
     origins: [...origins],
     topWhy: [...topWhy],
+    found: { phones: fd?.ph ?? 0, emails: fd?.em ?? 0, active: fd?.act ?? 0, inactive: fd?.ina ?? 0, avgPhones: fd?.n ? Math.round((fd.ph / fd.n) * 10) / 10 : null },
   };
 }
 
