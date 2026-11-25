@@ -24,7 +24,9 @@ const listCond = (key: string) => {
     case "deal_open": return sql`${STALE} and exists (select 1 from deals d where d.lead_id = l.id and d.stage not in ('ganho','perdido'))`;
     case "qualified": return sql`${STALE} and exists (select 1 from lead_tags lt join tags t on t.id = lt.tag_id where lt.lead_id = l.id and t.key = 'qualificado')`;
     case "customers": return sql`${STALE} and exists (select 1 from deals d where d.lead_id = l.id and d.stage = 'ganho')`;
-    case "no_link": return sql`${STALE} and (l.eox_id is null or l.eox_id !~ '^[0-9]{7,}$' or l.eox_id = l.eox_code)`;
+    // reconsulta geral: ignora o "consultado há pouco" da semana; só pula quem acabou de ser consultado (30 min), para a fila andar e terminar
+    case "refresh": return sql`(l.eox_checked_at is null or l.eox_checked_at < now() - interval '30 minutes')`;
+    case "no_link": return sql`(l.eox_checked_at is null or l.eox_checked_at < now() - interval '30 minutes') and (l.eox_id is null or l.eox_id !~ '^[0-9]{7,}$' or l.eox_id = l.eox_code)`;
     case "no_phone": return sql`${STALE} and not ${phoneOk}`;
     case "no_mobile": return sql`${STALE} and not exists (select 1 from lead_channels c where c.lead_id = l.id and c.kind = 'phone' and not c.wrong and length(regexp_replace(c.value, '[^0-9]', '', 'g')) >= 11)`;
     case "one_phone": return sql`${STALE} and (select count(*) from lead_channels c where c.lead_id = l.id and c.kind = 'phone' and not c.wrong) = 1`;
@@ -64,7 +66,7 @@ export async function eoxBatch(maxIn: number | null, budgetMs = 40_000, userId: 
   retryH = o.retryHours;
   const max = maxIn ?? o.batch;
   const t0 = Date.now(), stop = t0 + budgetMs, list = normEoxList(listIn);
-  const rows = await db.execute<{ id: number }>(sql`select l.id from leads l where ${scopeWhere(list)} order by (exists (select 1 from deals d where d.lead_id = l.id and d.stage not in ('ganho','perdido'))) desc, l.id limit ${max}`);
+  const rows = await db.execute<{ id: number }>(sql`select l.id from leads l where ${scopeWhere(list)} order by (l.eox_id is null or l.eox_id !~ '^[0-9]{7,}$' or l.eox_id = l.eox_code) desc, (exists (select 1 from deals d where d.lead_id = l.id and d.stage not in ('ganho','perdido'))) desc, l.id limit ${max}`);
   const ids = [...rows].map((r) => r.id);
   if (!ids.length) return { tried: 0, ok: 0, failed: 0 };
   await db.execute(sql`update leads set eox_tried_at = now() where id in (${sql.join(ids.map((i) => sql`${i}`), sql`, `)})`);
