@@ -7,6 +7,7 @@ import { forgetQuickAction, quickLoginAction } from "@/modules/auth/actions";
 import { QUICK_COOKIE, readQuick } from "@/modules/auth/token";
 import { SubmitButton } from "@/components/submit-button";
 import { LoginForm } from "@/components/login-form";
+import { Tile, glass, Mark } from "@/components/theme-kit";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -15,9 +16,9 @@ export const metadata: Metadata = { title: "Entrar" };
 export const dynamic = "force-dynamic";
 
 const FEATURES = [
-  { icon: Shuffle, title: "Um lead por vez", text: "O sistema sorteia o próximo e trava o lead só para você." },
-  { icon: MessageCircle, title: "Do e-mail à ligação", text: "Modelos prontos e WhatsApp em um clique." },
-  { icon: CalendarCheck, title: "Até o agendamento", text: "Metas do dia, visitas marcadas e tudo no histórico." },
+  { hex: "#3b82f6", icon: Shuffle, title: "Um lead por vez", text: "O sistema sorteia o próximo e trava o lead só para você." },
+  { hex: "#10b981", icon: MessageCircle, title: "Do e-mail à ligação", text: "Modelos prontos e WhatsApp em um clique." },
+  { hex: "#f59e0b", icon: CalendarCheck, title: "Até o agendamento", text: "Metas do dia, visitas marcadas e tudo no histórico." },
 ];
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ outra?: string }> }) {
@@ -39,9 +40,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <div className="relative">
           <h1 className="display max-w-lg text-4xl sm:text-5xl">Um lead por vez, do primeiro contato ao <span className="bg-gradient-to-r from-[#93c5fd] via-[#c4b5fd] to-[#f9a8d4] bg-clip-text text-transparent">agendamento.</span></h1>
           <ul className="mt-9 hidden max-w-md space-y-4 sm:block">
-            {FEATURES.map(({ icon: Icon, title, text }) => (
-              <li key={title} className="flex items-start gap-3.5">
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/12 ring-1 ring-white/20 backdrop-blur"><Icon size={19} aria-hidden /></span>
+            {FEATURES.map(({ icon: Icon, title, text, hex }) => (
+              <li key={title} className="flex items-start gap-3.5 rounded-2xl border border-white/15 bg-white/[0.06] p-3 backdrop-blur-md">
+                <Tile icon={Icon} hex={hex} />
                 <span><span className="block font-semibold">{title}</span><span className="block text-balance text-sm text-white/70">{text}</span></span>
               </li>
             ))}
@@ -53,7 +54,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <section className="relative flex flex-col px-6 py-8 sm:px-12">
         <div className="hidden justify-end lg:flex"><ThemeToggle /></div>
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-10">
-          <div className="rounded-3xl card-edge card-surface p-7 shadow-xl sm:p-8">
+          <div className="relative overflow-hidden rounded-3xl border-2 p-7 shadow-xl sm:p-8" style={glass("#6366f1", 14, 3)}>
+            <Mark icon={Shuffle} hex="#6366f1" size={170} />
             <span aria-hidden className="mb-5 block h-1 w-14 rounded-full bg-grad" />
             <h2 className="display mb-1.5 text-3xl">Bem-vindo de volta</h2>
             {quick.length > 0 && !other ? (

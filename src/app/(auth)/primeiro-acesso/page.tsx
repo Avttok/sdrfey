@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { FirstAccessForm } from "@/components/first-access-form";
+import { Sparkles } from "lucide-react";
+import { glass, Mark } from "@/components/theme-kit";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { earnedKeysOf } from "@/modules/achievements/stats";
@@ -20,7 +22,10 @@ export default async function ChangePasswordPage() {
         <div className="flex items-center justify-between"><Logo /><ThemeToggle /></div>
         <h1 className="display mt-8 text-3xl sm:text-4xl">{user.mustChangePassword ? "Primeiro acesso: crie sua senha" : "Personalize seu perfil"}</h1>
         <p className="mb-6 mt-2 text-muted">{user.mustChangePassword ? "Troque a senha provisória por uma só sua e escolha como você aparece, a cor e o tema. Leva um minuto." : "Escolha nome, ícone, banner, cor e tema. Não precisa trocar a senha: ela continua a mesma. Você pode mudar tudo depois em Minha conta."}</p>
-        <FirstAccessForm needPassword={user.mustChangePassword} name={user.name} username={user.username} roles={user.shownRoles} accent={user.accent} earned={earned} />
+        <div className="relative overflow-hidden rounded-3xl border-2 p-5 shadow-xl sm:p-6" style={glass("#8b5cf6", 12, 3)}>
+        <Mark icon={Sparkles} hex="#8b5cf6" size={170} />
+        <div className="relative"><FirstAccessForm needPassword={user.mustChangePassword} name={user.name} username={user.username} roles={user.shownRoles} accent={user.accent} earned={earned} /></div>
+        </div>
       </div>
     </main>
   );

@@ -6,7 +6,7 @@ import { RoteiroLink } from "@/components/roteiro-link";
 import { ClientIds } from "@/components/client-ids";
 import { EoxInfoCard } from "@/components/eox-info";
 import { StatLine, TouchTimeline } from "@/components/touch-timeline";
-import { ArrowLeft, Ban, CalendarCheck, Copy, ExternalLink, Handshake, Link2, MapPin, Pencil, Phone, Plus, Tag, Trash2, RotateCcw, UnlockKeyhole, Users } from "lucide-react";
+import { ArrowLeft, Ban, Building2, CalendarCheck, Copy, ExternalLink, Handshake, Link2, MapPin, Pencil, Phone, Plus, Tag, Trash2, RotateCcw, UnlockKeyhole, Users } from "lucide-react";
 import Link from "next/link";
 import { SectionCard } from "@/components/section-card";
 import { FlashTag, TagDeck } from "@/components/attend-final";
@@ -17,6 +17,7 @@ import { LeadInfoPanel } from "@/components/lead-info-panel";
 import { TagChip } from "@/components/tag-chip";
 import { useToast } from "@/components/toast";
 import { useRun } from "@/components/use-run";
+import { glass, Mark } from "@/components/theme-kit";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { VisitRow } from "@/components/visit-row";
 import { DateInput } from "@/components/date-input";
@@ -46,7 +47,8 @@ export function LeadEditor({ tagCounts, touchCounts, adminDelete, kpis, records,
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2"><Link href="/leads" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink"><ArrowLeft size={15} aria-hidden /> Voltar para Leads</Link>{adminDelete}</div>
-      <header className={`${panelCls} relative overflow-hidden p-5 sm:p-6`}>
+      <header className="group relative overflow-hidden rounded-3xl border-2 p-5 sm:p-6" style={glass(active === null ? "#6366f1" : active ? "#10b981" : "#ef4444", 18, 4)}>
+        <Mark icon={Building2} hex={active === null ? "#6366f1" : active ? "#10b981" : "#ef4444"} size={190} />
         <div aria-hidden className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-accent/10 blur-2xl" />
         <div className="relative flex flex-wrap items-center gap-x-5 gap-y-4">
           <span aria-hidden className={`grid size-16 shrink-0 place-items-center rounded-2xl text-xl font-bold ${active === null ? "bg-sunk text-muted" : active ? "bg-ok/15 text-ok" : "bg-danger/15 text-danger"}`}>{initials}</span>
@@ -77,7 +79,7 @@ export function LeadEditor({ tagCounts, touchCounts, adminDelete, kpis, records,
         onConfirm={() => { setConfirmReset(false); run(() => resetLeadFromPageAction(lead.id)); }}>
         Apaga tags (menos porte e capital), observação, interações e visitas, e devolve o lead ao estoque como novo. Os dados da empresa continuam salvos. Fica tudo registrado.
       </ConfirmDialog>
-      <div className={`${panelCls} p-5 sm:p-6`}><LeadInfoPanel lead={lead} wide showMap={showMap} /></div>
+      <div className="relative overflow-hidden rounded-3xl border-[1.5px] p-5 sm:p-6" style={glass("#6366f1", 8, 2)}><LeadInfoPanel lead={lead} wide showMap={showMap} /></div>
 
       <div className="gap-5 lg:columns-2 [&>*]:mb-5 [&>*]:break-inside-avoid">
       <SectionCard icon={Pencil} title="Editar dados">

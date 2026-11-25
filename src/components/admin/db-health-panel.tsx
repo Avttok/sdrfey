@@ -4,6 +4,7 @@ import { TableBrowser } from "@/components/admin/table-browser";
 import { Activity, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { btnGhost } from "@/components/ui";
+import { glass } from "@/components/theme-kit";
 import { Trash2, Sparkles } from "lucide-react";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useToast, useBusyWhile } from "@/components/toast";
@@ -28,9 +29,9 @@ const tone: Record<Level, string> = { ok: "border-ok/30 bg-ok/10", warn: "border
 
 function Stat({ label, value, hint }: { label: string; value: React.ReactNode; hint?: string }) {
   return (
-    <div className="rounded-xl border border-line/60 bg-sunk/60 p-3">
+    <div className="rounded-2xl border-[1.5px] p-3.5" style={glass("#14b8a6", 14, 3)}>
       <p className="text-xs text-muted">{label}</p>
-      <p className="figure mt-0.5 text-lg font-semibold">{value}</p>
+      <p className="figure mt-0.5 text-xl font-extrabold">{value}</p>
       {hint && <p className="text-[11px] text-muted">{hint}</p>}
     </div>
   );
