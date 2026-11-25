@@ -267,24 +267,6 @@ export function ScriptPlayer({ persistKey, hideNoteBox, facts, script, vars, ext
         </div>
       </div>
 
-      {/* Apoio, fechado por padrão: não polui a fala */}
-      {!ended && (node.tip || (facts && node.ask?.length)) && (
-        <div className="space-y-2">
-          {node.tip && (
-            <details className="group rounded-2xl border border-line bg-panel">
-              <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 px-3 text-sm font-semibold text-muted transition hover:text-ink"><Lightbulb size={15} aria-hidden className="text-warn" /> Dica para esta fala<ChevronDown size={15} aria-hidden className="ml-auto transition group-open:rotate-180" /></summary>
-              <p className="px-3 pb-3 text-sm"><span aria-hidden className="mr-1">{postureOf(node).emoji}</span><b>Postura:</b> {postureOf(node).text}. {node.tip}</p>
-            </details>
-          )}
-          {facts && node.ask?.length ? (
-            <details className="group rounded-2xl border border-line bg-panel">
-              <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 px-3 text-sm font-semibold text-muted transition hover:text-ink"><Brain size={15} aria-hidden className="text-accent" /> Guardar o que ele disse<ChevronDown size={15} aria-hidden className="ml-auto transition group-open:rotate-180" /></summary>
-              <div className="px-3 pb-3"><FactAsk facts={facts} ask={node.ask} nodeId={node.id} /></div>
-            </details>
-          ) : null}
-        </div>
-      )}
-
       {/* Respostas */}
       {!ended && (
         <div className="space-y-2 tall:lg:sticky tall:lg:bottom-0 tall:lg:z-10 tall:lg:-mx-4 tall:lg:max-h-[36dvh] tall:lg:overflow-y-auto tall:lg:border-t tall:lg:border-line tall:lg:bg-panel/95 tall:lg:px-4 tall:lg:pb-2 tall:lg:pt-2.5 tall:lg:backdrop-blur">
@@ -302,6 +284,23 @@ export function ScriptPlayer({ persistKey, hideNoteBox, facts, script, vars, ext
               );
             })}
           </div>
+          {/* Apoio logo abaixo das respostas, fechado por padrão: tudo ao alcance do dedo */}
+          {(node.tip || (facts && node.ask?.length)) && (
+        <div className="space-y-2">
+          {node.tip && (
+            <details className="group rounded-2xl border border-line bg-panel">
+              <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 px-3 text-sm font-semibold text-muted transition hover:text-ink"><Lightbulb size={15} aria-hidden className="text-warn" /> Dica para esta fala<ChevronDown size={15} aria-hidden className="ml-auto transition group-open:rotate-180" /></summary>
+              <p className="px-3 pb-3 text-sm"><span aria-hidden className="mr-1">{postureOf(node).emoji}</span><b>Postura:</b> {postureOf(node).text}. {node.tip}</p>
+            </details>
+          )}
+          {facts && node.ask?.length ? (
+            <details className="group rounded-2xl border border-line bg-panel">
+              <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 px-3 text-sm font-semibold text-muted transition hover:text-ink"><Brain size={15} aria-hidden className="text-accent" /> Guardar o que ele disse<ChevronDown size={15} aria-hidden className="ml-auto transition group-open:rotate-180" /></summary>
+              <div className="px-3 pb-3"><FactAsk facts={facts} ask={node.ask} nodeId={node.id} /></div>
+            </details>
+          ) : null}
+        </div>
+      )}
           {suggestions.length > 0 && (
             <div className="rounded-2xl border border-accent/30 bg-accent/5 p-2.5" aria-label="Sugestões para este momento">
               <p className="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-accent"><Wand2 size={13} aria-hidden /> Sugestões para agora <span className="font-normal normal-case text-muted">(você decide)</span></p>
