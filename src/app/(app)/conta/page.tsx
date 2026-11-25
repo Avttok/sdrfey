@@ -15,7 +15,7 @@ import { CHOOSABLE_ACCENTS, resolveAccent, swatchBg } from "@/config/theme";
 import { earnedKeysOf } from "@/modules/achievements/stats";
 import { requireUser } from "@/modules/auth/guard";
 import { MyDialerForm } from "@/components/my-dialer-form";
-import { db, users } from "@/db";
+import { db, shopPurchases, users } from "@/db";
 import { eq } from "drizzle-orm";
 import { setAccentAction } from "@/modules/users/actions";
 
@@ -25,6 +25,7 @@ export default async function AccountPage() {
   const user = await requireUser();
   const current = resolveAccent(user.accent, user.shownRoles);
   const earned = await earnedKeysOf(user.id, user.roles);
+  const ownedShop = (await db.select({ k: shopPurchases.itemKey }).from(shopPurchases).where(eq(shopPurchases.userId, user.id))).map((r) => r.k);
   const canDial = user.isAdmin || !!user.permissions["fn.dialer"];
   const [vp] = canDial ? await db.select({ a: users.vocallAgentId, r: users.vocallRamal }).from(users).where(eq(users.id, user.id)) : [];
 
@@ -46,7 +47,7 @@ export default async function AccountPage() {
         <section className={`${panelCls} p-6`}>
           <h2 className="display mb-5 text-xl">Aparência</h2>
 
-          <div className="mb-6"><BannerPicker current={user.banner} earned={earned} /></div>
+          <div className="mb-6"><BannerPicker current={user.banner} earned={earned} ownedShop={ownedShop} /></div>
           <div className="mb-6"><AvatarPicker earned={earned} current={user.avatar} initials={user.name.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase()} /></div>
 
           <div className="mb-6"><MyNavLayout current={user.navLayout} /></div>

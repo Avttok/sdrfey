@@ -1,5 +1,5 @@
 /** Catálogo da loja do chat. Tudo é visual: nome (fonte, cor, efeito) e balão de texto. */
-export type ShopCategory = "font" | "color" | "effect" | "bubble";
+export type ShopCategory = "font" | "color" | "effect" | "bubble" | "banner";
 export type ShopItem = { key: string; cat: ShopCategory; name: string; price: number; /** CSS aplicado (nome ou balão) */ css: Record<string, string>; /** classe de animação opcional */ cls?: string; /** só se ganha em segredo: some da vitrine enquanto não for seu */ secret?: boolean };
 
 export const CATEGORIES: { key: ShopCategory; label: string; hint: string }[] = [
@@ -7,12 +7,18 @@ export const CATEGORIES: { key: ShopCategory; label: string; hint: string }[] = 
   { key: "color", label: "Cor do nome", hint: "Cores lisas e degradês" },
   { key: "effect", label: "Efeito do nome", hint: "Brilho e animação" },
   { key: "bubble", label: "Balão de texto", hint: "O fundo das suas mensagens" },
+  { key: "banner", label: "Banner do perfil", hint: "A faixa de cima do seu perfil" },
 ];
 
 const font = (key: string, name: string, price: number, family: string, extra: Record<string, string> = {}): ShopItem => ({ key: `font_${key}`, cat: "font", name, price, css: { fontFamily: family, ...extra } });
 const color = (key: string, name: string, price: number, c: string): ShopItem => ({ key: `color_${key}`, cat: "color", name, price, css: { color: c } });
 const grad = (key: string, name: string, price: number, g: string): ShopItem => ({ key: `color_${key}`, cat: "color", name, price, css: { backgroundImage: g, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent", WebkitTextFillColor: "transparent" } });
 const effect = (key: string, name: string, price: number, cls: string, css: Record<string, string> = {}): ShopItem => ({ key: `fx_${key}`, cat: "effect", name, price, cls, css });
+/** Banner do perfil: camadas [imagem, tamanho, posição] (o fundo liso vai à parte, porque cor não entra na lista de imagens). */
+const banner = (key: string, name: string, price: number, layers: [string, string?, string?][], bg?: string): ShopItem => ({
+  key: `banner_${key}`, cat: "banner", name, price,
+  css: { backgroundImage: layers.map((l) => l[0]).join(", "), backgroundSize: layers.map((l) => l[1] ?? "auto").join(", "), backgroundPosition: layers.map((l) => l[2] ?? "0 0").join(", "), ...(bg ? { backgroundColor: bg } : {}) },
+});
 const bubble = (key: string, name: string, price: number, css: Record<string, string>): ShopItem => ({ key: `bubble_${key}`, cat: "bubble", name, price, css });
 
 export const SHOP: ShopItem[] = [
@@ -116,6 +122,70 @@ export const SHOP: ShopItem[] = [
   bubble("matrix", "Matrix", 170, { background: "#000", color: "#4ade80", borderColor: "#22c55e", fontFamily: "ui-monospace, Menlo, monospace", boxShadow: "0 0 12px #22c55e66" }),
   bubble("royal", "Realeza", 280, { background: "linear-gradient(135deg,#4c1d95,#7c3aed)", color: "#fde68a", borderColor: "#fbbf24", boxShadow: "0 0 0 1px #fbbf24" }),
   bubble("aurora", "Aurora", 300, { background: "linear-gradient(135deg,#22d3ee,#818cf8,#e879f9)", color: "#fff", borderColor: "transparent", boxShadow: "0 6px 20px #818cf855" }),
+  /* ───── Novidades: fontes ───── */
+  font("elegante", "Elegante", 90, "Didot, 'Bodoni MT', 'Playfair Display', Georgia, serif", { fontStyle: "italic", fontWeight: "700" }),
+  font("copper", "Placa de cobre", 90, "Copperplate, 'Copperplate Gothic Light', Optima, serif", { letterSpacing: ".1em", textTransform: "uppercase", fontSize: ".9em", fontWeight: "700" }),
+  font("futurista", "Futurista", 100, "'Century Gothic', Futura, 'Avenir Next', sans-serif", { fontWeight: "800", letterSpacing: ".08em", textTransform: "uppercase", fontSize: ".9em" }),
+  font("giz", "Giz", 100, "'Chalkduster', 'Marker Felt', 'Bradley Hand', cursive", { fontWeight: "700" }),
+  font("quadrinhos", "Quadrinhos", 110, "'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive", { fontWeight: "800" }),
+  font("noticia", "Jornal", 70, "Baskerville, 'Baskerville Old Face', 'Times New Roman', serif", { fontWeight: "800", fontVariant: "small-caps", letterSpacing: ".04em" }),
+  font("gotica", "Gótica", 150, "'Old English Text MT', 'UnifrakturCook', 'Luminari', fantasy", { fontSize: "1.1em" }),
+  font("minimal", "Minimal", 60, "'Avenir Next', 'Helvetica Neue', Helvetica, sans-serif", { fontWeight: "300", letterSpacing: ".12em" }),
+  font("ousada", "Ousada", 120, "'Franklin Gothic Heavy', 'Arial Black', Haettenschweiler, sans-serif", { fontWeight: "900", fontStyle: "italic" }),
+  font("cartaz", "Cartaz de rua", 130, "Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif", { textTransform: "uppercase", letterSpacing: ".08em", fontStyle: "italic" }),
+
+  /* ───── Novidades: cores ───── */
+  grad("neonrosa", "Neon rosa", 130, "linear-gradient(90deg,#ff2bd6,#ff7ae0,#8b5cf6)"),
+  grad("ouroreal", "Ouro real", 170, "linear-gradient(90deg,#b45309,#fcd34d,#f59e0b,#fef3c7)"),
+  grad("esmeralda", "Esmeralda", 110, "linear-gradient(90deg,#047857,#34d399,#a7f3d0)"),
+  grad("eclipse", "Eclipse", 140, "linear-gradient(90deg,#312e81,#7c3aed,#f0abfc)"),
+  grad("tropical", "Tropical", 120, "linear-gradient(90deg,#06b6d4,#22c55e,#facc15,#fb923c)"),
+  grad("cobre", "Cobre", 120, "linear-gradient(90deg,#7c2d12,#ea580c,#fdba74)"),
+  grad("safira", "Safira", 110, "linear-gradient(90deg,#1e3a8a,#2563eb,#93c5fd)"),
+  grad("rubi", "Rubi", 110, "linear-gradient(90deg,#7f1d1d,#e11d48,#fda4af)"),
+  grad("cafe", "Café", 80, "linear-gradient(90deg,#451a03,#92400e,#d6a76c)"),
+  grad("metal", "Metal escovado", 140, "linear-gradient(90deg,#475569,#e2e8f0,#94a3b8,#f8fafc)"),
+  grad("maca", "Maçã do amor", 100, "linear-gradient(90deg,#be123c,#f43f5e,#fb7185)"),
+  grad("limao", "Limonada", 90, "linear-gradient(90deg,#65a30d,#bef264,#fde047)"),
+
+  /* ───── Novidades: efeitos ───── */
+  effect("neonpink", "Letreiro rosa", 170, "fx-neonpink"),
+  effect("retro3d", "Letra 3D", 150, "fx-retro3d"),
+  effect("diamond", "Diamante", 190, "fx-diamond"),
+  effect("clover", "Trevo", 120, "fx-clover"),
+  effect("moon", "Lua", 130, "fx-moon"),
+  effect("sun", "Sol", 130, "fx-sun"),
+  effect("blossom", "Flor de cerejeira", 140, "fx-blossom"),
+  effect("bounce", "Quicar", 130, "fx-bounce"),
+  effect("typing", "Digitando", 150, "fx-typing"),
+  effect("shake", "Tremer", 110, "fx-shake"),
+  effect("ghost", "Fantasma", 140, "fx-ghost"),
+  effect("rainbowline", "Arco-íris embaixo", 160, "fx-rainbowline"),
+
+  /* ───── Novidades: balões ───── */
+  bubble("cyber", "Ciano elétrico", 170, { background: "#071826", color: "#a5f3fc", borderColor: "#22d3ee", boxShadow: "0 0 0 1px #22d3ee, 0 0 18px #22d3ee88" }),
+  bubble("veludo", "Veludo", 190, { background: "linear-gradient(135deg,#7f1d1d,#4c0519)", color: "#fde68a", borderColor: "#d97706", boxShadow: "0 0 0 1px #d9770666" }),
+  bubble("musgo", "Musgo", 110, { background: "linear-gradient(135deg,#14532d,#3f6212)", color: "#ecfccb", borderColor: "#4d7c0f" }),
+  bubble("madrugada", "Madrugada", 150, { backgroundColor: "#0f172a", backgroundImage: "radial-gradient(#e0e7ff88 1px, transparent 1.5px), radial-gradient(#e0e7ff55 1px, transparent 1.5px)", backgroundSize: "26px 26px, 41px 41px", backgroundPosition: "0 0, 13px 17px", color: "#e0e7ff", borderColor: "#4338ca" }),
+  bubble("sorvete", "Sorvete", 100, { background: "linear-gradient(135deg,#fef9c3,#fbcfe8 55%,#bae6fd)", color: "#4a1d2f", borderColor: "transparent" }),
+  bubble("cobre", "Cobre", 130, { background: "linear-gradient(135deg,#fdba74,#c2410c)", color: "#431407", borderColor: "#9a3412" }),
+  bubble("safira", "Safira", 130, { background: "linear-gradient(135deg,#1d4ed8,#1e3a8a)", color: "#dbeafe", borderColor: "#60a5fa" }),
+  bubble("rubi", "Rubi", 130, { background: "linear-gradient(135deg,#e11d48,#881337)", color: "#ffe4e6", borderColor: "#fb7185" }),
+  bubble("pixel", "Pixel", 140, { background: "#1e1b4b", color: "#fde047", borderColor: "#fde047", borderWidth: "3px", borderRadius: "2px", boxShadow: "4px 4px 0 #0f0a2e", fontFamily: "ui-monospace, Menlo, Consolas, monospace" }),
+  bubble("retro80", "Anos 80", 160, { background: "linear-gradient(135deg,#f472b6,#fbbf24 50%,#22d3ee)", color: "#1e1b4b", borderColor: "transparent", boxShadow: "3px 3px 0 #1e1b4b" }),
+
+  /* ───── Banners do perfil ───── */
+  banner("cyber", "Cyberpunk", 320, [["linear-gradient(transparent 92%, #22d3ee66 92%)", "100% 18px"], ["linear-gradient(90deg, transparent 94%, #ec489966 94%)", "26px 100%"], ["radial-gradient(circle at 15% 120%, #ec4899aa, transparent 50%)"], ["radial-gradient(circle at 90% -20%, #22d3eeaa, transparent 50%)"], ["linear-gradient(135deg, #1a0b3b, #0b1030 55%, #3b0a45)"]]),
+  banner("royal", "Realeza", 380, [["radial-gradient(circle at 50% -10%, #fde68a66, transparent 55%)"], ["repeating-linear-gradient(45deg, #fbbf2426 0 2px, transparent 2px 16px)"], ["repeating-linear-gradient(-45deg, #fbbf2426 0 2px, transparent 2px 16px)"], ["linear-gradient(135deg, #3b0764, #6d28d9 50%, #4c1d95)"]]),
+  banner("folhagem", "Folhagem", 260, [["radial-gradient(ellipse at 12% 95%, #16a34a, transparent 50%)"], ["radial-gradient(ellipse at 88% 85%, #65a30d, transparent 50%)"], ["radial-gradient(ellipse at 50% -10%, #bef26455, transparent 55%)"], ["radial-gradient(#bbf7d044 2px, transparent 2.5px)", "26px 26px"], ["linear-gradient(160deg, #052e16, #166534)"]]),
+  banner("estrelada", "Noite estrelada", 300, [["radial-gradient(circle at 82% 30%, #fef9c3 0 12px, #fef08a55 13px 26px, transparent 58px)"], ["radial-gradient(#fff 1px, transparent 1.5px)", "43px 43px"], ["radial-gradient(#fffc 1px, transparent 1.5px)", "67px 67px", "21px 29px"], ["linear-gradient(180deg, #0f172a, #312e81 75%, #4c1d95)"]]),
+  banner("tropical", "Verão tropical", 260, [["radial-gradient(circle at 86% 24%, #fde047 0 20px, #fbbf2477 21px 44px, transparent 58px)"], ["linear-gradient(180deg, #38bdf8, #22d3ee 54%, #fde68a 55%, #fbbf24)"]]),
+  banner("abismo", "Abismo", 240, [["radial-gradient(circle at 18% 115%, #22d3ee55, transparent 50%)"], ["radial-gradient(circle at 82% 125%, #38bdf855, transparent 50%)"], ["repeating-radial-gradient(circle at 50% 135%, transparent 0 16px, #7dd3fc1f 16px 18px)"], ["linear-gradient(180deg, #0c4a6e, #082f49 60%, #020617)"]]),
+  banner("sakura", "Sakura", 220, [["radial-gradient(circle at 20% 30%, #fff1f2 0 3px, transparent 4px)", "58px 58px"], ["radial-gradient(circle at 70% 70%, #fbcfe8 0 4px, transparent 5px)", "83px 83px"], ["linear-gradient(135deg, #fbcfe8, #f9a8d4 55%, #c084fc)"]]),
+  banner("polar", "Gelo polar", 220, [["linear-gradient(115deg, transparent 40%, #ffffff77 48%, transparent 56%)"], ["radial-gradient(#fff 1.5px, transparent 2px)", "32px 32px"], ["linear-gradient(160deg, #e0f2fe, #7dd3fc 60%, #38bdf8)"]]),
+  banner("vulcao", "Vulcão", 280, [["radial-gradient(ellipse at 50% 130%, #fde047, #f97316 32%, transparent 62%)"], ["radial-gradient(circle at 15% 110%, #ef4444aa, transparent 40%)"], ["linear-gradient(180deg, #1c1917, #450a0a 75%, #7f1d1d)"]]),
+  banner("arcade", "Fliperama", 250, [["repeating-linear-gradient(0deg, #00000033 0 2px, transparent 2px 4px)"], ["conic-gradient(from 90deg at 2px 2px, transparent 90deg, #a855f755 0)", "18px 18px"], ["linear-gradient(135deg, #1e1b4b, #4c1d95 50%, #be185d)"]]),
+  banner("confete", "Confete", 200, [["radial-gradient(#f472b6 3px, transparent 3.5px)", "40px 40px"], ["radial-gradient(#facc15 3px, transparent 3.5px)", "40px 40px", "20px 20px"], ["radial-gradient(#38bdf8 2.5px, transparent 3px)", "40px 40px", "10px 30px"], ["linear-gradient(135deg, #7c3aed, #db2777)"]]),
 ];
 /** Prêmios do easter egg: um por categoria, não se compram. */
 export const EGG_SECRET_ITEMS: ShopItem[] = [
@@ -126,6 +196,23 @@ export const EGG_SECRET_ITEMS: ShopItem[] = [
 ];
 SHOP.push(...EGG_SECRET_ITEMS);
 export const SHOP_BY_KEY = new Map(SHOP.map((i) => [i.key, i]));
+
+/**
+ * Conjuntos: um item de cada tipo (banner, fonte, cor, efeito e balão) com o mesmo tema, para "casar" o perfil.
+ * Comprar o conjunto sai por 25% menos do que comprar as peças separadas (só se paga o que ainda não é seu).
+ */
+export type ShopSet = { key: string; name: string; tagline: string; hex: string; items: [banner: string, font: string, color: string, effect: string, bubble: string] };
+export const SET_DISCOUNT = 0.25;
+export const SETS: ShopSet[] = [
+  { key: "cyberpunk", name: "Cyberpunk", tagline: "Neon, grade e noite de cidade grande", hex: "#ec4899", items: ["banner_cyber", "font_futurista", "color_neonrosa", "fx_neonpink", "bubble_cyber"] },
+  { key: "realeza", name: "Realeza", tagline: "Veludo, ouro e muito estilo", hex: "#f59e0b", items: ["banner_royal", "font_elegante", "color_ouroreal", "fx_diamond", "bubble_veludo"] },
+  { key: "floresta", name: "Floresta encantada", tagline: "Verde, sorte e tranquilidade", hex: "#16a34a", items: ["banner_folhagem", "font_giz", "color_esmeralda", "fx_clover", "bubble_musgo"] },
+  { key: "noite", name: "Noite estrelada", tagline: "Lua, estrelas e silêncio", hex: "#6366f1", items: ["banner_estrelada", "font_minimal", "color_eclipse", "fx_moon", "bubble_madrugada"] },
+  { key: "verao", name: "Verão tropical", tagline: "Sol, mar e sorvete", hex: "#06b6d4", items: ["banner_tropical", "font_quadrinhos", "color_tropical", "fx_sun", "bubble_sorvete"] },
+];
+export const SET_BY_KEY = new Map(SETS.map((x) => [x.key, x]));
+/** Preço do conjunto para quem já tem algumas peças: 25% menos sobre as que faltam. */
+export const setPrice = (set: ShopSet, owned: readonly string[]) => Math.round(set.items.filter((k) => !owned.includes(k)).reduce((a, k) => a + (SHOP_BY_KEY.get(k)?.price ?? 0), 0) * (1 - SET_DISCOUNT));
 
 /** Moedas ganhas por tarefa (a cada feito, uma vez). */
 export const TASK_COINS = { attended: 1, visit: 5, deal: 8, quote: 3, billed: 25, shuffled: 1 } as const;

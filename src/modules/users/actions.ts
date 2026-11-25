@@ -1,8 +1,9 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { db, users } from "@/db";
+import { db, shopPurchases, users } from "@/db";
+import { SHOP_BY_KEY } from "@/config/shop";
 import { NAV } from "@/config/nav";
 import { isFontKey } from "@/config/fonts";
 import { isChoosableAccent } from "@/config/theme";
@@ -26,7 +27,12 @@ export async function setAvatarAction(key: string | null): Promise<{ ok: boolean
 
 export async function setBannerAction(key: string | null): Promise<{ ok: boolean; message?: string }> {
   const me = await requireUser();
-  const next = key && BANNER_BY_KEY.has(key) ? key : null;
+  const shopBanner = key && SHOP_BY_KEY.get(key)?.cat === "banner" ? key : null;
+  const next = shopBanner ?? (key && BANNER_BY_KEY.has(key) ? key : null);
+  if (shopBanner && shopBanner !== me.banner) {
+    const [own] = await db.select({ k: shopPurchases.itemKey }).from(shopPurchases).where(and(eq(shopPurchases.userId, me.id), eq(shopPurchases.itemKey, shopBanner)));
+    if (!own) return { ok: false, message: "Esse banner é da loja do chat. Compre lá para usar." };
+  }
   const bn = next ? BANNER_BY_KEY.get(next) : null;
   if (bn?.unlock && next !== me.banner && !bannerOpen(bn, await earnedKeysOf(me.id, me.roles))) return { ok: false, message: "Esse banner é liberado por uma conquista. Veja em Conquistas." };
   await db.update(users).set({ banner: next }).where(eq(users.id, me.id));

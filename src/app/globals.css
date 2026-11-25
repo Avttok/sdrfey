@@ -317,6 +317,23 @@ body.dragging, body.dragging * { user-select: none !important; cursor: grabbing 
 @media (prefers-reduced-motion: reduce) { .fx-flame, .fx-glitch, .fx-float, .fx-underline, .fx-aura, .fx-frost::after, .fx-coin::before { animation: none; } }
 @media (prefers-reduced-motion: reduce) { .fx-shimmer, .fx-pulse, .fx-wave, .fx-rgb, .fx-breathe, .fx-sparkle::after { animation: none; } }
 
+/* Efeitos novos da loja */
+@keyframes fx-bounce { 0%,100% { transform: translateY(0); } 40% { transform: translateY(-4px); } 60% { transform: translateY(0); } 75% { transform: translateY(-1.5px); } }
+@keyframes fx-shake { 0%,90%,100% { transform: none; } 92% { transform: translateX(-1.5px) rotate(-1deg); } 94% { transform: translateX(1.5px) rotate(1deg); } 96% { transform: translateX(-1px); } 98% { transform: translateX(1px); } }
+@keyframes fx-caret { 50% { opacity: 0; } }
+@keyframes fx-ghostly { 50% { opacity: .45; filter: blur(.4px); } }
+.fx-neonpink { filter: drop-shadow(0 0 2px #ff2bd6) drop-shadow(0 0 7px #ff2bd6) drop-shadow(0 0 14px #ec4899); }
+.fx-retro3d { text-shadow: 1px 1px 0 #fbbf24, 2px 2px 0 #f97316, 3px 3px 0 #dc2626, 4px 4px 0 #7f1d1d; }
+.fx-diamond::before, .fx-clover::before, .fx-moon::before, .fx-sun::before, .fx-blossom::before { margin-right: .3em; font-size: .85em; -webkit-text-fill-color: initial; }
+.fx-diamond::before { content: "💎"; } .fx-clover::before { content: "🍀"; } .fx-moon::before { content: "🌙"; } .fx-sun::before { content: "☀️"; } .fx-blossom::before { content: "🌸"; }
+.fx-sun::before { display: inline-block; animation: pf-spin 14s linear infinite; }
+.fx-bounce { display: inline-block; animation: fx-bounce 1.8s ease-in-out infinite; }
+.fx-shake { display: inline-block; animation: fx-shake 4s steps(1) infinite; }
+.fx-typing::after { content: "▌"; margin-left: .1em; color: var(--fx, currentColor); -webkit-text-fill-color: initial; animation: fx-caret 1s steps(1) infinite; }
+.fx-ghost { animation: fx-ghostly 3s ease-in-out infinite; }
+.fx-rainbowline { background-image: linear-gradient(90deg, #ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ef4444); background-size: 200% 3px; background-repeat: repeat-x; background-position: 0 100%; animation: fx-line 3s linear infinite; padding-bottom: 3px; }
+@media (prefers-reduced-motion: reduce) { .fx-bounce, .fx-shake, .fx-typing::after, .fx-ghost, .fx-rainbowline, .fx-sun::before { animation: none; } }
+
 /* Perfil do chat: anel girando, brilho que passeia no topo */
 @keyframes pf-spin { to { transform: rotate(360deg); } }
 @keyframes pf-sweep { from { transform: translateX(-120%) skewX(-18deg); } to { transform: translateX(260%) skewX(-18deg); } }

@@ -1,4 +1,5 @@
 import type React from "react";
+import { SHOP_BY_KEY } from "@/config/shop";
 /** Padrões de banner do perfil. Todos usam a cor do sistema da pessoa (--accent / --accent-2), então cada um fica com a cara dela. */
 export type Banner = { key: string; label: string; css: Record<string, string>; /** Chave da conquista que libera este padrão (sem ela, é livre para todos). */ unlock?: string };
 
@@ -30,8 +31,8 @@ export const BANNERS: Banner[] = [
   { key: "hazard", label: "Faixa de oficina", unlock: "sched_25", css: { backgroundImage: `repeating-linear-gradient(-45deg, #facc15 0 14px, #1f2937 14px 28px)` } },
   { key: "ember", label: "Brasa", unlock: "day_50", css: { backgroundImage: `radial-gradient(circle at 20% 120%, #fde047, transparent 40%), radial-gradient(circle at 80% 130%, #fb923c, transparent 45%), radial-gradient(${soft(55)} 1.5px, transparent 2px), linear-gradient(180deg, #450a0a, #b91c1c 70%, #f97316)`, backgroundSize: "auto, auto, 34px 34px, auto" } },
   { key: "boreal", label: "Aurora boreal", unlock: "acc_365", css: { backgroundImage: `radial-gradient(ellipse at 20% 30%, #34d39988, transparent 50%), radial-gradient(ellipse at 70% 20%, #60a5fa88, transparent 50%), radial-gradient(ellipse at 50% 80%, #c084fc77, transparent 55%), linear-gradient(180deg, #0b1020, #0f2a3a)` } },
-  { key: "neon", label: "Neon", unlock: "conv_50", css: { backgroundImage: `linear-gradient(${A} 1px, transparent 1px), linear-gradient(90deg, ${A} 1px, transparent 1px), radial-gradient(circle at 50% 120%, color-mix(in srgb, ${A} 55%, transparent), transparent 60%), #070712`, backgroundSize: "24px 24px, 24px 24px, auto, auto" } },
-  { key: "galaxy", label: "Galáxia", unlock: "att_5000", css: { backgroundImage: `radial-gradient(#fff 1px, transparent 1.5px), radial-gradient(#fff9 1px, transparent 1.5px), radial-gradient(ellipse at 30% 40%, #a855f7aa, transparent 55%), radial-gradient(ellipse at 75% 60%, #22d3eeaa, transparent 55%), #05010f`, backgroundSize: "37px 37px, 61px 61px, auto, auto, auto", backgroundPosition: "0 0, 17px 23px, 0 0, 0 0, 0 0" } },
+  { key: "neon", label: "Neon", unlock: "conv_50", css: { backgroundImage: `linear-gradient(${A} 1px, transparent 1px), linear-gradient(90deg, ${A} 1px, transparent 1px), radial-gradient(circle at 50% 120%, color-mix(in srgb, ${A} 55%, transparent), transparent 60%)`, backgroundColor: "#070712", backgroundSize: "24px 24px, 24px 24px, auto" } },
+  { key: "galaxy", label: "Galáxia", unlock: "att_5000", css: { backgroundImage: `radial-gradient(#fff 1px, transparent 1.5px), radial-gradient(#fff9 1px, transparent 1.5px), radial-gradient(ellipse at 30% 40%, #a855f7aa, transparent 55%), radial-gradient(ellipse at 75% 60%, #22d3eeaa, transparent 55%)`, backgroundColor: "#05010f", backgroundSize: "37px 37px, 61px 61px, auto, auto", backgroundPosition: "0 0, 17px 23px, 0 0, 0 0" } },
   { key: "holo", label: "Holográfico", unlock: "bill_200", css: { backgroundImage: `repeating-linear-gradient(115deg, #ff9ad5aa 0 12px, #fff3a8aa 12px 24px, #9affd6aa 24px 36px, #9ad0ffaa 36px 48px, #d3a8ffaa 48px 60px), linear-gradient(135deg, #f5f3ff, #e0f2fe)` } },
   { key: "ouro", label: "Ouro maciço", unlock: "cash_1m", css: { backgroundImage: `linear-gradient(115deg, transparent 30%, #fff8 45%, transparent 60%), linear-gradient(135deg, #92400e, #f59e0b 30%, #fde68a 50%, #f59e0b 70%, #92400e)` } },
   { key: "douradovo", label: "Douradovo", unlock: "egg", css: { backgroundImage: `radial-gradient(circle at 50% 50%, #fff7c2, transparent 45%), radial-gradient(${soft(60)} 1.5px, transparent 2px), linear-gradient(135deg, #d97706, #fbbf24 50%, #b45309)`, backgroundSize: "auto, 28px 28px, auto" } },
@@ -39,4 +40,5 @@ export const BANNERS: Banner[] = [
 export const BANNER_BY_KEY = new Map(BANNERS.map((b) => [b.key, b]));
 /** Banner livre ou liberado? `earned` = chaves das conquistas que a pessoa tem. */
 export const bannerOpen = (b: Banner, earned: ReadonlySet<string> | readonly string[]) => !b.unlock || (Array.isArray(earned) ? earned.includes(b.unlock) : (earned as ReadonlySet<string>).has(b.unlock));
-export const bannerStyle = (key?: string | null): React.CSSProperties => (BANNER_BY_KEY.get(key ?? "") ?? BANNERS[0]).css as React.CSSProperties;
+/** Os banners da loja do chat (chave "banner_…") também valem como banner de perfil. */
+export const bannerStyle = (key?: string | null): React.CSSProperties => (BANNER_BY_KEY.get(key ?? "")?.css ?? SHOP_BY_KEY.get(key ?? "")?.css ?? BANNERS[0].css) as React.CSSProperties;

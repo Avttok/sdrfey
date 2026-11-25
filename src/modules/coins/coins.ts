@@ -49,13 +49,16 @@ export async function coinBalance(uid: number): Promise<number> {
 export type ShopState = { rewards: Rewards; balance: number; owned: string[]; equipped: Record<string, string> };
 export async function shopState(uid: number, roles: readonly string[]): Promise<ShopState> {
   await syncCoins(uid, roles);
-  const [balance, owned, [st], cfg] = await Promise.all([
+  const [balance, owned, [st], cfg, [me]] = await Promise.all([
     coinBalance(uid),
     db.select({ k: shopPurchases.itemKey }).from(shopPurchases).where(eq(shopPurchases.userId, uid)),
     db.select().from(chatStyles).where(eq(chatStyles.userId, uid)),
     getSettings(),
+    db.select({ banner: users.banner }).from(users).where(eq(users.id, uid)),
   ]);
-  return { rewards: rewardsOf(cfg), balance, owned: owned.map((o) => o.k), equipped: st?.equipped ?? {} };
+  // o banner vestido é o do perfil (se for um da loja)
+  const equipped = { ...(st?.equipped ?? {}), ...(me?.banner && SHOP_BY_KEY.has(me.banner) ? { banner: me.banner } : {}) };
+  return { rewards: rewardsOf(cfg), balance, owned: owned.map((o) => o.k), equipped };
 }
 
 export { ACHIEVEMENTS, groupsFor, SHOP_BY_KEY };
