@@ -3,7 +3,7 @@ import { db, enrichLog, leadChannels, leads, leadTags, tagGroups, tags } from "@
 import { TAG } from "@/config/tags";
 import { logAudit } from "@/modules/audit/log";
 import { setLeadTags } from "@/modules/tags/apply";
-import { slugify } from "@/modules/import/normalize";
+import { isValidCnpj, slugify } from "@/modules/import/normalize";
 import { classifyCapital, classifyPorte } from "./classify";
 import { getSettings } from "@/modules/settings/get";
 import { discoverSite, findPlace, scanSite } from "./web";
@@ -30,7 +30,7 @@ async function getJson(url: string): Promise<{ data: unknown | null; why?: strin
     try {
       const res = await fetch(url, { signal: AbortSignal.timeout(7_000), headers: { accept: "application/json", "user-agent": UA }, cache: "no-store" });
       if (res.ok) return { data: await res.json() };
-      why = `HTTP ${res.status}`;
+      why = res.status === 400 ? "HTTP 400 (a fonte recusou este CNPJ)" : `HTTP ${res.status}`;
       if (res.status === 404 || res.status === 400) return { data: null, why, final: true }; // CNPJ inexistente: repetir não adianta
     } catch (e) {
       why = e instanceof Error && e.name === "TimeoutError" ? "tempo esgotado" : "falha de conexão";
@@ -91,9 +91,10 @@ async function enrichCore(leadId: number, userId: number | null, via?: "brasilap
   const cfg = await getSettings();
   const rwUrl = `https://receitaws.com.br/v1/cnpj/${lead.cnpj}`;
   const bUrl = `https://brasilapi.com.br/api/cnpj/v1/${lead.cnpj}`;
-  const off = { data: null, why: "desligada no painel", final: true };
-  const call = (on: boolean, url: string) => (on ? getJson(url) : Promise.resolve(off));
   const fast = cfg.enrich_fast === 1;
+  /* O motivo precisa ser verdadeiro: na Pesquisa Rápida a ReceitaWS é pulada mesmo estando ligada no painel. */
+  const off = { data: null, why: fast && cfg.enrich_receitaws === 1 ? "pulada na Pesquisa Rápida (fica para a fila)" : "desligada no painel", final: true };
+  const call = (on: boolean, url: string) => (on ? getJson(url) : Promise.resolve(off));
   const useRw = !fast && cfg.enrich_receitaws === 1, useB = cfg.enrich_brasilapi === 1;
   const mrUrl = `https://minhareceita.org/${lead.cnpj}`;
   let rwRes: Awaited<ReturnType<typeof getJson>>, bRes: Awaited<ReturnType<typeof getJson>>;
@@ -104,7 +105,7 @@ async function enrichCore(leadId: number, userId: number | null, via?: "brasilap
     rwRes = off;
     const [prim, oc] = await Promise.all([getJson(order[0]), getJson(`https://api.opencnpj.org/${lead.cnpj}`)]);
     bRes = prim;
-    if (!parseBrasilApi(bRes.data) && !bRes.final) bRes = await getJson(order[1]);
+    if (!parseBrasilApi(bRes.data) && bRes.why !== "HTTP 404") { const alt = await getJson(order[1]); if (parseBrasilApi(alt.data) || !bRes.why) bRes = alt; else bRes = { ...bRes, why: `${bRes.why} · reserva: ${alt.why ?? "sem dados"}` }; }
     open = parseOpenCnpj(oc.data);
   } else {
     [rwRes, bRes] = await Promise.all([call(useRw, rwUrl), call(useB, bUrl)]);
@@ -135,7 +136,7 @@ async function enrichCore(leadId: number, userId: number | null, via?: "brasilap
   const result: EnrichResult = {
     state: info ? "ok" : "unavailable",
     sources: { brasilapi: a ? "ok" : b ? "dispensada" : "falhou", receitaws: b ? "ok" : "falhou" },
-    why: { ...(a || b ? {} : { brasilapi: whyB ?? "resposta sem dados" }), ...(b ? {} : { receitaws: whyW ?? "resposta sem dados" }) },
+    why: { ...(a || b ? {} : { brasilapi: !isValidCnpj(lead.cnpj) ? "CNPJ com dígitos verificadores inválidos: confira o número" : whyB ?? "resposta sem dados" }), ...(b ? {} : { receitaws: whyW ?? "resposta sem dados" }) },
     info,
     newPhones: 0,
     newEmails: 0,
