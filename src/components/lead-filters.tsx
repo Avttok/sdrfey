@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { DateInput } from "@/components/date-input";
 import { TagChip } from "@/components/tag-chip";
+import { MARKER_BY_KEY, MARKER_GROUP } from "@/config/markers";
 import { useBusyWhile } from "@/components/toast";
 import { FilterBar } from "@/components/filter-bar";
 import { FilterGroup, Pill, Tri3, type Tri } from "@/components/filter-ui";
@@ -39,15 +40,17 @@ export function LeadFilters({ catalog, people, ufs, sellerView, batches = [] }: 
   }, [q]);
 
   const selected = sp.getAll("tag");
+  const sem = sp.getAll("sem");
+  const toggleSem = (k: string) => apply((p) => { const cur = p.getAll("sem"); p.delete("sem"); (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]).forEach((x) => p.append("sem", x)); });
   const toggleTag = (ref: string) => apply((p) => { const cur = p.getAll("tag"); p.delete("tag"); (cur.includes(ref) ? cur.filter((x) => x !== ref) : [...cur, ref]).forEach((x) => p.append("tag", x)); });
   const clearGroup = (g: string) => apply((p) => { const cur = p.getAll("tag").filter((x) => !x.startsWith(`${g}:`)); p.delete("tag"); cur.forEach((x) => p.append("tag", x)); });
   const clearAll = () => { setQ(""); router.replace(path, { scroll: false }); };
 
   const simple = Object.keys(LABEL).filter((k) => sp.get(k));
-  const activeCount = selected.length + simple.length + (sp.get("q") ? 1 : 0);
-  const labelOf = (ref: string) => { const [g, k] = ref.split(":"); return catalog.find((c) => c.key === g)?.tags.find((t) => t.key === k); };
+  const activeCount = selected.length + sem.length + simple.length + (sp.get("q") ? 1 : 0);
+  const labelOf = (ref: string) => { const [g, k] = ref.split(":"); return [...catalog, MARKER_GROUP].find((c) => c.key === g)?.tags.find((t) => t.key === k); };
   const valueOf = (k: string) => { if (k === "tipo") return sp.get("tipo") === "inativo" ? "Inativo (já cliente)" : "Prospecção (novo)"; if (k === "lote") return batches.find((b) => String(b.id) === sp.get("lote"))?.label ?? `#${sp.get("lote")}`; if (k === "eox") return sp.get("eox") === "1" ? "Tem" : "Não tem"; if (k === "cnpj") return sp.get("cnpj") === "1" ? "Consultado" : "Sem consulta"; if (k === "servido") return sp.get("servido") === "1" ? "Já atendido" : "Nunca atendido"; if (k === "retorno") return sp.get("retorno") === "1" ? "Tem" : "Não tem"; const v = sp.get(k)!; if (k === "owner") return v === "-" ? "Sem responsável" : people.find((p) => String(p.id) === v)?.name ?? v; if (k === "phone" || k === "email") return v === "1" ? "Tem" : "Não tem"; if (k === "from" || k === "to") return `${v.slice(8)}/${v.slice(5, 7)}/${v.slice(0, 4)}`; return v; };
-  const filterGroups = catalog.filter((g) => ["temperatura", "meio", "qualificacao", "agenda", "situacao", "porte"].includes(g.key) && g.tags.length);
+  const filterGroups = [...catalog.filter((g) => ["temperatura", "meio", "qualificacao", "agenda", "situacao", "porte"].includes(g.key) && g.tags.length), MARKER_GROUP];
 
   const field = (label: string, node: React.ReactNode) => <label className="block text-sm"><span className="mb-1 block text-xs font-medium text-muted">{label}</span>{node}</label>;
   const Section = ({ icon: I, title, children }: { icon: typeof Tag; title: string; children: React.ReactNode }) => (
@@ -59,6 +62,7 @@ export function LeadFilters({ catalog, people, ufs, sellerView, batches = [] }: 
       <span className="mr-1 flex items-center gap-1 text-xs font-medium text-muted"><ListFilter size={13} aria-hidden /> Ativos:</span>
       {sp.get("q") && <span className="inline-flex items-center gap-1 rounded-full bg-panel px-2.5 py-1 text-xs ring-1 ring-line">“{sp.get("q")}”<button type="button" aria-label="Remover busca" onClick={() => { setQ(""); set("q", ""); }}><X size={13} /></button></span>}
       {selected.map((ref) => { const t = labelOf(ref); return t ? <span key={ref} className="inline-flex items-center gap-1"><TagChip label={t.label} color={t.color} on /><button type="button" aria-label={`Remover filtro ${t.label}`} onClick={() => toggleTag(ref)}><X size={13} /></button></span> : null; })}
+      {sem.map((k) => { const m = MARKER_BY_KEY.get(k); return m ? <span key={`sem-${k}`} className="inline-flex items-center gap-1 rounded-full bg-panel px-2.5 py-1 text-xs ring-1 ring-line"><b className="font-medium">Sem</b> {m.label}<button type="button" aria-label={`Remover filtro sem ${m.label}`} onClick={() => toggleSem(k)}><X size={13} /></button></span> : null; })}
       {simple.map((k) => <span key={k} className="inline-flex items-center gap-1 rounded-full bg-panel px-2.5 py-1 text-xs ring-1 ring-line"><b className="font-medium">{LABEL[k]}:</b> {valueOf(k)}<button type="button" aria-label={`Remover filtro ${LABEL[k]}`} onClick={() => set(k, "")}><X size={13} /></button></span>)}
     </>
   ) : null;
@@ -72,6 +76,7 @@ export function LeadFilters({ catalog, people, ufs, sellerView, batches = [] }: 
                 <div key={g.key}>
                   <div className="mb-1.5 flex items-center gap-3"><span className="text-sm font-medium">{g.name}</span>{selected.some((x) => x.startsWith(`${g.key}:`)) && <button type="button" className="text-xs text-accent underline" onClick={() => clearGroup(g.key)}>Limpar</button>}</div>
                   <div className="flex flex-wrap gap-1.5">{g.tags.map((t) => <TagChip key={t.key} label={t.label} color={t.color} on={selected.includes(`${g.key}:${t.key}`)} onClick={() => toggleTag(`${g.key}:${t.key}`)} />)}</div>
+                  {g.key === "marcador" && <div className="mt-2.5"><p className="mb-1.5 text-xs font-medium text-muted">Que NÃO tenham:</p><div className="flex flex-wrap gap-1.5">{g.tags.map((t) => <TagChip key={`sem-${t.key}`} label={`Sem ${t.label}`} color="#64748b" on={sem.includes(t.key)} onClick={() => toggleSem(t.key)} />)}</div></div>}
                 </div>
               ))}
             </div>

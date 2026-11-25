@@ -70,7 +70,9 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false, showMap =
   const sources: ["ReceitaWS" | "BrasilAPI", typeof lead.receitaWs][] = lead.receitaWs ? [["ReceitaWS", lead.receitaWs]] : lead.brasilApi ? [["BrasilAPI", lead.brasilApi]] : [["ReceitaWS", null]];
 
   const open = status ? status.toUpperCase() === "ATIVA" : null;
-  const net = [["site", lead.site], ["instagram", lead.instagram], ["facebook", lead.facebook], ["linkedin", lead.linkedin]].filter((x): x is [string, string] => !!x[1] && /^https?:\/\//i.test(x[1] as string));
+  /* aceita "www.empresa.com.br" sem http; descarta o que não parece endereço */
+  const toUrl = (v: string | null | undefined) => { const t = (v ?? "").trim(); if (!t || /\s/.test(t)) return null; if (/^https?:\/\//i.test(t)) return t; return /^[\w-]+(\.[\w-]+)+(\/.*)?$/.test(t) ? `https://${t}` : null; };
+  const net = ([["site", lead.site], ["instagram", lead.instagram], ["facebook", lead.facebook], ["linkedin", lead.linkedin]] as [string, string | null][]).map(([k, v]) => [k, toUrl(v)] as const).filter((x): x is [string, string] => !!x[1]);
   const lastVisit = lead.visits.filter((v) => !v.canceled)[0];
   const companyBlock = (
     <div className="space-y-4">

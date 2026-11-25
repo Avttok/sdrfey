@@ -11,6 +11,7 @@ import { Suspense } from "react";
 import { AttendButton } from "@/components/attend-button";
 import { LeadFilters } from "@/components/lead-filters";
 import { LeadToolbar } from "@/components/lead-toolbar";
+import { MARKER_BY_KEY } from "@/config/markers";
 import { TagChip } from "@/components/tag-chip";
 import { btnSmGhost, panelCls } from "@/components/ui";
 import { db, leads, users } from "@/db";
@@ -134,6 +135,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-sunk px-2.5 py-1 font-medium"><Phone size={12} className="text-accent" aria-hidden /><span className="figure">{l.phones}</span> {l.phones === 1 ? "telefone" : "telefones"}</span>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-sunk px-2.5 py-1 font-medium"><Mail size={12} className="text-accent" aria-hidden /><span className="figure">{l.emails}</span> {l.emails === 1 ? "e-mail" : "e-mails"}</span>
               </div>
+              {(l.markers ?? []).length > 0 && <div className="flex flex-wrap gap-1.5">{(l.markers ?? []).filter((k) => ["site", "redes", "celular", "email", "cliente", "negociacao"].includes(k)).map((k) => { const m = MARKER_BY_KEY.get(k); return m ? <TagChip key={`mk-${k}`} label={m.label} color={m.color} /> : null; })}</div>}
               {!sellerView && l.tags.length > 0 && <div className="flex flex-wrap gap-1.5">{l.tags.map((t) => <TagChip key={t.label} label={t.label} color={t.color} />)}</div>}
               <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">

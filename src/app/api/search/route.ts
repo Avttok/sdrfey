@@ -6,6 +6,7 @@ import { visibleNav } from "@/config/nav";
 import { ADMIN_SECTIONS } from "@/config/admin-sections";
 import { isSellerOnly } from "@/config/roles";
 import { where as leadsWhere } from "@/modules/leads/list";
+import { MARKER_BY_KEY, markerFromQuery } from "@/config/markers";
 import { canAccessChannel, CHANNELS } from "@/modules/chat/channels";
 import { visibleUsers } from "@/modules/auth/visibility";
 import { ROLE_META, type Role } from "@/config/roles";
@@ -38,6 +39,18 @@ export async function GET(req: Request) {
   const jobs: Promise<void>[] = [];
   const run = (fn: () => Promise<void>) => jobs.push(fn().catch(() => undefined));
 
+  /* marcadores: "site", "redes sociais", "sem celular", "site e instagram" mostram os leads que se encaixam */
+  const mq = markerFromQuery(q);
+  if (mq && can("tab.leads")) run(async () => {
+    const label = [...mq.has.map((k) => MARKER_BY_KEY.get(k)?.label), ...mq.not.map((k) => `sem ${MARKER_BY_KEY.get(k)?.label}`)].join(" + ");
+    const params = new URLSearchParams();
+    for (const k of mq.has) params.append("tag", `marcador:${k}`);
+    for (const k of mq.not) params.append("sem", k);
+    const f = { q: "", tags: mq.has.map((k) => `marcador:${k}`), sem: mq.not, page: 1, sellerScope: isSellerOnly(me.roles) ? me.id : undefined };
+    const r = await db.execute<{ id: number; company: string; city: string | null; uf: string | null; total: number }>(sql`select id, company, city, uf, count(*) over()::int as total from leads where ${leadsWhere(f)} order by company limit 6`);
+    hits.push({ kind: "page", title: `Leads: ${label}`, sub: `Marcador · ${r[0]?.total ?? 0} lead${(r[0]?.total ?? 0) === 1 ? "" : "s"} · abrir a lista filtrada`, href: `/leads?${params}` });
+    for (const x of r) hits.push({ kind: "lead", title: x.company, sub: [[x.city, x.uf].filter(Boolean).join("/"), label].filter(Boolean).join(" · "), href: `/leads/${x.id}` });
+  });
   if (can("tab.leads")) run(async () => {
     const f = { q, tags: [] as string[], page: 1, sellerScope: isSellerOnly(me.roles) ? me.id : undefined };
     const r = await db.execute<{ id: number; company: string; trade_name: string | null; city: string | null; uf: string | null }>(sql`select id, company, trade_name, city, uf from leads where ${leadsWhere(f)} order by company limit 6`);

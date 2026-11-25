@@ -3,6 +3,8 @@ import type { Role } from "@/config/roles";
 import { and, desc, sql, type SQL } from "drizzle-orm";
 import { db, leads } from "@/db";
 import { dayEnd, dayStart } from "@/lib/format";
+import { MARKER_BY_KEY } from "@/config/markers";
+import { markerCond, markerKeysExpr } from "./markers";
 
 export type LeadFilters = {
   q?: string;
@@ -34,6 +36,8 @@ export type LeadFilters = {
   servido?: "1" | "0";
   /** Tem retorno combinado (1) ou não (0). */
   retorno?: "1" | "0";
+  /** Marcadores que o lead NÃO pode ter (ex.: "sem celular"). */
+  sem?: string[];
   page: number;
 };
 
@@ -52,6 +56,7 @@ export function parseFilters(sp: Record<string, string | string[] | undefined>):
     tipo: (["prospect", "inativo"] as const).find((x) => x === one("tipo")),
     lote: /^\d+$/.test(one("lote") ?? "") ? Number(one("lote")) : undefined,
     eox: flag("eox"), cnpj: flag("cnpj"), servido: flag("servido"), retorno: flag("retorno"),
+    sem: many("sem").filter((k) => MARKER_BY_KEY.has(k)),
     page: Math.max(1, Number(one("page")) || 1),
   };
 }
@@ -70,11 +75,14 @@ export function where(f: LeadFilters): SQL | undefined {
   const byGroup = new Map<string, string[]>();
   for (const t of f.tags) {
     const [g, k] = t.split(":");
+    /* marcadores (site, redes sociais, celular...): todos os escolhidos precisam valer */
+    if (g === "marcador") { const mc = markerCond(k); if (mc) c.push(mc); continue; }
     byGroup.set(g, [...(byGroup.get(g) ?? []), k]);
   }
   for (const [g, keys] of byGroup) {
     c.push(sql`exists (select 1 from lead_tags lt join tags t on t.id = lt.tag_id where lt.lead_id = ${leads.id} and t.group_key = ${g} and t.key in (${sql.join(keys.map((k) => sql`${k}`), sql`, `)}))`);
   }
+  for (const k of f.sem ?? []) { const mc = markerCond(k); if (mc) c.push(sql`not ${mc}`); }
   const openDeal = sql`exists (select 1 from deals d where d.lead_id = ${leads.id} and d.stage not in ('ganho','perdido'))`;
   if (f.show === "livres") c.push(sql`${leads.lockedBy} is null and ${leads.ownerId} is null and not ${openDeal}`);
   if (f.show === "atendimento") c.push(sql`${leads.lockedBy} is not null`);
@@ -102,8 +110,8 @@ export function where(f: LeadFilters): SQL | undefined {
 export async function listLeads(f: LeadFilters) {
   const w = where(f);
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(leads).where(w);
-  const rows = await db.execute<{ kind: "prospect" | "inativo"; deal_stage: string | null; deal_id: number | null; status: string | null; phones: number; emails: number; updated_at: string; id: number; company: string; trade_name: string | null; cnpj: string; city: string | null; uf: string | null; owner_name: string | null; owner_accent: string | null; owner_id: number | null; owner_roles: Role[] | null; seller_name: string | null; seller_accent: string | null; seller_id: number | null; seller_roles: Role[] | null; locked_roles: Role[] | null; locked_by_name: string | null; locked_by_accent: string | null; locked_by_id: number | null; tags: { label: string; color: string; group: string }[] }>(sql`
-    select leads.kind, (select d.stage from deals d where d.lead_id = leads.id order by d.created_at desc limit 1) as deal_stage, (select d.id from deals d where d.lead_id = leads.id order by d.created_at desc limit 1) as deal_id, leads.registration_status as status, leads.updated_at, (select count(*)::int from lead_channels c where c.lead_id = leads.id and c.kind = 'phone' and not c.wrong) as phones, (select count(*)::int from lead_channels c where c.lead_id = leads.id and c.kind = 'email' and not c.wrong) as emails, leads.id, leads.company, leads.trade_name, leads.cnpj, leads.city, leads.uf, o.name as owner_name, o.accent as owner_accent, leads.owner_id as owner_id, o.roles as owner_roles, lk.roles as locked_roles, lk.name as locked_by_name, lk.accent as locked_by_accent, lk.id as locked_by_id, ds.name as seller_name, ds.accent as seller_accent, ds.id as seller_id, ds.roles as seller_roles,
+  const rows = await db.execute<{ markers: string[]; kind: "prospect" | "inativo"; deal_stage: string | null; deal_id: number | null; status: string | null; phones: number; emails: number; updated_at: string; id: number; company: string; trade_name: string | null; cnpj: string; city: string | null; uf: string | null; owner_name: string | null; owner_accent: string | null; owner_id: number | null; owner_roles: Role[] | null; seller_name: string | null; seller_accent: string | null; seller_id: number | null; seller_roles: Role[] | null; locked_roles: Role[] | null; locked_by_name: string | null; locked_by_accent: string | null; locked_by_id: number | null; tags: { label: string; color: string; group: string }[] }>(sql`
+    select leads.kind, ${markerKeysExpr()} as markers, (select d.stage from deals d where d.lead_id = leads.id order by d.created_at desc limit 1) as deal_stage, (select d.id from deals d where d.lead_id = leads.id order by d.created_at desc limit 1) as deal_id, leads.registration_status as status, leads.updated_at, (select count(*)::int from lead_channels c where c.lead_id = leads.id and c.kind = 'phone' and not c.wrong) as phones, (select count(*)::int from lead_channels c where c.lead_id = leads.id and c.kind = 'email' and not c.wrong) as emails, leads.id, leads.company, leads.trade_name, leads.cnpj, leads.city, leads.uf, o.name as owner_name, o.accent as owner_accent, leads.owner_id as owner_id, o.roles as owner_roles, lk.roles as locked_roles, lk.name as locked_by_name, lk.accent as locked_by_accent, lk.id as locked_by_id, ds.name as seller_name, ds.accent as seller_accent, ds.id as seller_id, ds.roles as seller_roles,
       coalesce((select json_agg(json_build_object('label', t.label, 'color', t.color, 'group', t.group_key) order by g.sort, t.sort, t.label)
                 from lead_tags lt join tags t on t.id = lt.tag_id join tag_groups g on g.key = t.group_key where lt.lead_id = leads.id and t.active), '[]'::json) as tags
     from leads left join users o on o.id = leads.owner_id left join users lk on lk.id = leads.locked_by left join lateral (select su.id, su.name, su.accent, su.roles from deals d join users su on su.id = d.seller_id where d.lead_id = leads.id order by d.created_at desc limit 1) ds on true
