@@ -105,7 +105,7 @@ export function ImportEditor({ file, kind, busy, onApply }: { file: File; kind: 
       </button>
       {open && createPortal(
         <div className="fixed inset-0 z-[70] grid place-items-center bg-black/55 p-3" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !dirty) setOpen(false); }}>
-          <section role="dialog" aria-modal="true" aria-label="Editar dados da importação" className="flex h-[min(94vh,60rem)] w-[min(98vw,110rem)] flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl">
+          <section role="dialog" aria-modal="true" aria-label="Editar dados da importação" className="flex h-[min(94vh,60rem)] w-[min(98vw,110rem)] flex-col overflow-hidden rounded-2xl card-edge card-surface shadow-2xl">
             <header className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3">
               <span className="grid size-9 place-items-center rounded-xl bg-grad-soft text-accent"><Pencil size={17} aria-hidden /></span>
               <div className="min-w-0 flex-1"><h2 className="truncate text-base font-semibold">Editar dados da importação</h2><p className="truncate text-xs text-muted">{file.name} · nada é gravado no sistema até você importar</p></div>
@@ -133,8 +133,8 @@ export function ImportEditor({ file, kind, busy, onApply }: { file: File; kind: 
             {orig && (
               <>
                 <div className="relative flex min-h-0 flex-1 flex-col">
-                <button type="button" aria-label="Rolar para a esquerda" onClick={() => go(-480)} className="absolute left-2 top-1/2 z-20 grid size-10 -translate-y-1/2 place-items-center rounded-full border border-line bg-panel/95 shadow-lg hover:bg-sunk"><ChevronLeft size={20} aria-hidden /></button>
-                <button type="button" aria-label="Rolar para a direita" onClick={() => go(480)} className="absolute right-4 top-1/2 z-20 grid size-10 -translate-y-1/2 place-items-center rounded-full border border-line bg-panel/95 shadow-lg hover:bg-sunk"><ChevronRight size={20} aria-hidden /></button>
+                <button type="button" aria-label="Rolar para a esquerda" onClick={() => go(-480)} className="absolute left-2 top-1/2 z-20 grid size-10 -translate-y-1/2 place-items-center rounded-full card-edge card-surface/95 shadow-lg hover:bg-sunk"><ChevronLeft size={20} aria-hidden /></button>
+                <button type="button" aria-label="Rolar para a direita" onClick={() => go(480)} className="absolute right-4 top-1/2 z-20 grid size-10 -translate-y-1/2 place-items-center rounded-full card-edge card-surface/95 shadow-lg hover:bg-sunk"><ChevronRight size={20} aria-hidden /></button>
                 <div ref={scroller} className="min-h-0 w-full min-w-0 flex-1 overflow-x-scroll overflow-y-auto">
                   <table className="w-full min-w-max text-sm">
                     <thead className="sticky top-0 z-10 bg-sunk">

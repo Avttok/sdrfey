@@ -84,7 +84,7 @@ export function UserMenu({ banner, avatar, name, username, hex, onHex, accentKey
         {side && !collapsed && <span className="flex min-w-0 flex-1 flex-wrap gap-1">{sorted.map((r) => <RoleBadge key={r} role={r} />)}</span>}
       </button>
       {open && mounted && createPortal(
-        <div ref={menu} role="menu" style={pos} className="pop-in menu-stagger fixed z-[80] w-80 overflow-y-auto overscroll-contain rounded-3xl border border-line bg-panel shadow-[0_30px_80px_-20px_rgb(0_0_0/0.5)]">
+        <div ref={menu} role="menu" style={pos} className="pop-in menu-stagger fixed z-[80] w-80 overflow-y-auto overscroll-contain rounded-3xl card-edge card-surface shadow-[0_30px_80px_-20px_rgb(0_0_0/0.5)]">
           <div className="aurora relative overflow-hidden bg-grad px-5 pb-5 pt-6 text-on-accent" style={bannerStyle(banner)}>
             <BannerRain avatar={avatar} roles={roles} count={20} /><span aria-hidden className="aurora-blob a" /><span aria-hidden className="aurora-blob b" /><span aria-hidden className="aurora-blob c" />
             <div className="relative flex items-center gap-4">

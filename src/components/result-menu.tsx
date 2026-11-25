@@ -67,7 +67,7 @@ export function ResultMenu({ channel, onPick, onInvalid, current, pulse, suggest
         <SelIcon size={15} aria-hidden /><span className="min-w-0 flex-1 truncate text-left">{sel ? sel.label : pulse ? "Como foi?" : "Resultado"}</span><ChevronDown size={14} aria-hidden className={`shrink-0 transition ${open ? "rotate-180" : ""}`} />
       </button>
       {open && anchor && host && createPortal(
-        <div ref={menu} role="menu" style={{ position: "fixed", top: pos?.top ?? 0, left: pos?.left ?? 0, maxHeight: pos?.maxH, visibility: pos ? "visible" : "hidden" }} className="z-[80] w-72 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-2xl border border-line bg-panel py-1.5 shadow-2xl">
+        <div ref={menu} role="menu" style={{ position: "fixed", top: pos?.top ?? 0, left: pos?.left ?? 0, maxHeight: pos?.maxH, visibility: pos ? "visible" : "hidden" }} className="z-[80] w-72 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-2xl card-edge card-surface py-1.5 shadow-2xl">
           <p className="px-3 pb-1 pt-1 text-xs font-bold uppercase tracking-wide text-muted">{cfg.question}</p>
           <div className="space-y-2 border-b border-line px-3 pb-2.5">
             <div className="flex flex-wrap items-center gap-1.5 text-xs"><span className="font-semibold text-muted">Tentar de novo:</span>

@@ -97,7 +97,7 @@ export function NavLinks({ hrefs, vertical = false, collapsed = false, badges = 
           {hasBadge && <span aria-hidden className="absolute right-1 top-1 size-2 rounded-full border-2 border-panel bg-danger" />}
         </button>
         {isOpen && (
-          <div role="menu" style={{ left: pos.left, top: pos.top }} className="fixed z-50 w-56 space-y-0.5 rounded-2xl border border-line bg-panel p-1.5 shadow-xl">
+          <div role="menu" style={{ left: pos.left, top: pos.top }} className="fixed z-50 w-56 space-y-0.5 rounded-2xl card-edge card-surface p-1.5 shadow-xl">
             {list.map((n) => link(n, true))}
           </div>
         )}

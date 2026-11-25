@@ -29,7 +29,7 @@ export function EoxMenu({ url, main, size = "md", full = false }: { url: string;
       </a>
       <button type="button" onClick={() => setOpen((o) => !o)} aria-label="Outros lugares na EOX" aria-expanded={open} style={{ ...bg, borderLeft: "1px solid rgba(255,255,255,.3)" }} className={`inline-flex ${h} w-9 items-center justify-center rounded-r-xl text-white transition hover:brightness-110`}><ChevronDown size={icon} aria-hidden className={open ? "rotate-180 transition" : "transition"} /></button>
       {open && (
-        <div role="menu" className={`absolute left-0 z-50 min-w-full overflow-hidden rounded-xl border border-line bg-panel py-1 shadow-xl ${full ? "bottom-full mb-1.5" : "top-full mt-1.5"}`}>
+        <div role="menu" className={`absolute left-0 z-50 min-w-full overflow-hidden rounded-xl card-edge card-surface py-1 shadow-xl ${full ? "bottom-full mb-1.5" : "top-full mt-1.5"}`}>
           {places.map((p) => <a key={p.key} role="menuitem" href={p.href} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)} className="flex items-center gap-2 whitespace-nowrap px-3 py-2 text-sm font-semibold hover:bg-accent/10"><EoxIcon size={14} /> {p.label}</a>)}
         </div>
       )}

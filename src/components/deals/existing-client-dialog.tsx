@@ -26,7 +26,7 @@ export function ExistingClientDialog({ leadId, name, onProceed, onCancel, busy }
   const sellers = h?.sellers ?? [];
   return createPortal(
     <div className="fixed inset-0 z-[70] overflow-y-auto bg-black/50 p-4" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div role="alertdialog" aria-modal="true" aria-label="Cliente já cadastrado" className="mx-auto my-6 w-full max-w-3xl overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl">
+      <div role="alertdialog" aria-modal="true" aria-label="Cliente já cadastrado" className="mx-auto my-6 w-full max-w-3xl overflow-hidden rounded-2xl card-edge card-surface shadow-2xl">
         <span aria-hidden className="block h-1 bg-grad" />
         <div className="space-y-5 p-5 sm:p-6">
           <div className="flex items-start gap-4">

@@ -36,10 +36,7 @@ export function ShuffleHero({ action, children, avatar, roles, empty, list, asid
           <h1 className="sr-only"><Term>{title}</Term></h1>
         </div>
         {aside ? <div className="grid w-full items-center gap-10 lg:w-[min(94vw,120rem)] lg:grid-cols-2 lg:gap-0"><div className="flex min-w-0 items-center justify-center lg:justify-start lg:pl-[20%] lg:pr-4">{children}</div><div className="flex min-w-0 items-center justify-center lg:justify-end lg:pl-4 lg:pr-[20%]">{aside}</div></div> : <div className="w-full">{children}</div>}
-        <form action={action} className="sh-rise relative flex w-full max-w-sm flex-col items-center gap-3 overflow-hidden rounded-[2rem] border-2 px-8 py-7 shadow-2xl" style={{ "--d": ".5s", background: "linear-gradient(145deg, color-mix(in srgb, var(--accent) 24%, var(--panel)), color-mix(in srgb, var(--accent) 6%, var(--panel)) 70%)", borderColor: "color-mix(in srgb, var(--accent) 50%, transparent)" } as React.CSSProperties}>
-          <Shuffle aria-hidden size={150} strokeWidth={1.3} className="pointer-events-none absolute -bottom-8 -right-6 -rotate-12 text-accent opacity-[.12]" />
-          <span aria-hidden className="pointer-events-none absolute -left-10 -top-10 size-36 rounded-full bg-accent/30 blur-3xl" />
-          <span className="relative rounded-full bg-accent/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-accent"><Term>{title}</Term></span>
+        <form action={action} className="sh-rise flex flex-col items-center gap-3" style={{ "--d": ".5s" } as React.CSSProperties}>
           <div className="relative grid size-32 place-items-center">
             {[["-18deg", "-2.1rem", "0s"], ["16deg", "2.1rem", "-1.4s"]].map(([r, x, d]) => (
               <span key={r} aria-hidden className="sh-card absolute h-20 w-14 rounded-xl border border-accent/30 bg-panel/80 shadow-lg backdrop-blur-sm" style={{ "--r": r, "--x": x, "--d": d } as React.CSSProperties} />
@@ -50,10 +47,10 @@ export function ShuffleHero({ action, children, avatar, roles, empty, list, asid
               </SubmitButton>
             </span>
           </div>
-          <p className="relative text-base font-bold">Toque para sortear um lead</p>
+          <p className="text-sm font-medium text-muted">Toque para sortear um lead</p>
         </form>
         {list && (
-          <form action={list.action} className="sh-rise flex w-full max-w-sm flex-col items-center gap-1.5 rounded-3xl border-2 border-accent/40 bg-panel/70 p-4 shadow-lg backdrop-blur-sm" style={{ "--d": ".7s" } as React.CSSProperties}>
+          <form action={list.action} className="sh-rise flex flex-col items-center gap-1.5" style={{ "--d": ".7s" } as React.CSSProperties}>
             <SubmitButton className="glow-pulse !rounded-2xl !px-5 !py-3"><Filter size={18} aria-hidden /> Sortear da lista “{list.name}”</SubmitButton>
             <p className="text-xs text-muted">{list.count.toLocaleString("pt-BR")} leads na lista · <a href={list.href} className="underline">trocar lista</a></p>
           </form>

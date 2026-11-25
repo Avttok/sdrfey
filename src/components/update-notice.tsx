@@ -27,7 +27,7 @@ export function UpdateNotice() {
   if (!stale) return null;
   return (
     <div className="embed-hide fixed inset-0 z-[90] grid place-items-center bg-black/50 p-4" role="alertdialog" aria-modal="true" aria-labelledby="upd-t">
-      <div className="w-full max-w-sm space-y-4 rounded-3xl border border-line bg-panel p-6 text-center shadow-2xl">
+      <div className="w-full max-w-sm space-y-4 rounded-3xl card-edge card-surface p-6 text-center shadow-2xl">
         <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-grad text-on-accent"><RefreshCw size={26} aria-hidden /></span>
         <div className="space-y-1"><h2 id="upd-t" className="display text-xl">Há uma nova atualização!</h2><p className="text-sm text-muted">Por favor, recarregue a página.</p></div>
         <button type="button" autoFocus onClick={() => location.reload()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-grad text-base font-bold text-on-accent shadow-lg transition hover:brightness-110 active:scale-[0.98]"><RefreshCw size={18} aria-hidden /> Recarregar agora</button>

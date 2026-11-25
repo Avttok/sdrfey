@@ -12,12 +12,12 @@ export function AnnouncementCard({ a, onClose, preview }: { a: AnnView; onClose?
   const t = ANN_THEMES[a.theme];
   const Icon = t.icon;
   return (
-    <div role={a.theme === "urgente" ? "alert" : "status"} data-ann-effect={a.effect} className={`${preview ? "" : "ann-drop"} ann-card pointer-events-auto relative w-full max-w-xl overflow-hidden rounded-2xl border bg-panel shadow-2xl`} style={{ borderColor: `color-mix(in srgb, ${t.color} 60%, transparent)`, "--ann": t.color } as React.CSSProperties}>
+    <div role={a.theme === "urgente" ? "alert" : "status"} data-ann-effect={a.effect} className={`${preview ? "" : "ann-drop"} ann-card pointer-events-auto relative w-full max-w-xl overflow-hidden rounded-3xl border-2 bg-panel shadow-2xl`} style={{ borderColor: `color-mix(in srgb, ${t.color} 60%, transparent)`, "--ann": t.color } as React.CSSProperties}>
       <span aria-hidden className="absolute inset-0" style={{ background: `linear-gradient(105deg, color-mix(in srgb, ${t.color} 22%, transparent), color-mix(in srgb, ${t.color} 6%, transparent))` }} />
       {a.effect === "shine" && <span aria-hidden className="ann-shine absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/40 to-transparent" />}
-      <span aria-hidden className="absolute inset-y-0 left-0 w-1.5" style={{ background: t.color }} />
-      <div className="relative flex items-start gap-3 py-3 pl-5 pr-3">
-        <span className="ann-icon mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl text-white" style={{ background: t.color }}><Icon size={19} aria-hidden /></span>
+      <Icon aria-hidden size={96} strokeWidth={1.3} className="pointer-events-none absolute -bottom-5 -right-3 -rotate-12 opacity-[.12]" style={{ color: t.color }} />
+      <div className="relative flex items-start gap-3 py-3 pl-4 pr-3">
+        <span className="ann-icon mt-0.5 grid size-10 shrink-0 place-items-center rounded-2xl text-white shadow-md" style={{ background: `linear-gradient(135deg, ${t.color}, color-mix(in srgb, ${t.color} 62%, #000))` }}><Icon size={19} aria-hidden /></span>
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: t.color }}>{t.label}</p>
           <p className="font-semibold leading-snug">{a.title}</p>

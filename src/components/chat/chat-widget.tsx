@@ -54,7 +54,7 @@ function InfoDialog({ messageId, onClose }: { messageId: number; onClose: () => 
   const Icon = info ? KIND_META[info.kind].Icon : Building2;
   return (
     <div className="fixed inset-0 z-[60] grid place-items-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label="Item compartilhado" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="max-h-[88vh] w-full max-w-xl space-y-4 overflow-y-auto rounded-2xl border border-line bg-panel p-5 shadow-2xl">
+      <div className="max-h-[88vh] w-full max-w-xl space-y-4 overflow-y-auto rounded-2xl card-edge card-surface p-5 shadow-2xl">
         <div className="flex items-start gap-3">
           <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-grad-soft text-accent"><Icon size={20} aria-hidden /></span>
           <div className="min-w-0 flex-1"><h2 className="display break-words text-xl">{info?.title ?? "Carregando…"}</h2>{info?.subtitle && <p className="text-xs text-muted">{info.subtitle}</p>}</div>
@@ -136,7 +136,7 @@ function ProfileDialog({ userId, hex, isAdmin, onClose, onPurged }: { userId: nu
   const sty = chatStyle(p?.style);
   return (
     <div className="spawn-fade fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Perfil" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={themeVars} className="spawn-in relative w-full max-w-sm overflow-hidden rounded-3xl border border-line bg-panel shadow-2xl">
+      <div style={themeVars} className="spawn-in relative w-full max-w-sm overflow-hidden rounded-3xl card-edge card-surface shadow-2xl">
         <div className="relative h-32 overflow-hidden bg-grad" style={bannerStyle(p?.banner)}>
           <span aria-hidden className="sh-card absolute -left-6 -top-8 size-32 rounded-full bg-white/25 blur-2xl" style={{ "--d": "0s" } as React.CSSProperties} />
           <span aria-hidden className="sh-card absolute -bottom-10 right-2 size-40 rounded-full bg-black/20 blur-2xl" style={{ "--d": "-1.8s" } as React.CSSProperties} />
@@ -431,7 +431,7 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
   return (
     <>
       {open && (
-        <section aria-label="Chat" style={panelStyle} className="card-in pointer-events-auto fixed inset-x-3 bottom-5 z-40 flex h-[min(44rem,calc(100dvh-2.5rem))] flex-col overflow-hidden rounded-[1.75rem] border border-line bg-panel shadow-2xl sm:inset-x-auto sm:right-5 sm:w-[min(28rem,calc(100vw-2.5rem))]">
+        <section aria-label="Chat" style={panelStyle} className="card-in pointer-events-auto fixed inset-x-3 bottom-5 z-40 flex h-[min(44rem,calc(100dvh-2.5rem))] flex-col overflow-hidden rounded-[1.75rem] card-edge card-surface shadow-2xl sm:inset-x-auto sm:right-5 sm:w-[min(28rem,calc(100vw-2.5rem))]">
           <header className="flex items-center gap-2.5 bg-grad-soft px-4 py-3.5">
             <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-grad text-on-accent shadow-md"><MessageCircle size={20} aria-hidden /></span>
             <div className="min-w-0 flex-1"><h2 className="display text-base leading-tight">{shop ? "Loja do chat" : channel.startsWith("dm:") ? `Conversa com ${dms.find((d) => d.key === channel)?.name ?? "…"}` : `Chat · ${cur?.label}`}</h2><p className="truncate text-[11px] text-muted">{shop ? "Gaste suas moedas no seu estilo" : channel.startsWith("dm:") ? "Conversa direta" : cur?.hint}</p></div>
@@ -440,7 +440,7 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
               <div className="relative">
                 <button type="button" aria-label="Opções do Adm" aria-expanded={menu} className="rounded-lg p-1.5 text-muted hover:bg-sunk" onClick={() => { setMenu(!menu); setConfirmClear(false); }}><EllipsisVertical size={17} /></button>
                 {menu && (
-                  <div role="menu" className="absolute right-0 top-9 z-20 w-60 space-y-1 rounded-xl border border-line bg-panel p-2 text-sm shadow-xl">
+                  <div role="menu" className="absolute right-0 top-9 z-20 w-60 space-y-1 rounded-xl card-edge card-surface p-2 text-sm shadow-xl">
                     <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted">Controle do Adm</p>
                     {confirmClear
                       ? <div className="space-y-2 rounded-lg border border-danger/50 bg-danger/5 p-2"><p className="text-xs font-medium text-danger">Apagar TODAS as mensagens do grupo {cur?.label}? Não dá para desfazer.</p><div className="flex gap-2"><button type="button" className="rounded-lg bg-danger px-2.5 py-1 text-xs font-semibold text-white" onClick={clearChannel}>Sim, apagar</button><button type="button" className="rounded-lg px-2.5 py-1 text-xs hover:bg-sunk" onClick={() => setConfirmClear(false)}>Cancelar</button></div></div>
@@ -463,7 +463,7 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
                 <ChevronDown size={18} aria-hidden className={`shrink-0 text-muted transition ${listOpen ? "rotate-180" : ""}`} />
               </button>
               {listOpen && (
-                <div role="listbox" aria-label="Grupos e conversas" className="menu-up absolute inset-x-2 top-full z-20 mt-1 max-h-[22rem] overflow-y-auto rounded-2xl border border-line bg-panel p-2 shadow-2xl">
+                <div role="listbox" aria-label="Grupos e conversas" className="menu-up absolute inset-x-2 top-full z-20 mt-1 max-h-[22rem] overflow-y-auto rounded-2xl card-edge card-surface p-2 shadow-2xl">
                   <p className="px-2 pb-1 pt-1 text-[11px] font-bold uppercase tracking-wider text-muted">Grupos</p>
                   {allChannels.filter((c) => !c.key.startsWith("dm:")).map((c) => (
                     <button key={c.key} type="button" role="option" aria-selected={channel === c.key} onClick={() => { setChannel(c.key); setListOpen(false); }} className={`flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition ${channel === c.key ? "bg-grad-soft" : "hover:bg-sunk"}`}>
@@ -485,7 +485,7 @@ export function ChatWidget({ channels, meId, isAdmin, initialUnread, myName = ""
                 </div>
               )}
               {dmPick && (
-                <div className="absolute inset-x-2 top-full z-20 mt-1 rounded-xl border border-line bg-panel p-2 shadow-xl">
+                <div className="absolute inset-x-2 top-full z-20 mt-1 rounded-xl card-edge card-surface p-2 shadow-xl">
                   <input autoFocus value={dmQ} onChange={(e) => setDmQ(e.target.value)} placeholder="Conversar com…" className="mb-1.5 w-full rounded-lg border border-line bg-sunk px-3 py-2 text-sm" />
                   <ul className="max-h-48 overflow-y-auto">
                     {people.filter((p) => !dmQ || `${p.name} ${p.username}`.toLowerCase().includes(dmQ.toLowerCase())).map((p) => (

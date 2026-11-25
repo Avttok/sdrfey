@@ -28,7 +28,7 @@ export function CallResultMenu({ onPick, disabled }: { onPick: (r: CallResult) =
     <div ref={box} className="relative">
       <button type="button" disabled={disabled} aria-haspopup="menu" aria-expanded={open} onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setPos({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) }); setOpen((o) => !o); }} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-line bg-panel px-3 text-sm font-semibold transition hover:border-accent disabled:opacity-50"><ClipboardCheck size={15} aria-hidden /> Resultado <ChevronDown size={14} aria-hidden className={open ? "rotate-180 transition" : "transition"} /></button>
       {open && pos && (
-        <div role="menu" style={{ position: "fixed", top: pos.top, right: pos.right }} className="z-[80] min-w-48 overflow-hidden rounded-xl border border-line bg-panel py-1 shadow-xl">
+        <div role="menu" style={{ position: "fixed", top: pos.top, right: pos.right }} className="z-[80] min-w-48 overflow-hidden rounded-xl card-edge card-surface py-1 shadow-xl">
           {OPTIONS.map((o) => <button key={o.key} type="button" role="menuitem" title={o.hint} onClick={() => { setOpen(false); onPick(o.key); }} className={`flex w-full items-center gap-2 whitespace-nowrap px-3 py-2 text-left text-sm font-semibold hover:bg-accent/10 ${o.danger ? "text-danger" : ""}`}><o.Icon size={15} aria-hidden /> {o.label}</button>)}
         </div>
       )}

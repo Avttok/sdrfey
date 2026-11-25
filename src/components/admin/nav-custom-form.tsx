@@ -20,7 +20,7 @@ function IconPick({ value, fallback, onChange }: { value?: string; fallback: Rea
       {open && (
         <>
           <button type="button" aria-label="Fechar" className="fixed inset-0 z-40 cursor-default" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-12 z-50 grid w-72 grid-cols-7 gap-1 rounded-2xl border border-line bg-panel p-2 shadow-xl">
+          <div className="absolute left-0 top-12 z-50 grid w-72 grid-cols-7 gap-1 rounded-2xl card-edge card-surface p-2 shadow-xl">
             {Object.entries(NAV_ICONS).map(([k, I]) => (
               <button key={k} type="button" title={k} onClick={() => { onChange(k); setOpen(false); }} className={`grid size-9 place-items-center rounded-lg transition hover:bg-sunk ${value === k ? "bg-accent/15 text-accent" : "text-muted hover:text-ink"}`}><I size={17} /></button>
             ))}

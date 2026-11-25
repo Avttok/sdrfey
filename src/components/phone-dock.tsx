@@ -277,7 +277,7 @@ export function PhoneDock() {
       )}
 
       {open && (
-        <section role="dialog" aria-label="SDR Phone" className={`card-in fixed z-[66] flex overflow-hidden rounded-[1.75rem] border border-line bg-panel shadow-2xl ${wide ? "inset-x-5 bottom-5 top-5" : "bottom-5 left-5 max-h-[min(46rem,calc(100dvh-2.5rem))] w-[24rem] max-w-[calc(100vw-2.5rem)]"}`}>
+        <section role="dialog" aria-label="SDR Phone" className={`card-in fixed z-[66] flex overflow-hidden rounded-[1.75rem] card-edge card-surface shadow-2xl ${wide ? "inset-x-5 bottom-5 top-5" : "bottom-5 left-5 max-h-[min(46rem,calc(100dvh-2.5rem))] w-[24rem] max-w-[calc(100vw-2.5rem)]"}`}>
           <div className={`flex min-h-0 max-w-full shrink-0 flex-col ${wide ? "w-[22rem]" : "w-[24rem]"}`}>
             <header className="bg-grad-soft px-4 pb-3 pt-4">
               <div className="flex items-center gap-3">

@@ -110,6 +110,10 @@ input[type="checkbox"], input[type="radio"], input[type="range"] { accent-color:
 @utility bg-grad { background-image: linear-gradient(135deg, color-mix(in oklab, var(--accent) 80%, white), var(--accent) 48%, var(--accent-2, color-mix(in oklab, var(--accent) 78%, black))); }
 @utility bg-grad-soft { background-image: linear-gradient(135deg, color-mix(in srgb, var(--accent) 24%, transparent), color-mix(in srgb, var(--accent-2, var(--accent)) 12%, transparent)); }
 @utility bg-grad-panel { background-image: linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent 60%); }
+/* Tema das cartas: borda grossa na cor do tema, fundo em degradê e ícone em gradiente. Todo popup, menu, aviso e painel usa estes. */
+@utility card-edge { border-width: 2px; border-color: color-mix(in srgb, var(--accent) 36%, var(--line)); }
+@utility card-surface { background-color: var(--panel); background-image: linear-gradient(145deg, color-mix(in srgb, var(--accent) 14%, var(--panel)), color-mix(in srgb, var(--accent) 3%, var(--panel)) 72%); }
+@utility card-tile { background-image: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 62%, #000)); color: var(--on-accent, #fff); box-shadow: 0 6px 16px -8px var(--accent); }
 @utility text-grad { background-image: linear-gradient(90deg, var(--accent), color-mix(in oklab, var(--accent) 55%, #a855f7)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 @utility bg-grad-danger { background-image: linear-gradient(135deg, #f87171, #dc2626 55%, #b91c1c); }
 

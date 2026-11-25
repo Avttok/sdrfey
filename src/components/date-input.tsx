@@ -64,7 +64,7 @@ export function DateInput({ value, onChange, label }: { value: string; onChange:
         <CalendarDays size={18} aria-hidden />
       </button>
       {open && (
-        <div role="dialog" aria-label="Calendário" className="absolute left-0 top-12 z-40 w-64 rounded-xl border border-line bg-panel p-3 shadow-xl">
+        <div role="dialog" aria-label="Calendário" className="absolute left-0 top-12 z-40 w-64 rounded-xl card-edge card-surface p-3 shadow-xl">
           <div className="mb-2 flex items-center justify-between">
             <button type="button" aria-label="Mês anterior" onClick={() => shift(-1)} className="rounded-md p-1.5 hover:bg-sunk"><ChevronLeft size={16} /></button>
             <span className="text-sm font-semibold">{MONTHS[view.m]} {view.y}</span>

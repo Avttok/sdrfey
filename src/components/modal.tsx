@@ -39,20 +39,21 @@ export function Modal({ onClose, title, subtitle, icon: Icon, badges, size = "md
   }, []);
   if (!host) return null;
   return createPortal(
-    <div className="modal-back fixed inset-0 z-50 flex items-end justify-center bg-black/45 sm:items-center sm:p-4" onMouseDown={(e) => { if (e.target === e.currentTarget && !locked) onClose(); }}>
+    <div className="modal-back fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-[2px] sm:items-center sm:p-4" onMouseDown={(e) => { if (e.target === e.currentTarget && !locked) onClose(); }}>
       <div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={label} aria-labelledby={label ? undefined : titleId}
-        className={`modal-card flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-3xl border border-line bg-panel shadow-2xl outline-none sm:max-h-[90dvh] sm:rounded-2xl ${SIZE[size]}`}>
-        <header className="relative flex items-start gap-3 border-b border-line bg-grad-soft px-5 py-4 sm:px-6">
-          {Icon && <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-panel text-accent shadow-sm ring-1 ring-line"><Icon size={20} aria-hidden /></span>}
-          <div className="min-w-0 flex-1">
+        className={`modal-card card-edge card-surface flex max-h-[94dvh] w-full flex-col overflow-hidden rounded-t-3xl shadow-2xl outline-none sm:max-h-[90dvh] sm:rounded-3xl ${SIZE[size]}`}>
+        <header className="relative flex items-start gap-3 overflow-hidden border-b-2 border-accent/25 bg-grad-soft px-5 py-4 sm:px-6">
+          {Icon && <Icon aria-hidden size={110} strokeWidth={1.3} className="pointer-events-none absolute -bottom-6 -right-3 -rotate-12 text-accent opacity-[.1]" />}
+          {Icon && <span className="card-tile relative grid size-12 shrink-0 place-items-center rounded-2xl"><Icon size={22} aria-hidden /></span>}
+          <div className="relative min-w-0 flex-1">
             <h2 id={titleId} className="display break-words text-xl leading-tight sm:text-2xl">{title}</h2>
             {subtitle && <p className="mt-0.5 text-sm text-muted">{subtitle}</p>}
             {badges && <div className="mt-2 flex flex-wrap items-center gap-1.5">{badges}</div>}
           </div>
-          <button type="button" aria-label="Fechar" className="grid size-9 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-sunk hover:text-ink" onClick={onClose}><X size={18} aria-hidden /></button>
+          <button type="button" aria-label="Fechar" className="relative grid size-9 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-sunk hover:text-ink" onClick={onClose}><X size={18} aria-hidden /></button>
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">{children}</div>
-        {footer && <footer className="flex flex-wrap items-center gap-2 border-t border-line bg-panel px-5 py-3.5 sm:px-6">{footer}</footer>}
+        {footer && <footer className="flex flex-wrap items-center gap-2 border-t-2 border-accent/20 bg-panel/80 px-5 py-3.5 sm:px-6">{footer}</footer>}
       </div>
     </div>,
     host,
@@ -62,8 +63,8 @@ export function Modal({ onClose, title, subtitle, icon: Icon, badges, size = "md
 /** Bloco com título dentro de uma janela ou página (mesmo visual em todo o sistema). */
 export function Block({ title, icon: Icon, children, className = "" }: { title: string; icon?: LucideIcon; children: React.ReactNode; className?: string }) {
   return (
-    <section className={`rounded-xl border border-line bg-sunk/40 p-4 ${className}`}>
-      <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">{Icon && <Icon size={14} aria-hidden />}{title}</h3>
+    <section className={`rounded-2xl border-2 border-accent/20 bg-sunk/40 p-4 ${className}`}>
+      <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-accent">{Icon && <span className="card-tile grid size-6 place-items-center rounded-lg"><Icon size={13} aria-hidden /></span>}{title}</h3>
       {children}
     </section>
   );

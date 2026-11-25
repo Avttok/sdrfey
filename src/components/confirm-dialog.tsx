@@ -19,14 +19,14 @@ export function ConfirmDialog({ open, icon: Icon, title, children, confirmLabel,
     return () => document.removeEventListener("keydown", key);
   }, [open, onCancel]);
   if (!open || !mounted) return null;
-  const tint = tone === "danger" ? "bg-danger/15 text-danger" : tone === "warn" ? "bg-warn/15 text-warn" : "bg-grad-soft text-accent";
+  const hex = tone === "danger" ? "var(--danger)" : tone === "warn" ? "var(--warn)" : "var(--accent)";
   return createPortal(
-    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/45 p-4" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div role="alertdialog" aria-modal="true" aria-label={title} className="w-full max-w-md overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl">
-        <span aria-hidden className={`block h-1 ${tone === "danger" ? "bg-grad-danger" : "bg-grad"}`} />
-        <div className="space-y-4 p-6">
+    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4 backdrop-blur-[2px]" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
+      <div role="alertdialog" aria-modal="true" aria-label={title} className="modal-card relative w-full max-w-md overflow-hidden rounded-3xl border-2 shadow-2xl" style={{ background: `linear-gradient(145deg, color-mix(in srgb, ${hex} 18%, var(--panel)), color-mix(in srgb, ${hex} 4%, var(--panel)) 72%)`, borderColor: `color-mix(in srgb, ${hex} 55%, transparent)` }}>
+        {Icon && <Icon aria-hidden size={130} strokeWidth={1.3} className="pointer-events-none absolute -bottom-6 -right-4 -rotate-12 opacity-[.1]" style={{ color: hex }} />}
+        <div className="relative space-y-4 p-6">
           <div className="flex items-start gap-4">
-            {Icon && <span className={`grid size-12 shrink-0 place-items-center rounded-2xl ${tint}`}><Icon size={24} aria-hidden /></span>}
+            {Icon && <span className="grid size-12 shrink-0 place-items-center rounded-2xl text-white shadow-md" style={{ background: `linear-gradient(135deg, ${hex}, color-mix(in srgb, ${hex} 62%, #000))` }}><Icon size={24} aria-hidden /></span>}
             <div className="min-w-0 flex-1">
               <h2 className="display text-xl">{title}</h2>
               {children && <div className="mt-2 text-sm text-muted">{children}</div>}

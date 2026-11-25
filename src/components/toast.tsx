@@ -69,7 +69,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         {children}
         {busy.length > 0 && (
           <div role="status" aria-live="polite" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-            <div className="flex items-center gap-3 rounded-2xl border border-line bg-panel px-8 py-5 text-lg font-semibold shadow-2xl">
+            <div className="card-edge card-surface flex items-center gap-3 rounded-3xl px-8 py-5 text-lg font-bold shadow-2xl">
               {(() => { const last = busy[busy.length - 1]; const { Icon, anim } = busyKind(last); return Icon ? <Icon size={30} className={`text-accent ${anim}`} aria-hidden /> : <Spinner size={28} className="text-accent" />; })()} {busy[busy.length - 1]}
             </div>
           </div>
@@ -78,9 +78,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           {items.map(({ id, kind, text }) => {
             const { color, Icon } = STYLE[kind];
             return (
-              <div key={id} role={kind === "bad" ? "alert" : "status"} className="pointer-events-auto flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm shadow-lg" style={{ background: `color-mix(in srgb, ${color} 14%, var(--panel))`, borderColor: `color-mix(in srgb, ${color} 55%, transparent)` }}>
-                <Icon size={18} style={{ color }} aria-hidden />
-                <span>{text}</span>
+              <div key={id} role={kind === "bad" ? "alert" : "status"} className="pointer-events-auto relative flex items-center gap-3 overflow-hidden rounded-2xl border-2 px-3 py-2.5 text-sm font-medium shadow-xl" style={{ background: `linear-gradient(145deg, color-mix(in srgb, ${color} 22%, var(--panel)), color-mix(in srgb, ${color} 6%, var(--panel)) 75%)`, borderColor: `color-mix(in srgb, ${color} 60%, transparent)` }}>
+                <Icon aria-hidden size={64} strokeWidth={1.4} className="pointer-events-none absolute -bottom-3 -right-1 -rotate-12 opacity-[.13]" style={{ color }} />
+                <span className="relative grid size-8 shrink-0 place-items-center rounded-xl text-white shadow" style={{ background: `linear-gradient(135deg, ${color}, color-mix(in srgb, ${color} 62%, #000))` }}><Icon size={17} aria-hidden /></span>
+                <span className="relative">{text}</span>
               </div>
             );
           })}

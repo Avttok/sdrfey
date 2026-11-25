@@ -53,7 +53,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <section className="relative flex flex-col px-6 py-8 sm:px-12">
         <div className="hidden justify-end lg:flex"><ThemeToggle /></div>
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-10">
-          <div className="rounded-3xl border border-line bg-panel p-7 shadow-xl sm:p-8">
+          <div className="rounded-3xl card-edge card-surface p-7 shadow-xl sm:p-8">
             <span aria-hidden className="mb-5 block h-1 w-14 rounded-full bg-grad" />
             <h2 className="display mb-1.5 text-3xl">Bem-vindo de volta</h2>
             {quick.length > 0 && !other ? (

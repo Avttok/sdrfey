@@ -64,7 +64,7 @@ export function GlobalSearch({ side = false }: { side?: boolean }) {
       <button type="button" aria-label="Pesquisar no sistema" title="Pesquisar (Ctrl+K)" onClick={() => setOpen(true)} className={`grid size-10 place-items-center rounded-xl text-muted transition hover:bg-sunk hover:text-ink ${side ? "" : ""}`}><Search size={20} aria-hidden /></button>
       {open && (
         <div className="fixed inset-0 z-[90] flex items-start justify-center bg-black/45 px-3 pt-[10vh]" onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
-          <div role="dialog" aria-label="Pesquisar" className="menu-up w-full max-w-xl overflow-hidden rounded-3xl border border-line bg-panel shadow-2xl">
+          <div role="dialog" aria-label="Pesquisar" className="menu-up w-full max-w-xl overflow-hidden rounded-3xl card-edge card-surface shadow-2xl">
             <div className="flex items-center gap-3 border-b border-line px-4 py-3">
               {busy ? <Loader2 size={20} aria-hidden className="shrink-0 animate-spin text-accent" /> : <Search size={20} aria-hidden className="shrink-0 text-accent" />}
               <input ref={input} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onKey} placeholder="Leads, contatos, visitas, páginas, configurações…" aria-label="O que você procura?" className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted" style={{ outline: "none", boxShadow: "none" }} />

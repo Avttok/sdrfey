@@ -76,7 +76,7 @@ export function PerformanceWizard({ kind, sections, people, team }: { kind: Kind
       </ol>
 
       <div className={cur_ === "periodo" || cur_ === "conteudo" || cur_ === "pessoas" ? "grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_21rem]" : "min-w-0 max-w-full"}>
-      <section key={step} className="fx-rise min-h-[26rem] min-w-0 max-w-full rounded-3xl border border-line bg-panel p-5 shadow-xl sm:p-8">
+      <section key={step} className="fx-rise min-h-[26rem] min-w-0 max-w-full rounded-3xl card-edge card-surface p-5 shadow-xl sm:p-8">
         {cur_ === "periodo" && (
           <div className="space-y-5">
             <div><h2 className="display text-2xl">Qual período?</h2><p className="text-sm text-muted">Escolha um atalho ou defina as datas.</p></div>
