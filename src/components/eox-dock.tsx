@@ -16,7 +16,7 @@ const eta = (min: number) => (min < 1 ? "menos de 1 min" : min < 60 ? `${Math.ro
 
 /**
  * Painel lateral da Consulta EOX (só Adm), irmão do painel de CNPJ: procura cada lead na EOX pelo CNPJ e completa telefones, e-mails,
- * pessoas e endereço. Roda em qualquer página até o Adm parar, a fila acabar ou quem iniciou ficar mais de 10 min offline.
+ * pessoas e endereço. Roda em qualquer página até o Adm parar. Fila vazia ou EOX recusando só fazem esperar.
  */
 export function EoxDockPanel({ side }: { side?: boolean }) {
   const [d, setD] = useState<EoxDock | null>(null);
@@ -150,7 +150,7 @@ export function EoxDockPanel({ side }: { side?: boolean }) {
           {on
             ? <button type="button" disabled={busy} onClick={() => act(eoxStopApi)} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-2 border-danger/40 bg-danger/10 px-3 py-2 text-sm font-bold text-danger transition hover:bg-danger/20 disabled:opacity-60">{busy ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Pause size={16} aria-hidden />} Parar consulta</button>
             : <button type="button" disabled={busy || (d.stats.lists?.[scope] ?? 0) === 0} onClick={() => act(() => eoxStartApi(scope))} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-white shadow-lg transition hover:brightness-110 disabled:opacity-50" style={{ background: iconTile(EOX_HEX) }}>{busy ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Play size={16} aria-hidden />} Iniciar consulta</button>}
-          <p className="flex items-start gap-1.5 text-[11px] leading-snug text-muted"><Gauge size={12} className="mt-0.5 shrink-0" aria-hidden />Roda em qualquer página. Só preenche o que está vazio. Para sozinha se você ficar offline por mais de {DAEMON_OFFLINE_MIN} min ou quando a fila acabar.</p>
+          <p className="flex items-start gap-1.5 text-[11px] leading-snug text-muted"><Gauge size={12} className="mt-0.5 shrink-0" aria-hidden />Roda em qualquer página. Só preenche o que está vazio. Não para sozinha: só quando você clicar em parar. Com a fila vazia ela espera leads novos; se você sair, outro Adm com o painel aberto assume.</p>
 
           <section aria-label="Últimas consultas">
             <h3 className="mb-1.5 flex items-center justify-between text-xs font-bold uppercase tracking-wider text-muted"><span>Últimas consultas</span><a href="/admin/consulta-eox" className="normal-case tracking-normal text-accent hover:underline">ver tudo</a></h3>
