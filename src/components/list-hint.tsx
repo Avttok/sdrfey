@@ -18,7 +18,7 @@ export function ListCards({ href, lists, kind }: { href: string; lists: Item[]; 
   const [err, setErr] = useState("");
   if (cards.length === 0) {
     return (
-      <Link href={href} className="group sh-rise mx-auto flex w-full max-w-xs flex-col items-center gap-3 text-center" style={{ "--d": ".4s" } as React.CSSProperties}>
+      <Link href={href} className="group sh-rise flex w-full max-w-xs flex-col items-center gap-3 text-center" style={{ "--d": ".4s" } as React.CSSProperties}>
         <span className="relative block h-44 w-full">
           {[["-16deg", "-3.2rem", "0s"], ["14deg", "3.2rem", "-1.4s"]].map(([r, x, d]) => (
             <span key={r} aria-hidden className="sh-card absolute left-1/2 top-3 -ml-[3.1rem] h-32 w-[6.2rem] rounded-2xl border border-dashed border-accent/45 bg-panel/80 shadow-lg" style={{ "--r": r, "--x": x, "--d": d } as React.CSSProperties} />
@@ -32,7 +32,7 @@ export function ListCards({ href, lists, kind }: { href: string; lists: Item[]; 
   const spread = cards.length === 1 ? [0] : cards.length === 2 ? [-1, 1] : [-1, 0, 1];
   const go = (l: Item) => start(async () => { setErr(""); const r = await startListByIdAction(kind, l.id); if (r && !r.ok) setErr(r.message); });
   return (
-    <div className="sh-rise mx-auto flex w-full max-w-xs flex-col items-center gap-3 text-center" style={{ "--d": ".4s" } as React.CSSProperties}>
+    <div className="sh-rise flex w-full max-w-xs flex-col items-center gap-3 text-center" style={{ "--d": ".4s" } as React.CSSProperties}>
       <span className="relative block h-44 w-full">
         {cards.map((l, i) => (
           <button key={l.id} type="button" onClick={() => { setErr(""); setOpen(l); }} aria-label={`Abrir a lista ${l.name}`} className="sh-card absolute left-1/2 top-2 -ml-[3.4rem] flex h-36 w-[6.8rem] cursor-pointer flex-col items-center justify-between rounded-2xl border-2 bg-panel p-2.5 shadow-xl transition hover:-translate-y-1" style={{ "--r": `${spread[i] * 13}deg`, "--x": `${spread[i] * 4.2}rem`, "--d": `${-i * 0.7}s`, zIndex: l.active ? 3 : i, borderColor: l.active ? "var(--accent)" : "var(--line)" } as React.CSSProperties}>
