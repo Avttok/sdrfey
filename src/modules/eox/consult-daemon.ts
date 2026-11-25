@@ -50,7 +50,7 @@ export async function eoxDock(me: { id: number }): Promise<EoxDock> {
 export async function eoxStart(me: { id: number }, scope: string = "new"): Promise<EoxDock> {
   const sc = normEoxList(scope);
   // reconsulta geral: tira da "geladeira" (7 dias) os leads que a EOX não achou numa rodada antiga, p.ex. com o campo do CNPJ errado
-  if (sc === "refresh" || sc === "no_link") await db.execute(sql`update leads set eox_tried_at = null where eox_tried_at is not null`);
+  if (sc === "refresh" || sc === "no_link") await db.execute(sql`update leads set eox_tried_at = null where eox_tried_at is not null and eox_checked_at is null`);
   await write({ on: true, by: me.id, scope: sc, since: new Date().toISOString(), stoppedWhy: null }, me.id);
   await logAudit(db, { userId: me.id, entity: "setting", action: "ligou a consulta contínua da EOX", field: "Consulta EOX", newValue: EOX_LIST_BY_KEY.get(sc)?.label ?? sc });
   return eoxDock(me);

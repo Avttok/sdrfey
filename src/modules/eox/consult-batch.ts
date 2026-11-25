@@ -11,6 +11,10 @@ const HAS_KEY = sql`(l.cnpj ~ '^[0-9]{14}$' or l.eox_code is not null)`;
 const TRIED_OK = () => sql`(l.eox_tried_at is null or l.eox_tried_at < now() - ${hours()})`;
 /** Listas além da fila normal só pegam quem não foi consultado na última semana (senão o mesmo lead voltava sem parar). */
 const STALE = sql`(l.eox_checked_at is null or l.eox_checked_at < now() - interval '7 days')`;
+/** Quem já foi pesquisado nesta rodada (desde que a consulta foi ligada) não volta: a reconsulta geral passa por cada lead uma vez só. */
+const BEFORE_RUN = sql`coalesce((select (value ->> 'since')::timestamptz from settings where key = 'eox_daemon'), now() - interval '30 minutes')`;
+/** "Não achado" antigo ficava parado (eox_tried_at no futuro, sem eox_checked_at): vira pesquisado, para a fila não repetir. */
+export async function settleParked() { await db.execute(sql`update leads set eox_checked_at = now(), eox_tried_at = null where eox_checked_at is null and eox_tried_at > now()`); }
 const phoneOk = sql`exists (select 1 from lead_channels c where c.lead_id = l.id and c.kind = 'phone' and not c.wrong)`;
 const emailOk = sql`exists (select 1 from lead_channels c where c.lead_id = l.id and c.kind = 'email' and not c.wrong)`;
 const blank = (col: string) => sql.raw(`coalesce(btrim(l.${col}), '') = ''`);
@@ -25,8 +29,8 @@ const listCond = (key: string) => {
     case "qualified": return sql`${STALE} and exists (select 1 from lead_tags lt join tags t on t.id = lt.tag_id where lt.lead_id = l.id and t.key = 'qualificado')`;
     case "customers": return sql`${STALE} and exists (select 1 from deals d where d.lead_id = l.id and d.stage = 'ganho')`;
     // reconsulta geral: ignora o "consultado há pouco" da semana; só pula quem acabou de ser consultado (30 min), para a fila andar e terminar
-    case "refresh": return sql`(l.eox_checked_at is null or l.eox_checked_at < now() - interval '30 minutes')`;
-    case "no_link": return sql`(l.eox_checked_at is null or l.eox_checked_at < now() - interval '30 minutes') and (l.eox_id is null or l.eox_id !~ '^[0-9]{7,}$' or l.eox_id = l.eox_code)`;
+    case "refresh": return sql`(l.eox_checked_at is null or l.eox_checked_at < ${BEFORE_RUN})`;
+    case "no_link": return sql`(l.eox_checked_at is null or l.eox_checked_at < ${BEFORE_RUN}) and (l.eox_id is null or l.eox_id !~ '^[0-9]{7,}$' or l.eox_id = l.eox_code)`;
     case "no_phone": return sql`${STALE} and not ${phoneOk}`;
     case "no_mobile": return sql`${STALE} and not exists (select 1 from lead_channels c where c.lead_id = l.id and c.kind = 'phone' and not c.wrong and length(regexp_replace(c.value, '[^0-9]', '', 'g')) >= 11)`;
     case "one_phone": return sql`${STALE} and (select count(*) from lead_channels c where c.lead_id = l.id and c.kind = 'phone' and not c.wrong) = 1`;
@@ -49,6 +53,7 @@ const scopeWhere = (key: string) => {
 export type EoxStats = { total: number; done: number; pending: number; failed: number; /** leads com o Código/link do perfil EOX */ linked: number; lists: Record<string, number>; ufs: Record<string, number> };
 export async function eoxStats(): Promise<EoxStats> {
   retryH = (await loadConsultOptions()).retryHours;
+  await settleParked();
   const [r] = await db.execute<Record<string, number>>(sql`
     select count(*)::int as total, count(*) filter (where l.eox_checked_at is not null)::int as done,
       count(*) filter (where l.eox_id ~ '^[0-9]{7,}$' and l.eox_id <> coalesce(l.eox_code, ''))::int as linked,
@@ -64,6 +69,7 @@ export async function eoxStats(): Promise<EoxStats> {
 export async function eoxBatch(maxIn: number | null, budgetMs = 40_000, userId: number | null = null, listIn: string = "new"): Promise<{ tried: number; ok: number; failed: number }> {
   const o = await loadConsultOptions();
   retryH = o.retryHours;
+  await settleParked();
   const max = maxIn ?? o.batch;
   const t0 = Date.now(), stop = t0 + budgetMs, list = normEoxList(listIn);
   const rows = await db.execute<{ id: number }>(sql`select l.id from leads l where ${scopeWhere(list)} order by (l.eox_id is null or l.eox_id !~ '^[0-9]{7,}$' or l.eox_id = l.eox_code) desc, (exists (select 1 from deals d where d.lead_id = l.id and d.stage not in ('ganho','perdido'))) desc, l.id limit ${max}`);

@@ -49,6 +49,7 @@ export async function getLeadView(leadId: number) {
     legacyVisit: lead.legacyVisit,
     eoxId: lead.eoxId,
     eoxCode: lead.eoxCode,
+    eoxCheckedAt: lead.eoxCheckedAt,
     sfId: lead.sfId,
     /** Retrato do cadastro na EOX (da planilha de Empresas) e quando foi atualizado. */
     eoxInfo: lead.eoxInfo ?? null,

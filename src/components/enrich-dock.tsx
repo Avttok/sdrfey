@@ -80,8 +80,8 @@ export function EnrichDock({ side }: { side?: boolean }) {
   const ufs = Object.entries(d.stats.ufs ?? {});
 
   return (
-    <aside aria-label="Consulta contínua de CNPJ" className={`fixed inset-y-0 z-[55] flex items-center transition-transform duration-300 ${side ? "left-0 lg:left-[17rem]" : "left-0"} ${open ? "translate-x-0" : "-translate-x-[min(26rem,92vw)]"}`}>
-      <div className="card-surface flex h-full w-[min(26rem,92vw)] flex-col overflow-hidden border-0 border-r-2 border-line bg-panel/80 shadow-2xl" style={{ backgroundColor: "color-mix(in srgb, var(--panel) 80%, transparent)" }}>
+    <aside aria-label="Consulta contínua de CNPJ" className={`pointer-events-none fixed inset-y-0 z-[55] flex items-center transition-transform duration-300 ${side ? "left-0 lg:left-[17rem]" : "left-0"} ${open ? "translate-x-0" : "-translate-x-[min(26rem,92vw)]"}`}>
+      <div className="pointer-events-auto card-surface flex h-full w-[min(26rem,92vw)] flex-col overflow-hidden border-0 border-r-2 border-line bg-panel/80 shadow-2xl" style={{ backgroundColor: "color-mix(in srgb, var(--panel) 80%, transparent)" }}>
         <header className="relative shrink-0 overflow-hidden px-4 py-3.5 pt-[max(0.875rem,env(safe-area-inset-top))] text-white" style={{ background: `linear-gradient(135deg, ${on ? cur.hex : "#6366f1"}, color-mix(in srgb, ${on ? cur.hex : "#6366f1"} 55%, #000))` }}>
           <DatabaseZap aria-hidden size={110} strokeWidth={1.3} className="pointer-events-none absolute -bottom-6 -right-4 -rotate-12 opacity-[.14]" />
           <div className="relative flex items-center gap-3">
@@ -173,7 +173,7 @@ export function EnrichDock({ side }: { side?: boolean }) {
           </section>
         </div>
       </div>
-      <button type="button" aria-expanded={open} aria-label={open ? "Recolher painel de consulta de CNPJ" : "Abrir painel de consulta de CNPJ"} onClick={() => { const next = !open; setOpen(next); if (next) window.dispatchEvent(new CustomEvent("dock:open", { detail: "cnpj" })); }} className="card-surface relative -ml-px grid h-28 w-11 place-items-center rounded-r-2xl border-2 border-l-0 border-line text-accent shadow-lg hover:bg-sunk">
+      <button type="button" aria-expanded={open} aria-label={open ? "Recolher painel de consulta de CNPJ" : "Abrir painel de consulta de CNPJ"} onClick={() => { const next = !open; setOpen(next); if (next) window.dispatchEvent(new CustomEvent("dock:open", { detail: "cnpj" })); }} className="pointer-events-auto card-surface relative -ml-px grid h-28 w-11 place-items-center rounded-r-2xl border-2 border-l-0 border-line text-accent shadow-lg hover:bg-sunk">
         {open ? <ChevronLeft size={18} aria-hidden /> : <span className="flex flex-col items-center gap-1"><span className="relative grid place-items-center"><MetricRing value={pct} color="var(--accent)" size="size-9" /><DatabaseZap size={14} className="absolute" aria-hidden /></span><span className="figure text-[10px] font-extrabold">{pct}%</span>{on && <span aria-hidden className="absolute right-1 top-1.5 size-2.5 animate-pulse rounded-full bg-ok ring-2 ring-panel" />}</span>}
       </button>
     </aside>

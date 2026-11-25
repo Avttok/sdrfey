@@ -3,7 +3,7 @@ export type EoxList = { key: string; label: string; hint: string; group: (typeof
 export const EOX_GROUPS = ["Fila", "Dados que faltam", "Reconferir"] as const;
 const G = { f: "Fila", m: "Dados que faltam", r: "Reconferir" } as const;
 export const EOX_LISTS: EoxList[] = [
-  { key: "refresh", label: "Atualizar leads EOX (todos)", hint: "Reconsulta TODOS os leads com CNPJ ou ID EOX, inclusive os já consultados, para garantir o Código/link do perfil (parent_id). Quem tem o link e ainda não tem fica na frente.", group: G.f, icon: "link", hex: "#ec4899" },
+  { key: "refresh", label: "Atualizar leads EOX (todos)", hint: "Repesquisa de propósito TODOS os leads com CNPJ ou ID EOX, inclusive os já pesquisados (cada um uma vez por vez que você ligar), para garantir o Código/link do perfil (parent_id). Quem tem o link e ainda não tem fica na frente.", group: G.f, icon: "link", hex: "#ec4899" },
   { key: "new", label: "Ainda não consultados", hint: "A fila normal: leads que nunca foram procurados na EOX.", group: G.f, icon: "list", hex: "#8b5cf6" },
   { key: "fresh", label: "Cadastrados esta semana", hint: "Leads novos (últimos 7 dias) que ainda não foram procurados na EOX.", group: G.f, icon: "sparkles", hex: "#0ea5e9" },
   { key: "unworked", label: "Nunca atendidos", hint: "Sem nenhum atendimento ainda: os que o shuffler vai sortear primeiro.", group: G.f, icon: "target", hex: "#14b8a6" },

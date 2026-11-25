@@ -38,7 +38,7 @@ export function ResultMenu({ channel, onPick, onInvalid, current, pulse, suggest
     if (!open) return;
     const h = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node) && !menu.current?.contains(e.target as Node)) setOpen(false); };
     const k = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    const close = () => setOpen(false);
+    const close = (e?: Event) => { if (e?.type === "scroll" && menu.current && e.target instanceof Node && menu.current.contains(e.target)) return; setOpen(false); }; // rolar DENTRO do menu não fecha
     document.addEventListener("mousedown", h); document.addEventListener("keydown", k);
     window.addEventListener("scroll", close, true); window.addEventListener("resize", close);
     return () => { document.removeEventListener("mousedown", h); document.removeEventListener("keydown", k); window.removeEventListener("scroll", close, true); window.removeEventListener("resize", close); };
@@ -67,7 +67,7 @@ export function ResultMenu({ channel, onPick, onInvalid, current, pulse, suggest
         <SelIcon size={15} aria-hidden /><span className="min-w-0 flex-1 truncate text-left">{sel ? sel.label : pulse ? "Como foi?" : "Resultado"}</span><ChevronDown size={14} aria-hidden className={`shrink-0 transition ${open ? "rotate-180" : ""}`} />
       </button>
       {open && anchor && host && createPortal(
-        <div ref={menu} role="menu" style={{ position: "fixed", top: pos?.top ?? 0, left: pos?.left ?? 0, maxHeight: pos?.maxH, visibility: pos ? "visible" : "hidden" }} className="z-[80] w-72 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-2xl card-edge card-surface py-1.5 shadow-2xl">
+        <div ref={menu} role="menu" style={{ position: "fixed", top: pos?.top ?? 0, left: pos?.left ?? 0, maxHeight: pos?.maxH, visibility: pos ? "visible" : "hidden" }} className="z-[80] w-72 max-w-[calc(100vw-1rem)] overflow-y-auto overscroll-contain rounded-2xl card-edge card-surface py-1.5 shadow-2xl">
           <p className="px-3 pb-1 pt-1 text-xs font-bold uppercase tracking-wide text-muted">{cfg.question}</p>
           <div className="space-y-2 border-b border-line px-3 pb-2.5">
             <div className="flex flex-wrap items-center gap-1.5 text-xs"><span className="font-semibold text-muted">Tentar de novo:</span>

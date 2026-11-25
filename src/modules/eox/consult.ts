@@ -136,7 +136,7 @@ async function core(leadId: number, userId: number | null, o: ConsultOptions): P
   let found: EoxFetched | null;
   try { found = await eoxFetch(l.cnpj, l.code, o); } catch (e) { return none(`a EOX não respondeu: ${(e as Error).message}`); }
   if (!found) {
-    await db.update(leads).set({ eoxTriedAt: new Date(Date.now() + 7 * 864e5) }).where(eq(leads.id, leadId)); // a EOX não conhece: não volta à fila por 7 dias
+    await db.update(leads).set({ eoxCheckedAt: new Date(), eoxTriedAt: null }).where(eq(leads.id, leadId)); // a EOX não conhece: fica PESQUISADO (não volta à fila; só repesquisa se o Adm pedir)
     return none("a EOX não tem cadastro com esse CNPJ/ID", true);
   }
   const done = await apply(leadId, found.f, found.record, o, userId);
