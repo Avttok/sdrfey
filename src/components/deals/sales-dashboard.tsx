@@ -1,6 +1,7 @@
 import { BellRing, Crown, CalendarCheck, CalendarClock, CircleDollarSign, FileText, Handshake, Hourglass, PhoneCall, Percent, Shuffle, Timer, TrendingDown, Trophy, Wallet, Workflow } from "lucide-react";
 import Link from "next/link";
 import { panelCls } from "@/components/ui";
+import { DashBlock, DashSection, MetricCard } from "@/components/dash-ui";
 import { fmtBRL, STAGE_META } from "@/config/deals";
 import { bubbleHex } from "@/config/theme";
 import type { Role } from "@/config/roles";
@@ -20,29 +21,11 @@ function Ring({ value, color }: { value: number; color: string }) {
     </svg>
   );
 }
-function Kpi({ I, t, v, s, hot, hex = "#378ADD", i = 0 }: { I: typeof Wallet; t: string; v: string; s: string; hot?: boolean; hex?: string; i?: number }) {
-  const c = hot ? "var(--danger)" : hex;
-  return (
-    <div style={{ "--i": i } as React.CSSProperties} className={`${panelCls} card-in lift relative overflow-hidden p-4 hover:shadow-lg ${hot ? "border-danger/50" : ""}`}>
-      <span aria-hidden className="pointer-events-none absolute -right-6 -top-6 size-24 rounded-full opacity-[.13]" style={{ background: c }} />
-      <div className="relative flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted">{t}</p>
-          <p className="figure mt-2 text-3xl font-extrabold leading-none" style={hot ? { color: c } : undefined}>{v}</p>
-          <p className="mt-2 text-xs text-muted">{s}</p>
-        </div>
-        <span className="grid size-11 shrink-0 place-items-center rounded-2xl text-white shadow-sm" style={{ background: c }}><I size={20} aria-hidden /></span>
-      </div>
-    </div>
-  );
+function Kpi({ I, t, v, s, hot, hex = "#378ADD", i = 0, bar, featured }: { I: typeof Wallet; t: string; v: string; s: string; hot?: boolean; hex?: string; i?: number; bar?: number; featured?: boolean }) {
+  return <MetricCard I={I} t={t} v={v} s={s} hot={hot} hex={hex} i={i} bar={bar} featured={featured} />;
 }
-const Block = ({ icon: I, title, children }: { icon: typeof Wallet; title: string; children: React.ReactNode }) => (
-  <section className={`${panelCls} card-in relative overflow-hidden p-5`}>
-    <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-grad opacity-80" />
-    <h2 className="mb-4 flex items-center gap-2.5 text-[15px] font-bold"><span className="grid size-9 place-items-center rounded-xl bg-grad text-on-accent shadow-sm"><I size={17} aria-hidden /></span> {title}</h2>
-    {children}
-  </section>
-);
+const BLOCK_HEX: Record<string, string> = { "Precisa de atenção": "#E24B4A", "Vendas recentes": "#1D9E75", "Funil de negociações": "#7F77DD", "Próximas visitas": "#ec4899", "Shuffler Vendas": "#a855f7", "Vendas por dia": "#22c55e", "Ranking de vendedores": "#F5B301" };
+const Block = ({ icon, title, children }: { icon: typeof Wallet; title: string; children: React.ReactNode }) => <DashBlock I={icon} title={title} hex={BLOCK_HEX[title] ?? "var(--accent)"}>{children}</DashBlock>;
 const MEDAL = ["#F5B301", "#A8B0BA", "#C57B3A"];
 
 /** Números de vendas: usado no Dashboard do vendedor e no bloco “Vendas da equipe” do gestor. */
@@ -62,19 +45,37 @@ export function SalesDashboard({ s, showRanking }: { s: SalesStats; showRanking:
           <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-muted">Conversão</p><p className="figure text-4xl font-extrabold leading-none">{pct(s.conversion)}</p><p className="mt-1.5 text-xs text-muted">{s.won} ganhas · {s.lost} perdidas</p></div>
         </div>
       </section>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi i={0} hex="#378ADD" I={Handshake} t="Em andamento" v={nf.format(s.open)} s="negociações abertas" />
-        <Kpi i={1} hex="#7F77DD" I={FileText} t="Cotações abertas" v={nf.format(s.quotesOpen)} s={s.quotesOpenValue ? fmtBRL(s.quotesOpenValue) : "aguardando resposta"} />
-        <Kpi i={2} hex="#1D9E75" I={Trophy} t="Vendas fechadas" v={nf.format(s.won)} s={s.wonValue ? fmtBRL(s.wonValue) : "no período"} />
-        <Kpi i={3} hex="#10b981" I={Wallet} t="Ticket médio" v={s.ticket ? fmtBRL(Math.round(s.ticket)) : "—"} s="por venda fechada" />
-        <Kpi i={4} hex="#0ea5e9" I={PhoneCall} t="Contatos" v={nf.format(s.contacts)} s={`${nf.format(s.quotesSent)} cotações enviadas`} />
-        <Kpi i={5} hex="#f59e0b" I={Timer} t="Tempo até o 1º contato" v={mins(s.firstContactMinutes)} s={`${nf.format(s.received)} negociações recebidas`} />
-        <Kpi i={6} hex="#E24B4A" I={TrendingDown} t="Valor perdido" v={fmtBRL(s.lostValue)} s={`${nf.format(s.lost)} ${s.lost === 1 ? "perdida" : "perdidas"} no período`} />
-        <Kpi i={7} hex="#BA7517" I={Hourglass} t="Ciclo de venda" v={s.cycleDays == null ? "—" : `${s.cycleDays.toFixed(1).replace(".", ",")} d`} s="da entrada ao faturamento" />
-        <Kpi i={8} hex="#ec4899" I={CalendarCheck} t="Visitas" v={nf.format(s.visits.pending + s.visits.confirmed + s.visits.done)} s={`${nf.format(s.visits.done)} realizadas · ${nf.format(s.visits.confirmed)} confirmadas · ${nf.format(s.visits.pending)} aguardando`} />
-        <Kpi i={9} hex="#a855f7" I={Shuffle} t="Shuffler Vendas" v={nf.format(s.shuffler.worked)} s={`${nf.format(s.shuffler.saved + s.shuffler.visit + s.shuffler.deal)} aproveitados · ${nf.format(s.shuffler.toSdr)} devolvidos ao SDR`} />
-        <Kpi i={10} I={BellRing} t="Avisos" v={nf.format(s.alerts.length)} s={s.alerts.length ? "precisam de atenção" : "tudo em dia"} hot={s.alerts.length > 0} hex="#1D9E75" />
-      </div>
+      <DashSection I={Handshake} title="Negociações" hint="andamento, cotações e vendas" hex="#378ADD">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+          <Kpi i={0} featured hex="#378ADD" I={Handshake} t="Em andamento" v={nf.format(s.open)} s="negociações abertas" />
+          <Kpi i={1} featured hex="#1D9E75" I={Trophy} t="Vendas fechadas" v={nf.format(s.won)} s={s.wonValue ? fmtBRL(s.wonValue) : "no período"} />
+          <Kpi i={2} hex="#7F77DD" I={FileText} t="Cotações abertas" v={nf.format(s.quotesOpen)} s={s.quotesOpenValue ? fmtBRL(s.quotesOpenValue) : "aguardando resposta"} />
+          <Kpi i={3} hex="#10b981" I={Wallet} t="Ticket médio" v={s.ticket ? fmtBRL(Math.round(s.ticket)) : "—"} s="por venda fechada" />
+          <Kpi i={4} hex="#8b5cf6" I={FileText} t="Cotações enviadas" v={nf.format(s.quotesSent)} s={s.quotesSentValue ? `${fmtBRL(s.quotesSentValue)} no total` : "no período"} />
+          <Kpi i={5} hex="#a855f7" I={Wallet} t="Cotação média" v={s.quotesSent ? fmtBRL(Math.round(s.quotesSentValue / s.quotesSent)) : "—"} s="valor por cotação enviada" />
+          <Kpi i={6} hex="#0ea5e9" I={Percent} t="Negócios cotados" v={nf.format(s.quotedDeals)} s={`${s.received ? Math.round((s.quotedDeals / s.received) * 100) : 0}% das negociações recebidas`} bar={s.received ? (s.quotedDeals / s.received) * 100 : 0} />
+          <Kpi i={8} hex="#E24B4A" I={TrendingDown} t="Valor perdido" v={fmtBRL(s.lostValue)} s={`${nf.format(s.lost)} ${s.lost === 1 ? "perdida" : "perdidas"} no período`} />
+          <Kpi i={9} hex="#BA7517" I={Hourglass} t="Ciclo de venda" v={s.cycleDays == null ? "—" : `${s.cycleDays.toFixed(1).replace(".", ",")} d`} s="da entrada ao faturamento" />
+          <Kpi i={10} hex="#f97316" I={BellRing} t="Negócios parados" v={nf.format(s.stalled)} s={s.stalled ? "sem movimento há 7 dias ou mais" : "nenhum parado"} hot={s.stalled > 0} />
+          <Kpi i={11} hex="#1D9E75" I={BellRing} t="Avisos" v={nf.format(s.alerts.length)} s={s.alerts.length ? "precisam de atenção" : "tudo em dia"} hot={s.alerts.length > 0} />
+        </div>
+      </DashSection>
+      <DashSection I={PhoneCall} title="Contatos" hint="ligações, WhatsApp e e-mail nas negociações e no shuffler" hex="#0ea5e9">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+          <Kpi i={0} featured hex="#0ea5e9" I={PhoneCall} t="Contatos nas negociações" v={nf.format(s.contacts)} s={`${nf.format(s.kinds.calls)} ligações · ${nf.format(s.kinds.whatsapp)} WhatsApp · ${nf.format(s.kinds.email)} e-mails`} />
+          <Kpi i={1} featured hex="#22c55e" I={PhoneCall} t="Ligações atendidas" v={nf.format(s.touch.callsAnswered)} s={`de ${nf.format(s.touch.calls)} ligações com resultado`} />
+          <Kpi i={2} hex="#14b8a6" I={Percent} t="Taxa de atendimento" v={s.touch.calls ? `${Math.round((s.touch.callsAnswered / s.touch.calls) * 100)}%` : "—"} s="das ligações com resultado" bar={s.touch.calls ? (s.touch.callsAnswered / s.touch.calls) * 100 : 0} />
+          <Kpi i={3} hex="#f59e0b" I={Hourglass} t="Tempo de conversa" v={secs(s.touch.talkSeconds)} s={s.touch.avgTalkSeconds ? `média ${secs(s.touch.avgTalkSeconds)} por ligação` : "somando as ligações atendidas"} />
+          <Kpi i={4} hex="#94a3b8" I={PhoneCall} t="Ligações sem resposta" v={nf.format(s.touch.callsNoAnswer)} s="não atendeu, caixa postal ou ocupado" />
+          <Kpi i={5} hex="#ef4444" I={TrendingDown} t="Números errados" v={nf.format(s.touch.callsWrong)} s="marcados como inválidos" />
+          <Kpi i={6} hex="#22c55e" I={PhoneCall} t="WhatsApp enviados" v={nf.format(s.touch.waSent)} s={`${nf.format(s.touch.waReplied)} responderam`} />
+          <Kpi i={7} hex="#16a34a" I={Percent} t="Resposta no WhatsApp" v={s.touch.waSent ? `${Math.round((s.touch.waReplied / s.touch.waSent) * 100)}%` : "—"} s="dos enviados" bar={s.touch.waSent ? (s.touch.waReplied / s.touch.waSent) * 100 : 0} />
+          <Kpi i={8} hex="#378ADD" I={FileText} t="E-mails enviados" v={nf.format(s.touch.emSent)} s={`${nf.format(s.touch.emReplied)} responderam · ${nf.format(s.touch.emBounced)} voltaram`} />
+          <Kpi i={9} hex="#f59e0b" I={Timer} t="Tempo até o 1º contato" v={mins(s.firstContactMinutes)} s={`${nf.format(s.received)} negociações recebidas`} />
+          <Kpi i={10} hex="#ec4899" I={CalendarCheck} t="Visitas" v={nf.format(s.visits.pending + s.visits.confirmed + s.visits.done)} s={`${nf.format(s.visits.done)} realizadas · ${nf.format(s.visits.confirmed)} confirmadas · ${nf.format(s.visits.pending)} aguardando`} />
+          <Kpi i={11} hex="#a855f7" I={Shuffle} t="Shuffler Vendas" v={nf.format(s.shuffler.worked)} s={`${nf.format(s.shuffler.saved + s.shuffler.visit + s.shuffler.deal)} aproveitados · ${nf.format(s.shuffler.toSdr)} devolvidos ao SDR`} />
+        </div>
+      </DashSection>
       <div className="panel-grid">
         <Block icon={BellRing} title="Precisa de atenção">
           {s.alerts.length ? (

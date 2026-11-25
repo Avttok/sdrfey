@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { dayEnd, dayStart } from "@/lib/format";
 import { listDeals } from "./queries";
 import { closedDay, soldCents } from "./goals";
-import type { Period } from "@/modules/dashboard/stats";
+import { getTouchStats, type Period } from "@/modules/dashboard/stats";
 
 const ids = (list: number[]) => sql.join(list.map((i) => sql`${i}`), sql`, `);
 
@@ -45,6 +45,13 @@ export async function getSalesStats(period: Period, sellerIds: number[]) {
     db.execute<{ v: number }>(sql`select coalesce(sum(value_cents),0)::bigint as v from deals where seller_id in (${U}) and stage = 'perdido' and not is_test and closed_at between ${from} and ${to}`),
     db.execute<{ outcome: string; n: number }>(sql`select coalesce(outcome,'aberto') as outcome, count(*)::int as n from seller_shuffles where user_id in (${U}) and not is_test and shown_at between ${from} and ${to} group by 1`),
   ]);
+  const [kinds, quoted, stalled, touch] = await Promise.all([
+    db.execute<{ kind: string; n: number }>(sql`select e.kind, count(*)::int as n from deal_events e join deals d on d.id = e.deal_id where not d.is_test and d.seller_id in (${U}) and e.kind in ('ligacao','whatsapp','email') and e.at between ${from} and ${to} group by 1`),
+    db.execute<{ n: number }>(sql`select count(distinct e.deal_id)::int as n from deal_events e join deals d on d.id = e.deal_id where not d.is_test and d.seller_id in (${U}) and e.kind = 'cotacao' and e.at between ${from} and ${to}`),
+    db.execute<{ n: number }>(sql`select count(*)::int as n from deals d where d.seller_id in (${U}) and d.stage not in ('ganho','perdido') and not d.is_test and coalesce((select max(e.at) from deal_events e where e.deal_id = d.id), d.claimed_at, d.created_at) < now() - interval '7 days'`),
+    getTouchStats(period, sellerIds),
+  ]);
+  const kindN = (k: string) => kinds.find((x) => x.kind === k)?.n ?? 0;
   const [shExtra, shSellers, shPool] = await Promise.all([
     db.execute<{ avg_s: number | null; won: number; won_v: number; deals: number }>(sql`
       select avg(extract(epoch from (s.done_at - s.shown_at)))::float as avg_s,
@@ -85,6 +92,7 @@ export async function getSalesStats(period: Period, sellerIds: number[]) {
     upcoming: upcoming.map((r) => ({ id: r.id, leadId: r.lead_id, company: r.company, date: r.visit_date, status: r.status })),
     cycleDays: cycle[0]?.days ?? null, lostValue: Number(lostV[0]?.v ?? 0),
     shuffler: { worked: shuf.reduce((a, r) => a + r.n, 0), saved: shN("saved"), visit: shN("visit"), deal: shN("deal"), toSdr: shN("to_sdr"), noInterest: shN("no_interest"), noAnswer: shN("no_answer"), skipped: shN("skipped"), released: shN("released"), open: shN("aberto"), avgSeconds: shExtra[0]?.avg_s ?? null, dealsOpened: shExtra[0]?.deals ?? 0, won: shExtra[0]?.won ?? 0, wonValue: Number(shExtra[0]?.won_v ?? 0), pool: shPool[0]?.n ?? 0, sellers: shSellers.map((r) => ({ id: r.id, name: r.name, worked: r.worked, used: r.used, deals: r.deals, noAnswer: r.no_answer, noInterest: r.no_interest, skipped: r.skipped, avgSeconds: r.avg_s })) },
+    kinds: { calls: kindN("ligacao"), whatsapp: kindN("whatsapp"), email: kindN("email") }, quotedDeals: quoted[0]?.n ?? 0, stalled: stalled[0]?.n ?? 0, touch,
     alerts: mine.map((d) => ({ id: d.id, company: d.company, text: d.alerts[0].text, tone: d.alerts[0].tone })),
   };
 }

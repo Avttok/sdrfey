@@ -7,6 +7,7 @@ import Link from "next/link";
 import { PageHead } from "@/components/page-head";
 import { AlertTriangle, LayoutDashboard, CalendarCheck, Clock, Database, Flame, MessagesSquare, Percent, Timer, Target, Trophy, Filter as FunnelIcon, PhoneCall, CircleCheck, Phone, Handshake, Ban, CalendarClock, Flag, Hourglass, SkipForward, Square, TrendingDown, TrendingUp, Wallet, Zap } from "lucide-react";
 import { Suspense } from "react";
+import { DashBlock, DashSection, MetricCard } from "@/components/dash-ui";
 import { DashHero } from "@/components/dash-hero";
 import { getHero } from "@/modules/dashboard/hero";
 import { DashTabs } from "@/components/dash-tabs";
@@ -60,13 +61,8 @@ function AlertTile({ icon: I, tone, n, text, hint, href }: { icon: typeof Clock;
     ? <Link href={href} className={`${cls} hover:-translate-y-0.5 hover:border-accent/50 hover:bg-sunk/70`} style={{ borderLeft: `3px solid ${c}` }}>{body}</Link>
     : <div className={cls} style={{ borderLeft: `3px solid ${c}` }}>{body}</div>;
 }
-const Block = ({ icon: I, title, children }: { icon: typeof Clock; title: string; children: React.ReactNode }) => (
-  <section className={`${panelCls} card-in relative overflow-hidden p-5`}>
-    <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-grad opacity-80" />
-    <h2 className="mb-4 flex items-center gap-2.5 text-[15px] font-bold"><span className="grid size-9 place-items-center rounded-xl bg-grad text-on-accent shadow-sm"><I size={17} aria-hidden /></span> {title}</h2>
-    {children}
-  </section>
-);
+const BLOCK_HEX: Record<string, string> = { "Ranking da equipe": "#F5B301", Funil: "#7F77DD", "Resultado dos atendimentos": "#1D9E75", "Evolução por dia": "#378ADD", "Atividade por hora": "#f59e0b", "Meios de contato": "#22c55e", "Interesse e Leads": "#f97316", Alertas: "#E24B4A", "Agendamentos recentes": "#ec4899" };
+const Block = ({ icon, title, children }: { icon: typeof Clock; title: string; children: React.ReactNode }) => <DashBlock I={icon} title={title} hex={BLOCK_HEX[title] ?? "var(--accent)"}>{children}</DashBlock>;
 /** Anel de progresso (metas). */
 function Ring({ value, color }: { value: number; color: string }) {
   const v = Math.max(0, Math.min(100, value)); const r = 22; const c = 2 * Math.PI * r;
@@ -77,7 +73,7 @@ function Ring({ value, color }: { value: number; color: string }) {
     </svg>
   );
 }
-const KPI_HEX: Record<string, string> = { lig_atendidas: "#22c55e", taxa_atendimento: "#14b8a6", tempo_conversa: "#f59e0b", lig_sem_resposta: "#94a3b8", numeros_errados: "#ef4444", contatos: "#378ADD", meta: "#1D9E75", meta_agend: "#7F77DD", meta_ligacoes: "#0ea5e9", meta_convertidos: "#22c55e", qualificados: "#1D9E75", agendados: "#7F77DD", taxa_qualif: "#14b8a6", taxa_agend: "#a855f7", tempo: "#f59e0b", media_dia: "#eab308", ligacoes: "#0ea5e9", convertidos: "#22c55e", descartados: "#E24B4A", visitas_ok: "#ec4899", tempo_total: "#BA7517", vendas_origem: "#10b981", sequencia: "#f97316", novos: "#64748b" };
+const KPI_HEX: Record<string, string> = { aproveitamento: "#1D9E75", melhor_dia: "#F5B301", leads_tocados: "#378ADD", toques_lead: "#7F77DD", multicanal: "#f97316", maior_ligacao: "#0ea5e9", lig_caixa_postal: "#64748b", lig_pessoa: "#22c55e", zap_enviados: "#22c55e", zap_resposta: "#16a34a", email_enviados: "#378ADD", email_resposta: "#2563eb", email_voltou: "#ef4444", sem_resultado: "#f59e0b", lig_atendidas: "#22c55e", taxa_atendimento: "#14b8a6", tempo_conversa: "#f59e0b", lig_sem_resposta: "#94a3b8", numeros_errados: "#ef4444", contatos: "#378ADD", meta: "#1D9E75", meta_agend: "#7F77DD", meta_ligacoes: "#0ea5e9", meta_convertidos: "#22c55e", qualificados: "#1D9E75", agendados: "#7F77DD", taxa_qualif: "#14b8a6", taxa_agend: "#a855f7", tempo: "#f59e0b", media_dia: "#eab308", ligacoes: "#0ea5e9", convertidos: "#22c55e", descartados: "#E24B4A", visitas_ok: "#ec4899", tempo_total: "#BA7517", vendas_origem: "#10b981", sequencia: "#f97316", novos: "#64748b" };
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const me = await requirePerm("tab.painel");
@@ -131,31 +127,58 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const hourTotals = hoursRange.map((h) => ({ h, n: d.hours.filter((q) => q.h === h).reduce((a, q) => a + q.n, 0) }));
   const bestHour = hourTotals.length ? hourTotals.reduce((a, b) => (b.n > a.n ? b : a)).h : null;
-  const kpis: { k: string; I: typeof Clock; t: string; v: string; s: string; bar?: number }[] = [
-    { k: "contatos", I: PhoneCall, t: "Contatos", v: nf.format(d.contacts), s: `${plural(d.days, "dia", "dias")}${vs(d.contacts, x.prev.contacts)}` },
-    { k: "meta", I: Target, t: "Meta atendidos", v: d.goal ? pct(d.contacts, d.goal) : "—", s: d.goal ? `de ${nf.format(d.goal)}` : "meta desligada", bar: d.goal ? (d.contacts / d.goal) * 100 : undefined },
-    { k: "meta_agend", I: CalendarCheck, t: "Meta agendados", v: d.goalScheduled ? pct(d.scheduled, d.goalScheduled) : "—", s: d.goalScheduled ? `de ${nf.format(d.goalScheduled)}` : "meta desligada", bar: d.goalScheduled ? (d.scheduled / d.goalScheduled) * 100 : undefined },
-    ...(d.goalCalls ? [{ k: "meta_ligacoes", I: Phone, t: "Meta ligações", v: pct(d.calls, d.goalCalls), s: `${nf.format(d.calls)} de ${nf.format(d.goalCalls)}`, bar: (d.calls / d.goalCalls) * 100 }] : []),
-    ...(d.goalConverted ? [{ k: "meta_convertidos", I: Handshake, t: "Meta convertidos", v: pct(d.converted, d.goalConverted), s: `${nf.format(d.converted)} de ${nf.format(d.goalConverted)}`, bar: (d.converted / d.goalConverted) * 100 }] : []),
-    { k: "qualificados", I: CircleCheck, t: "Qualificados", v: nf.format(d.qualified), s: `no período${vs(d.qualified, x.prev.qualified)}` },
-    { k: "agendados", I: CalendarCheck, t: "Agendados", v: nf.format(d.scheduled), s: `visitas marcadas${vs(d.scheduled, x.prev.scheduled)}` },
-    { k: "taxa_qualif", I: Percent, t: "Taxa de qualificação", v: pct(d.qualified, d.contacts), s: "dos contatos" },
-    { k: "taxa_agend", I: Percent, t: "Taxa de agendamento", v: pct(d.scheduled, d.contacts), s: "dos contatos" },
-    { k: "tempo", I: Timer, t: "Tempo por lead", v: fmtDuration(d.avgSeconds), s: `mediana ${fmtDuration(d.medianSeconds)}` },
-    { k: "media_dia", I: Zap, t: "Média por dia", v: (d.contacts / Math.max(1, d.days)).toLocaleString("pt-BR", { maximumFractionDigits: 1 }), s: bestHour ? `pico às ${bestHour}h` : "contatos por dia" },
-    { k: "ligacoes", I: Phone, t: "Ligações", v: nf.format(d.calls), s: `${pct(d.calls, d.contacts)} dos contatos` },
-    { k: "lig_atendidas", I: PhoneCall, t: "Ligações atendidas", v: nf.format(x.callsAnswered), s: `de ${nf.format(x.callsDone)} com resultado` },
-    { k: "taxa_atendimento", I: Percent, t: "Taxa de atendimento", v: pct(x.callsAnswered, x.callsDone), s: "das ligações com resultado" },
-    { k: "tempo_conversa", I: Hourglass, t: "Tempo de conversa", v: fmtDuration(x.talkSeconds), s: x.avgTalkSeconds ? `média ${fmtDuration(x.avgTalkSeconds)} por ligação` : "somando as ligações atendidas" },
-    { k: "lig_sem_resposta", I: Phone, t: "Ligações sem resposta", v: nf.format(x.callsNoAnswer), s: "não atendeu, caixa postal ou ocupado" },
-    { k: "numeros_errados", I: Ban, t: "Números errados", v: nf.format(x.callsWrong), s: "marcados como inválidos na ligação" },
-    { k: "convertidos", I: Handshake, t: "Convertidos", v: nf.format(d.converted), s: "repassados aos vendedores" },
-    { k: "descartados", I: Ban, t: "Descartados", v: nf.format(x.discarded), s: "leads tirados da lista" },
-    { k: "visitas_ok", I: CalendarClock, t: "Visitas confirmadas", v: nf.format(x.visitsConfirmed + x.visitsDone), s: `${nf.format(x.visitsDone)} realizadas · ${nf.format(x.visitsPending)} aguardando` },
-    { k: "tempo_total", I: Hourglass, t: "Tempo atendendo", v: fmtDuration(x.totalSeconds), s: "somando todos os leads" },
-    { k: "vendas_origem", I: Wallet, t: "Vendas originadas", v: nf.format(x.originated), s: x.originatedValue ? fmtBRL(x.originatedValue) : "negociações faturadas" },
-    { k: "sequencia", I: Flag, t: "Sequência", v: nf.format(x.streak), s: x.streak === 1 ? "dia seguido atendendo" : "dias seguidos atendendo" },
-    { k: "novos", I: Database, t: "Leads novos", v: nf.format(d.stock.novos), s: "no estoque" },
+  const t = x.touch;
+  const resolved = t.callsAnswered + t.callsNoAnswer + t.callsWrong;
+  const bestDay = x.daily.length ? x.daily.reduce((m, q) => (q.n > m.n ? q : m), x.daily[0]) : null;
+  const closedSessions = x.saved + x.skipped + x.released + x.discarded + x.abandoned;
+  const mmss = (sec: number) => (sec ? `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, "0")} min` : "—");
+  type Kpi = { k: string; g: string; I: typeof Clock; t: string; v: string; s: string; bar?: number; featured?: boolean };
+  const kpis: Kpi[] = [
+    { k: "contatos", g: "atend", featured: true, I: PhoneCall, t: "Contatos", v: nf.format(d.contacts), s: `${plural(d.days, "dia", "dias")}${vs(d.contacts, x.prev.contacts)}` },
+    { k: "meta", g: "atend", featured: true, I: Target, t: "Meta atendidos", v: d.goal ? pct(d.contacts, d.goal) : "—", s: d.goal ? `${nf.format(d.contacts)} de ${nf.format(d.goal)}` : "meta desligada", bar: d.goal ? (d.contacts / d.goal) * 100 : undefined },
+    { k: "meta_agend", g: "atend", featured: true, I: CalendarCheck, t: "Meta agendados", v: d.goalScheduled ? pct(d.scheduled, d.goalScheduled) : "—", s: d.goalScheduled ? `${nf.format(d.scheduled)} de ${nf.format(d.goalScheduled)}` : "meta desligada", bar: d.goalScheduled ? (d.scheduled / d.goalScheduled) * 100 : undefined },
+    ...(d.goalCalls ? [{ k: "meta_ligacoes", g: "atend", I: Phone, t: "Meta ligações", v: pct(d.calls, d.goalCalls), s: `${nf.format(d.calls)} de ${nf.format(d.goalCalls)}`, bar: (d.calls / d.goalCalls) * 100 }] : []),
+    ...(d.goalConverted ? [{ k: "meta_convertidos", g: "atend", I: Handshake, t: "Meta convertidos", v: pct(d.converted, d.goalConverted), s: `${nf.format(d.converted)} de ${nf.format(d.goalConverted)}`, bar: (d.converted / d.goalConverted) * 100 }] : []),
+    { k: "qualificados", g: "atend", I: CircleCheck, t: "Qualificados", v: nf.format(d.qualified), s: `no período${vs(d.qualified, x.prev.qualified)}` },
+    { k: "agendados", g: "atend", I: CalendarCheck, t: "Agendados", v: nf.format(d.scheduled), s: `visitas marcadas${vs(d.scheduled, x.prev.scheduled)}` },
+    { k: "convertidos", g: "atend", I: Handshake, t: "Convertidos", v: nf.format(d.converted), s: "repassados aos vendedores" },
+    { k: "taxa_qualif", g: "atend", I: Percent, t: "Taxa de qualificação", v: pct(d.qualified, d.contacts), s: "dos contatos", bar: d.contacts ? (d.qualified / d.contacts) * 100 : 0 },
+    { k: "taxa_agend", g: "atend", I: Percent, t: "Taxa de agendamento", v: pct(d.scheduled, d.contacts), s: "dos contatos", bar: d.contacts ? (d.scheduled / d.contacts) * 100 : 0 },
+    { k: "aproveitamento", g: "atend", I: Zap, t: "Aproveitamento", v: pct(x.saved, closedSessions), s: `${nf.format(x.saved)} salvos de ${nf.format(closedSessions)} sorteados`, bar: closedSessions ? (x.saved / closedSessions) * 100 : 0 },
+    { k: "descartados", g: "atend", I: Ban, t: "Descartados", v: nf.format(x.discarded), s: "leads tirados da lista" },
+    { k: "tempo", g: "ritmo", I: Timer, t: "Tempo por lead", v: fmtDuration(d.avgSeconds), s: `mediana ${fmtDuration(d.medianSeconds)}` },
+    { k: "tempo_total", g: "ritmo", I: Hourglass, t: "Tempo atendendo", v: fmtDuration(x.totalSeconds), s: "somando todos os leads" },
+    { k: "media_dia", g: "ritmo", I: Zap, t: "Média por dia", v: (d.contacts / Math.max(1, d.days)).toLocaleString("pt-BR", { maximumFractionDigits: 1 }), s: bestHour ? `pico às ${bestHour}h` : "contatos por dia" },
+    { k: "melhor_dia", g: "ritmo", I: Trophy, t: "Melhor dia", v: bestDay && bestDay.n ? nf.format(bestDay.n) : "—", s: bestDay && bestDay.n ? `atendimentos em ${fmtDate(bestDay.d)}` : "sem atendimentos no período" },
+    { k: "sequencia", g: "ritmo", I: Flag, t: "Sequência", v: nf.format(x.streak), s: x.streak === 1 ? "dia seguido atendendo" : "dias seguidos atendendo" },
+    { k: "leads_tocados", g: "ritmo", I: Database, t: "Leads contatados", v: nf.format(t.leads), s: "diferentes, por ligação, WhatsApp ou e-mail" },
+    { k: "toques_lead", g: "ritmo", I: MessagesSquare, t: "Contatos por lead", v: t.touchesPerLead ? t.touchesPerLead.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) : "—", s: "tentativas médias em cada lead" },
+    { k: "multicanal", g: "ritmo", I: Flame, t: "Lead em 2+ meios", v: nf.format(t.multiChannel), s: "abordados por mais de um canal" },
+    { k: "ligacoes", g: "lig", featured: true, I: Phone, t: "Ligações", v: nf.format(d.calls), s: `${pct(d.calls, d.contacts)} dos contatos` },
+    { k: "lig_atendidas", g: "lig", I: PhoneCall, t: "Ligações atendidas", v: nf.format(t.callsAnswered), s: `${nf.format(t.callsTalked)} falaram · ${nf.format(t.callsMessage)} recado` },
+    { k: "taxa_atendimento", g: "lig", I: Percent, t: "Taxa de atendimento", v: pct(t.callsAnswered, resolved), s: `de ${nf.format(resolved)} ligações com resultado`, bar: resolved ? (t.callsAnswered / resolved) * 100 : 0 },
+    { k: "tempo_conversa", g: "lig", I: Hourglass, t: "Tempo de conversa", v: fmtDuration(t.talkSeconds), s: t.avgTalkSeconds ? `média ${mmss(t.avgTalkSeconds)} por ligação` : "somando as ligações atendidas" },
+    { k: "maior_ligacao", g: "lig", I: Timer, t: "Maior ligação", v: t.longestCall ? mmss(t.longestCall) : "—", s: "a conversa mais longa do período" },
+    { k: "lig_sem_resposta", g: "lig", I: Phone, t: "Ligações sem resposta", v: nf.format(t.callsNoAnswer), s: "não atendeu, caixa postal ou ocupado" },
+    { k: "lig_caixa_postal", g: "lig", I: MessagesSquare, t: "Caixa postal", v: nf.format(t.callsVoicemail), s: "cairam na caixa postal" },
+    { k: "numeros_errados", g: "lig", I: Ban, t: "Números errados", v: nf.format(t.callsWrong), s: "marcados como inválidos na ligação" },
+    { k: "lig_pessoa", g: "lig", I: CircleCheck, t: "Falou com pessoa certa", v: nf.format(t.withPerson), s: "contatos com a pessoa identificada" },
+    { k: "zap_enviados", g: "msg", featured: true, I: MessagesSquare, t: "WhatsApp enviados", v: nf.format(t.waSent), s: `${nf.format(t.waReplied)} responderam` },
+    { k: "zap_resposta", g: "msg", I: Percent, t: "Resposta no WhatsApp", v: pct(t.waReplied, t.waSent), s: `${nf.format(t.waSilent)} sem resposta · ${nf.format(t.waNone)} sem WhatsApp`, bar: t.waSent ? (t.waReplied / t.waSent) * 100 : 0 },
+    { k: "email_enviados", g: "msg", featured: true, I: PhoneCall, t: "E-mails enviados", v: nf.format(t.emSent), s: `${nf.format(t.emReplied)} responderam` },
+    { k: "email_resposta", g: "msg", I: Percent, t: "Resposta no e-mail", v: pct(t.emReplied, t.emSent), s: `${nf.format(t.emOpened)} abertos · ${nf.format(t.emBounced)} voltaram`, bar: t.emSent ? (t.emReplied / t.emSent) * 100 : 0 },
+    { k: "email_voltou", g: "msg", I: Ban, t: "E-mails que voltaram", v: nf.format(t.emBounced), s: "marcados como inválidos" },
+    { k: "sem_resultado", g: "msg", I: AlertTriangle, t: "Contatos sem resultado", v: nf.format(t.pending), s: t.pending ? "falta dizer como foi" : "tudo registrado" },
+    { k: "visitas_ok", g: "res", I: CalendarClock, t: "Visitas confirmadas", v: nf.format(x.visitsConfirmed + x.visitsDone), s: `${nf.format(x.visitsDone)} realizadas · ${nf.format(x.visitsPending)} aguardando` },
+    { k: "vendas_origem", g: "res", I: Wallet, t: "Vendas originadas", v: nf.format(x.originated), s: x.originatedValue ? fmtBRL(x.originatedValue) : "negociações faturadas" },
+    { k: "novos", g: "res", I: Database, t: "Leads novos", v: nf.format(d.stock.novos), s: "no estoque" },
+  ];
+  const GROUPS: [string, string, string, typeof Clock, string][] = [
+    ["atend", "Atendimento", "metas, qualificação e agendamentos", Target, "#378ADD"],
+    ["ritmo", "Ritmo e tempo", "quanto e com que constância você atende", Zap, "#f59e0b"],
+    ["lig", "Ligações", "atendimento, conversa e números ruins", Phone, "#0ea5e9"],
+    ["msg", "WhatsApp e e-mail", "envios e respostas", MessagesSquare, "#22c55e"],
+    ["res", "Resultados", "visitas, vendas e estoque", Wallet, "#ec4899"],
   ];
 
   return (
@@ -168,26 +191,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       <DashTabs
         sdr={<>
-      {kpis.some((x) => can(`panel.kpi.${x.k}`)) && (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-          {kpis.filter((x) => can(`panel.kpi.${x.k}`)).map(({ k, I, t, v, s: sub, bar }, i) => {
-            const hex = KPI_HEX[k] ?? "var(--accent)";
-            return (
-              <div key={t} style={{ "--i": i } as React.CSSProperties} className={`${panelCls} card-in lift relative overflow-hidden p-4 hover:shadow-lg`}>
-                <span aria-hidden className="pointer-events-none absolute -right-6 -top-6 size-24 rounded-full opacity-[.13]" style={{ background: hex }} />
-                <div className="relative flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted">{t}</p>
-                    <p className="figure mt-2 text-4xl font-extrabold leading-none" style={bar !== undefined ? { color: bar >= 100 ? "var(--ok)" : undefined } : undefined}>{v}</p>
-                    <p className="mt-2 text-xs text-muted">{sub}</p>
-                  </div>
-                  {bar !== undefined ? <Ring value={bar} color={bar >= 100 ? "var(--ok)" : hex} /> : <span className="grid size-11 shrink-0 place-items-center rounded-2xl text-white shadow-sm" style={{ background: hex }}><I size={20} aria-hidden /></span>}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {GROUPS.map(([g, title, hint, GI, ghex]) => {
+        const list = kpis.filter((q) => q.g === g && can(`panel.kpi.${q.k}`));
+        if (!list.length) return null;
+        return (
+          <DashSection key={g} I={GI} title={title} hint={hint} hex={ghex}>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+              {list.map(({ k, I, t: kt, v, s: sub, bar, featured }, i) => <MetricCard key={k} i={i} I={I} t={kt} v={v} s={sub} bar={bar} featured={featured} hex={KPI_HEX[k] ?? ghex} />)}
+            </div>
+          </DashSection>
+        );
+      })}
 
       <div className="panel-grid">
         {can("panel.ranking") && (
