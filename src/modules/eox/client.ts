@@ -89,3 +89,10 @@ export async function eoxFindByCode(s: EoxSession, code: string): Promise<string
   const ids = rows.map((r) => Number(recordOf(String(r.id)))).filter((n) => n > 0);
   return ids.length ? String(Math.max(...ids)) : null;
 }
+
+export type EoxFieldInfo = { name: string; label: string; type: string; refersTo: string[] };
+/** Campos de um módulo com o tipo e, nos campos de ligação, para qual módulo apontam. */
+export async function eoxDescribe(s: EoxSession, module: string): Promise<EoxFieldInfo[]> {
+  const r = (await call(s.f, `${s.cfg.baseUrl}/webservice.php?operation=describe&sessionName=${encodeURIComponent(s.session)}&elementType=${encodeURIComponent(module)}`)) as { fields?: { name: string; label: string; type?: { name?: string; refersTo?: string[] } }[] };
+  return (r.fields ?? []).map((x) => ({ name: x.name, label: x.label, type: x.type?.name ?? "", refersTo: x.type?.refersTo ?? [] }));
+}

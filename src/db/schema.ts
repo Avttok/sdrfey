@@ -153,6 +153,9 @@ export const leads = pgTable(
     /** Retrato do cadastro na EOX (tipo, vendedor, bloqueio de discagem, últimas compras…). Vem da planilha de Empresas. */
     eoxInfo: jsonb("eox_info").$type<Record<string, string>>(),
     eoxSyncedAt: timestamp("eox_synced_at", { withTimezone: true }),
+    /** Consulta EOX: quando deu certo e quando foi a última tentativa (a fila não repete o mesmo lead logo em seguida). */
+    eoxCheckedAt: timestamp("eox_checked_at", { withTimezone: true }),
+    eoxTriedAt: timestamp("eox_tried_at", { withTimezone: true }),
 
     ownerId: integer("owner_id").references(() => users.id, { onDelete: "set null" }),
     lockedBy: integer("locked_by").references(() => users.id, { onDelete: "set null" }),
@@ -387,7 +390,7 @@ export const leadChannels = pgTable(
     /** Telefone só com dígitos; e-mail em minúsculas. */
     value: text("value").notNull(),
     label: text("label"),
-    origin: text("origin").$type<"import" | "manual" | "brasilapi" | "receitaws" | "opencnpj" | "site" | "google">().notNull().default("manual"),
+    origin: text("origin").$type<"import" | "manual" | "brasilapi" | "receitaws" | "opencnpj" | "site" | "google" | "eox">().notNull().default("manual"),
     wrong: boolean("wrong").notNull().default(false),
     createdAt: now(),
   },
@@ -395,6 +398,27 @@ export const leadChannels = pgTable(
 );
 
 /* ───────────── Atendimento ───────────── */
+
+/** Histórico de cada consulta à EOX (automática, em lote ou manual): alimenta a tela "Consulta EOX" do Adm. */
+export const eoxLog = pgTable(
+  "eox_log",
+  {
+    id: serial("id").primaryKey(),
+    leadId: integer("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+    origin: text("origin").notNull(),
+    ok: boolean("ok").notNull(),
+    ms: integer("ms").notNull().default(0),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    phones: integer("phones").notNull().default(0),
+    emails: integer("emails").notNull().default(0),
+    people: integer("people").notNull().default(0),
+    /** quantos campos do lead foram preenchidos */
+    filled: integer("filled").notNull().default(0),
+    why: text("why"),
+  },
+  (t) => [index("eox_log_at_idx").on(t.at), index("eox_log_lead_idx").on(t.leadId)],
+);
 
 /** Histórico de cada consulta de CNPJ (automática, em lote ou manual): alimenta a tela "Consulta de CNPJ" do Adm. */
 export const enrichLog = pgTable(

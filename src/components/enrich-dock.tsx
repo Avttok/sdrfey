@@ -40,8 +40,9 @@ export function EnrichDock({ side }: { side?: boolean }) {
     const t = setInterval(() => void load(), 4000), c = setInterval(() => setNow(Date.now()), 1000);
     const onSet = (e: Event) => { if (alive) put((e as CustomEvent<DockData>).detail); };
     const onAsk = () => void load(true);
-    window.addEventListener(ENRICH_SET, onSet); window.addEventListener(ENRICH_ASK, onAsk);
-    return () => { alive = false; clearInterval(t); clearInterval(c); window.removeEventListener(ENRICH_SET, onSet); window.removeEventListener(ENRICH_ASK, onAsk); };
+    const onOther = (e: Event) => { if ((e as CustomEvent<string>).detail !== "cnpj") setOpen(false); };
+    window.addEventListener(ENRICH_SET, onSet); window.addEventListener(ENRICH_ASK, onAsk); window.addEventListener("dock:open", onOther);
+    return () => { window.removeEventListener("dock:open", onOther); alive = false; clearInterval(t); clearInterval(c); window.removeEventListener(ENRICH_SET, onSet); window.removeEventListener(ENRICH_ASK, onAsk); };
   }, []);
 
   /* o laço: só quem iniciou executa; cada passo consulta um bloco de 100 leads */
@@ -172,7 +173,7 @@ export function EnrichDock({ side }: { side?: boolean }) {
           </section>
         </div>
       </div>
-      <button type="button" aria-expanded={open} aria-label={open ? "Recolher painel de consulta de CNPJ" : "Abrir painel de consulta de CNPJ"} onClick={() => setOpen(!open)} className="card-surface relative -ml-px grid h-28 w-11 place-items-center rounded-r-2xl border-2 border-l-0 border-line text-accent shadow-lg hover:bg-sunk">
+      <button type="button" aria-expanded={open} aria-label={open ? "Recolher painel de consulta de CNPJ" : "Abrir painel de consulta de CNPJ"} onClick={() => { const next = !open; setOpen(next); if (next) window.dispatchEvent(new CustomEvent("dock:open", { detail: "cnpj" })); }} className="card-surface relative -ml-px grid h-28 w-11 place-items-center rounded-r-2xl border-2 border-l-0 border-line text-accent shadow-lg hover:bg-sunk">
         {open ? <ChevronLeft size={18} aria-hidden /> : <span className="flex flex-col items-center gap-1"><span className="relative grid place-items-center"><MetricRing value={pct} color="var(--accent)" size="size-9" /><DatabaseZap size={14} className="absolute" aria-hidden /></span><span className="figure text-[10px] font-extrabold">{pct}%</span>{on && <span aria-hidden className="absolute right-1 top-1.5 size-2.5 animate-pulse rounded-full bg-ok ring-2 ring-panel" />}</span>}
       </button>
     </aside>

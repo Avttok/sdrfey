@@ -1,4 +1,4 @@
-import { Headset, BarChart3, Puzzle, Merge, Brain, Activity, BookA, Archive, Megaphone, Coins, Clock, DatabaseZap, Download, Eraser, ScrollText, Truck, Handshake, KeyRound, PhoneCall, Link2, Mail, PanelTop, Settings2, Tags, Upload, Users, FlaskConical, MessagesSquare, type LucideIcon } from "lucide-react";
+import { Headset, BarChart3, Puzzle, Merge, Brain, Activity, BookA, Archive, Megaphone, Coins, Clock, DatabaseZap, Plug, Download, Eraser, ScrollText, Truck, Handshake, KeyRound, PhoneCall, Link2, Mail, PanelTop, Settings2, Tags, Upload, Users, FlaskConical, MessagesSquare, type LucideIcon } from "lucide-react";
 
 export type AdminItem = { href: string; label: string; hint: string; icon: LucideIcon };
 export type AdminSection = { id: string; title: string; hue: string; items: AdminItem[] };
@@ -28,6 +28,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     { href: "/admin/roteiros/modulos", label: "Galeria de módulos", hint: "Sequência dos roteiros e desempenho de cada módulo", icon: Puzzle },
     { href: "/admin/roteiros/uso", label: "Uso dos roteiros", hint: "Ligações, objetivos, objeções e onde param", icon: BarChart3 },
     { href: "/admin/consulta-cnpj", label: "Consulta de CNPJ", hint: "Buscar dados dos leads em lote", icon: DatabaseZap },
+    { href: "/admin/consulta-eox", label: "Consulta EOX", hint: "Completar os leads com o cadastro da EOX", icon: Plug },
     { href: "/admin/exportar", label: "Exportar / backup", hint: "Baixar o banco com segurança", icon: Download },
     { href: "/admin/apagar", label: "Apagar", hint: "Excluir dados com segurança", icon: Eraser },
   ] },

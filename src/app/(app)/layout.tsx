@@ -17,6 +17,7 @@ import { TermsProvider } from "@/components/terms";
 import { getTermOverrides } from "@/modules/terms/get";
 import { QuickDock, type QuickKey } from "@/components/quick-dock";
 import { EnrichDock } from "@/components/enrich-dock";
+import { EoxDockPanel } from "@/components/eox-dock";
 import { LiveSnap } from "@/components/live-snap";
 import { EggHunt, GoldFooterEgg } from "@/components/egg-hunt";
 import { CopyGuard } from "@/components/copy-guard";
@@ -92,7 +93,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <SwRegister />
       <UpdateNotice />
       <LiveSnap />
-      {user.isAdmin && <div className="contents embed-hide"><EnrichDock side={user.navLayout === "side"} /></div>}
+      {user.isAdmin && <div className="contents embed-hide"><EnrichDock side={user.navLayout === "side"} /><EoxDockPanel side={user.navLayout === "side"} /></div>}
       {settings.copy_guard === 1 && !user.isAdmin && <CopyGuard />}
       <div className="embed-hide fixed bottom-5 right-5 z-[45] flex flex-col items-end gap-2.5"><QuickDock items={quick} hasChat={!!hasChat} /><Suspense fallback={hasChat ? <div className="size-14" aria-hidden /> : null}><ChatMount user={user} /></Suspense></div>
       
