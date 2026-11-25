@@ -554,5 +554,4 @@ html[data-hidden] *, html[data-hidden] *::before, html[data-hidden] *::after { a
 /* modo leve (aparelho fraco ou fps baixo): vidro com blur curto e sem animações decorativas em loop */
 html[data-lite] .card-surface, html[data-lite] [role="dialog"], html[data-lite] [role="alertdialog"], html[data-lite] [role="menu"], html[data-lite] [role="listbox"], html[data-lite] [class*="backdrop-blur"] { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 html[data-lite] .card-surface { background-color: color-mix(in srgb, var(--panel) 82%, transparent); }
-html[data-lite] .aurora-blob, html[data-lite] .sh-card, html[data-lite] .glow-pulse, html[data-lite] .sh-go, html[data-lite] .sh-go::after, html[data-lite] .gold-bar::after, html[data-lite] .step-ping, html[data-lite] .pf-shine, html[data-lite] .fx-breathe { animation: none !important; }
-html[data-lite] .aurora-blob { display: none; }
+/* o modo leve só encurta o blur do vidro: os efeitos e animações (cartas, botão do shuffler, brilhos) ficam sempre ligados */
