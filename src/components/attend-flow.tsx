@@ -197,6 +197,7 @@ export function AttendFlow({ touched = [], knowledge, autoEnrichOn = false, lead
   const touchedBy = useMemo(() => new Map(touched.map((t) => [`${t.channel}:${t.channel === "email" ? t.target.trim().toLowerCase() : t.target.replace(/\D/g, "").slice(-8)}`, t.by])), [touched]);
   /** Quem fez o contato: você (agora, neste aparelho) ou a última pessoa dos últimos 30 dias. */
   const sentBy = (ch: "email" | "whatsapp" | "call", v: string): string | null => (sent.has(`${ch}:${ch === "email" ? v.trim().toLowerCase() : v.replace(/\D/g, "").slice(-8)}`) ? myName : touchedBy.get(`${ch}:${ch === "email" ? v.trim().toLowerCase() : v.replace(/\D/g, "").slice(-8)}`) ?? null);
+  const acted = (ch: "email" | "whatsapp" | "call", v: string) => isSent(ch, v) || !!touchFor(lead.id, ch, v); // também quando o clique veio do atalho do telefone
   const isSent = (ch: "email" | "whatsapp" | "call", v: string) => sent.has(`${ch}:${ch === "email" ? v.trim().toLowerCase() : v.replace(/\D/g, "").slice(-8)}`);
   /** Resultado já registrado de cada contato ("canal:e-mail/número"): o botão Resultado mostra qual foi e para de pulsar. */
   const outStore = `fey:outc:${sales ? "v" : "s"}${lead.id}`;
@@ -506,7 +507,7 @@ export function AttendFlow({ touched = [], knowledge, autoEnrichOn = false, lead
         {step === 1 && (
           <section className="space-y-4">
             <StepTitle i={1} />
-            {goodEmails.length === 0 ? <p className="text-sm text-muted">Este lead não tem e-mail válido. Adicione no passo Contatos ou pule.</p> : (
+            {goodEmails.length === 0 ? <p className="text-sm text-muted">Este lead não tem e-mail válido. Adicione em “Anotar contato” na etapa Ligação ou pule.</p> : (
               <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
                 <div className="space-y-3">
                   <p className="text-xs font-bold uppercase tracking-wider text-muted">Para quem enviar <span className="font-normal normal-case tracking-normal">· escolha um</span></p>
@@ -521,7 +522,7 @@ export function AttendFlow({ touched = [], knowledge, autoEnrichOn = false, lead
                               <span className="block break-all text-base font-semibold leading-tight">{e.value}</span>
                               <span className="block text-xs text-muted">{e.personId ? allPeople.find((x) => x.id === e.personId)?.name ?? "Contato" : e.origin === "import" ? "Cadastro" : e.origin}</span>
                             </button>
-                            <ResultMenu channel="email" onInvalid={() => run(() => markWrongAction(lead.id, e.id, true), "E-mail marcado como inválido.")} people={allPeople.map((x) => ({ id: x.id, name: x.name, role: x.roleTitle }))} linkedId={e.personId ?? null} current={outcomes[outKey("email", e.value)]} pulse={isSent("email", e.value) && !outcomes[outKey("email", e.value)]} onPick={(r) => pickResult("email", e.value, e.personId ?? null, r)} />
+                            <ResultMenu channel="email" onInvalid={() => run(() => markWrongAction(lead.id, e.id, true), "E-mail marcado como inválido.")} people={allPeople.map((x) => ({ id: x.id, name: x.name, role: x.roleTitle }))} linkedId={e.personId ?? null} current={outcomes[outKey("email", e.value)]} pulse={acted("email", e.value) && !outcomes[outKey("email", e.value)]} onPick={(r) => pickResult("email", e.value, e.personId ?? null, r)} />
                           </div>
                           {sentBy("email", e.value) && <SentTag>Enviado por {sentBy("email", e.value)}</SentTag>}
                         </li>
@@ -548,7 +549,7 @@ export function AttendFlow({ touched = [], knowledge, autoEnrichOn = false, lead
               {goodPhones.map((p) => (
                 <li key={p.id} className="lift relative flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-sunk/60 px-4 py-3"><span aria-hidden className="grid size-10 place-items-center rounded-xl bg-ok/15 text-ok"><MessageCircle size={18} /></span>
                   <span className="flex-1"><CopyVal text={p.value}><span className="figure text-lg">{fmtPhone(p.value)}</span></CopyVal>{done.whatsapp?.has(keyOf("whatsapp", p.value)) && <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-ok/15 px-2 py-0.5 text-xs font-bold text-ok"><Check size={12} aria-hidden /> registrado</span>}</span>
-                  <ResultMenu channel="whatsapp" onInvalid={() => run(() => markWrongAction(lead.id, p.id, true), "Número marcado como inválido.")} people={allPeople.map((x) => ({ id: x.id, name: x.name, role: x.roleTitle }))} linkedId={p.personId ?? null} current={outcomes[outKey("whatsapp", p.value)]} pulse={isSent("whatsapp", p.value) && !outcomes[outKey("whatsapp", p.value)]} onPick={(r) => pickResult("whatsapp", p.value, p.personId ?? null, r)} />
+                  <ResultMenu channel="whatsapp" onInvalid={() => run(() => markWrongAction(lead.id, p.id, true), "Número marcado como inválido.")} people={allPeople.map((x) => ({ id: x.id, name: x.name, role: x.roleTitle }))} linkedId={p.personId ?? null} current={outcomes[outKey("whatsapp", p.value)]} pulse={acted("whatsapp", p.value) && !outcomes[outKey("whatsapp", p.value)]} onPick={(r) => pickResult("whatsapp", p.value, p.personId ?? null, r)} />
                   <a href={chatproUrl(p.value)} target="_blank" rel="noreferrer" onClick={() => { markSent("whatsapp", p.value); void trackTouch({ leadId: lead.id, channel: "whatsapp", target: p.value, label: lead.tradeName ?? lead.company, personId: p.personId ?? null, defer: true }); }} className={btnPrimary}><MessageCircle size={16} aria-hidden /> Abrir no ChatPro</a>
                   {sentBy("whatsapp", p.value) && <SentTag>Enviado por {sentBy("whatsapp", p.value)}</SentTag>}
                 </li>
@@ -578,7 +579,7 @@ export function AttendFlow({ touched = [], knowledge, autoEnrichOn = false, lead
                       </button>
                     </div>
                     <div className="flex items-center gap-2">
-                      <ResultMenu channel="call" people={allPeople.map((x) => ({ id: x.id, name: x.name, role: x.roleTitle }))} linkedId={p.personId ?? null} current={outcomes[outKey("call", p.value)]} pulse={isSent("call", p.value) && !outcomes[outKey("call", p.value)]} suggest={touchHint("call", p.value)} onPick={(r) => pickResult("call", p.value, p.personId ?? null, r)} />
+                      <ResultMenu channel="call" people={allPeople.map((x) => ({ id: x.id, name: x.name, role: x.roleTitle }))} linkedId={p.personId ?? null} current={outcomes[outKey("call", p.value)]} pulse={acted("call", p.value) && !outcomes[outKey("call", p.value)]} suggest={touchHint("call", p.value)} onPick={(r) => pickResult("call", p.value, p.personId ?? null, r)} />
                       <button type="button" disabled={vocall.configured && vocall.ready === false} className={`${btnPrimary} flex-1 disabled:opacity-50`} onClick={() => { setCallId(p.id); markSent("call", p.value); void callNumber(p.value, lead.tradeName ?? lead.company, toast, vocall, lead, p.personId ?? null); }}><Phone size={15} aria-hidden /> Ligar</button>
                       <button type="button" className={`${btnGhost} !px-3`} aria-label="Copiar número" title="Copiar número" onClick={() => { void copy(p.value, toast); markSent("call", p.value); void trackTouch({ leadId: lead.id, channel: "call", target: p.value, label: lead.tradeName ?? lead.company, personId: p.personId ?? null, defer: true }); }}><Copy size={16} aria-hidden /></button>
                     </div>

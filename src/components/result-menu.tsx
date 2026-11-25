@@ -1,7 +1,7 @@
 "use client";
 
 import { Ban, Check, ChevronDown, Clock, ClipboardCheck, MessageSquareOff, MailX, PhoneForwarded, PhoneMissed, UserCheck, Voicemail, Eye, EyeOff, Reply } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CHANNELS, type Outcome, type TouchChannel } from "@/config/touches";
 
@@ -25,7 +25,8 @@ export function ResultMenu({ channel, onPick, onInvalid, current, pulse, suggest
 }) {
   const cfg = CHANNELS[channel];
   const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
+  const [anchor, setAnchor] = useState<DOMRect | null>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; maxH: number } | null>(null);
   const [retry, setRetry] = useState(0);
   const [who, setWho] = useState<number | null>(linkedId);
   const box = useRef<HTMLDivElement>(null);
@@ -42,17 +43,31 @@ export function ResultMenu({ channel, onPick, onInvalid, current, pulse, suggest
     window.addEventListener("scroll", close, true); window.addEventListener("resize", close);
     return () => { document.removeEventListener("mousedown", h); document.removeEventListener("keydown", k); window.removeEventListener("scroll", close, true); window.removeEventListener("resize", close); };
   }, [open]);
+  // Abre onde houver área: embaixo se couber, senão em cima (ou o lado com mais espaço, com rolagem); alinha à direita do botão e nunca sai da tela.
+  useLayoutEffect(() => {
+    if (!open || !anchor || !menu.current) { setPos(null); return; }
+    const m = 8, gap = 6, vw = window.innerWidth, vh = window.innerHeight;
+    const w = menu.current.offsetWidth, h = menu.current.scrollHeight;
+    const below = vh - anchor.bottom - gap - m, above = anchor.top - gap - m;
+    const down = h <= below || below >= above;
+    const maxH = Math.max(160, Math.min(h, down ? below : above));
+    const top = down ? anchor.bottom + gap : Math.max(m, anchor.top - gap - maxH);
+    const left = Math.min(Math.max(m, anchor.right - w), vw - w - m);
+    setPos({ top, left, maxH });
+  }, [open, anchor, retry, who]);
+  // E-mail: "Voltou" já marca como inválido, então vira a linha "Inválido" no fim do menu (sem linha repetida).
+  const wrongOut = onInvalid ? cfg.outcomes.find((o) => o.wrong) : undefined;
   const sel = current ? cfg.outcomes.find((o) => o.key === current) : null;
   const SelIcon = sel ? ICON[sel.key] ?? Check : ClipboardCheck;
     return (
     <div ref={box} className="relative">
       <button type="button" disabled={disabled} aria-haspopup="menu" aria-expanded={open}
-        onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setPos({ top: Math.min(r.bottom + 6, window.innerHeight - 120), right: Math.max(8, window.innerWidth - r.right) }); setOpen((o) => !o); }}
+        onClick={(e) => { setAnchor(e.currentTarget.getBoundingClientRect()); setOpen((o) => !o); }}
         className={`inline-flex min-h-10 w-48 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border-2 px-3 text-sm font-bold transition active:scale-[0.97] disabled:opacity-50 ${sel ? `border-current bg-panel ${TONE[sel.tone]}` : pulse ? "hint-pulse border-accent bg-accent/10 text-accent" : "border-line bg-panel text-ink hover:bg-sunk"}`}>
         <SelIcon size={15} aria-hidden /><span className="min-w-0 flex-1 truncate text-left">{sel ? sel.label : pulse ? "Como foi?" : "Resultado"}</span><ChevronDown size={14} aria-hidden className={`shrink-0 transition ${open ? "rotate-180" : ""}`} />
       </button>
-      {open && pos && host && createPortal(
-        <div ref={menu} role="menu" style={{ position: "fixed", top: pos.top, right: pos.right, maxHeight: `calc(100dvh - ${pos.top + 12}px)` }} className="z-[80] w-72 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-2xl border border-line bg-panel py-1.5 shadow-2xl">
+      {open && anchor && host && createPortal(
+        <div ref={menu} role="menu" style={{ position: "fixed", top: pos?.top ?? 0, left: pos?.left ?? 0, maxHeight: pos?.maxH, visibility: pos ? "visible" : "hidden" }} className="z-[80] w-72 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-2xl border border-line bg-panel py-1.5 shadow-2xl">
           <p className="px-3 pb-1 pt-1 text-xs font-bold uppercase tracking-wide text-muted">{cfg.question}</p>
           <div className="space-y-2 border-b border-line px-3 pb-2.5">
             <div className="flex flex-wrap items-center gap-1.5 text-xs"><span className="font-semibold text-muted">Tentar de novo:</span>
@@ -65,7 +80,7 @@ export function ResultMenu({ channel, onPick, onInvalid, current, pulse, suggest
               </div>
             )}
           </div>
-          {cfg.outcomes.map((o) => {
+          {cfg.outcomes.filter((o) => o !== wrongOut).map((o) => {
             const I = ICON[o.key] ?? Check;
             return (
               <button key={o.key} type="button" role="menuitem" onClick={() => { setOpen(false); onPick({ outcome: o.key, personId: o.reached ? who : null, retryDays: !o.reached && !o.wrong && retry ? retry : null }); }}
@@ -77,9 +92,10 @@ export function ResultMenu({ channel, onPick, onInvalid, current, pulse, suggest
             );
           })}
           {onInvalid && (
-            <button type="button" role="menuitem" onClick={() => { setOpen(false); onInvalid(); }} className="flex w-full items-center gap-3 border-t border-line px-3 py-2 text-left hover:bg-danger/10">
+            <button type="button" role="menuitem" onClick={() => { setOpen(false); if (wrongOut) onPick({ outcome: wrongOut.key, personId: null, retryDays: null }); else onInvalid(); }} className="flex w-full items-center gap-3 border-t border-line px-3 py-2 text-left hover:bg-danger/10">
               <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-danger/10 text-danger"><Ban size={16} aria-hidden /></span>
-              <span className="min-w-0 flex-1"><span className="block text-sm font-bold leading-tight text-danger">Inválido</span><span className="block text-[11px] leading-snug text-muted">{channel === "email" ? "Marca este e-mail como inválido" : "Marca este número como inválido"}</span></span>
+              <span className="min-w-0 flex-1"><span className="block text-sm font-bold leading-tight text-danger">Inválido</span><span className="block text-[11px] leading-snug text-muted">{channel === "email" ? "O e-mail voltou ou não existe: marca como inválido" : "Marca este número como inválido"}</span></span>
+              {wrongOut && current === wrongOut.key && <Check size={15} className="shrink-0 text-danger" aria-hidden />}
             </button>
           )}
         </div>, host)}
