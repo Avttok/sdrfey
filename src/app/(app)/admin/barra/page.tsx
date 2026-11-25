@@ -33,7 +33,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ u
   const tab = (active: boolean) => `rounded-full px-4 py-1.5 text-sm font-semibold transition ${active ? "bg-grad text-on-accent shadow" : "text-muted hover:text-ink"}`;
   return (
     <div className="space-y-5">
-      <PageHead icon={PanelTop} size="md" title="Barra de menus" />
+      <PageHead icon={PanelTop} hex="#6366f1" title="Barra de menus" />
       <section className={`${panelCls} p-5`}><NavAlign initial={(await getSettings()).nav_align} /></section>
       <section className={`${panelCls} space-y-4 p-5`}>
         <h2 className="display text-lg">Nome, ícone e ordem</h2>

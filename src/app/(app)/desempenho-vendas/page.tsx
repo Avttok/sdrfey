@@ -15,7 +15,7 @@ export default async function PerformancePage() {
   const people = await allowedPeople(me, "vendas");
   return (
     <div className="mx-auto w-full min-w-0 max-w-[92rem] space-y-5">
-      <PageHead icon={FileSpreadsheet} title="Desempenho" subtitle="Monte uma planilha bonita com seus números para apresentar em reuniões." />
+      <PageHead icon={FileSpreadsheet} hex="#f97316" title="Desempenho" subtitle="Monte uma planilha bonita com seus números para apresentar em reuniões." />
       <PerformanceWizard kind="vendas" sections={SECTIONS.vendas} people={people} team={!!me.permissions["desempenho.equipe"]} />
     </div>
   );

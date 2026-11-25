@@ -5,6 +5,7 @@ import { CircleDollarSign, FileText, History, PhoneCall, Search, Trophy } from "
 import Link from "next/link";
 import { DateField } from "@/components/date-field";
 import { PageHead } from "@/components/page-head";
+import { glass } from "@/components/theme-kit";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { fmtBRL, STAGE_META } from "@/config/deals";
 import type { DealStage } from "@/db/schema";
@@ -24,18 +25,14 @@ export async function SellerHistory({ userId, sp }: { userId: number; sp: Record
   const pageHref = (n: number) => { const u = new URLSearchParams(); for (const [k, v] of Object.entries(sp)) if (typeof v === "string" && k !== "p") u.set(k, v); if (n > 1) u.set("p", String(n)); return `/historico${u.size ? `?${u}` : ""}`; };
   const won = rows.filter((r) => r.stage === "ganho");
   const total = won.reduce((a, r) => a + (r.valueCents ?? 0), 0);
-  const stat = (I: typeof Trophy, t: string, v: string, s?: string) => (
-    <div className={`${panelCls} stat-glow lift card-in p-4`}><div className="flex items-center justify-between"><p className="text-xs font-medium text-muted">{t}</p><span className="grid size-8 place-items-center rounded-lg bg-grad-soft text-accent"><I size={15} aria-hidden /></span></div><p className="figure mt-2 text-3xl font-bold leading-none">{v}</p>{s && <p className="mt-1.5 text-xs text-muted">{s}</p>}</div>
-  );
   return (
     <div className="space-y-5">
-      <PageHead icon={History} title="Meu histórico" />
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {stat(History, "Negociações", String(rows.length))}
-        {stat(Trophy, "Vendas fechadas", String(won.length), fmtBRL(total))}
-        {stat(PhoneCall, "Contatos feitos", String(rows.reduce((a, r) => a + r.contacts, 0)))}
-        {stat(FileText, "Cotações enviadas", String(rows.reduce((a, r) => a + r.quotes, 0)))}
-      </div>
+      <PageHead icon={History} title="Meu histórico" subtitle="Suas negociações, vendas e contatos" hex="#f97316" stats={[
+        { icon: History, label: "Negociações", value: rows.length, hex: "#f97316" },
+        { icon: Trophy, label: "Vendas fechadas", value: won.length, hint: fmtBRL(total), hex: "#10b981" },
+        { icon: PhoneCall, label: "Contatos feitos", value: rows.reduce((a, r) => a + r.contacts, 0), hex: "#3b82f6" },
+        { icon: FileText, label: "Cotações enviadas", value: rows.reduce((a, r) => a + r.quotes, 0), hex: "#8b5cf6" },
+      ]} />
       <FilterBar id="historico-vendas" active={[f.q, f.stage, f.from, f.to].filter(Boolean).length}>
       <form className="flex flex-wrap items-end gap-3" action="/historico-vendas">
         <label className="block min-w-48 flex-1 text-sm"><span className="mb-1 block text-muted">Buscar cliente</span><input name="q" defaultValue={f.q} className={inputCls} placeholder="Nome da empresa" /></label>
@@ -50,7 +47,7 @@ export async function SellerHistory({ userId, sp }: { userId: number; sp: Record
       <ul className="space-y-2.5">
         {rows.slice((pg - 1) * PAGE, pg * PAGE).map((r, idx) => (
           <li key={r.id}>
-            <Link prefetch={false} href={`/negociacoes/${r.id}`} style={{ "--i": Math.min(idx, 10) } as React.CSSProperties} className={`${panelCls} lift card-in group relative flex flex-wrap items-center gap-x-4 gap-y-2 overflow-hidden p-4 pl-6`}>
+            <Link prefetch={false} href={`/negociacoes/${r.id}`} className="lift card-in group relative flex flex-wrap items-center gap-x-4 gap-y-2 overflow-hidden rounded-2xl border-[1.5px] p-4 pl-6" style={{ ...glass(STAGE_META[r.stage].color, 10, 2), "--i": Math.min(idx, 10) } as React.CSSProperties}>
               <span aria-hidden className="absolute inset-y-0 left-0 w-1.5" style={{ background: STAGE_META[r.stage].color }} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold group-hover:text-accent">{r.company}</span>

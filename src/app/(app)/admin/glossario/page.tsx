@@ -8,5 +8,5 @@ export const dynamic = "force-dynamic";
 
 export default async function Page() {
   const [overrides, swaps] = await Promise.all([getTermOverrides(), listSwaps().catch(() => [])]);
-  return <div className="space-y-5"><PageHead icon={BookA} size="md" title="Glossário" subtitle="Os nomes do sistema em um só lugar: renomeie na tela e troque textos já gravados." /><GlossaryAdmin initial={overrides} swaps={swaps} /></div>;
+  return <div className="space-y-5"><PageHead icon={BookA} hex="#a855f7" title="Glossário" subtitle="Os nomes do sistema em um só lugar: renomeie na tela e troque textos já gravados." /><GlossaryAdmin initial={overrides} swaps={swaps} /></div>;
 }

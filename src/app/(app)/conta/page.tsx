@@ -31,7 +31,7 @@ export default async function AccountPage() {
 
   return (
     <div className="space-y-6">
-      <PageHead icon={UserRound} title="Minha conta" subtitle={`${user.name} · ${user.username}`}>
+      <PageHead icon={UserRound} hex="#8b5cf6" title="Minha conta" subtitle={`${user.name} · ${user.username}`}>
         <span className="flex gap-1.5">{user.shownRoles.map((r) => <RoleBadge key={r} role={r} />)}</span>
       </PageHead>
 

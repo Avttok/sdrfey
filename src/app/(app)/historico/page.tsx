@@ -4,7 +4,8 @@ import { Pagination } from "@/components/pagination";
 import { sql } from "drizzle-orm";
 import type { Metadata } from "next";
 import { PageHead } from "@/components/page-head";
-import { History, CalendarCheck, CheckCircle2, Clock, Search, Timer } from "lucide-react";
+import { Panel, glass } from "@/components/theme-kit";
+import { History, CalendarCheck, CheckCircle2, Clock, Search, Timer, BarChart3 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AttendButton } from "@/components/attend-button";
@@ -61,23 +62,20 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="space-y-6">
-      <PageHead icon={History} title="Meu histórico">
+      <PageHead icon={History} title="Meu histórico" subtitle="Tudo o que você atendeu, dia a dia" hex="#8b5cf6" stats={[
+        { icon: CheckCircle2, label: "Atendidos", value: rows.length, hint: rows.length === 600 ? "mostrando os 600 mais recentes" : undefined, hex: "#8b5cf6" },
+        { icon: Timer, label: "Tempo médio", value: fmtDuration(avg), hex: "#0ea5e9" },
+        { icon: Clock, label: "Qualificados", value: qualified, hint: `${rate}% dos atendidos`, hex: "#10b981" },
+        { icon: CalendarCheck, label: "Com visita agendada", value: scheduled, hex: "#f59e0b" },
+      ]}>
         <Link prefetch={false} className={btnGhost} href={preset(1)}>Hoje</Link>
         <Link prefetch={false} className={btnGhost} href={preset(7)}>7 dias</Link>
         <Link prefetch={false} className={btnGhost} href={preset(30)}>30 dias</Link>
         <Link prefetch={false} className={btnGhost} href="/historico">Tudo</Link>
       </PageHead>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat icon={<CheckCircle2 size={18} />} label="Atendidos" value={String(rows.length)} hint={rows.length === 600 ? "mostrando os 600 mais recentes" : undefined} />
-        <Stat icon={<Timer size={18} />} label="Tempo médio" value={fmtDuration(avg)} />
-        <Stat icon={<Clock size={18} />} label="Qualificados" value={String(qualified)} hint={`${rate}% dos atendidos`} />
-        <Stat icon={<CalendarCheck size={18} />} label="Com visita agendada" value={String(scheduled)} />
-      </div>
-
       {spark.length > 1 && (
-        <section className={`${panelCls} p-4`} aria-label="Atendimentos por dia">
-          <p className="mb-3 text-sm font-semibold">Atendimentos por dia</p>
+        <Panel icon={BarChart3} title="Atendimentos por dia" hex="#8b5cf6">
           <div className="flex h-28 items-end gap-1.5">
             {spark.map(([k, v]) => (
               <div key={k} className="group flex h-full flex-1 flex-col items-center justify-end gap-1" title={`${label(k)}: ${plural(v.length, "atendimento", "atendimentos")}`}>
@@ -87,7 +85,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
               </div>
             ))}
           </div>
-        </section>
+        </Panel>
       )}
 
       <FilterBar id="historico" active={[f.q, f.from, f.to, f.qual, f.visit].filter(Boolean).length}>
@@ -115,7 +113,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
           <h2 className="sticky top-14 z-10 flex items-center gap-2 py-1 text-sm font-semibold"><span className="display rounded-full bg-grad px-3.5 py-1 text-base text-on-accent shadow">{label(k)}</span><span className="rounded-full bg-panel/80 px-2.5 py-0.5 font-normal text-muted backdrop-blur">{plural(list.length, "atendimento", "atendimentos")}</span><span aria-hidden className="h-px flex-1 bg-line" /></h2>
           <ul className="space-y-2">
             {list.map((r) => (
-              <li key={r.session_id} className={`${panelCls} lift card-in relative flex flex-wrap items-start gap-3 overflow-hidden p-4 pl-5`} style={{ "--i": Math.min(list.indexOf(r), 10) } as React.CSSProperties}>
+              <li key={r.session_id} className="lift card-in relative flex flex-wrap items-start gap-3 overflow-hidden rounded-2xl border-[1.5px] p-4 pl-5" style={{ ...glass(r.tags.some((t) => t.group === "qualificacao" && t.key === "qualificado") ? "#10b981" : r.tags.some((t) => t.group === "qualificacao") ? "#ef4444" : "#8b5cf6", 10, 2), "--i": Math.min(list.indexOf(r), 10) } as React.CSSProperties}>
                 <span aria-hidden className="absolute inset-y-0 left-0 w-1.5" style={{ background: r.tags.some((t) => t.group === "qualificacao" && t.key === "qualificado") ? "var(--accent)" : r.tags.some((t) => t.group === "qualificacao") ? "var(--danger)" : "var(--line)" }} />
                 <span className="figure mt-0.5 hidden shrink-0 rounded-xl bg-grad-soft px-2.5 py-1.5 text-center text-sm font-bold text-accent sm:block">{hourFmt.format(new Date(r.saved_at))}</span>
                 <div className="min-w-0 flex-1 space-y-1.5">
@@ -131,15 +129,6 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
         </section>
       ))}
       <Pagination page={pg} pages={pages} href={pageHref} />
-    </div>
-  );
-}
-
-function Stat({ icon, label, value, hint }: { icon: React.ReactNode; label: string; value: string; hint?: string }) {
-  return (
-    <div className={`${panelCls} stat-glow lift card-in flex items-center gap-3 p-4`}>
-      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-grad-soft text-accent">{icon}</span>
-      <div className="min-w-0"><p className="text-xs text-muted">{label}</p><p className="figure text-2xl font-bold leading-tight">{value}</p>{hint && <p className="text-xs text-muted">{hint}</p>}</div>
     </div>
   );
 }

@@ -75,7 +75,7 @@ export default async function VisitsPage({ searchParams }: { searchParams: Promi
 
   return (
     <div className="space-y-5">
-      <PageHead icon={CalendarCheck} title="Visitas" subtitle={`${team ? "Equipe" : "Suas visitas"} · ${plural(active.length, "visita agendada", "visitas agendadas")}${canceled ? ` · ${plural(canceled, "cancelada", "canceladas")}` : ""} · ${period.from === period.to ? fmtDate(period.from) : `${fmtDate(period.from)} a ${fmtDate(period.to)}`}`} />
+      <PageHead icon={CalendarCheck} hex="#0ea5e9" title="Visitas" subtitle={`${team ? "Equipe" : "Suas visitas"} · ${plural(active.length, "visita agendada", "visitas agendadas")}${canceled ? ` · ${plural(canceled, "cancelada", "canceladas")}` : ""} · ${period.from === period.to ? fmtDate(period.from) : `${fmtDate(period.from)} a ${fmtDate(period.to)}`}`} />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {([["Agendadas", active.length, CalendarCheck, "text-accent"], ["Hoje e amanhã", soon, CalendarClock, "text-accent"], ["Aguardando confirmação", active.filter((v) => v.status === "pendente").length, Hourglass, "text-warn"], ["Realizadas", active.filter((v) => v.status === "realizada").length, CheckCircle2, "text-ok"]] as const).map(([l, n, I, c], i) => (
           <div key={l} style={{ "--i": i } as React.CSSProperties} className={`${panelCls} stat-glow card-in flex items-center gap-3 p-4`}>

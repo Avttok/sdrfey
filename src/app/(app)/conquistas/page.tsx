@@ -22,7 +22,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ u
   const [{ list }, paidRows, people] = await Promise.all([achievementsOf(person.id, person.roles), db.select({ ref: coinLedger.ref, amount: coinLedger.amount, at: coinLedger.createdAt }).from(coinLedger).where(and(eq(coinLedger.userId, person.id), like(coinLedger.ref, "ach:%"))), isAdmin ? db.select({ id: users.id, name: users.name }).from(users).where(eq(users.active, true)).orderBy(asc(users.name)) : Promise.resolve([])]);
   return (
     <div className="space-y-5">
-      <PageHead icon={Trophy} title="Conquistas">
+      <PageHead icon={Trophy} title="Conquistas" hex="#eab308">
         {isAdmin && (
           <nav aria-label="Ver conquistas de" className="flex max-w-full flex-wrap gap-1.5">
             {people.map((p) => <Link key={p.id} href={p.id === me.id ? "/conquistas" : `/conquistas?u=${p.id}`} className={`rounded-full border px-3 py-1 text-xs font-medium transition ${p.id === person.id ? "border-accent bg-accent/12 text-accent" : "border-line text-muted hover:bg-sunk"}`}>{p.name.split(" ")[0]}</Link>)}

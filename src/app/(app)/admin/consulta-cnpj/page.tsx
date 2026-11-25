@@ -11,7 +11,7 @@ export default async function Page() {
   const [stats, s, live] = await Promise.all([enrichStats(), getSettings(), liveData()]);
   return (
     <div className="space-y-5">
-      <PageHead icon={DatabaseZap} size="md" title="Consulta de CNPJ" subtitle="Busca os dados na BrasilAPI e na ReceitaWS dos leads que ainda não foram consultados." />
+      <PageHead icon={DatabaseZap} hex="#14b8a6" title="Consulta de CNPJ" subtitle="Busca os dados na BrasilAPI e na ReceitaWS dos leads que ainda não foram consultados." />
       <EnrichAdmin initial={stats} on={s.auto_enrich === 1} cronReady={!!process.env.CRON_SECRET} live={live} />
     </div>
   );

@@ -19,7 +19,7 @@ export default async function Page() {
   const terms = (await db.select({ n: paymentTerms.name }).from(paymentTerms).where(eq(paymentTerms.active, true)).orderBy(asc(paymentTerms.name)).limit(40)).map((t) => t.n);
   return (
     <div className="space-y-5">
-      <PageHead icon={FileSpreadsheet} title="Importar minhas negociações" />
+      <PageHead icon={FileSpreadsheet} hex="#14b8a6" title="Importar minhas negociações" />
       <DealImportForm sellers={sellers} terms={terms} />
     </div>
   );

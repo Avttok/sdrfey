@@ -13,7 +13,7 @@ export default async function Page() {
   const entries = Object.entries(EXPORT_KINDS) as [ExportKind, (typeof EXPORT_KINDS)[ExportKind]][];
   return (
     <div className="space-y-5">
-      <PageHead icon={Download} size="md" title="Exportar / backup" />
+      <PageHead icon={Download} hex="#10b981" title="Exportar / backup" />
       <section className={`${panelCls} flex flex-wrap items-center gap-4 p-5`}>
         <span className="grid size-12 place-items-center rounded-xl bg-grad text-on-accent"><FileSpreadsheet size={22} aria-hidden /></span>
         <div className="min-w-0 flex-1"><h2 className="font-semibold">Central de exportação (aba Exportar)</h2><p className="text-sm text-muted">Planilhas ricas com filtros e colunas à escolha. Quem a aba aparece e quais bases cada pessoa pode baixar você define em Equipe e acessos › Permissões › “Exportar”.</p></div>

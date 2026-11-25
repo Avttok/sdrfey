@@ -14,5 +14,5 @@ export default async function Page() {
   await requireAdmin();
   const [cfg, cov, hist] = await Promise.all([loadEox(), eoxCoverage(), importHistory(60)]);
   // a chave de acesso nunca sai do servidor
-  return <div className="space-y-5"><PageHead icon={Link2} size="md" title="Integração com a EOX" subtitle="Códigos dos clientes, retrato da EOX, importação das planilhas e conexão com a API." /><EoxHub cfg={{ ...cfg, accessKey: "" }} hasKey={!!cfg.accessKey} coverage={cov} history={hist} ready={eoxReady(cfg)} /></div>;
+  return <div className="space-y-5"><PageHead icon={Link2} hex="#8b5cf6" title="Integração com a EOX" subtitle="Códigos dos clientes, retrato da EOX, importação das planilhas e conexão com a API." /><EoxHub cfg={{ ...cfg, accessKey: "" }} hasKey={!!cfg.accessKey} coverage={cov} history={hist} ready={eoxReady(cfg)} /></div>;
 }

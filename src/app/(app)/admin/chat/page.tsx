@@ -24,7 +24,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ c
     from (select * from chat_messages where channel = ${sel} order by id desc limit 300) m left join users u on u.id = m.user_id order by m.id`);
   return (
     <div className="space-y-5">
-      <PageHead icon={MessagesSquare} size="md" title="Chat (tudo)" />
+      <PageHead icon={MessagesSquare} hex="#06b6d4" title="Chat (tudo)" />
       <div className="grid gap-4 lg:grid-cols-[18rem_1fr]">
         <nav className={`${panelCls} max-h-[70vh] space-y-1 overflow-y-auto p-2`} aria-label="Conversas">
           {list.map((k) => (

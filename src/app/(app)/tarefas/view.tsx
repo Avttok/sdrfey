@@ -38,7 +38,7 @@ export async function TasksView({ searchParams, area }: { searchParams: Promise<
     const h = await runHistory(viewing, area, { status: st, days: days || null, limit: sp.mais ? 200 : 30 });
     return (
       <div className="space-y-5">
-        <PageHead icon={History} title="Histórico de roteiros" subtitle={`Todos os roteiros ${area === "sdr" ? "do SDR" : "de Vendas"}${other ? ` de ${other}` : ""}: terminados, convertidos, agendados e parados no meio.`} />
+        <PageHead icon={History} hex="#8b5cf6" title="Histórico de roteiros" subtitle={`Todos os roteiros ${area === "sdr" ? "do SDR" : "de Vendas"}${other ? ` de ${other}` : ""}: terminados, convertidos, agendados e parados no meio.`} />
         {tabs}
         <ScriptHistory admin={me.isAdmin} h={h} area={area} base={base} status={st} days={days} viewing={viewing !== me.id ? viewing : null} />
       </div>
@@ -47,7 +47,7 @@ export async function TasksView({ searchParams, area }: { searchParams: Promise<
   const [{ open, done }, calls] = await Promise.all([listTasks(viewing, area), todayCalls(viewing)]);
   return (
     <div className="space-y-5">
-      <PageHead icon={ListChecks} title="Tarefas" subtitle="O que os scripts deixaram combinado: ligar de novo, enviar e-mail, enviar a cotação. Tudo nasce sozinho no fim da ligação." />
+      <PageHead icon={ListChecks} hex="#f59e0b" title="Tarefas" subtitle="O que os scripts deixaram combinado: ligar de novo, enviar e-mail, enviar a cotação. Tudo nasce sozinho no fim da ligação." />
       {tabs}
       <CallsToday calls={calls} open={open} />
       <TaskBoard area={area} open={open} done={done} people={team ? all : []} viewing={viewing} meId={me.id} otherName={other} />

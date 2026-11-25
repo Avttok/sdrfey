@@ -21,7 +21,7 @@ export default async function Page() {
   const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : "—");
   return (
     <div className="space-y-5">
-      <PageHead icon={Puzzle} size="md" title="Galeria de módulos" />
+      <PageHead icon={Puzzle} hex="#0ea5e9" title="Galeria de módulos" />
       <p className="text-sm text-muted">Cada roteiro é uma sequência de módulos ligados. Durante a ligação o sistema sugere o módulo que mais encaixa, e os números abaixo vêm das ligações guardadas ({runs.length} analisadas). “Aceitas” são as sugestões que a pessoa escolheu.</p>
       <section className={`${panelCls} space-y-3 p-4`}>
         <h2 className="font-bold">Sequência dos roteiros padrão (tipo Geral)</h2>

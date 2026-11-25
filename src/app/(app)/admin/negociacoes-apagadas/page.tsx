@@ -15,7 +15,7 @@ export default async function Page() {
     .where(and(eq(auditLog.entity, "deal"), inArray(auditLog.action, ["apagou negociação", "resetou negociação", "devolveu lead ao SDR"]))).orderBy(desc(auditLog.at)).limit(200);
   return (
     <div className="space-y-5">
-      <PageHead icon={Archive} size="md" title="Negociações apagadas" />
+      <PageHead icon={Archive} hex="#ef4444" title="Negociações apagadas" />
       {rows.length === 0 && <p className="rounded-xl bg-sunk px-4 py-6 text-center text-sm text-muted">Nada foi apagado ou resetado até agora.</p>}
       <ul className="space-y-3">
         {rows.map((r) => { const s = (r.meta ?? {}) as Snap; const del = r.action.startsWith("apagou"); const back = r.action.startsWith("devolveu"); return (

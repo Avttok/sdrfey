@@ -13,7 +13,7 @@ export default async function Page() {
   const [defs, stats, top, sugs] = await Promise.all([fieldCatalog(true), fieldStats(), topEnrichers(), db.select().from(fieldSuggestions).where(eq(fieldSuggestions.status, "pendente")).orderBy(desc(fieldSuggestions.evidence))]);
   return (
     <div className="space-y-5">
-      <PageHead icon={Brain} size="md" title="Dados dos leads" subtitle="Os campos que os roteiros preenchem durante a ligação. O sistema mede o que funciona e sugere o que falta." />
+      <PageHead icon={Brain} hex="#0ea5e9" title="Dados dos leads" subtitle="Os campos que os roteiros preenchem durante a ligação. O sistema mede o que funciona e sugere o que falta." />
       {top.length > 0 && (
         <section className="rounded-2xl border border-line bg-surface p-4" aria-label="Quem mais enriquece os leads">
           <h2 className="mb-2 text-sm font-semibold">Quem mais enriquece os leads</h2>

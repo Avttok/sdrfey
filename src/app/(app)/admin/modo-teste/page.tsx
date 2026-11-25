@@ -10,7 +10,7 @@ export default async function Page() {
   const [r] = await db.select({ n: sql<number>`count(*)::int` }).from(leads).where(eq(leads.isTest, true));
   return (
     <div className="space-y-5">
-      <PageHead icon={FlaskConical} size="md" title="Modo teste" />
+      <PageHead icon={FlaskConical} hex="#f97316" title="Modo teste" />
       <TestMode count={r?.n ?? 0} />
     </div>
   );

@@ -15,7 +15,7 @@ export default async function Page() {
   for (const p of prods) for (const t of classifyProduct(p.description, active)) uses.set(t.code, (uses.get(t.code) ?? 0) + 1);
   return (
     <div className="space-y-5">
-      <PageHead icon={Tags} size="md" title="Nomenclatura de produtos" />
+      <PageHead icon={Tags} hex="#8b5cf6" title="Nomenclatura de produtos" />
       <TermsAdmin terms={terms.map((t) => ({ id: t.id, code: t.code, meaning: t.meaning, category: t.category, note: t.note, active: t.active, uses: uses.get(t.code) ?? 0 }))} unknown={findUnknownTerms(prods.map((p) => p.description), terms.map((t) => t.code))} recos={(recos ?? {}) as Record<string, string[]>} />
     </div>
   );

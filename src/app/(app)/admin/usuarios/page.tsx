@@ -30,7 +30,7 @@ export default async function Page() {
   const matrixUsers = rows.filter((u) => u.active && !u.roles.includes("admin")).map((u) => ({ id: u.id, name: u.name, roles: u.roles, perms: (u.permissions ?? {}) as PermissionMap, hex: resolveAccent(u.accent, u.roles).hex }));
   return (
     <div className="space-y-5">
-      <PageHead icon={Users} size="md" title="Equipe e acessos" subtitle={`${plural(list.length, "pessoa", "pessoas")} · ${list.filter((u) => u.online).length} online agora · contas, cargos, metas e senhas. Para o que cada cargo pode ver e fazer, use Permissões por cargo.`} />
+      <PageHead icon={Users} hex="#8b5cf6" title="Equipe e acessos" subtitle={`${plural(list.length, "pessoa", "pessoas")} · ${list.filter((u) => u.online).length} online agora · contas, cargos, metas e senhas. Para o que cada cargo pode ver e fazer, use Permissões por cargo.`} />
       <TeamWorkspace mode="people" people={list} matrixUsers={matrixUsers} roles={{ user: initial("user"), seller: initial("seller"), manager: initial("manager") }} myId={me.id} />
     </div>
   );

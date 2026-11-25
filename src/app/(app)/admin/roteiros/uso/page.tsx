@@ -13,5 +13,5 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ d
   const days = Number(q.dias); const userId = Number(q.user);
   const f = { days: days > 0 ? days : null, userId: userId > 0 ? userId : null, withTests: q.testes === "1" };
   const data = await scriptUsage(f);
-  return <div className="space-y-5"><PageHead icon={BarChart3} size="md" title="Uso dos roteiros" /><UsageView data={data} days={f.days} userId={f.userId} withTests={f.withTests} /></div>;
+  return <div className="space-y-5"><PageHead icon={BarChart3} hex="#14b8a6" title="Uso dos roteiros" /><UsageView data={data} days={f.days} userId={f.userId} withTests={f.withTests} /></div>;
 }

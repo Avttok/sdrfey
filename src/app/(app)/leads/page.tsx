@@ -57,23 +57,13 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="space-y-5">
-      <PageHead icon={Users} title="Leads">
+      <PageHead icon={Users} title="Leads" subtitle="Toda a base de contatos" hex="#6366f1" stats={stat ? [{ icon: Users, label: "Na base", value: stat.all, hex: "#6366f1" }, { icon: Sparkles, label: "Livres", value: stat.free, hex: "#10b981" }, { icon: Activity, label: "Em atendimento agora", value: stat.busy, hex: "#f59e0b" }, { icon: Handshake, label: "Em vendas", value: stat.deals, hex: "#14b8a6" }] : undefined}>
         {hasRole(me.roles, "admin") ? (
           <Link href="/admin/banco" title="Saúde do sistema" className="rounded-full bg-accent/15 px-3.5 py-1.5 text-sm font-semibold text-accent transition hover:bg-accent/25"><span className="figure">{new Intl.NumberFormat("pt-BR").format(total)}</span> {total === 1 ? "lead" : "leads"}</Link>
         ) : (
           <p className="rounded-full bg-accent/15 px-3.5 py-1.5 text-sm font-semibold text-accent"><span className="figure">{new Intl.NumberFormat("pt-BR").format(total)}</span> {total === 1 ? "lead" : "leads"}</p>
         )}
       </PageHead>
-      {stat && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {([["Na base", stat.all, Users, "text-accent"], ["Livres", stat.free, Sparkles, "text-ok"], ["Em atendimento agora", stat.busy, Activity, "text-warn"], ["Em vendas", stat.deals, Handshake, "text-accent"]] as const).map(([l, v, I, c], i) => (
-            <div key={l} style={{ "--i": i } as React.CSSProperties} className={`${panelCls} stat-glow card-in flex items-center gap-3 p-4`}>
-              <span className={`grid size-11 shrink-0 place-items-center rounded-xl bg-grad-soft ${c}`}><I size={19} aria-hidden /></span>
-              <div className="min-w-0"><p className="truncate text-xs text-muted">{l}</p><p className="figure text-2xl font-bold leading-tight">{new Intl.NumberFormat("pt-BR").format(v)}</p></div>
-            </div>
-          ))}
-        </div>
-      )}
       <Suspense fallback={null}>
         <LeadFilters sellerView={sellerView} catalog={catalog} people={people} ufs={ufRows.map((r) => r.uf!).filter(Boolean)} batches={[...batchRows].map((b) => ({ id: b.id, label: `${b.file_name} · ${new Date(b.created_at).toLocaleDateString("pt-BR")} · ${b.inserted}` }))} />
       </Suspense>

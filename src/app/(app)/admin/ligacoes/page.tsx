@@ -11,5 +11,5 @@ export const dynamic = "force-dynamic";
 
 export default async function Page() {
   const [cfg, rows, st] = await Promise.all([settingValue(VOCALL_KEY), db.select({ id: users.id, name: users.name, agentId: users.vocallAgentId, ramal: users.vocallRamal }).from(users).where(undefined).orderBy(asc(users.name)), getSettings()]);
-  return <div className="space-y-5"><PageHead icon={PhoneCall} size="md" title="Ligações (VocallPhone)" /><RoteiroSwitch initial={st.roteiro_on === 1} /><VocallAdmin initial={parseVocall(cfg)} people={rows.map((r) => ({ id: r.id, name: r.name, agentId: r.agentId ?? "", ramal: r.ramal ?? "" }))} /></div>;
+  return <div className="space-y-5"><PageHead icon={PhoneCall} hex="#3b82f6" title="Ligações (VocallPhone)" /><RoteiroSwitch initial={st.roteiro_on === 1} /><VocallAdmin initial={parseVocall(cfg)} people={rows.map((r) => ({ id: r.id, name: r.name, agentId: r.agentId ?? "", ramal: r.ramal ?? "" }))} /></div>;
 }

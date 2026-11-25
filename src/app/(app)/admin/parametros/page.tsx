@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function Page() {
   return (
     <div className="space-y-5">
-      <PageHead icon={Settings2} size="md" title="Parâmetros" />
+      <PageHead icon={Settings2} hex="#64748b" title="Parâmetros" />
       <SettingsForm initial={await getSettings()} />
     </div>
   );

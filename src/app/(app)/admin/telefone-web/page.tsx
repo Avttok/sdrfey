@@ -15,7 +15,7 @@ export default async function Page() {
   const [u] = await db.select({ a: users.vocallAgentId, r: users.vocallRamal }).from(users).where(eq(users.id, me.id));
   return (
     <div className="space-y-5">
-      <PageHead icon={Headset} size="md" title="Telefone no navegador (teste)" />
+      <PageHead icon={Headset} hex="#3b82f6" title="Telefone no navegador (teste)" />
       <WebPhoneTest cfg={{ host: cfg.host, port: cfg.port, secure: cfg.secure, dac: cfg.dac, senha: cfg.senha, prefix: cfg.prefix }} agentId={u?.a ?? ""} ramal={u?.r ?? ""} />
     </div>
   );

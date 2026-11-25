@@ -11,7 +11,7 @@ export default async function Page() {
   await requirePerm("carriers.edit");
   return (
     <div className="space-y-5">
-      <PageHead icon={Truck} title="Importar transportadoras" />
+      <PageHead icon={Truck} hex="#f59e0b" title="Importar transportadoras" />
       <CarrierImportForm />
     </div>
   );

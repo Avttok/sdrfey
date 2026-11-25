@@ -3,6 +3,7 @@ import { Pagination } from "@/components/pagination";
 import { describeMeta } from "@/lib/audit-meta";
 import type { Metadata } from "next";
 import { PageHead } from "@/components/page-head";
+import { glass } from "@/components/theme-kit";
 import { ScrollText, Handshake, Trash2, Coins, MessageCircle, ArrowRight, Download, ExternalLink, FileText, Gauge, Settings2, Tag, Target, Upload, User, UserRound, Users } from "lucide-react";
 import Link from "next/link";
 import { and, asc, eq } from "drizzle-orm";
@@ -22,6 +23,7 @@ export const dynamic = "force-dynamic";
 
 const ICON: Record<string, typeof User> = { lead: Users, visit: Users, user: UserRound, tag: Tag, setting: Settings2, import: Upload, rep: Users, template: FileText, session: Gauge, goal: Target, deal: Handshake, purge: Trash2, shop: Coins, chat: MessageCircle };
 const TONE: Record<string, string> = { lead: "bg-grad-soft text-accent", visit: "bg-grad-soft text-accent", user: "bg-warn/15 text-warn", tag: "bg-ok/15 text-ok", setting: "bg-sunk text-muted", import: "bg-ok/15 text-ok", rep: "bg-grad-soft text-accent", template: "bg-sunk text-ink", session: "bg-grad-soft text-accent", goal: "bg-warn/15 text-warn", deal: "bg-ok/15 text-ok", purge: "bg-danger/15 text-danger", shop: "bg-warn/15 text-warn", chat: "bg-grad-soft text-accent" };
+const ENT_HEX: Record<string, string> = { lead: "#6366f1", visit: "#0ea5e9", user: "#f59e0b", tag: "#10b981", setting: "#64748b", import: "#10b981", rep: "#8b5cf6", template: "#ec4899", session: "#0ea5e9", goal: "#f59e0b", deal: "#14b8a6", purge: "#ef4444", shop: "#eab308", chat: "#06b6d4" };
 const dayFmt = new Intl.DateTimeFormat("en-CA", { timeZone: TZ });
 const hourFmt = new Intl.DateTimeFormat("pt-BR", { timeZone: TZ, hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
@@ -42,18 +44,17 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
 
   return (
     <div className="space-y-5">
-      <PageHead icon={ScrollText} title="Registro de atividades">
+      <PageHead icon={ScrollText} title="Registro de atividades" subtitle="Quem mexeu em quê, e quando" hex="#64748b" stats={[
+        { icon: ScrollText, label: "Hoje", value: stats.today, hex: "#6366f1" },
+        { icon: Gauge, label: "Últimos 7 dias", value: stats.week, hex: "#0ea5e9" },
+        { icon: Users, label: "Pessoas ativas hoje", value: stats.people, hex: "#10b981" },
+        { icon: Settings2, label: "Automáticos hoje", value: stats.system, hex: "#f59e0b" },
+      ]}>
         <div className="flex items-center gap-2">
           <p className="rounded-full bg-accent/15 px-3.5 py-1.5 text-sm font-semibold text-accent"><span className="figure">{new Intl.NumberFormat("pt-BR").format(total)}</span> {total === 1 ? "registro" : "registros"}</p>
           {me.isAdmin && <a className={btnGhost} href="/admin/exportar/registro" download><Download size={15} aria-hidden /> Exportar</a>}
         </div>
       </PageHead>
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[["Hoje", stats.today], ["Últimos 7 dias", stats.week], ["Pessoas ativas hoje", stats.people], ["Automáticos hoje", stats.system]].map(([l, v]) => (
-          <div key={l as string} className={`${panelCls} px-4 py-3`}><p className="text-xs text-muted">{l}</p><p className="figure display text-2xl">{new Intl.NumberFormat("pt-BR").format(v as number)}</p></div>
-        ))}
-      </div>
 
       <div className="flex flex-wrap gap-1.5" aria-label="Filtro rápido por tipo">
         <Link href={typeHref("")} className={`rounded-full border px-3 py-1 text-xs font-medium ${!f.type ? "border-accent bg-grad text-on-accent" : "border-line hover:bg-sunk"}`}>Tudo</Link>
@@ -71,7 +72,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
               const fields = [...new Set(g.rows.map((r) => r.field).filter(Boolean))];
               const Icon = ICON[first.entity] ?? FileText;
               return (
-                <li key={g.key} className={`${panelCls} overflow-hidden`}>
+                <li key={g.key} className="overflow-hidden rounded-2xl border-[1.5px]" style={glass(ENT_HEX[first.entity] ?? "#64748b", 9, 2)}>
                   <details className="group">
                     <summary className="flex cursor-pointer list-none items-center gap-3 p-3.5 text-sm transition hover:bg-sunk/50 [&::-webkit-details-marker]:hidden">
                       <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${TONE[first.entity] ?? "bg-sunk"}`}><Icon size={17} aria-hidden /></span>

@@ -14,7 +14,7 @@ export default async function Page() {
   const datasets = allowedDatasets(me);
   return (
     <div className="space-y-5">
-      <PageHead icon={Download} size="md" title="Exportar" />
+      <PageHead icon={Download} title="Exportar" hex="#10b981" />
       {datasets.length ? <ExportCenter datasets={datasets} canPackage /> : <p className={`${panelCls} p-6 text-center text-sm text-muted`}>O Adm ainda não liberou nenhuma base para você exportar.</p>}
     </div>
   );

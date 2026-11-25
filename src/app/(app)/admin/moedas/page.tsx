@@ -16,7 +16,7 @@ export default async function Page() {
   ]);
   return (
     <div className="space-y-5">
-      <PageHead icon={Coins} size="md" title="Moedas e pontos" subtitle="Ajuste saldos, bloqueie ganho ou gasto (de todos ou de uma pessoa) e veja o extrato." />
+      <PageHead icon={Coins} hex="#eab308" title="Moedas e pontos" subtitle="Ajuste saldos, bloqueie ganho ou gasto (de todos ou de uma pessoa) e veja o extrato." />
       <CoinsAdmin rows={[...rows]} earnOn={s.coins_earn_on === 1} spendOn={s.coins_spend_on === 1} rewards={{ coin_attended: s.coin_attended, coin_visit: s.coin_visit, coin_deal: s.coin_deal, coin_quote: s.coin_quote, coin_billed: s.coin_billed, coin_shuffled: s.coin_shuffled }} />
     </div>
   );

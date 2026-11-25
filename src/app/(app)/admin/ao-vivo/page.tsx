@@ -27,7 +27,7 @@ export default async function Page() {
   return (
     <div className="space-y-5">
       <LiveRefresh />
-      <PageHead icon={Radio} size="md" title="Ao vivo" subtitle={`${list.filter((r) => r.online).length} de ${list.length} online agora · atualiza sozinho a cada 30 s`}><LiveToolbar /></PageHead>
+      <PageHead icon={Radio} hex="#ef4444" title="Ao vivo" subtitle={`${list.filter((r) => r.online).length} de ${list.length} online agora · atualiza sozinho a cada 30 s`}><LiveToolbar /></PageHead>
       <ul className="grid gap-3 md:grid-cols-2">
         {list.map((r) => {
           const hex = bubbleHex(r.accent, r.uid, r.roles);
