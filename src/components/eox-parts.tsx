@@ -1,12 +1,12 @@
 "use client";
 
 import { CheckCircle2, Mail, Phone, UserRound, XCircle } from "lucide-react";
-import { EOX_LIST_BY_KEY } from "@/config/eox-lists";
+import { eoxListMeta } from "@/config/eox-lists";
 import type { EoxLogRow } from "@/modules/eox/consult-daemon";
 import { LeadLink, enrichIcon, iconTile, tint } from "./enrich-visual";
 
 export const EOX_HEX = "#8b5cf6";
-export const eoxVisual = (key: string) => { const m = EOX_LIST_BY_KEY.get(key); return { I: enrichIcon(m?.icon ?? "list"), hex: m?.hex ?? EOX_HEX, label: m?.label ?? key, hint: m?.hint ?? "" }; };
+export const eoxVisual = (key: string) => { const m = eoxListMeta(key); return { I: enrichIcon(m?.icon ?? "list"), hex: m?.hex ?? EOX_HEX, label: m?.label ?? key, hint: m?.hint ?? "" }; };
 
 /** Carta de uma fila da Consulta EOX (mesmo estilo das filas do CNPJ). */
 export function EoxChoice({ k, count, selected, onPick, compact }: { k: string; count: number; selected: boolean; onPick: () => void; compact?: boolean }) {

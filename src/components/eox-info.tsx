@@ -3,7 +3,7 @@
 import { Ban, ShoppingCart, UserRound } from "lucide-react";
 
 const money = (v?: string) => { const n = v ? Number(v.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".")) : NaN; return Number.isFinite(n) && n > 0 ? n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : null; };
-const date = (v?: string) => (v && !/^0000/.test(v) ? v.slice(0, 10).split("-").reverse().join("/") : null);
+const date = (v?: string) => { if (!v || /^0000|^00-00/.test(v)) return null; const t = v.slice(0, 10); return /^\d{4}-/.test(t) ? t.split("-").reverse().join("/") : /^\d{2}-\d{2}-\d{4}$/.test(t) ? t.replaceAll("-", "/") : null; };
 const TYPE: Record<string, string> = { Customer: "Cliente", Prospect: "Prospect", Lead: "Lead" };
 
 /** O que a EOX sabe deste cliente (vem da planilha de Empresas). Compacto = poucas linhas, para o telefone flutuante. */
@@ -21,6 +21,14 @@ export function EoxInfoCard({ info, syncedAt, compact }: { info: Record<string, 
     ["Situação financeira", info["Situação Financeira"] || null],
     ["Saldo devedor", money(info["Saldo Devedor"])],
     ["Próximo contato", date(info["Próximo Contato"])],
+    ["Último contato", date(info["Último Contato"])],
+    ["Limite de crédito", money(info["Limite de Crédito"])],
+    ["Potencial", money(info["Potencial"])],
+    ["Cliente desde", date(info["Data Cadastro"])],
+    ["Gestor", info["Nome do Gestor"] || null],
+    ["Cód. na EOX", info["Cód. Empresa"] || null],
+    ["Origem", info["Origem do Contato"] || null],
+    ["Discagem", /^(sim|s|true|1)$/i.test(info["Discagens bloqueadas"] ?? "") ? `bloqueada${info["Motivo bloqueio"] ? `: ${info["Motivo bloqueio"]}` : ""}` : null],
   ];
   const shown = rows.filter((r): r is [string, string] => !!r[1]).slice(0, compact ? 3 : 20);
   return (

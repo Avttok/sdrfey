@@ -2,7 +2,7 @@
 
 import { ChevronLeft, Clock3, Gauge, ListChecks, Pause, Play, TriangleAlert, Loader2, Plug } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { EOX_LISTS } from "@/config/eox-lists";
+import { EOX_GROUPS, EOX_LISTS } from "@/config/eox-lists";
 import { DAEMON_OFFLINE_MIN } from "@/config/enrich-daemon";
 import type { EoxDock } from "@/modules/eox/consult-daemon";
 import { MetricRing } from "./dash-ui";
@@ -22,6 +22,7 @@ export function EoxDockPanel({ side }: { side?: boolean }) {
   const [d, setD] = useState<EoxDock | null>(null);
   const [open, setOpen] = useState(false);
   const [scope, setScope] = useState("new");
+  const [group, setGroup] = useState<(typeof EOX_GROUPS)[number] | "Por estado">("Fila");
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const running = useRef(false), openRef = useRef(false), onRef = useRef(false), lastLoad = useRef(0);
@@ -85,7 +86,7 @@ export function EoxDockPanel({ side }: { side?: boolean }) {
           <div className="relative flex items-center gap-3">
             <span className="relative grid size-14 shrink-0 place-items-center"><MetricRing value={pct} color="#fff" track="rgba(255,255,255,.25)" size="size-14" /><span className="figure absolute text-[13px] font-extrabold">{pct}%</span></span>
             <div className="min-w-0 flex-1"><h2 className="text-base font-extrabold leading-tight">Consulta EOX</h2><p className="truncate text-xs opacity-90">{on ? `Rodando: ${cur.label}` : "Completa os leads com o cadastro da EOX"}</p>
-              <p className="figure mt-0.5 text-[11px] opacity-90">{nf.format(done)} de {nf.format(total)} consultados</p></div>
+              <p className="figure mt-0.5 text-[11px] opacity-90">{nf.format(done)} de {nf.format(total)} consultados · {nf.format(d.stats.linked)} com link</p></div>
             <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${on ? "bg-white text-black" : "bg-black/25"}`}><span className={`size-1.5 rounded-full ${on ? "animate-pulse bg-ok" : "bg-white/60"}`} />{on ? "Rodando" : "Parada"}</span>
           </div>
         </header>
@@ -129,9 +130,19 @@ export function EoxDockPanel({ side }: { side?: boolean }) {
           {!on && (
             <section aria-label="Escolher a lista" className="space-y-2.5">
               <p className="flex items-center gap-2 font-bold"><ListChecks size={16} className="text-accent" aria-hidden /> Qual fila consultar</p>
-              <ul role="radiogroup" aria-label="Filas" className="max-h-72 space-y-1.5 overflow-y-auto pr-0.5">
-                {EOX_LISTS.map((l) => <li key={l.key}><EoxChoice compact k={l.key} count={d.stats.lists?.[l.key] ?? 0} selected={scope === l.key} onPick={() => setScope(l.key)} /></li>)}
-              </ul>
+              <div role="tablist" aria-label="Tipo de fila" className="grid grid-cols-4 gap-1 rounded-xl bg-sunk p-1 text-[11px] font-semibold">
+                {([...EOX_GROUPS, "Por estado"] as const).map((g) => <button key={g} type="button" role="tab" aria-selected={group === g} onClick={() => setGroup(g)} className={`min-h-8 rounded-lg px-1 leading-tight transition ${group === g ? "bg-panel text-accent shadow-sm" : "text-muted hover:text-ink"}`}>{g}</button>)}
+              </div>
+              {group === "Por estado" ? (
+                <ul role="radiogroup" aria-label="Estados" className="grid max-h-56 grid-cols-3 gap-1.5 overflow-y-auto pr-0.5">
+                  {Object.entries(d.stats.ufs ?? {}).map(([u, n]) => <li key={u}><EoxChoice compact k={`uf:${u}`} count={n} selected={scope === `uf:${u}`} onPick={() => setScope(`uf:${u}`)} /></li>)}
+                  {!Object.keys(d.stats.ufs ?? {}).length && <li className="col-span-3 rounded-lg bg-sunk/60 px-3 py-3 text-center text-xs text-muted">Nenhum estado com leads esperando.</li>}
+                </ul>
+              ) : (
+                <ul role="radiogroup" aria-label={group} className="max-h-64 space-y-1.5 overflow-y-auto pr-0.5">
+                  {EOX_LISTS.filter((l) => l.group === group).map((l) => <li key={l.key}><EoxChoice compact k={l.key} count={d.stats.lists?.[l.key] ?? 0} selected={scope === l.key} onPick={() => setScope(l.key)} /></li>)}
+                </ul>
+              )}
               <p className="rounded-lg bg-sunk/60 px-3 py-2 text-xs text-muted">{eoxVisual(scope).hint}</p>
             </section>
           )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Ban, BadgeCheck, Clock, Crown, Database, ExternalLink, Globe, Handshake, History, ListChecks, Mail, MailX, Map as MapIcon, MapPin, Phone, PhoneMissed, PhoneOff, RotateCcw, Shield, Smartphone, Sparkles, Store, Target, UserX, type LucideIcon } from "lucide-react";
+import { AlertTriangle, Ban, BadgeCheck, Clock, Crown, Database, ExternalLink, Globe, Handshake, History, ListChecks, Mail, MailX, Map as MapIcon, MapPin, Phone, PhoneMissed, PhoneOff, RotateCcw, Shield, Smartphone, Sparkles, Store, Target, UserX, type LucideIcon , Link2 } from "lucide-react";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { listMeta } from "@/config/enrich-lists";
@@ -8,7 +8,7 @@ import { listMeta } from "@/config/enrich-lists";
 const ICONS: Record<string, LucideIcon> = {
   list: ListChecks, sparkles: Sparkles, target: Target, badge: BadgeCheck, handshake: Handshake, phoneoff: PhoneOff, smartphone: Smartphone, phone: Phone, mailoff: MailX,
   ban: Ban, phonemissed: PhoneMissed, userx: UserX, store: Store, mappin: MapPin, map: MapIcon, shield: Shield, globe: Globe, rotate: RotateCcw, database: Database,
-  crown: Crown, history: History, alert: AlertTriangle, clock: Clock, mail: Mail,
+  crown: Crown, history: History, alert: AlertTriangle, clock: Clock, mail: Mail, link: Link2,
 };
 export const enrichIcon = (name: string): LucideIcon => ICONS[name] ?? ListChecks;
 export const listVisual = (key: string) => { const m = listMeta(key); return { I: enrichIcon(m?.icon ?? "list"), hex: m?.hex ?? "#6366f1", label: m?.label ?? key, hint: m?.hint ?? "" }; };

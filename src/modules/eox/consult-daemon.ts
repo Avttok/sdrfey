@@ -6,7 +6,6 @@ import { logAudit } from "@/modules/audit/log";
 import { notify } from "@/modules/notifications/notify";
 import { eoxBatch, eoxStats, type EoxStats } from "./consult-batch";
 
-export const EOX_CONTINUOUS_BATCH = 50;
 type Stored = { on: boolean; by: number | null; scope: string; since: string | null; stoppedWhy?: string | null };
 export type EoxLogRow = { id: number; leadId: number; company: string; at: string; ok: boolean; ms: number; by: string | null; phones: number; emails: number; people: number; filled: number; why: string | null; origin: string };
 export type EoxDock = { state: EoxDaemonState; stats: EoxStats; rows: EoxLogRow[]; rate: { perMin: number; okPct: number | null; doneSince: number } };
@@ -67,7 +66,7 @@ export async function eoxStop(me: { id: number }): Promise<EoxDock> {
 export async function eoxTick(me: { id: number }): Promise<EoxDock & { go: boolean }> {
   const s = await enforceOffline(await read(), me.id);
   if (!s.on || s.by !== me.id) return { ...(await eoxDock(me)), go: false };
-  const r = await eoxBatch(EOX_CONTINUOUS_BATCH, 42_000, me.id, s.scope);
+  const r = await eoxBatch(null, 42_000, me.id, s.scope);
   const data = await eoxDock(me);
   if (r.tried === 0) { await write({ ...s, on: false, stoppedWhy: "Acabou: nada pendente nesta lista." }, me.id); return { ...(await eoxDock(me)), go: false }; }
   /* a EOX recusou tudo (sessão, endereço ou campo do CNPJ errados): para em vez de bater à toa */
