@@ -35,7 +35,7 @@ export function ShuffleHero({ action, children, avatar, roles, empty, list, asid
           <span className="text-accent"><BrandMark size={92} color="currentColor" legacy={<FeyMark animated size={92} color="currentColor" />} /></span>
           <h1 className="sr-only"><Term>{title}</Term></h1>
         </div>
-        {aside ? <div className="grid w-full items-center gap-10 lg:w-[min(94vw,120rem)] lg:grid-cols-2 lg:gap-0"><div className="flex min-w-0 items-center justify-center lg:justify-start lg:pl-[10%] lg:pr-4">{children}</div><div className="flex min-w-0 items-center justify-center lg:justify-end lg:pl-4 lg:pr-[10%]">{aside}</div></div> : <div className="w-full">{children}</div>}
+        {aside ? <div className="grid w-full items-center gap-10 lg:w-[min(94vw,120rem)] lg:grid-cols-2 lg:gap-0"><div className="flex min-w-0 items-center justify-center lg:justify-start lg:pl-[20%] lg:pr-4">{children}</div><div className="flex min-w-0 items-center justify-center lg:justify-end lg:pl-4 lg:pr-[20%]">{aside}</div></div> : <div className="w-full">{children}</div>}
         <form action={action} className="sh-rise flex flex-col items-center gap-3" style={{ "--d": ".5s" } as React.CSSProperties}>
           <div className="relative grid size-32 place-items-center">
             {[["-18deg", "-2.1rem", "0s"], ["16deg", "2.1rem", "-1.4s"]].map(([r, x, d]) => (
