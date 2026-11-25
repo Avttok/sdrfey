@@ -77,7 +77,7 @@ function Ring({ value, color }: { value: number; color: string }) {
     </svg>
   );
 }
-const KPI_HEX: Record<string, string> = { contatos: "#378ADD", meta: "#1D9E75", meta_agend: "#7F77DD", meta_ligacoes: "#0ea5e9", meta_convertidos: "#22c55e", qualificados: "#1D9E75", agendados: "#7F77DD", taxa_qualif: "#14b8a6", taxa_agend: "#a855f7", tempo: "#f59e0b", media_dia: "#eab308", ligacoes: "#0ea5e9", convertidos: "#22c55e", descartados: "#E24B4A", visitas_ok: "#ec4899", tempo_total: "#BA7517", vendas_origem: "#10b981", sequencia: "#f97316", novos: "#64748b" };
+const KPI_HEX: Record<string, string> = { lig_atendidas: "#22c55e", taxa_atendimento: "#14b8a6", tempo_conversa: "#f59e0b", lig_sem_resposta: "#94a3b8", numeros_errados: "#ef4444", contatos: "#378ADD", meta: "#1D9E75", meta_agend: "#7F77DD", meta_ligacoes: "#0ea5e9", meta_convertidos: "#22c55e", qualificados: "#1D9E75", agendados: "#7F77DD", taxa_qualif: "#14b8a6", taxa_agend: "#a855f7", tempo: "#f59e0b", media_dia: "#eab308", ligacoes: "#0ea5e9", convertidos: "#22c55e", descartados: "#E24B4A", visitas_ok: "#ec4899", tempo_total: "#BA7517", vendas_origem: "#10b981", sequencia: "#f97316", novos: "#64748b" };
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const me = await requirePerm("tab.painel");
@@ -144,6 +144,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     { k: "tempo", I: Timer, t: "Tempo por lead", v: fmtDuration(d.avgSeconds), s: `mediana ${fmtDuration(d.medianSeconds)}` },
     { k: "media_dia", I: Zap, t: "Média por dia", v: (d.contacts / Math.max(1, d.days)).toLocaleString("pt-BR", { maximumFractionDigits: 1 }), s: bestHour ? `pico às ${bestHour}h` : "contatos por dia" },
     { k: "ligacoes", I: Phone, t: "Ligações", v: nf.format(d.calls), s: `${pct(d.calls, d.contacts)} dos contatos` },
+    { k: "lig_atendidas", I: PhoneCall, t: "Ligações atendidas", v: nf.format(x.callsAnswered), s: `de ${nf.format(x.callsDone)} com resultado` },
+    { k: "taxa_atendimento", I: Percent, t: "Taxa de atendimento", v: pct(x.callsAnswered, x.callsDone), s: "das ligações com resultado" },
+    { k: "tempo_conversa", I: Hourglass, t: "Tempo de conversa", v: fmtDuration(x.talkSeconds), s: x.avgTalkSeconds ? `média ${fmtDuration(x.avgTalkSeconds)} por ligação` : "somando as ligações atendidas" },
+    { k: "lig_sem_resposta", I: Phone, t: "Ligações sem resposta", v: nf.format(x.callsNoAnswer), s: "não atendeu, caixa postal ou ocupado" },
+    { k: "numeros_errados", I: Ban, t: "Números errados", v: nf.format(x.callsWrong), s: "marcados como inválidos na ligação" },
     { k: "convertidos", I: Handshake, t: "Convertidos", v: nf.format(d.converted), s: "repassados aos vendedores" },
     { k: "descartados", I: Ban, t: "Descartados", v: nf.format(x.discarded), s: "leads tirados da lista" },
     { k: "visitas_ok", I: CalendarClock, t: "Visitas confirmadas", v: nf.format(x.visitsConfirmed + x.visitsDone), s: `${nf.format(x.visitsDone)} realizadas · ${nf.format(x.visitsPending)} aguardando` },

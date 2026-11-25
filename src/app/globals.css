@@ -49,6 +49,9 @@
 
 html {
   background: var(--bg);
+  /* Escala automática: tudo (rem) acompanha a largura da tela. 16px em ~1440px de largura; telas maiores aumentam o conteúdo, telas menores diminuem (entre 13px e 24px). */
+  font-size: clamp(0.8125rem, calc(1rem + (100vw - 90rem) * 0.0045), 1.5rem);
+  -webkit-text-size-adjust: 100%;
 }
 
 body {

@@ -107,7 +107,7 @@ export async function getDashboardExtra(period: Period, userIds: number[]) {
   const to = sql`${dayEnd(period.to).toISOString()}::timestamptz`;
   const prevFrom = sql`${new Date(dayStart(period.from).getTime() - days * 86400_000).toISOString()}::timestamptz`;
   const prevTo = sql`${new Date(dayStart(period.from).getTime() - 1).toISOString()}::timestamptz`;
-  const [outcomes, series, vis, secs, origin, prev] = await Promise.all([
+  const [outcomes, series, vis, secs, origin, prev, callRows] = await Promise.all([
     db.execute<{ outcome: string; n: number }>(sql`select coalesce(s.outcome, 'aberto') as outcome, count(*)::int as n from attendance_sessions s
       where not s.is_test and s.user_id in (${U}) and coalesce(s.saved_at, s.shown_at) between ${from} and ${to} group by 1`),
     db.execute<{ d: string; n: number }>(sql`select to_char(s.saved_at at time zone ${TZ}, 'YYYY-MM-DD') as d, count(*)::int as n from attendance_sessions s
@@ -123,7 +123,17 @@ export async function getDashboardExtra(period: Period, userIds: number[]) {
       (select count(distinct s.lead_id) from attendance_sessions s join lead_tags lt on lt.lead_id = s.lead_id join tags t on t.id = lt.tag_id and t.key = 'qualificado'
          where s.outcome = 'saved' and not s.is_test and s.user_id in (${U}) and s.saved_at between ${prevFrom} and ${prevTo})::int as qualified,
       (select count(*) from visits v join leads l on l.id = v.lead_id where not l.is_test and v.canceled_at is null and v.user_id in (${U}) and v.created_at between ${prevFrom} and ${prevTo})::int as scheduled`),
+    // Ligações com resultado informado (contact_events): quantas, atendidas, sem resposta, número errado e tempo de conversa
+    db.execute<{ total: number; answered: number; noanswer: number; wrong: number; secs: number | null; withsecs: number }>(sql`select
+      count(*)::int as total,
+      count(*) filter (where e.outcome in ('atendeu', 'recado'))::int as answered,
+      count(*) filter (where e.outcome in ('nao_atendeu', 'caixa_postal', 'ocupado'))::int as noanswer,
+      count(*) filter (where e.outcome = 'numero_errado')::int as wrong,
+      sum(e.duration_sec) filter (where e.outcome in ('atendeu', 'recado'))::float as secs,
+      count(*) filter (where e.outcome in ('atendeu', 'recado') and e.duration_sec is not null)::int as withsecs
+      from contact_events e where e.channel = 'call' and e.outcome is not null and not e.is_test and e.user_id in (${U}) and e.at between ${from} and ${to}`),
   ]);
+  const c = callRows[0];
   const o = (k: string) => outcomes.find((x) => x.outcome === k)?.n ?? 0;
   const v = (k: string) => vis.find((x) => x.status === k)?.n ?? 0;
   const byDay = new Map(series.map((r) => [r.d, r.n]));
@@ -135,6 +145,8 @@ export async function getDashboardExtra(period: Period, userIds: number[]) {
     saved: o("saved"), skipped: o("skipped"), released: o("released"), discarded: o("discarded"), abandoned: o("abandoned"),
     visitsPending: v("pendente"), visitsConfirmed: v("confirmada"), visitsDone: v("realizada"),
     totalSeconds: Number(secs[0]?.secs ?? 0), originated: origin[0]?.n ?? 0, originatedValue: Number(origin[0]?.v ?? 0),
+    callsDone: c?.total ?? 0, callsAnswered: c?.answered ?? 0, callsNoAnswer: c?.noanswer ?? 0, callsWrong: c?.wrong ?? 0,
+    talkSeconds: Number(c?.secs ?? 0), avgTalkSeconds: c && c.withsecs ? Number(c.secs ?? 0) / c.withsecs : 0,
     daily, streak, prev: prev[0] ?? { contacts: 0, qualified: 0, scheduled: 0 },
   };
 }
