@@ -1,5 +1,7 @@
 import { BookOpen, Brain, Award, BadgeCheck, Bird, Cake, CalendarCheck, CalendarDays, Coins, Crown, Egg, FileText, Flag, Flame, Gem, Handshake, Headset, Heart, Mail, Medal, MessageCircle, Moon, Phone, PhoneCall, Rabbit, Receipt, Repeat, Rocket, Shuffle, Sparkles, Star, Sunrise, Swords, Target, Trophy, TrendingUp, Users, Wallet, Zap, type LucideIcon } from "lucide-react";
 
+import { ClipboardCheck, Landmark, Layers, MessagesSquare, PiggyBank, Radar, ScanSearch, ShoppingBag, Telescope } from "lucide-react";
+
 /**
  * Catálogo das conquistas. Cada uma olha uma estatística (`stat`) e é ganha ao chegar na `meta`.
  * As estatísticas vêm de modules/achievements/stats.ts. Para criar uma conquista nova, acrescente uma linha aqui.
@@ -47,6 +49,11 @@ export const ACHIEVEMENTS: Achievement[] = [
   A("SDR", "active_30", "Presença", "Atendeu em 30 dias diferentes.", "days_active", 30, CalendarDays, "#2DD4BF", "dias"),
   A("SDR", "active_100", "Cem dias de Shuffler", "Atendeu em 100 dias diferentes.", "days_active", 100, Star, "#FACC15", "dias"),
 
+  A("SDR", "cnpj_25", "Consultor de CNPJ", "25 consultas de CNPJ feitas por você.", "cnpj_manual", 25, ScanSearch, "#6366F1", "consultas"),
+  A("SDR", "cnpj_250", "Radar da Receita", "250 consultas de CNPJ feitas por você.", "cnpj_manual", 250, Radar, "#0EA5E9", "consultas"),
+  A("SDR", "list_1", "Fila própria", "Criou a primeira lista de leads.", "lists_made", 1, Layers, "#34D399", "listas"),
+  A("SDR", "list_8", "Montador de filas", "Criou 8 listas de leads.", "lists_made", 8, Telescope, "#A855F7", "listas"),
+
   // ----- Vendas
   A("Vendas", "deal_1", "Primeira negociação", "Assumiu a primeira negociação.", "deals_taken", 1, Handshake, "#34D399", "negociações"),
   A("Vendas", "deal_25", "Carteira cheia", "25 negociações assumidas.", "deals_taken", 25, Users, "#2DD4BF", "negociações"),
@@ -80,6 +87,18 @@ export const ACHIEVEMENTS: Achievement[] = [
   A("Geral", "acc_180", "Meio ano", "Seis meses de SDR Fey.", "days_account", 180, BadgeCheck, "#818CF8", "dias"),
   A("Geral", "acc_365", "Aniversário", "Um ano de SDR Fey. Parabéns!", "days_account", 365, Cake, "#F472B6", "dias"),
   A("Geral", "acc_730", "Raiz", "Dois anos de SDR Fey.", "days_account", 730, Bird, "#FACC15", "dias"),
+  A("Geral", "task_10", "Em dia", "10 tarefas concluídas.", "tasks_done", 10, ClipboardCheck, "#34D399", "tarefas"),
+  A("Geral", "task_60", "Agenda de ferro", "60 tarefas concluídas.", "tasks_done", 60, ClipboardCheck, "#60A5FA", "tarefas"),
+  A("Geral", "task_250", "Nada fica para depois", "250 tarefas concluídas.", "tasks_done", 250, ClipboardCheck, "#FACC15", "tarefas"),
+  A("Geral", "chat_50", "Bom de papo", "50 mensagens no chat.", "chat_msgs", 50, MessagesSquare, "#2DD4BF", "mensagens"),
+  A("Geral", "chat_500", "Alma da equipe", "500 mensagens no chat.", "chat_msgs", 500, MessagesSquare, "#60A5FA", "mensagens"),
+  A("Geral", "chat_3000", "Locutor oficial", "3.000 mensagens no chat.", "chat_msgs", 3000, MessagesSquare, "#F472B6", "mensagens"),
+  A("Geral", "shop_1", "Primeira comprinha", "Comprou o primeiro item na loja do chat.", "shop_items", 1, ShoppingBag, "#34D399", "itens"),
+  A("Geral", "shop_12", "Visual de respeito", "12 itens comprados na loja.", "shop_items", 12, ShoppingBag, "#F472B6", "itens"),
+  A("Geral", "shop_40", "Colecionador", "40 itens comprados na loja.", "shop_items", 40, Gem, "#A855F7", "itens"),
+  A("Geral", "coin_500", "Cofrinho", "Ganhou 500 moedas.", "coins_earned", 500, PiggyBank, "#FACC15", "moedas"),
+  A("Geral", "coin_5k", "Tesouro", "Ganhou 5.000 moedas.", "coins_earned", 5000, Coins, "#F59E0B", "moedas"),
+  A("Geral", "coin_30k", "Banco central", "Ganhou 30.000 moedas.", "coins_earned", 30000, Landmark, "#A855F7", "moedas"),
   { ...A("Geral", "egg", "Douradovo", "Você encontrou o segredo escondido no sistema. Poucos chegam aqui!", "egg", 1, Egg, "#FBBF24", "segredo"), hidden: true },
 ];
 
@@ -106,7 +125,7 @@ export const RARITIES: { key: Rarity; label: string; color: string; order: numbe
 export const RARITY_BY_KEY = new Map(RARITIES.map((r) => [r.key, r]));
 
 /** Ajustes à mão (o resto sai da posição da conquista na sua série: quanto mais alta a meta, mais rara). */
-const RARITY_OVERRIDE: Record<string, Rarity> = { egg: "mitico", acc_730: "mitico", bill_200: "mitico", seq_20: "mitico", cash_1m: "mitico", big_100k: "mitico", att_5000: "mitico" };
+const RARITY_OVERRIDE: Record<string, Rarity> = { egg: "mitico", coin_30k: "mitico", chat_3000: "mitico", task_250: "lendario", shop_40: "mitico", acc_730: "mitico", bill_200: "mitico", seq_20: "mitico", cash_1m: "mitico", big_100k: "mitico", att_5000: "mitico" };
 
 const rarityMap = (() => {
   const bySeries = new Map<string, Achievement[]>();

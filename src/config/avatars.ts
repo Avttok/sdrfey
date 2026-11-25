@@ -1,4 +1,4 @@
-import { Anchor, Atom, Bird, Bone, Bug, Cat, Dog, Egg, Fish, Origami, Panda, PawPrint, Rabbit, Rat, Shell, Snail, Squirrel, Turtle, Worm, Coffee, Compass, Crown, Diamond, Feather, Flag, Flame, Gem, Headphones, Moon, Orbit, Rocket, Sun, Trophy, Wand, Wrench, Zap, Clover, type LucideIcon } from "lucide-react";
+import { ClipboardCheck, MessagesSquare, PiggyBank, Radar, ScanSearch, ShoppingBag, Telescope, Anchor, Atom, Bird, Bone, Bug, Cat, Dog, Egg, Fish, Origami, Panda, PawPrint, Rabbit, Rat, Shell, Snail, Squirrel, Turtle, Worm, Coffee, Compass, Crown, Diamond, Feather, Flag, Flame, Gem, Headphones, Moon, Orbit, Rocket, Sun, Trophy, Wand, Wrench, Zap, Clover, type LucideIcon } from "lucide-react";
 
 /** Ícones de perfil (enquanto não há upload de foto). A chave é o que fica guardado. */
 export const AVATARS: { key: string; label: string; icon: LucideIcon; /** Chave da conquista que libera este ícone (sem ela, é livre). */ unlock?: string }[] = [
@@ -20,6 +20,10 @@ export const AVATARS: { key: string; label: string; icon: LucideIcon; /** Chave 
   { key: "coroa", label: "Coroa", icon: Crown, unlock: "att_5000" }, { key: "atomo", label: "Átomo", icon: Atom, unlock: "acc_730" },
   { key: "fenix", label: "Fênix", icon: Feather, unlock: "seq_20" }, { key: "joia", label: "Joia", icon: Diamond, unlock: "bill_200" },
   { key: "varinha", label: "Varinha mágica", icon: Wand, unlock: "egg" },
+  { key: "lupa", label: "Lupa de CNPJ", icon: ScanSearch, unlock: "cnpj_25" }, { key: "radar", label: "Radar", icon: Radar, unlock: "cnpj_250" },
+  { key: "luneta", label: "Luneta", icon: Telescope, unlock: "list_8" }, { key: "prancheta", label: "Prancheta", icon: ClipboardCheck, unlock: "task_60" },
+  { key: "balao", label: "Balão de fala", icon: MessagesSquare, unlock: "chat_500" }, { key: "sacola", label: "Sacola", icon: ShoppingBag, unlock: "shop_12" },
+  { key: "cofre", label: "Cofrinho", icon: PiggyBank, unlock: "coin_5k" },
 ];
 export const AVATAR_BY_KEY = new Map(AVATARS.map((a) => [a.key, a]));
 

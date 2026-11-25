@@ -37,7 +37,13 @@ export async function achievementStats(uid: number): Promise<Stats> {
       (select count(*) from seller_shuffles where user_id = ${uid} and not is_test and outcome in ('deal', 'no_answer', 'no_interest', 'skipped'))::int as shuffled,
       (select count(*) from seller_shuffles where user_id = ${uid} and not is_test and outcome = 'deal')::int as shuffle_deals,
       (select count(*) from coin_ledger where user_id = ${uid} and ref = 'egg:done')::int as egg,
-      (select count(*) from lead_facts f join leads l on l.id = f.lead_id where f.user_id = ${uid} and not l.is_test)::int as facts`);
+      (select count(*) from lead_facts f join leads l on l.id = f.lead_id where f.user_id = ${uid} and not l.is_test)::int as facts,
+      (select count(*) from shop_purchases where user_id = ${uid})::int as shop_items,
+      (select count(*) from chat_messages where user_id = ${uid} and deleted_at is null)::int as chat_msgs,
+      (select count(*) from tasks where user_id = ${uid} and done_at is not null)::int as tasks_done,
+      (select count(*) from lead_lists where owner_id = ${uid})::int as lists_made,
+      (select coalesce(sum(amount), 0) from coin_ledger where user_id = ${uid} and amount > 0)::int as coins_earned,
+      (select count(*) from enrich_log where user_id = ${uid} and ok)::int as cnpj_manual`);
   return Object.fromEntries(Object.entries(r ?? {}).map(([k, v]) => [k, Number(v ?? 0)]));
 }
 
