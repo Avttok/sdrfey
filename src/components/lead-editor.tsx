@@ -25,7 +25,7 @@ import { addChannelAction, markWrongAction, removeChannelAction } from "@/module
 import { addPersonAction, addVisitAction, deleteVisitAction, changeTagAction, forceReleaseAction, removePersonAction, setPersonStatusAction, resetLeadFromPageAction, updateLeadAction } from "@/modules/leads/edit";
 import type { LeadView, TagCatalog } from "@/modules/leads/view";
 
-export function LeadEditor({ adminDelete, kpis, records, afterLeft, afterRight, lead, catalog, owners, canEdit, canRelease, lockedBy, showMap, meId, sellerView, dealId, inDeal, dealSeller }: { adminDelete?: React.ReactNode; kpis?: React.ReactNode; records?: React.ReactNode; afterLeft?: React.ReactNode; afterRight?: React.ReactNode; dealSeller?: { name: string; hex: string } | null; inDeal?: boolean; sellerView?: boolean; dealId?: number | null; showMap: boolean; meId: number; lead: LeadView; catalog: TagCatalog; owners: { id: number; name: string }[]; canEdit: boolean; canRelease: boolean; lockedBy: { name: string; hex: string } | null }) {
+export function LeadEditor({ touchCounts, adminDelete, kpis, records, afterLeft, afterRight, lead, catalog, owners, canEdit, canRelease, lockedBy, showMap, meId, sellerView, dealId, inDeal, dealSeller }: { /** Total de contatos por meio já feitos com o lead (todas as pessoas). */ touchCounts?: Partial<Record<"ligacao" | "whatsapp" | "email", number>>; adminDelete?: React.ReactNode; kpis?: React.ReactNode; records?: React.ReactNode; afterLeft?: React.ReactNode; afterRight?: React.ReactNode; dealSeller?: { name: string; hex: string } | null; inDeal?: boolean; sellerView?: boolean; dealId?: number | null; showMap: boolean; meId: number; lead: LeadView; catalog: TagCatalog; owners: { id: number; name: string }[]; canEdit: boolean; canRelease: boolean; lockedBy: { name: string; hex: string } | null }) {
   const toast = useToast();
   const active = lead.registrationStatus ? lead.registrationStatus.toUpperCase() === "ATIVA" : null;
   const name0 = lead.tradeName ?? lead.company;
@@ -154,7 +154,7 @@ export function LeadEditor({ adminDelete, kpis, records, afterLeft, afterRight, 
           const n = g.tags.filter((t) => on.has(`${g.key}:${t.key}`)).length;
           return (
             <TagDeck key={g.key} title={g.name} hint={g.exclusive ? "escolha 1" : "marque o que se aplica"} count={n} total={g.tags.length}>
-              {g.tags.map((t) => <FlashTag key={t.key} label={t.label} color={t.color} on={on.has(`${g.key}:${t.key}`)} disabled={!(canEdit && !sellerView) || pending} onClick={() => toggleTag(g.key, t.key, g.exclusive)} />)}
+              {g.tags.map((t) => <FlashTag key={t.key} label={t.label} color={t.color} on={on.has(`${g.key}:${t.key}`)} times={touchCounts && t.key in touchCounts ? touchCounts[t.key as "ligacao"] ?? 0 : undefined} disabled={!(canEdit && !sellerView) || pending} onClick={() => toggleTag(g.key, t.key, g.exclusive)} />)}
             </TagDeck>
           );
         })}

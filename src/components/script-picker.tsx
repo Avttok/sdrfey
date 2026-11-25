@@ -74,9 +74,12 @@ export function ScriptPicker({ persistKey, hideNoteBox, facts, scripts, vars, go
               </button>
             );
             return (
-              <button key={k} type="button" onClick={() => choose(k)} style={tint(d.hex, 9, 40)} className="group flex items-start gap-3 rounded-2xl border-2 px-3.5 py-3 text-left transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]">
-                <span className="grid size-11 shrink-0 place-items-center rounded-xl text-white shadow" style={{ background: d.hex }}><Icon size={22} aria-hidden /></span>
-                <span className="min-w-0 flex-1"><span className="block font-bold">{d.label}</span><span className="mt-0.5 block text-xs text-muted">{d.hint}</span></span>
+              <button key={k} type="button" onClick={() => choose(k)} style={{ background: `linear-gradient(145deg, color-mix(in srgb, ${d.hex} 20%, var(--panel)), color-mix(in srgb, ${d.hex} 5%, var(--panel)) 70%)`, borderColor: `color-mix(in srgb, ${d.hex} 50%, transparent)` }} className="group relative flex min-h-[9.5rem] flex-col items-start gap-3 overflow-hidden rounded-3xl border-2 p-4 text-left shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-xl active:scale-[0.97]">
+                <Icon aria-hidden size={96} strokeWidth={1.4} className="pointer-events-none absolute -bottom-5 -right-4 -rotate-12 opacity-[.13] transition duration-300 group-hover:-rotate-6 group-hover:scale-110 group-hover:opacity-20" style={{ color: d.hex }} />
+                <span aria-hidden className="pointer-events-none absolute -left-8 -top-10 size-28 rounded-full opacity-25 blur-2xl" style={{ background: d.hex }} />
+                <span className="relative grid size-12 shrink-0 place-items-center rounded-2xl text-white transition duration-200 group-hover:scale-110 group-hover:-rotate-3" style={{ background: `linear-gradient(135deg, ${d.hex}, color-mix(in srgb, ${d.hex} 65%, #000))`, boxShadow: `0 8px 20px -8px ${d.hex}` }}><Icon size={24} aria-hidden /></span>
+                <span className="relative block min-w-0"><span className="block text-lg font-extrabold leading-tight">{d.label}</span><span className="mt-1 block text-sm leading-snug text-muted">{d.hint}</span></span>
+                <span aria-hidden className="absolute right-3 top-3 grid size-8 place-items-center rounded-full bg-panel/80 opacity-0 shadow transition duration-200 group-hover:translate-x-0 group-hover:opacity-100 max-sm:opacity-100" style={{ color: d.hex }}><ChevronRight size={16} /></span>
               </button>
             );
           })}

@@ -368,7 +368,11 @@ html, body, * { scrollbar-width: none; -ms-overflow-style: none; }
 .ft[data-on="true"] { border-style: solid; border-color: var(--cor); color: var(--ink); animation: ft-pop .35s ease-out; background: linear-gradient(135deg, color-mix(in srgb, var(--cor) 26%, var(--panel)), color-mix(in srgb, var(--cor) 8%, var(--panel))); box-shadow: 0 10px 26px -10px color-mix(in srgb, var(--cor) 65%, transparent), 0 0 0 1px color-mix(in srgb, var(--cor) 35%, transparent); }
 .ft[data-on="true"] .ft-ico { background: var(--cor); color: #fff; filter: none; box-shadow: 0 6px 14px -4px color-mix(in srgb, var(--cor) 70%, transparent); }
 .ft[data-on="true"] .ft-pill { background: color-mix(in srgb, var(--cor) 22%, transparent); color: color-mix(in srgb, var(--cor) 75%, var(--ink)); }
-@media (prefers-reduced-motion: reduce) { .ft[data-on="true"] { animation: none; } }
+@keyframes ft-glow { 0%, 100% { box-shadow: 0 10px 26px -10px color-mix(in srgb, var(--cor) 65%, transparent), 0 0 0 1px color-mix(in srgb, var(--cor) 45%, transparent); } 50% { box-shadow: 0 0 30px 2px color-mix(in srgb, var(--cor) 70%, transparent), 0 0 0 2px var(--cor); } }
+@keyframes ft-sweep { from { transform: translateX(-130%) skewX(-18deg); } to { transform: translateX(330%) skewX(-18deg); } }
+.ft[data-full="true"] { animation: ft-pop .35s ease-out, ft-glow 2.2s ease-in-out .4s infinite; }
+.ft[data-full="true"]::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 35%; pointer-events: none; background: linear-gradient(90deg, transparent, color-mix(in srgb, #fff 55%, transparent), transparent); animation: ft-sweep 2.6s ease-in-out .6s infinite; }
+@media (prefers-reduced-motion: reduce) { .ft[data-on="true"], .ft[data-full="true"], .ft[data-full="true"]::after { animation: none; } }
 
 /* ── Avisos globais do Adm ── */
 @keyframes ann-drop { 0% { opacity: 0; transform: translateY(-140%) scale(.96); } 60% { opacity: 1; transform: translateY(8%) scale(1.01); } 80% { transform: translateY(-3%); } 100% { transform: none; } }

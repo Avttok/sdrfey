@@ -9,18 +9,18 @@ import { TAG_ICONS } from "@/config/tag-icons";
 import { inputCls } from "@/components/ui";
 
 /** Cartão de tag: ligado fica colorido e levantado, desligado fica pontilhado e apagado. */
-export function FlashTag({ label, color, on, onClick, icon, Comp, hint, disabled }: { label: string; color: string; on: boolean; onClick: () => void; icon?: string | null; /** Ícone próprio (em vez do ícone da tag). */ Comp?: typeof Check; /** Frase pequena sob o nome. */ hint?: string; /** Só mostra: não deixa mudar. */ disabled?: boolean }) {
+export function FlashTag({ label, color, on, onClick, icon, Comp, hint, disabled, progress, times }: { /** Total de vezes que o meio foi usado com o lead (ex.: x47), no perfil do lead. */ times?: number; /** Quantos contatos do lead já receberam esse meio (ex.: 3 de 5). Com 1 ou mais fica ligado; completo, brilha. */ progress?: { n: number; total: number }; label: string; color: string; on: boolean; onClick: () => void; icon?: string | null; /** Ícone próprio (em vez do ícone da tag). */ Comp?: typeof Check; /** Frase pequena sob o nome. */ hint?: string; /** Só mostra: não deixa mudar. */ disabled?: boolean }) {
   const map = useContext(TagIcons);
   const Icon = Comp ?? TAG_ICONS[icon ?? map[label.toUpperCase()] ?? ""];
   return (
-    <button type="button" role="switch" aria-checked={on} onClick={onClick} data-on={on} disabled={disabled}
+    <button type="button" role="switch" aria-checked={on} onClick={onClick} data-on={on} data-full={!!progress && progress.total > 0 && progress.n >= progress.total} disabled={disabled}
       className={`ft group relative grid h-full min-h-28 grid-rows-[auto_1fr] items-start gap-2 overflow-hidden rounded-2xl border-2 p-3 text-left transition-all duration-300 hover:-translate-y-0.5 active:scale-[.97] ${disabled ? "cursor-default hover:!translate-y-0" : ""}`}
       style={{ "--cor": color } as React.CSSProperties}>
       <span className="flex w-full items-center justify-between gap-2">
         <span className="ft-ico grid size-9 shrink-0 place-items-center rounded-xl transition-all duration-300">{Icon ? <Icon size={18} aria-hidden /> : <Check size={18} aria-hidden />}</span>
-        <span className="ft-pill whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold uppercase leading-4 tracking-wider">{on ? "Ligado" : "Desligado"}</span>
+        <span className="ft-pill whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold uppercase leading-4 tracking-wider">{progress && progress.total > 0 ? <span className="figure">{progress.n}/{progress.total}</span> : on ? "Ligado" : "Desligado"}</span>
       </span>
-      <span className="self-end"><span className="block break-words text-sm font-bold uppercase leading-tight tracking-wide">{label}</span>{hint && <span className="mt-0.5 block text-[11px] font-normal normal-case leading-snug text-muted">{hint}</span>}</span>
+      <span className="self-end"><span className="flex flex-wrap items-baseline gap-x-1.5 break-words text-sm font-bold uppercase leading-tight tracking-wide">{label}{times != null && <span className="figure rounded-md bg-[color-mix(in_srgb,var(--cor)_20%,transparent)] px-1.5 py-0.5 text-xs font-extrabold normal-case tracking-normal" title={`${times} ${times === 1 ? "contato feito" : "contatos feitos"} com este lead`}>x{times}</span>}</span>{progress && progress.total > 0 && <span className="mt-0.5 block text-[11px] font-semibold normal-case leading-snug text-muted">{progress.total === 1 ? (progress.n ? "1 contato · feito" : "1 contato · ainda não") : progress.n === 0 ? `Nenhum dos ${progress.total} contatos` : progress.n >= progress.total ? `Todos os ${progress.total} contatos` : `${progress.n} de ${progress.total} contatos`}</span>}{hint && <span className="mt-0.5 block text-[11px] font-normal normal-case leading-snug text-muted">{hint}</span>}</span>
       {on && <span aria-hidden className="ft-check absolute -right-1 -top-1 grid size-6 place-items-center rounded-bl-xl text-white" style={{ background: color }}><Check size={14} /></span>}
     </button>
   );

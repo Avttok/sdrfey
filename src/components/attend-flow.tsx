@@ -199,6 +199,13 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
   const CH_OF: Record<string, "email" | "whatsapp" | "call"> = { email: "email", whatsapp: "whatsapp", ligacao: "call" };
   const targetsOf = (k: string): string[] => (k === "email" ? goodEmails.map((e) => e.value) : k === "whatsapp" ? (goodPhones.filter((p) => p.value.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "").length === 11).length ? goodPhones.filter((p) => p.value.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "").length === 11) : goodPhones).map((p) => p.value) : goodPhones.map((p) => p.value));
   const missingOf = (k: string, d = done) => targetsOf(k).filter((v) => !d[k]?.has(keyOf(k, v)));
+  /** Quantos contatos do lead já tiveram este meio (e-mail, WhatsApp, ligação) e quantos existem. */
+  const countOf = (k: string) => { const ts = targetsOf(k); const ch = CH_OF[k]; return { n: ts.filter((v) => isSent(ch, v) || done[k]?.has(keyOf(k, v))).length, total: ts.length }; };
+  // 1 contato já basta para o meio ficar marcado na etapa final
+  useEffect(() => {
+    const add = Object.keys(CH_OF).filter((k) => countOf(k).n > 0 && !used.has(k));
+    if (add.length) setUsed((u) => { const n = new Set(u); add.forEach((k) => n.add(k)); return n; });
+  }); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const on = (e: Event) => {
       const d = (e as CustomEvent<TouchDone>).detail;
@@ -591,7 +598,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
           <section className="space-y-6">
             <StepTitle i={4} />
             {([
-              ["meio", "Meios de contato usados", "marque todos que usou", used.size, Phone, (g: TagCatalog[number]) => g.tags.filter((t) => !t.autoOnly).map((t) => <FlashTag key={t.key} label={t.label} color={t.color} on={used.has(t.key)} onClick={() => toggleUsed(t.key)} />)],
+              ["meio", "Meios de contato usados", "marque todos que usou", used.size, Phone, (g: TagCatalog[number]) => g.tags.filter((t) => !t.autoOnly).map((t) => { const c = t.key in CH_OF ? countOf(t.key) : null; return <FlashTag key={t.key} label={t.label} color={t.color} on={used.has(t.key) || (c?.n ?? 0) > 0} progress={c ?? undefined} onClick={() => { if ((c?.n ?? 0) > 0) return; toggleUsed(t.key); }} />; })],
               ["temperatura", "Temperatura do lead", "escolha 1", temperature ? 1 : 0, Flag, (g: TagCatalog[number]) => g.tags.map((t) => <FlashTag key={t.key} label={t.label} color={t.color} on={temperature === t.key} onClick={() => setTemperature(temperature === t.key ? null : t.key)} />)],
               ["qualificacao", "Qualificação", "escolha 1", qualification ? 1 : 0, Check, (g: TagCatalog[number]) => g.tags.map((t) => <FlashTag key={t.key} label={t.label} color={t.color} on={qualification === t.key} onClick={() => setQualification(qualification === t.key ? null : (t.key as "qualificado"))} />)],
               ["situacao", "Situação", "marque o que se aplica", situations.size, TriangleAlert, (g: TagCatalog[number]) => g.tags.filter((t) => !t.autoOnly).map((t) => <FlashTag key={t.key} label={t.label} color={t.color} on={situations.has(t.key)} onClick={() => toggle(situations, t.key, setSituations)} />)],
@@ -628,9 +635,9 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
   );
 }
 
-/** Etiqueta no canto direito do bloco de um contato depois da ação (Enviado / Ligação feita). */
+/** Etiqueta na borda superior do bloco de um contato depois da ação (Enviado / Ligação feita). */
 function SentTag({ children }: { children: React.ReactNode }) {
-  return <span className="pointer-events-none absolute right-2.5 top-2 inline-flex items-center gap-1 rounded-full bg-ok px-2 py-0.5 text-[11px] font-bold text-white shadow-sm"><Check size={11} aria-hidden /> {children}</span>;
+  return <span className="pointer-events-none absolute -top-2.5 left-4 z-10 inline-flex items-center gap-1 rounded-full bg-ok px-2.5 py-0.5 text-[11px] font-bold text-white shadow-md ring-2 ring-panel"><Check size={11} aria-hidden /> {children}</span>;
 }
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {

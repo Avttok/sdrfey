@@ -107,6 +107,10 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false, showMap =
         <Row icon={Users} label="Sócios">{info?.partners.length ? <span className="flex flex-wrap gap-1.5">{info.partners.map((p, i) => <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-sunk px-2.5 py-1 text-xs"><UserRound size={12} aria-hidden className="text-accent" /><b className="font-semibold">{p.name}</b>{cleanRole(p.role) ? <span className="text-muted">· {cleanRole(p.role)}</span> : null}</span>)}</span> : missing}</Row>
       </div>
 
+    </div>
+  );
+  const actionsBlock = (
+    <div className="space-y-3">
       {lead.enrichedAt && <p className="text-xs text-muted">Consulta da Receita salva em {fmtDate(lead.enrichedAt)}.</p>}
       <div className="flex flex-wrap gap-2">
         <button type="button" disabled={pending} className={btnGhost} onClick={() => setConfirmRefresh(true)}>{pending ? <Spinner size={15} /> : <RefreshCw size={15} aria-hidden />} Atualizar informações</button>
@@ -141,7 +145,7 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false, showMap =
     </>
   );
   const repBlock = (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3">
       <div className="rounded-3xl border border-line p-4">
         <p className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-accent"><MapPin size={14} aria-hidden /> Representante mais próximo</p>
         {rep ? (
@@ -156,8 +160,8 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false, showMap =
         ) : <p className="text-sm">{missing}{!lead.city && !searching ? <span className="ml-1 text-xs text-muted">(cidade do lead desconhecida)</span> : null}</p>}
       </div>
       {showMap && (a?.street || lead.city) && (
-        <div className="overflow-hidden rounded-3xl border border-line">
-          <iframe title={`Mapa de ${lead.tradeName ?? lead.company}`} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="block h-60 w-full" src={`https://www.google.com/maps?q=${encodeURIComponent(mapsQuery)}&output=embed`} />
+        <div className="min-h-60 flex-1 overflow-hidden rounded-3xl border border-line">
+          <iframe title={`Mapa de ${lead.tradeName ?? lead.company}`} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="block h-full min-h-60 w-full" src={`https://www.google.com/maps?q=${encodeURIComponent(mapsQuery)}&output=embed`} />
         </div>
       )}
     </div>
@@ -170,6 +174,7 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false, showMap =
           {companyBlock}
           {repBlock}
         </div>
+        {actionsBlock}
         {allBlock}
       </section>
     );
@@ -177,6 +182,7 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false, showMap =
   return (
     <section className="space-y-3">
       {companyBlock}
+      {actionsBlock}
       {allBlock}
       {repBlock}
     </section>
