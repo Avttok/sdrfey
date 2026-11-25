@@ -30,5 +30,5 @@ const COND: Record<string, SQL> = {
 export const markerCond = (key: string): SQL | null => (MARKER_BY_KEY.has(key) ? COND[key] ?? null : null);
 
 /** Lista (text[]) dos marcadores que o lead tem, para mostrar as etiquetas. */
-export const markerKeysExpr = (): SQL =>
-  sql`array_remove(array[${sql.join(MARKERS.map((m) => sql`case when ${COND[m.key]} then ${m.key} end`), sql`, `)}], null)`;
+export const markerKeysExpr = (only?: readonly string[]): SQL =>
+  sql`array_remove(array[${sql.join(MARKERS.filter((m) => !only || only.includes(m.key)).map((m) => sql`case when ${COND[m.key]} then ${m.key} end`), sql`, `)}], null)`;

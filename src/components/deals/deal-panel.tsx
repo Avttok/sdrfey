@@ -1,6 +1,10 @@
 "use client";
 
 import { ClientIds } from "@/components/client-ids";
+import { SocialLink } from "@/components/brand-icons";
+import { MARKER_BY_KEY } from "@/config/markers";
+import { PrefDetail, useDealPrefs } from "./deal-prefs";
+import { chatproUrl } from "@/lib/format";
 import { EoxIcon, SalesforceIcon } from "@/components/brand-icons";
 import { RoteiroLink } from "@/components/roteiro-link";
 import { Building2, History, Plus, Package, Trash2, Tags, CalendarClock, Check, ExternalLink, FileText, Link2, Mail, MessageCircle, NotebookPen, Phone, PhoneCall, RotateCcw, Trophy, Undo2, UserPlus, XCircle } from "lucide-react";
@@ -68,19 +72,34 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, icmsPct
   const closeData = Object.fromEntries(Object.entries({ isReactivation: f.isReactivation, orderNumber: f.orderNumber, realValue: f.realValue, freight: f.freight, sapCode: f.sapCode, paymentTerms: f.paymentTerms, netValue: f.netValue }).filter(([, v]) => v !== "" ));
   const list = phones.length ? phones.map((p) => p.value) : deal.phone ? [deal.phone] : [];
   const reset = () => { setNote(""); setNextAt(""); setNextNote(""); setReason(""); };
+  const [prefs] = useDealPrefs();
+  const hex = deal.color ?? STAGE_META[deal.stage].color;
+  const marks = deal.markers.filter((k) => ["site", "redes", "celular", "email", "ativo", "mei", "eox", "cliente"].includes(k));
+  const waDigits = (list[0] ?? "").replace(/\D/g, "");
+  const toUrl = (v: string | null) => { const t = (v ?? "").trim(); if (!t || /\s/.test(t)) return null; if (/^https?:\/\//i.test(t)) return t; return /^[\w-]+(\.[\w-]+)+(\/.*)?$/.test(t) ? `https://${t}` : null; };
+  const net = ([["site", deal.site], ["instagram", deal.instagram], ["facebook", deal.facebook], ["linkedin", deal.linkedin]] as const).map(([k, v]) => [k, toUrl(v)] as const).filter((x): x is readonly [typeof x[0], string] => !!x[1]);
 
   return (
     <div className="space-y-4">
       <div className="min-w-0 space-y-4">
-        <section className={`${panelCls} space-y-4 p-5`} style={deal.color ? { borderLeft: `6px solid ${deal.color}`, background: `color-mix(in srgb, ${deal.color} 7%, var(--panel))` } : undefined}>
-          <div className="flex flex-wrap items-start gap-3">
-            <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-grad-soft text-accent"><Building2 size={22} aria-hidden /></span>
+        <section className="card-in relative space-y-4 overflow-hidden rounded-3xl border-2 p-5 shadow-[0_14px_40px_-20px_rgb(0_0_0/0.45)]" style={{ backgroundColor: "color-mix(in srgb, var(--panel) 66%, transparent)", backgroundImage: `linear-gradient(145deg, color-mix(in srgb, ${hex} 20%, transparent), color-mix(in srgb, ${hex} 4%, transparent) 72%)`, borderColor: `color-mix(in srgb, ${hex} 50%, var(--line))`, WebkitBackdropFilter: "blur(20px) saturate(1.4)", backdropFilter: "blur(20px) saturate(1.4)" }}>
+          <Building2 aria-hidden size={190} strokeWidth={1.2} className="pointer-events-none absolute -bottom-10 -right-6 -rotate-12 opacity-[.09]" style={{ color: hex }} />
+          <span aria-hidden className="pointer-events-none absolute -right-12 -top-14 size-48 rounded-full opacity-25 blur-3xl" style={{ background: hex }} />
+          <div className="relative flex flex-wrap items-start gap-3">
+            <span className="grid size-14 shrink-0 place-items-center rounded-2xl text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${hex}, color-mix(in srgb, ${hex} 62%, #000))` }}><Building2 size={26} aria-hidden /></span>
             <div className="min-w-0 flex-1">
-              <h1 className="display break-words text-xl leading-tight sm:text-[22px]">{deal.company}</h1>
+              <h1 className="display break-words text-xl leading-tight sm:text-2xl">{deal.company}</h1>
               <p className="text-sm text-muted">{[deal.city && `${deal.city}/${deal.uf}`, deal.contactName].filter(Boolean).join(" · ") || "Sem dados de contato"}</p>
             </div>
             <StageChip stage={deal.stage} />
           </div>
+          {(marks.length > 0 || net.length > 0 || waDigits.length >= 10) && (
+            <div className="relative flex flex-wrap items-center gap-1.5">
+              {marks.map((k) => { const m = MARKER_BY_KEY.get(k); return m ? <span key={k} title={m.hint} className="rounded-full px-2.5 py-0.5 text-[11px] font-bold" style={{ background: `color-mix(in srgb, ${m.color} 16%, transparent)`, color: `color-mix(in srgb, ${m.color} 72%, var(--ink))` }}>{m.label}</span> : null; })}
+              {waDigits.length >= 10 && <a href={chatproUrl(waDigits)} target="_blank" rel="noreferrer" className="inline-flex min-h-7 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold text-white shadow-sm transition hover:brightness-110" style={{ background: "#25D366" }}><MessageCircle size={13} aria-hidden /> WhatsApp</a>}
+              {net.map(([k, u]) => <SocialLink key={k} kind={k} href={u} />)}
+            </div>
+          )}
           {mine && <ColorPicker value={deal.color} disabled={pending} onChange={(c) => run(() => setDealColorAction(deal.id, c), "Cor salva.")} />}
           {tags.length > 0 && <div className="flex flex-wrap items-center gap-1.5"><Tags size={14} className="text-muted" aria-hidden />{tags.map((t) => <TagChip key={`${t.group}-${t.label}`} label={t.label} color={t.color} />)}</div>}
           {lastQuote && lastQuote.totalCents != null && <div className="rounded-xl bg-sunk/60 px-4 py-3"><p className="mb-1 text-[11px] font-medium text-muted">Cotação mais recente{lastQuote.number ? ` · ${lastQuote.number}` : ""}</p><QuoteValues q={lastQuote} /></div>}
@@ -108,11 +127,11 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, icmsPct
           </div>
         </section>
 
-        <DealGoalStrip goal={goal} stage={deal.stage} />
-        <DealKpis deal={deal} quotes={quotes.length} runs={runs.length} events={clientEvents.length || events.length} visits={visits.length} />
+        <PrefDetail id="meta"><DealGoalStrip goal={goal} stage={deal.stage} /></PrefDetail>
+        <PrefDetail id="kpis"><DealKpis deal={deal} quotes={quotes.length} runs={runs.length} events={clientEvents.length || events.length} visits={visits.length} /></PrefDetail>
 
         {!deal.sellerId && !closed && (
-          <div className={`${panelCls} flex flex-wrap items-center justify-between gap-3 border-accent/50 p-4`}>
+          <div className="card-surface card-edge flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4">
             <p className="text-sm">Esta negociação está no grupo dos vendedores. <b>Quem assumir primeiro fica com ela.</b></p>
             {canClaim && <button type="button" className={btnPrimary} disabled={pending} onClick={() => run(() => claimDealAction(deal.id))}><UserPlus size={16} aria-hidden /> Assumir e ligar</button>}
           </div>
@@ -120,14 +139,14 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, icmsPct
 
 
         {closed && (
-          <div className={`${panelCls} flex flex-wrap items-center justify-between gap-3 p-4 ${deal.stage === "ganho" ? "border-ok/50" : "border-danger/40"}`}>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 p-4" style={{ backgroundImage: `linear-gradient(145deg, color-mix(in srgb, ${deal.stage === "ganho" ? "#22c55e" : "#ef4444"} 18%, transparent), color-mix(in srgb, ${deal.stage === "ganho" ? "#22c55e" : "#ef4444"} 4%, transparent) 70%)`, borderColor: `color-mix(in srgb, ${deal.stage === "ganho" ? "#22c55e" : "#ef4444"} 50%, var(--line))` }}>
             <p className="flex items-center gap-2 text-sm">{deal.stage === "ganho" ? <><Trophy size={18} className="text-ok" aria-hidden /> Faturado por <b>{fmtBRL(deal.mainCents)}</b>.</> : <><XCircle size={18} className="text-danger" aria-hidden /> Negócio perdido{deal.lostReason ? <>: <b>{deal.lostReason}</b></> : ""}.</>}</p>
             {mine && <button type="button" className={btnGhost} disabled={pending} onClick={() => run(() => reopenDealAction(deal.id))}><RotateCcw size={15} aria-hidden /> Reabrir</button>}
           </div>
         )}
 
         {deal.stage !== "perdido" && (
-          <ol aria-label="Etapas da negociação" className="flex items-center">
+          <ol aria-label="Etapas da negociação" className="card-surface card-edge flex items-center rounded-2xl p-2">
             {STEPS.map((s, i) => {
               const idx = STEPS.indexOf(deal.stage === "negociacao" ? "cotacao" : (deal.stage as (typeof STEPS)[number])), done = i < idx || deal.stage === "ganho", cur = i === idx;
               const clickable = mine && !!deal.sellerId && !closed && s !== "ganho";
@@ -136,7 +155,7 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, icmsPct
                 <li key={s} className="flex flex-1 items-center last:flex-none">
                   <button type="button" disabled={!clickable || pending} aria-current={cur ? "step" : undefined} onClick={() => run(() => setStageAction(deal.id, s as DealStage))} title={STAGE_META[s].hint}
                     className={`group flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm font-semibold transition ${clickable ? "hover:bg-sunk" : "cursor-default"} ${cur || done ? "text-ink" : "text-muted"}`}>
-                    <span className="grid size-7 shrink-0 place-items-center rounded-full border-2 text-xs transition" style={cur || done ? { background: color, borderColor: color, color: "var(--on-accent)" } : undefined}>{done && !cur ? <Check size={14} aria-hidden /> : i + 1}</span>
+                    <span className="grid size-8 shrink-0 place-items-center rounded-xl border-2 text-xs font-bold transition" style={cur ? { background: `linear-gradient(135deg, ${color}, color-mix(in srgb, ${color} 62%, #000))`, borderColor: color, color: "#fff", boxShadow: `0 8px 20px -8px ${color}` } : done ? { background: `color-mix(in srgb, ${color} 22%, transparent)`, borderColor: `color-mix(in srgb, ${color} 55%, transparent)`, color } : undefined}>{done && !cur ? <Check size={14} aria-hidden /> : i + 1}</span>
                     <span className={cur ? "" : "max-sm:sr-only"}>{STAGE_META[s].label}</span>
                   </button>
                   {i < STEPS.length - 1 && <span aria-hidden className="mx-1 h-0.5 min-w-4 flex-1 rounded-full bg-line"><span className="block h-full rounded-full bg-accent transition-all" style={{ width: i < idx || deal.stage === "ganho" ? "100%" : "0%" }} /></span>}
@@ -146,8 +165,8 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, icmsPct
           </ol>
         )}
 
-        <div className="gap-4 xl:columns-2 [&>*]:mb-4 [&>*]:break-inside-avoid">
-        {mine && deal.sellerId && (
+        <div className={`gap-4 [&>*]:mb-4 [&>*]:break-inside-avoid ${prefs.detailCols === 2 ? "xl:columns-2" : ""}`}>
+        {mine && deal.sellerId && prefs.detail.andamento && (
           <SectionCard icon={NotebookPen} title="Andamento" className="flex flex-col">
             {!closed && (
               <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); run(() => logContactAction(deal.id, { kinds: kinds.length ? kinds : ["nota"], note, nextAt: nextAt || null, nextNote: nextNote || null }), undefined, reset); }}>
@@ -168,7 +187,7 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, icmsPct
           </SectionCard>
         )}
 
-        {(mine && deal.sellerId) && (
+        {(mine && deal.sellerId) && prefs.detail.fechamento && (
           <SectionCard icon={Package} title="Fechamento" className="flex flex-col">
             <div className="space-y-4">
               <div>
@@ -225,7 +244,7 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, icmsPct
         )}
         </div>
 
-        {mine && deal.sellerId && (
+        {mine && deal.sellerId && prefs.detail.cotacoes && (
           <SectionCard icon={FileText} title={`Cotações${quotes.length ? ` (${quotes.length})` : ""}`}>
             <div className="space-y-3">
               {quotes.map((q, n) => <QuoteCard key={q.id} dealId={deal.id} q={q} terms={termList} extraPct={extraPct} icmsPct={icmsPct} icmsRatePct={icmsRatePct} onTerm={addTerm} leadCnpj={deal.cnpj ?? ""} editable={!closed} isLast={n === 0} />)}
@@ -260,7 +279,7 @@ export function DealPanel({ deal, events, quotes, tags, terms, extraPct, icmsPct
         )}
       </div>
 
-      <DealRecords deal={deal} runs={runs} history={history} visits={visits} people={people} />
+      <PrefDetail id="registros"><DealRecords deal={deal} runs={runs} history={history} visits={visits} people={people} /></PrefDetail>
 
       <ConfirmDialog open={confirm !== null} tone="danger" icon={confirm === "return" ? Undo2 : Trash2} title={confirm === "delete" ? "Apagar esta negociação?" : confirm === "return" ? "Devolver ao SDR?" : "Resetar esta negociação?"} confirmLabel={confirm === "delete" ? "Sim, apagar" : confirm === "return" ? "Sim, devolver" : "Sim, resetar"} busy={pending} onCancel={() => setConfirm(null)} onConfirm={() => { const c = confirm; setConfirm(null); if (c === "delete") run(() => deleteDealAction(deal.id), undefined, () => router.push("/negociacoes")); else if (c === "return") run(() => returnDealToSdrAction(deal.id, returnWhy), undefined, () => router.push("/negociacoes"), "Devolvendo…"); else run(() => resetDealAction(deal.id)); }}>
         {confirm === "delete" ? "A negociação, as cotações e o histórico serão apagados. Um registro completo fica guardado na auditoria do admin." : confirm === "return" ? (

@@ -7,6 +7,7 @@ import { dealEvents, dealQuoteItems, dealQuotes, deals, db, leadChannels, leads,
 import { ALERT_RULES } from "@/config/deals";
 import { getSettings } from "@/modules/settings/get";
 import { soldBeforeThisMonth } from "./portfolio";
+import { markerKeysExpr } from "@/modules/leads/markers";
 import { dueCounts } from "@/modules/tasks/queries";
 
 export type DealAlertKind = "pool" | "novo" | "retorno" | "cobrar" | "parado";
@@ -23,6 +24,8 @@ export type DealRow = {
   freight: "CIF" | "FOB" | "RED" | null; sapCode: string | null; orderNumber: string | null; quoteNumber: string | null; quoteDate: string | null; closedOn: string | null;
   cnpj: string; addressLine: string | null; stateReg: string | null; closedValueCents: number | null; realValueCents: number | null; expired: boolean; paymentTerms: string | null; color: string | null; isReactivation: boolean;
   alerts: DealAlert[];
+  /** Do cadastro do lead: site, redes e marcadores (Site, Redes sociais, Celular, E-mail, CNPJ ativo, MEI...). */
+  site: string | null; instagram: string | null; facebook: string | null; linkedin: string | null; markers: string[];
 };
 
 const hoursAgo = (iso: string, now: number) => (now - new Date(iso).getTime()) / 3600_000;
@@ -77,7 +80,7 @@ export async function listDeals(meId: number, team: boolean, opts: { includeTest
   const rows = await db
     .select({
       d: deals, company: leads.company, city: leads.city, uf: leads.uf, contactName: leads.contactName, phones: leads.phones, email: leads.email, address: leads.address, neighborhood: leads.neighborhood, zip: leads.zip, stateReg: leads.stateReg,
-      sfId: leads.sfId, eoxId: leads.eoxId, eoxCode: leads.eoxCode, leadSap: leads.sapCode, leadCnpj: leads.cnpj, sellerName: seller.name, sdrName: sdr.name,
+      sfId: leads.sfId, eoxId: leads.eoxId, eoxCode: leads.eoxCode, leadSap: leads.sapCode, leadCnpj: leads.cnpj, site: leads.site, instagram: leads.instagram, facebook: leads.facebook, linkedin: leads.linkedin, markers: sql<string[]>`${markerKeysExpr(["site", "redes", "celular", "email", "ativo", "mei", "eox", "cliente"])}`, sellerName: seller.name, sdrName: sdr.name,
     })
     .from(deals)
     .innerJoin(leads, eq(leads.id, deals.leadId))
@@ -93,6 +96,7 @@ export async function listDeals(meId: number, team: boolean, opts: { includeTest
       valueCents: d.valueCents, netValueCents: d.netValueCents, mainCents: d.realValueCents ?? d.netValueCents ?? d.closedValueCents ?? d.valueCents, createdAt: d.createdAt.toISOString(), claimedAt: iso(d.claimedAt), quoteSentAt: iso(d.quoteSentAt), lastContactAt: iso(d.lastContactAt),
       nextActionAt: iso(d.nextActionAt), nextActionNote: d.nextActionNote, lostReason: d.lostReason, closedAt: iso(d.closedAt),
       freight: d.freight, sapCode: d.sapCode ?? x.leadSap, orderNumber: d.orderNumber, quoteNumber: d.quoteNumber, quoteDate: d.quoteDate, closedOn: d.closedOn,
+      site: x.site, instagram: x.instagram, facebook: x.facebook, linkedin: x.linkedin, markers: x.markers ?? [],
       cnpj: x.leadCnpj, addressLine: [x.address, x.neighborhood, x.zip ? x.zip.replace(/^(\d{5})(\d{3})$/, "$1-$2") : null].filter(Boolean).join(" · ") || null, stateReg: x.stateReg, closedValueCents: d.closedValueCents, realValueCents: d.realValueCents, expired: soldBeforeThisMonth({ stage: d.stage, closedOn: d.closedOn, closedAt: iso(d.closedAt) }), paymentTerms: d.paymentTerms, color: d.color, isReactivation: d.isReactivation,
     };
     return { ...row, alerts: dealAlerts(row, Date.now(), rules) };

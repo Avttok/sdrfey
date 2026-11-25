@@ -9,6 +9,7 @@ import { BOARD_COLUMNS, fmtBRL, STAGE_META } from "@/config/deals";
 import { asc, eq } from "drizzle-orm";
 import { db, paymentTerms } from "@/db";
 import { requirePerm } from "@/modules/auth/guard";
+import { PrefBlock } from "@/components/deals/deal-prefs";
 import { PendingEnrich } from "@/components/deals/pending-enrich";
 import { pendingDealImports } from "@/modules/enrich/batch";
 import { withExtras } from "@/modules/deals/extras";
@@ -28,18 +29,19 @@ function Ring({ value, color }: { value: number; color: string }) {
     </svg>
   );
 }
+const tint = (hex: string) => ({ backgroundColor: "color-mix(in srgb, var(--panel) 66%, transparent)", backgroundImage: `linear-gradient(145deg, color-mix(in srgb, ${hex} 18%, transparent), color-mix(in srgb, ${hex} 4%, transparent) 70%)`, borderColor: `color-mix(in srgb, ${hex} 42%, var(--line))`, WebkitBackdropFilter: "blur(16px) saturate(1.4)", backdropFilter: "blur(16px) saturate(1.4)" });
 function Kpi({ I, t, v, s, hot, hex = "#378ADD", i = 0 }: { I: typeof Wallet; t: string; v: string; s: string; hot?: boolean; hex?: string; i?: number }) {
-  const c = hot ? "var(--danger)" : hex;
+  const c = hot ? "#ef4444" : hex;
   return (
-    <div style={{ "--i": i } as React.CSSProperties} className={`${panelCls} card-in lift relative overflow-hidden p-4 hover:shadow-lg ${hot ? "border-danger/50" : ""}`}>
-      <span aria-hidden className="pointer-events-none absolute -right-6 -top-6 size-24 rounded-full opacity-[.13]" style={{ background: c }} />
+    <div style={{ "--i": i, ...tint(c) } as React.CSSProperties} className="card-in group relative overflow-hidden rounded-3xl border-[1.5px] p-4 shadow-[0_10px_30px_-18px_rgb(0_0_0/0.35)] transition hover:-translate-y-0.5 hover:shadow-xl">
+      <I aria-hidden size={96} strokeWidth={1.3} className="pointer-events-none absolute -bottom-4 -right-3 -rotate-12 opacity-[.11] transition duration-300 group-hover:scale-110 group-hover:-rotate-6" style={{ color: c }} />
       <div className="relative flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted">{t}</p>
           <p className="figure mt-2 text-3xl font-extrabold leading-none" style={hot ? { color: c } : undefined}>{v}</p>
           <p className="mt-2 truncate text-xs text-muted">{s}</p>
         </div>
-        <span className="grid size-11 shrink-0 place-items-center rounded-2xl text-white shadow-sm" style={{ background: c }}><I size={20} aria-hidden /></span>
+        <span className="grid size-11 shrink-0 place-items-center rounded-2xl text-white shadow-md" style={{ background: `linear-gradient(135deg, ${c}, color-mix(in srgb, ${c} 62%, #000))` }}><I size={20} aria-hidden /></span>
       </div>
     </div>
   );
@@ -80,7 +82,7 @@ export default async function DealsPage() {
       </PageHead>
       {waiting > 0 && canClaim && <PendingEnrich n={waiting} />}
 
-      <section className="grid gap-3 lg:grid-cols-3" aria-label="Resumo das negociações">
+      <PrefBlock id="resumo"><section className="grid gap-3 lg:grid-cols-3" aria-label="Resumo das negociações">
         <div className="aurora relative overflow-hidden rounded-3xl bg-grad p-5 text-on-accent shadow-lg lg:col-span-2">
           <span aria-hidden className="aurora-blob a" /><span aria-hidden className="aurora-blob b" />
           <div className="relative grid gap-4 sm:grid-cols-2">
@@ -88,30 +90,30 @@ export default async function DealsPage() {
             <div className="sm:border-l sm:border-white/25 sm:pl-5"><p className="text-xs font-bold uppercase tracking-widest opacity-80">Faturado neste mês</p><p className="figure mt-1 text-3xl font-extrabold leading-none sm:text-4xl">{fmtBRL(billedValue)}</p><p className="mt-2 text-sm opacity-90">{billed.length} {billed.length === 1 ? "venda faturada" : "vendas faturadas"}</p></div>
           </div>
         </div>
-        <div className={`${panelCls} card-in flex items-center gap-4 p-5`}>
+        <div className="card-in card-surface card-edge flex items-center gap-4 rounded-3xl p-5">
           <div className="relative grid place-items-center"><Ring value={healthy * 100} color={healthy >= 0.8 ? "var(--ok)" : healthy >= 0.5 ? "var(--warn)" : "var(--danger)"} /><span className="figure absolute text-sm font-extrabold">{pct(healthy)}</span></div>
           <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-muted">Em dia</p><p className="mt-1 text-sm leading-snug">{attention.length ? <><b>{attention.length}</b> {attention.length === 1 ? "negociação pede" : "negociações pedem"} atenção agora.</> : "Nenhum aviso pendente. Tudo em dia."}</p></div>
         </div>
-      </section>
+      </section></PrefBlock>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <PrefBlock id="kpis"><div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi i={0} I={Handshake} t="Em andamento" v={String(team ? open.length : mine.length)} s={team ? "abertas na equipe" : "suas abertas"} hex="#3b82f6" />
         <Kpi i={1} I={UserPlus} t="Sem vendedor" v={String(pool.length)} s={pool.length ? "esperando vendedor" : "nenhuma esperando"} hot={pool.length > 0} />
         <Kpi i={2} I={BellRing} t="Precisam de atenção" v={String(attention.length)} s="com aviso" hot={attention.length > 0} />
         <Kpi i={3} I={FileText} t="Cotações abertas" v={String(quotes.length)} s={quotesValue ? fmtBRL(quotesValue) : "nenhuma cotação"} hex="#f59e0b" />
-      </div>
+      </div></PrefBlock>
 
       {funnel.some((f) => f.n > 0) && (
-        <section aria-label="Funil das negociações abertas" className={`${panelCls} card-in relative overflow-hidden p-5`} style={{ "--i": 4 } as React.CSSProperties}>
+        <PrefBlock id="funil"><section aria-label="Funil das negociações abertas" className="card-surface card-edge card-in relative overflow-hidden rounded-3xl p-5" style={{ "--i": 4 } as React.CSSProperties}>
           <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-grad opacity-80" />
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2"><h2 className="flex items-center gap-2 text-[15px] font-bold"><Trophy size={16} className="text-accent" aria-hidden /> Funil em aberto</h2><p className="figure text-xs text-muted">{open.length} negociações{openValue ? ` · ${fmtBRL(openValue)}` : ""}</p></div>
           <div className="flex h-3.5 overflow-hidden rounded-full bg-sunk">
             {funnel.filter((f) => f.n > 0).map((f) => <span key={f.key} title={`${f.label}: ${f.n}`} className="h-full transition-all first:rounded-l-full last:rounded-r-full" style={{ width: `${(f.n / open.length) * 100}%`, background: f.color }} />)}
           </div>
           <ul className="mt-3 grid gap-2 sm:grid-cols-3">
-            {funnel.map((f) => <li key={f.key} className="rounded-xl bg-sunk/60 px-3 py-2"><p className="inline-flex items-center gap-1.5 text-xs font-medium text-muted"><span aria-hidden className="size-2 rounded-full" style={{ background: f.color }} />{f.label}</p><p className="figure text-lg font-bold leading-tight">{f.n}{f.cents ? <span className="ml-2 text-xs font-medium text-muted">{fmtBRL(f.cents)}</span> : null}</p></li>)}
+            {funnel.map((f) => <li key={f.key} className="rounded-2xl border px-3 py-2" style={tint(f.color)}><p className="inline-flex items-center gap-1.5 text-xs font-medium text-muted"><span aria-hidden className="size-2 rounded-full" style={{ background: f.color }} />{f.label}</p><p className="figure text-lg font-bold leading-tight">{f.n}{f.cents ? <span className="ml-2 text-xs font-medium text-muted">{fmtBRL(f.cents)}</span> : null}</p></li>)}
           </ul>
-        </section>
+        </section></PrefBlock>
       )}
       <DealBoard deals={deals} meId={me.id} canClaim={canClaim} team={team} opts={opts} />
     </div>

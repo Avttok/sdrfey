@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { ArrowLeft } from "lucide-react";
 import { DealPanel } from "@/components/deals/deal-panel";
+import { DealPrefsMenu } from "@/components/deals/deal-prefs";
 import { db, leadChannels, leadPeople, users } from "@/db";
 import { getSellerGoalSettings, getSellerMonth, resolveSellerGoals } from "@/modules/deals/goals";
 import { getScriptRuns } from "@/modules/scripts/runs-query";
@@ -40,7 +41,7 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
   const sellers = team ? await db.select({ id: users.id, name: users.name }).from(users).where(and(eq(users.active, true), sql`'seller' = any(${users.roles})`, visibleUsers(me))).orderBy(asc(users.name)) : [];
   return (
     <div className="space-y-4">
-      <Link href="/negociacoes" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink"><ArrowLeft size={15} aria-hidden /> Negociações</Link>
+      <div className="flex flex-wrap items-center justify-between gap-3"><Link href="/negociacoes" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink"><ArrowLeft size={15} aria-hidden /> Negociações</Link><DealPrefsMenu scope="negociacao" /></div>
       <DealPanel goal={goal} runs={runs} people={people} deal={row} events={extra.events} quotes={extra.quotes} tags={extra.tags} terms={extra.terms} extraPct={extra.extraPct} icmsPct={extra.icmsPct} icmsRatePct={extra.icmsRatePct} canDelete={!!me.permissions["deals.delete"]} phones={extra.phones} meId={me.id} team={team} canClaim={me.roles.includes("seller") || team} sellers={sellers} visits={commercial.visits} clientEvents={commercial.events} history={history} />
     </div>
   );
