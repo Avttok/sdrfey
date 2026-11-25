@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { TZ, dayEnd, dayStart, fmtDuration } from "@/lib/format";
-import { getDashboard, getDashboardExtra, periodDays, type Period } from "@/modules/dashboard/stats";
+import { getDashboard, getDashboardExtra, periodDays, type Period, type TouchStats } from "@/modules/dashboard/stats";
 import { getSalesStats } from "@/modules/deals/stats";
 import { soldCents, closedDay } from "@/modules/deals/goals";
 import { getSettings } from "@/modules/settings/get";
@@ -22,6 +22,7 @@ export const SECTIONS: Record<Kind, { id: string; label: string; hint: string }[
     { id: "diario", label: "Evolução (por dia, semana ou mês)", hint: "Atendidos, ligações, WhatsApp, e-mails e agendados" },
     { id: "horas", label: "Atividade por hora", hint: "Em que horários você mais atende" },
     { id: "meios", label: "Meios de contato", hint: "Quantos contatos por meio e quantos qualificaram" },
+    { id: "contatos", label: "Ligações, WhatsApp e e-mail", hint: "Resultado de cada contato: atendeu, respondeu, sem resposta, tempo falado" },
     { id: "atendimentos", label: "Todos os atendimentos", hint: "Lead por lead: empresa, resultado, tempo e tags" },
     { id: "visitas", label: "Visitas agendadas", hint: "Código, empresa, data, representante e andamento" },
     { id: "ufs", label: "Por estado", hint: "Onde você mais atende e quanto qualifica em cada estado" },
@@ -34,6 +35,7 @@ export const SECTIONS: Record<Kind, { id: string; label: string; hint: string }[
     { id: "diario", label: "Vendas e contatos (por dia, semana ou mês)", hint: "Valor vendido, vendas e contatos no tempo" },
     { id: "funil", label: "Funil de negociações", hint: "Quantas negociações e quanto dinheiro em cada etapa" },
     { id: "negociacoes", label: "Todas as negociações", hint: "Negócio por negócio: etapa, valor, datas e responsáveis" },
+    { id: "contatos", label: "Ligações, WhatsApp e e-mail", hint: "Resultado de cada contato com os clientes e tempo falado" },
     { id: "cotacoes", label: "Cotações enviadas", hint: "Data, cliente e valor de cada cotação" },
     { id: "visitas", label: "Visitas dos vendedores", hint: "Visitas ligadas às suas negociações" },
     { id: "ufs", label: "Por estado", hint: "Negociações e vendas em cada estado" },
@@ -48,6 +50,33 @@ const label = (g: Group, d: string) => { const [y, m, dd] = d.split("-"); return
 const brl = (cents: number) => Math.round(cents) / 100;
 const nfp = (a: number, b: number) => (b ? a / b : 0);
 const d2 = (v: unknown) => (v == null ? null : new Date(v as string).toISOString());
+
+
+const pctS = (a: number, b: number) => `${Math.round(nfp(a, b) * 100)}%`;
+/** Linhas do resumo com os contatos registrados pelo menu Resultado (ligação, WhatsApp, e-mail). */
+function touchSummary(t: TouchStats): [string, string | number, string?, Col["fmt"]?][] {
+  return [
+    ["Ligações com resultado", t.calls, `${t.callsAnswered} atendidas · ${t.callsNoAnswer} sem resposta · ${t.callsWrong} número errado`, "int"],
+    ["Taxa de ligações atendidas", pctS(t.callsAnswered, t.calls), "atendeu + recado ÷ ligações", "text"],
+    ["Tempo falado", fmtDuration(t.talkSeconds), `média ${fmtDuration(t.avgTalkSeconds)} · maior ${fmtDuration(t.longestCall)}`, "text"],
+    ["WhatsApp enviados", t.waSent, `${t.waReplied} responderam · ${t.waNone} sem WhatsApp`, "int"],
+    ["Taxa de resposta no WhatsApp", pctS(t.waReplied, t.waSent), "responderam ÷ enviados", "text"],
+    ["E-mails enviados", t.emSent, `${t.emReplied} responderam · ${t.emBounced} voltaram`, "int"],
+    ["Taxa de resposta no e-mail", pctS(t.emReplied, t.emSent), "responderam ÷ enviados", "text"],
+    ["Leads tocados", t.leads, `${t.touchesPerLead.toFixed(1).replace(".", ",")} contatos por lead · ${t.multiChannel} em mais de um meio`, "int"],
+    ["Contatos sem resultado", t.pending, "falta dizer como foi", "int"],
+  ];
+}
+/** Aba "Contatos por meio": cada meio com o que aconteceu. */
+function touchSheet(t: TouchStats): Sheet {
+  const rows: Sheet["rows"] = [
+    { meio: "Ligação", l: "Total com resultado", n: t.calls, p: null }, { meio: "Ligação", l: "Conversou (atendeu)", n: t.callsTalked, p: nfp(t.callsTalked, t.calls) }, { meio: "Ligação", l: "Deixou recado", n: t.callsMessage, p: nfp(t.callsMessage, t.calls) },
+    { meio: "Ligação", l: "Não atendeu / ocupado / caixa postal", n: t.callsNoAnswer, p: nfp(t.callsNoAnswer, t.calls) }, { meio: "Ligação", l: "Caixa postal", n: t.callsVoicemail, p: nfp(t.callsVoicemail, t.calls) }, { meio: "Ligação", l: "Número errado", n: t.callsWrong, p: nfp(t.callsWrong, t.calls) },
+    { meio: "WhatsApp", l: "Enviados", n: t.waSent, p: null }, { meio: "WhatsApp", l: "Respondeu", n: t.waReplied, p: nfp(t.waReplied, t.waSent) }, { meio: "WhatsApp", l: "Recebida / ignorada", n: t.waSilent, p: nfp(t.waSilent, t.waSent) }, { meio: "WhatsApp", l: "Sem WhatsApp", n: t.waNone, p: nfp(t.waNone, t.waSent) },
+    { meio: "E-mail", l: "Enviados", n: t.emSent, p: null }, { meio: "E-mail", l: "Respondeu", n: t.emReplied, p: nfp(t.emReplied, t.emSent) }, { meio: "E-mail", l: "Recebido / aberto", n: t.emOpened, p: nfp(t.emOpened, t.emSent) }, { meio: "E-mail", l: "Voltou", n: t.emBounced, p: nfp(t.emBounced, t.emSent) },
+  ];
+  return { id: "contatos", name: "Contatos por meio", cols: [{ header: "Meio", key: "meio", width: 14 }, { header: "Resultado", key: "l", width: 40 }, { header: "Quantidade", key: "n", width: 13, fmt: "int" }, { header: "% do meio", key: "p", width: 12, fmt: "pct" }], rows };
+}
 
 export const periodOf = (from: string, to: string): Period => ({ from, to, preset: "custom" });
 
@@ -88,8 +117,10 @@ export async function buildReport(p: ReportParams, personNames: Record<number, s
       ["Horário de pico", peak ? `${peak}h` : "—", "mais atendimentos", "text"],
       ["Dias com atendimento", x.daily.filter((q) => q.n > 0).length, `de ${days} dias`, "int"],
     ];
+    base.push(...touchSummary(x.touch));
     for (const [l, v, h] of base.slice(0, 6)) summary.push({ label: l, value: typeof v === "number" && l.startsWith("Taxa") ? `${Math.round(v * 100)}%` : String(v), hint: h });
     if (want.has("resumo")) sheets.push({ id: "resumo", name: "Resumo", cols: [{ header: "Indicador", key: "k", width: 30 }, { header: "Valor", key: "v", width: 18, fmt: "text" }, { header: "Observação", key: "o", width: 44 }], rows: base.map(([k, v, o, f]) => ({ k, v: f === "pct" ? `${Math.round((v as number) * 100)}%` : v, o: o ?? "" })) });
+    if (want.has("contatos")) sheets.push(touchSheet(x.touch));
 
     if (want.has("diario")) {
       const r = await db.execute<{ b: string; att: number; q: number; calls: number; wa: number; em: number; sched: number }>(sql`
@@ -164,6 +195,8 @@ export async function buildReport(p: ReportParams, personNames: Record<number, s
   /* ───── Vendas ───── */
   const s = await getSalesStats(period, p.users);
   const vbase: [string, string | number, string?][] = [
+    ["Negociações cotadas", s.quotedDeals, "com ao menos uma cotação enviada"],
+    ["Negociações paradas", s.stalled, "sem contato há dias"],
     ["Vendas fechadas", s.won, `R$ ${brl(s.wonValue).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`],
     ["Valor vendido (R$)", brl(s.wonValue), "soma das vendas faturadas"],
     ["Ticket médio (R$)", s.ticket ? brl(s.ticket) : 0, "por venda fechada"],
@@ -179,6 +212,8 @@ export async function buildReport(p: ReportParams, personNames: Record<number, s
     ["Shuffler Vendas", s.shuffler.worked, `${s.shuffler.saved + s.shuffler.visit + s.shuffler.deal} aproveitados · ${s.shuffler.toSdr} devolvidos ao SDR`],
   ];
   summary.push({ label: "Vendas fechadas", value: String(s.won), hint: `R$ ${brl(s.wonValue).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` }, { label: "Conversão", value: s.conversion == null ? "—" : `${Math.round(s.conversion * 100)}%` }, { label: "Ticket médio", value: s.ticket ? `R$ ${brl(s.ticket).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—" }, { label: "Cotações enviadas", value: String(s.quotesSent) }, { label: "Contatos", value: String(s.contacts) }, { label: "Em andamento", value: String(s.open) });
+  vbase.push(...touchSummary(s.touch).map(([k, v, o]) => [k, v, o] as [string, string | number, string?]));
+  if (want.has("contatos")) sheets.push(touchSheet(s.touch));
   if (want.has("resumo")) sheets.push({ id: "resumo", name: "Resumo", cols: [{ header: "Indicador", key: "k", width: 40 }, { header: "Valor", key: "v", width: 20 }, { header: "Observação", key: "o", width: 46 }], rows: vbase.map(([k, v, o]) => ({ k, v, o: o ?? "" })) });
   if (want.has("diario")) {
     const r = await db.execute<{ b: string; won: number; val: number; contacts: number; quotes: number; qv: number }>(sql`

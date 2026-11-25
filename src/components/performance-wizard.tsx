@@ -1,14 +1,25 @@
 "use client";
 
 import { useBusyWhile } from "@/components/toast";
-import { Calendar, Check, ChevronLeft, ChevronRight, Download, Eye, FileSpreadsheet, Layers, Loader2, Users } from "lucide-react";
+import { Calendar, Check, Phone, MessageCircle, Mail, TrendingUp, Clock, MapPin, ListChecks, BarChart3, Handshake, Receipt, Footprints, Target, ChevronLeft, ChevronRight, Download, Eye, FileSpreadsheet, Layers, Loader2, Users } from "lucide-react";
 import { useState, useTransition } from "react";
 import { HScroll } from "@/components/h-scroll";
+import { MetricCard } from "@/components/dash-ui";
 import { previewAction, type Preview } from "@/modules/performance/actions";
 
 type Kind = "sdr" | "vendas";
 type Section = { id: string; label: string; hint: string };
 type Person = { id: number; name: string };
+
+/** Cada aba tem sua cor e ícone, no mesmo estilo dos cartões de objetivo do roteiro. */
+const SEC_STYLE: Record<string, { I: typeof Phone; hex: string }> = {
+  resumo: { I: Target, hex: "#6366f1" }, diario: { I: TrendingUp, hex: "#0ea5e9" }, horas: { I: Clock, hex: "#f59e0b" }, meios: { I: BarChart3, hex: "#8b5cf6" },
+  contatos: { I: Phone, hex: "#10b981" }, atendimentos: { I: ListChecks, hex: "#14b8a6" }, visitas: { I: Footprints, hex: "#f97316" }, ufs: { I: MapPin, hex: "#ec4899" },
+  resultados: { I: Check, hex: "#22c55e" }, semana: { I: Calendar, hex: "#06b6d4" }, pessoas: { I: Users, hex: "#a855f7" }, funil: { I: Layers, hex: "#3b82f6" },
+  negociacoes: { I: Handshake, hex: "#16a34a" }, cotacoes: { I: Receipt, hex: "#eab308" }, origem: { I: MessageCircle, hex: "#d946ef" },
+};
+const secStyle = (id: string) => SEC_STYLE[id] ?? { I: Mail, hex: "#6366f1" };
+const tint = (hex: string, a: number, b: number) => `linear-gradient(145deg, color-mix(in srgb, ${hex} ${a}%, var(--panel)), color-mix(in srgb, ${hex} ${b}%, var(--panel)) 70%)`;
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const PRESETS: { id: string; label: string; range: () => [string, string] }[] = [
@@ -86,10 +97,12 @@ export function PerformanceWizard({ kind, sections, people, team }: { kind: Kind
           <div className="space-y-5">
             <div><h2 className="display text-2xl">O que vai na planilha?</h2><p className="text-sm text-muted">Cada item vira uma aba. Todas já saem com cores, filtros e formatação.</p></div>
             <div className="stagger grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {sections.filter((s) => s.id !== "pessoas" || team).map((s) => { const on = sel.includes(s.id); return (
-                <button key={s.id} type="button" onClick={() => setSel(toggle(sel, s.id))} aria-pressed={on} className={`flex items-start gap-3 rounded-2xl border p-3.5 text-left transition hover:-translate-y-0.5 ${on ? "border-accent bg-grad-soft shadow-md" : "border-line bg-bg"}`}>
-                  <span className={`mt-0.5 grid size-6 shrink-0 place-items-center rounded-lg border ${on ? "border-transparent bg-grad text-on-accent" : "border-line"}`}>{on && <Check size={14} aria-hidden />}</span>
-                  <span><span className="block font-semibold">{s.label}</span><span className="text-xs text-muted">{s.hint}</span></span>
+              {sections.filter((s) => s.id !== "pessoas" || team).map((s) => { const on = sel.includes(s.id); const { I, hex } = secStyle(s.id); return (
+                <button key={s.id} type="button" onClick={() => setSel(toggle(sel, s.id))} aria-pressed={on} style={{ background: on ? tint(hex, 22, 6) : undefined, borderColor: on ? `color-mix(in srgb, ${hex} 60%, transparent)` : undefined }} className={`group relative flex items-start gap-3 overflow-hidden rounded-2xl border-2 p-3.5 text-left transition hover:-translate-y-0.5 ${on ? "shadow-md" : "border-line bg-bg opacity-80 hover:opacity-100"}`}>
+                  <I aria-hidden size={72} strokeWidth={1.4} className="pointer-events-none absolute -bottom-3 -right-2 -rotate-12 opacity-[.12]" style={{ color: hex }} />
+                  <span className="relative grid size-10 shrink-0 place-items-center rounded-xl text-white shadow" style={{ background: `linear-gradient(135deg, ${hex}, color-mix(in srgb, ${hex} 62%, #000))` }}><I size={20} aria-hidden /></span>
+                  <span className="relative min-w-0 flex-1"><span className="block font-bold leading-tight">{s.label}</span><span className="text-xs text-muted">{s.hint}</span></span>
+                  <span className={`relative mt-0.5 grid size-6 shrink-0 place-items-center rounded-full border-2 ${on ? "border-transparent text-white" : "border-line"}`} style={on ? { background: hex } : undefined}>{on && <Check size={14} aria-hidden />}</span>
                 </button>); })}
             </div>
             <div className="flex gap-3 text-sm"><button type="button" className="font-semibold text-accent" onClick={() => setSel(sections.filter((x) => x.id !== "pessoas" || team).map((x) => x.id))}>Marcar todos</button><button type="button" className="font-semibold text-muted" onClick={() => setSel([])}>Limpar</button><span className="text-muted">{sel.length} de {sections.filter((x) => x.id !== "pessoas" || team).length} abas</span></div>
@@ -113,12 +126,12 @@ export function PerformanceWizard({ kind, sections, people, team }: { kind: Kind
             {pending || !prev ? <p className="flex items-center gap-2 py-8 text-muted"><Loader2 className="animate-spin" size={18} aria-hidden /> Montando a prévia…</p>
               : prev.error ? <p className="font-semibold text-red-500">{prev.error}</p> : (
                 <>
-                  <div className="stagger grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                    {prev.summary?.slice(0, 8).map((m) => <div key={m.label} className="lift rounded-2xl border border-line bg-bg p-3"><div className="text-xs text-muted">{m.label}</div><div className="display text-2xl text-accent">{m.value}</div></div>)}
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+                    {prev.summary?.slice(0, 6).map((m, i) => <MetricCard key={m.label} i={i} I={[Target, TrendingUp, BarChart3, Phone, Handshake, Clock][i % 6]} t={m.label} v={m.value} s={m.hint} hex={["#6366f1", "#10b981", "#0ea5e9", "#f59e0b", "#ec4899", "#8b5cf6"][i % 6]} featured={i === 0} />)}
                   </div>
                   {prev.sheets?.map((s) => (
-                    <div key={s.id} className="overflow-hidden rounded-2xl border border-line">
-                      <div className="flex items-center justify-between bg-grad-soft px-3.5 py-2 text-sm font-semibold"><span>{s.name}</span><span className="text-xs text-muted">{s.total} linha{s.total === 1 ? "" : "s"}</span></div>
+                    <div key={s.id} className="overflow-hidden rounded-2xl border-2" style={{ borderColor: `color-mix(in srgb, ${secStyle(s.id).hex} 45%, transparent)` }}>
+                      <div className="flex items-center justify-between px-3.5 py-2 text-sm font-bold" style={{ background: tint(secStyle(s.id).hex, 22, 6) }}><span className="inline-flex items-center gap-2"><span className="grid size-6 place-items-center rounded-lg text-white" style={{ background: secStyle(s.id).hex }}>{(() => { const I = secStyle(s.id).I; return <I size={14} aria-hidden />; })()}</span>{s.name}</span><span className="text-xs font-medium text-muted">{s.total} linha{s.total === 1 ? "" : "s"}</span></div>
                       <HScroll><table className="w-full min-w-max text-sm"><thead><tr>{s.cols.map((c) => <th key={c} className="whitespace-nowrap px-4 py-2 text-left text-muted">{c}</th>)}</tr></thead><tbody>{s.rows.map((r, i) => <tr key={i} className="border-t border-line">{r.map((v, j) => <td key={j} className="whitespace-nowrap px-4 py-2">{v}</td>)}</tr>)}{!s.rows.length && <tr><td className="px-3 py-3 text-muted" colSpan={s.cols.length}>Sem dados neste período.</td></tr>}</tbody></table></HScroll>
                     </div>
                   ))}
