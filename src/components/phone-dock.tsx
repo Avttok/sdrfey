@@ -22,6 +22,14 @@ import { lookupPhoneAction, type PhoneLead } from "@/modules/vocall/lookup";
 const KEYS: [string, string][] = [["1", ""], ["2", "ABC"], ["3", "DEF"], ["4", "GHI"], ["5", "JKL"], ["6", "MNO"], ["7", "PQRS"], ["8", "TUV"], ["9", "WXYZ"], ["*", ""], ["0", "+"], ["#", ""]];
 const STAGE: Record<string, string> = { novo: "Negociação nova", contato: "Em contato", cotacao: "Cotação enviada" };
 const RECENT_KEY = "fey:phone-recent";
+/** Máscara enquanto digita: (00) 0000-0000 ou (00) 00000-0000 (celular). Passou de 11 dígitos (com 55), mostra como veio. */
+function maskDial(d: string): string {
+  if (!d || d.length > 11) return d;
+  const dd = d.slice(0, 2), rest = d.slice(2);
+  if (d.length <= 2) return `(${dd}`;
+  const cut = d.length === 11 ? 5 : 4;
+  return `(${dd}) ${rest.slice(0, cut)}${rest.length > cut ? `-${rest.slice(cut)}` : ""}`;
+}
 type Recent = { digits: string; label: string };
 type Tab = "dial" | "lead" | "recent";
 
@@ -365,7 +373,7 @@ export function PhoneDock() {
               {!inCall && !calling && shownTab === "dial" && (
                 <>
                   <div className="relative rounded-3xl bg-sunk px-3 py-4 text-center">
-                    <input ref={inputRef} aria-label="Número para ligar" type="tel" inputMode="numeric" autoComplete="off" placeholder="DIGITE O NÚMERO" style={{ outline: "none", boxShadow: "none", border: 0 }} value={digits ? fmtPhone(digits) : ""}
+                    <input ref={inputRef} aria-label="Número para ligar" type="tel" inputMode="numeric" autoComplete="off" placeholder="(00) 0000-0000" style={{ outline: "none", boxShadow: "none", border: 0 }} value={maskDial(digits)}
                       onChange={(e) => { setNum(e.target.value.replace(/\D/g, "").slice(0, 13)); setPinned(null); }}
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void dialTo(digits); } }}
                       onPaste={(e) => { e.preventDefault(); const t = e.clipboardData.getData("text").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "").slice(0, 13); setNum(t); setPinned(null); }}
