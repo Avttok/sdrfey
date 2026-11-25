@@ -26,7 +26,7 @@ export async function revertAuditAction(id: number): Promise<ActionResult> {
     const [t] = g ? await db.select().from(tags).where(and(eq(tags.groupKey, g.key), eq(tags.label, label ?? ""))) : [];
     if (!t) return { ok: false, message: "A tag deste registro não existe mais." };
     await db.transaction(async (tx) => {
-      await setLeadTags(tx, { leadId: e.leadId!, userId: me.id, ...(e.action === "aplicou tag" ? { remove: [{ group: t.groupKey, key: t.key }] } : { add: [{ group: t.groupKey, key: t.key }] }), reason: `Reversão do registro ${id}` });
+      await setLeadTags(tx, { countHits: false, leadId: e.leadId!, userId: me.id, ...(e.action === "aplicou tag" ? { remove: [{ group: t.groupKey, key: t.key }] } : { add: [{ group: t.groupKey, key: t.key }] }), reason: `Reversão do registro ${id}` });
       await logAudit(tx, { userId: me.id, leadId: e.leadId, entity: "lead", action: "reverteu", field: e.field, meta: { revertido: id } });
     });
   } else if (e.field === "Observação") {

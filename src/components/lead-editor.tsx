@@ -22,10 +22,10 @@ import { VisitRow } from "@/components/visit-row";
 import { DateInput } from "@/components/date-input";
 import { fmtCnpj, fmtDate, fmtDateTime, fmtPhone } from "@/lib/format";
 import { addChannelAction, markWrongAction, removeChannelAction } from "@/modules/leads/actions";
-import { addPersonAction, addVisitAction, deleteVisitAction, changeTagAction, forceReleaseAction, removePersonAction, setPersonStatusAction, resetLeadFromPageAction, updateLeadAction } from "@/modules/leads/edit";
+import { addPersonAction, addVisitAction, deleteVisitAction, forceReleaseAction, removePersonAction, setPersonStatusAction, resetLeadFromPageAction, updateLeadAction } from "@/modules/leads/edit";
 import type { LeadView, TagCatalog } from "@/modules/leads/view";
 
-export function LeadEditor({ touchCounts, adminDelete, kpis, records, afterLeft, afterRight, lead, catalog, owners, canEdit, canRelease, lockedBy, showMap, meId, sellerView, dealId, inDeal, dealSeller }: { /** Total de contatos por meio já feitos com o lead (todas as pessoas). */ touchCounts?: Partial<Record<"ligacao" | "whatsapp" | "email", number>>; adminDelete?: React.ReactNode; kpis?: React.ReactNode; records?: React.ReactNode; afterLeft?: React.ReactNode; afterRight?: React.ReactNode; dealSeller?: { name: string; hex: string } | null; inDeal?: boolean; sellerView?: boolean; dealId?: number | null; showMap: boolean; meId: number; lead: LeadView; catalog: TagCatalog; owners: { id: number; name: string }[]; canEdit: boolean; canRelease: boolean; lockedBy: { name: string; hex: string } | null }) {
+export function LeadEditor({ tagCounts, touchCounts, adminDelete, kpis, records, afterLeft, afterRight, lead, catalog, owners, canEdit, canRelease, lockedBy, showMap, meId, sellerView, dealId, inDeal, dealSeller }: { /** Vezes que cada tag ("grupo:chave") foi aplicada em atendimentos. */ tagCounts?: Record<string, number>; /** Total de contatos por meio já feitos com o lead (todas as pessoas). */ touchCounts?: Partial<Record<"ligacao" | "whatsapp" | "email", number>>; adminDelete?: React.ReactNode; kpis?: React.ReactNode; records?: React.ReactNode; afterLeft?: React.ReactNode; afterRight?: React.ReactNode; dealSeller?: { name: string; hex: string } | null; inDeal?: boolean; sellerView?: boolean; dealId?: number | null; showMap: boolean; meId: number; lead: LeadView; catalog: TagCatalog; owners: { id: number; name: string }[]; canEdit: boolean; canRelease: boolean; lockedBy: { name: string; hex: string } | null }) {
   const toast = useToast();
   const active = lead.registrationStatus ? lead.registrationStatus.toUpperCase() === "ATIVA" : null;
   const name0 = lead.tradeName ?? lead.company;
@@ -33,22 +33,13 @@ export function LeadEditor({ touchCounts, adminDelete, kpis, records, afterLeft,
   const { run, pending } = useRun();
   const { ask, dialog } = useConfirm(pending);
   const [f, setF] = useState({ company: lead.company, tradeName: lead.tradeName ?? "", city: lead.city ?? "", uf: lead.uf ?? "", ownerId: lead.ownerId, notes: lead.notes ?? "" });
-  const [on, setOn] = useState(new Set(lead.tags.map((t) => `${t.groupKey}:${t.key}`)));
+  const on = new Set(lead.tags.map((t) => `${t.groupKey}:${t.key}`));
   const [newCh, setNewCh] = useState("");
   const [confirmReset, setConfirmReset] = useState(false);
   const [vis, setVis] = useState({ code: "", date: "", link: "" });
   const [delVisit, setDelVisit] = useState<number | null>(null);
   const [p, setP] = useState({ name: "", roleTitle: "", extension: "" });
 
-  const toggleTag = (g: string, k: string, exclusive: boolean) => {
-    const ref = `${g}:${k}`;
-    const has = on.has(ref);
-    const next = new Set(on);
-    if (has) next.delete(ref);
-    else { if (exclusive) for (const x of [...next]) if (x.startsWith(`${g}:`)) next.delete(x); next.add(ref); }
-    setOn(next);
-    run(() => changeTagAction(lead.id, has ? { remove: [{ group: g, key: k }] } : { add: [{ group: g, key: k }] }), "Tag atualizada.");
-  };
   const copy = async (t: string) => { try { await navigator.clipboard.writeText(t); toast("info", `Copiado: ${t}`); } catch { toast("warn", "Não consegui copiar."); } };
   const input = (k: keyof typeof f, label: string, wide = false) => <label className={`block text-sm ${wide ? "sm:col-span-2" : ""}`}><span className="mb-1 block text-muted">{label}</span><input className={inputCls} disabled={!canEdit} value={String(f[k] ?? "")} onChange={(e) => setF({ ...f, [k]: e.target.value })} /></label>;
 
@@ -149,12 +140,12 @@ export function LeadEditor({ touchCounts, adminDelete, kpis, records, afterLeft,
       {afterRight}
       </div>
       <SectionCard icon={Tag} title="Tags">
-        {!(canEdit && !sellerView) && <p className="text-xs text-muted">Somente leitura: quem atende o lead ou a gestão altera as tags.</p>}
+        <p className="text-xs text-muted">As tags não são editadas aqui: elas vão sendo geradas conforme o lead é atendido. O número mostra quantas vezes cada uma foi marcada.</p>
         {catalog.filter((g) => g.tags.length).map((g) => {
           const n = g.tags.filter((t) => on.has(`${g.key}:${t.key}`)).length;
           return (
-            <TagDeck key={g.key} title={g.name} hint={g.exclusive ? "escolha 1" : "marque o que se aplica"} count={n} total={g.tags.length}>
-              {g.tags.map((t) => <FlashTag key={t.key} label={t.label} color={t.color} on={on.has(`${g.key}:${t.key}`)} times={touchCounts && t.key in touchCounts ? touchCounts[t.key as "ligacao"] ?? 0 : undefined} disabled={!(canEdit && !sellerView) || pending} onClick={() => toggleTag(g.key, t.key, g.exclusive)} />)}
+            <TagDeck key={g.key} title={g.name} hint={g.exclusive ? "uma por vez" : "acumulam com o tempo"} count={n} total={g.tags.length}>
+              {g.tags.map((t) => { const ref = `${g.key}:${t.key}`; const isOn = on.has(ref); const ch = touchCounts && t.key in touchCounts ? touchCounts[t.key as "ligacao"] ?? 0 : null; const n = ch ?? Math.max(tagCounts?.[ref] ?? 0, isOn ? 1 : 0); return <FlashTag key={t.key} label={t.label} color={t.color} on={isOn || n > 0} times={n} disabled onClick={() => {}} />; })}
             </TagDeck>
           );
         })}

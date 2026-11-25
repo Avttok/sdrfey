@@ -229,6 +229,22 @@ export const leadTags = pgTable(
   (t) => [primaryKey({ columns: [t.leadId, t.tagId] }), index("lead_tags_tag_idx").on(t.tagId)],
 );
 
+/**
+ * Cada vez que uma pessoa aplicou uma tag a um lead durante um atendimento (mesmo que o lead já a tivesse).
+ * Dá o contador "x" dos cartões de tag no perfil: as tags só crescem conforme o lead é trabalhado.
+ */
+export const leadTagHits = pgTable(
+  "lead_tag_hits",
+  {
+    id: serial("id").primaryKey(),
+    leadId: integer("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
+    tagId: integer("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("lead_tag_hits_lead_idx").on(t.leadId, t.tagId)],
+);
+
 /** Visitas de representante agendadas (código vem do Salesforce, ex.: V-12345). */
 export const visits = pgTable(
   "visits",

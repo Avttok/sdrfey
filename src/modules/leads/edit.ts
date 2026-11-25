@@ -33,11 +33,10 @@ export async function updateLeadAction(id: number, input: { company: string; tra
   return { ok: true, message: "Lead salvo." };
 }
 
-export async function changeTagAction(id: number, change: { add?: TagChange[]; remove?: TagChange[] }): Promise<ActionResult> {
-  const me = await requirePerm("lead.edit");
-  await db.transaction(async (tx) => { await setLeadTags(tx, { leadId: id, userId: me.id, ...change }); });
-  revalidatePath(`/leads/${id}`);
-  return { ok: true };
+/** As tags do perfil são só leitura: nascem dos atendimentos (Finalizar) e das consultas automáticas. */
+export async function changeTagAction(_id: number, _change: { add?: TagChange[]; remove?: TagChange[] }): Promise<ActionResult> {
+  await requirePerm("lead.edit");
+  return fail("As tags não são editadas aqui: elas vão sendo geradas conforme o lead é atendido.");
 }
 
 export async function addPersonAction(id: number, input: { name: string; roleTitle: string | null; extension: string | null }): Promise<ActionResult> {

@@ -1,5 +1,5 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { leads, leadTags, tagGroups, tags } from "@/db";
+import { leads, leadTagHits, leadTags, tagGroups, tags } from "@/db";
 import { logAudit, type DbOrTx } from "@/modules/audit/log";
 
 export type TagChange = { group: string; key: string };
@@ -18,9 +18,11 @@ export async function setLeadTags(
     remove?: TagChange[];
     source?: "manual" | "auto";
     reason?: string;
+    /** Conta cada tag aplicada por uma pessoa no contador do perfil (padrão: sim; desfazer/reverter não conta). */
+    countHits?: boolean;
   },
 ): Promise<{ added: string[]; removed: string[] }> {
-  const { leadId, userId, add = [], remove = [], source = userId ? "manual" : "auto", reason } = opts;
+  const { leadId, userId, add = [], remove = [], source = userId ? "manual" : "auto", reason, countHits = true } = opts;
   const groups = new Map((await db.select().from(tagGroups)).map((g) => [g.key, g]));
   const all = await db.select().from(tags);
   const byRef = new Map(all.map((t) => [`${t.groupKey}:${t.key}`, t]));
@@ -45,6 +47,11 @@ export async function setLeadTags(
     if (!have.has(t.id)) toAdd.add(t.id);
   }
 
+  if (countHits && userId) {
+    // cada tag aplicada por uma pessoa conta uma vez, mesmo que o lead já a tivesse
+    const hit = [...new Set(add.map((a) => byRef.get(`${a.group}:${a.key}`)?.id).filter((x): x is number => x != null))];
+    if (hit.length) await db.insert(leadTagHits).values(hit.map((tagId) => ({ leadId, tagId, userId })));
+  }
   if (toRemove.size) {
     await db.delete(leadTags).where(and(eq(leadTags.leadId, leadId), inArray(leadTags.tagId, [...toRemove])));
   }
