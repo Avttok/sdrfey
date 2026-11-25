@@ -29,3 +29,17 @@ export async function todayCalls(userId: number): Promise<{ made: number; reache
     where e.user_id = ${userId} and e.channel = 'call' and e.is_test = false and e.at >= ${day} order by e.at desc limit 8`);
   return { made: Number(c?.made ?? 0), reached: Number(c?.reached ?? 0), pending: Number(c?.pending ?? 0), recent: recent.map((r) => ({ id: Number(r.id), leadId: Number(r.lead_id), company: r.company, target: r.target, outcome: r.outcome, at: new Date(r.at).toISOString() })) };
 }
+
+/** Janela em que "Enviado por…" / "Ligação feita por…" continuam aparecendo para quem pegar o mesmo lead. */
+export const SENT_TAG_DAYS = 30;
+export type SentBy = { channel: TouchChannel; target: string; by: string; at: string };
+
+/** Último contato por e-mail/número nos últimos 30 dias (de qualquer pessoa), para as etiquetas do atendimento. */
+export async function recentSentBy(leadId: number): Promise<SentBy[]> {
+  const rows = await db.execute<{ channel: string; target: string; by: string | null; at: string }>(sql`
+    select distinct on (e.channel, e.target) e.channel, e.target, u.name as by, e.at
+    from contact_events e left join users u on u.id = e.user_id
+    where e.lead_id = ${leadId} and not e.is_test and e.at > now() - make_interval(days => ${SENT_TAG_DAYS})
+    order by e.channel, e.target, e.at desc`);
+  return rows.map((r) => ({ channel: r.channel as TouchChannel, target: r.target, by: r.by ?? "outra pessoa", at: new Date(r.at).toISOString() }));
+}

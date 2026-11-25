@@ -74,7 +74,7 @@ export const copy = async (text: string, toast: ReturnType<typeof useToast>) => 
 /** Leads que a pessoa deixou de propósito (Parar/Pular/Descartar). Fica fora do componente porque a tela pode remontar durante o redirecionamento. */
 const LEFT = new Set<number>();
 
-export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, templates, myName, showMap, previous, doneToday, scheduledToday, goals, sellers, sales, queue, scripts: scriptsIn = [], roteiroOff = false, recos = [], scriptGoal }: { roteiroOff?: boolean; /** Dados já guardados do lead, o catálogo de campos e as outras unidades. */ knowledge: Knowledge; /** Categoria do roteiro que combina com a situação do lead. */ scriptGoal?: ScriptGoal; /** Produtos para oferecer, por tipo de cliente. */ recos?: Reco[]; /** Scripts de ligação que a pessoa pode usar (do time e dela). */ scripts?: ScriptDoc[]; /** Fila de distribuição aos vendedores: ligada? e quem é o próximo. */ queue?: { on: boolean; nextId: number | null }; /** Consulta automática de CNPJ ligada pelo Adm: o shuffler não consulta sozinho. */ autoEnrichOn?: boolean; /** Modo vendedor (lead inativo): mesmo fluxo, destinos diferentes no fim. */ sales?: { shuffleId: number }; sellers: { id: number; name: string }[]; lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; previous: PreviousAttendance | null; doneToday: number; scheduledToday: number; goals: Goals }) {
+export function AttendFlow({ touched = [], knowledge, autoEnrichOn = false, lead, catalog, templates, myName, showMap, previous, doneToday, scheduledToday, goals, sellers, sales, queue, scripts: scriptsIn = [], roteiroOff = false, recos = [], scriptGoal }: { /** Contatos feitos nos últimos 30 dias por qualquer pessoa: viram "Enviado por…". */ touched?: { channel: string; target: string; by: string; at: string }[]; roteiroOff?: boolean; /** Dados já guardados do lead, o catálogo de campos e as outras unidades. */ knowledge: Knowledge; /** Categoria do roteiro que combina com a situação do lead. */ scriptGoal?: ScriptGoal; /** Produtos para oferecer, por tipo de cliente. */ recos?: Reco[]; /** Scripts de ligação que a pessoa pode usar (do time e dela). */ scripts?: ScriptDoc[]; /** Fila de distribuição aos vendedores: ligada? e quem é o próximo. */ queue?: { on: boolean; nextId: number | null }; /** Consulta automática de CNPJ ligada pelo Adm: o shuffler não consulta sozinho. */ autoEnrichOn?: boolean; /** Modo vendedor (lead inativo): mesmo fluxo, destinos diferentes no fim. */ sales?: { shuffleId: number }; sellers: { id: number; name: string }[]; lead: LeadView; catalog: TagCatalog; templates: Template[]; myName: string; showMap: boolean; previous: PreviousAttendance | null; doneToday: number; scheduledToday: number; goals: Goals }) {
   const scripts = roteiroOff ? [] : scriptsIn;
   const toast = useToast();
   const vocall = useVocall();
@@ -194,6 +194,9 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
   const [sent, setSent] = useState<Set<string>>(new Set());
   useEffect(() => { try { const raw = localStorage.getItem(sentStore); if (raw) setSent(new Set(JSON.parse(raw) as string[])); } catch { /* sem armazenamento */ } }, [sentStore]);
   const markSent = (ch: "email" | "whatsapp" | "call", v: string) => setSent((cur) => { const n = new Set(cur).add(`${ch}:${ch === "email" ? v.trim().toLowerCase() : v.replace(/\D/g, "").slice(-8)}`); try { localStorage.setItem(sentStore, JSON.stringify([...n])); } catch { /* ok */ } return n; });
+  const touchedBy = useMemo(() => new Map(touched.map((t) => [`${t.channel}:${t.channel === "email" ? t.target.trim().toLowerCase() : t.target.replace(/\D/g, "").slice(-8)}`, t.by])), [touched]);
+  /** Quem fez o contato: você (agora, neste aparelho) ou a última pessoa dos últimos 30 dias. */
+  const sentBy = (ch: "email" | "whatsapp" | "call", v: string): string | null => (sent.has(`${ch}:${ch === "email" ? v.trim().toLowerCase() : v.replace(/\D/g, "").slice(-8)}`) ? myName : touchedBy.get(`${ch}:${ch === "email" ? v.trim().toLowerCase() : v.replace(/\D/g, "").slice(-8)}`) ?? null);
   const isSent = (ch: "email" | "whatsapp" | "call", v: string) => sent.has(`${ch}:${ch === "email" ? v.trim().toLowerCase() : v.replace(/\D/g, "").slice(-8)}`);
   const keyOf = (ch: string, v: string) => (ch === "email" ? v.trim().toLowerCase() : v.replace(/\D/g, "").slice(-8));
   const CH_OF: Record<string, "email" | "whatsapp" | "call"> = { email: "email", whatsapp: "whatsapp", ligacao: "call" };
@@ -500,7 +503,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                             </button>
                             <button type="button" className={`${btnGhost} !px-2.5 text-danger`} title="Marcar este e-mail como inválido" aria-label="Marcar este e-mail como inválido" onClick={() => run(() => markWrongAction(lead.id, e.id, true), "E-mail marcado como inválido.")}><Ban size={15} aria-hidden /></button>
                           </div>
-                          {isSent("email", e.value) && <SentTag>Enviado</SentTag>}
+                          {sentBy("email", e.value) && <SentTag>Enviado por {sentBy("email", e.value)}</SentTag>}
                         </li>
                       );
                     })}
@@ -527,7 +530,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                   <span className="flex-1"><CopyVal text={p.value}><span className="figure text-lg">{fmtPhone(p.value)}</span></CopyVal>{done.whatsapp?.has(keyOf("whatsapp", p.value)) && <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-ok/15 px-2 py-0.5 text-xs font-bold text-ok"><Check size={12} aria-hidden /> registrado</span>}</span>
                   <a href={chatproUrl(p.value)} target="_blank" rel="noreferrer" onClick={() => { markSent("whatsapp", p.value); void trackTouch({ leadId: lead.id, channel: "whatsapp", target: p.value, label: lead.tradeName ?? lead.company, personId: p.personId ?? null, defer: true }); }} className={btnPrimary}><MessageCircle size={16} aria-hidden /> Abrir no ChatPro</a>
                   <button type="button" className={`${btnGhost} !px-3 text-danger`} title="Marcar este número como inválido" aria-label="Marcar este número como inválido" onClick={() => run(() => markWrongAction(lead.id, p.id, true), "Número marcado como inválido.")}><Ban size={15} aria-hidden /> Inválido</button>
-                  {isSent("whatsapp", p.value) && <SentTag>Enviado</SentTag>}
+                  {sentBy("whatsapp", p.value) && <SentTag>Enviado por {sentBy("whatsapp", p.value)}</SentTag>}
                 </li>
               ))}
               {goodPhones.length === 0 && <li className="text-sm text-muted">Sem telefone válido.</li>}
@@ -559,7 +562,7 @@ export function AttendFlow({ knowledge, autoEnrichOn = false, lead, catalog, tem
                       <button type="button" className={`${btnGhost} !px-3`} aria-label="Copiar número" title="Copiar número" onClick={() => { void copy(p.value, toast); markSent("call", p.value); void trackTouch({ leadId: lead.id, channel: "call", target: p.value, label: lead.tradeName ?? lead.company, personId: p.personId ?? null, defer: true }); }}><Copy size={16} aria-hidden /></button>
                       <CallResultMenu onPick={(r) => run(async () => { const t = await startTouchAction({ leadId: lead.id, channel: "call", target: p.value, personId: p.personId ?? null }); if (!t.ok) return { ok: false, message: "Não consegui registrar." }; return resolveTouchAction({ id: t.id, outcome: r }); }, r === "numero_errado" ? "Número marcado como inválido." : "Resultado registrado.")} />
                     </div>
-                    {isSent("call", p.value) && <SentTag>Ligação feita</SentTag>}
+                    {sentBy("call", p.value) && <SentTag>Ligação feita por {sentBy("call", p.value)}</SentTag>}
                   </li>
                 );
               })}

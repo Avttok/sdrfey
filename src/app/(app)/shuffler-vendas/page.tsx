@@ -1,3 +1,4 @@
+import { recentSentBy } from "@/modules/touches/queries";
 import { roteiroEnabled } from "@/modules/scripts/gate";
 import { loadKnowledge } from "@/modules/facts/queries";
 import type { Metadata } from "next";
@@ -29,7 +30,7 @@ export default async function SalesShufflePage() {
   if (open) {
     // mesmo fluxo do SDR (perfil, e-mail, WhatsApp, ligação, finalizar), só que com os destinos do vendedor
     const [lead, catalog, templates, settings, recos, scriptGoal] = await Promise.all([getLeadView(open.leadId), getTagCatalog(), getActiveTemplates(me.id), getSettings(), recosForLead(open.leadId).catch(() => []), suggestGoal(open.leadId, "vendas")]);
-    if (lead) return <AttendFlow roteiroOff={!(await roteiroEnabled(me))} knowledge={await loadKnowledge(lead.id)} scriptGoal={scriptGoal} recos={recos} scripts={await listScriptsFor(me.id, scriptGoal, guessSegment(lead.tradeName, lead.company, lead.info?.activity))} autoEnrichOn={settings.auto_enrich === 1} sales={{ shuffleId: open.id }} lead={lead} catalog={catalog} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={null} doneToday={0} scheduledToday={0} goals={effectiveGoals(me, settings)} sellers={[]} />;
+    if (lead) return <AttendFlow touched={await recentSentBy(lead.id)} roteiroOff={!(await roteiroEnabled(me))} knowledge={await loadKnowledge(lead.id)} scriptGoal={scriptGoal} recos={recos} scripts={await listScriptsFor(me.id, scriptGoal, guessSegment(lead.tradeName, lead.company, lead.info?.activity))} autoEnrichOn={settings.auto_enrich === 1} sales={{ shuffleId: open.id }} lead={lead} catalog={catalog} templates={templates} myName={me.name} showMap={me.mapMode === "map"} previous={null} doneToday={0} scheduledToday={0} goals={effectiveGoals(me, settings)} sellers={[]} />;
   }
 
   const today = sql`(date_trunc('day', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo')`;
