@@ -51,7 +51,7 @@ function GoalCard({ icon, label, value, qty, plain, i }: Pill & { i: number }) {
             <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-sunk/80" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100} aria-label={label}><div className="h-full rounded-full transition-[width] duration-1000 ease-out" style={{ width: on ? `${pct}%` : "0%", background: `linear-gradient(90deg, ${hex}, color-mix(in srgb, ${hex} 60%, #fff))` }} /></div>
             <p className={`mt-1.5 text-xs ${done ? "font-bold text-ok" : "text-muted"}`}>{done ? "Meta batida!" : `faltam ${qty! - value}`}</p>
           </>
-        ) : <p className="mt-1.5 text-xs text-muted">sem meta definida</p>}
+        ) : null}
       </div>
     </li>
   );
