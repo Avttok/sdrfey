@@ -26,7 +26,7 @@ export function MorphMark({ size = 38, color = RED, anim, pace, className = "" }
       el.setAttribute("d", rectsPath(logoFrame(now, a === 2 ? "wave" : "morph", pc)));
       // no meio da troca a marca desfoca e esmaece de leve, para a transição FEY ⇄ SDR não ser seca
       const s = Math.sin(Math.PI * logoMoveProgress(now, pc));
-      const box = svg.current; if (box) { box.style.filter = s > 0.02 ? `blur(${(s * size * 0.01).toFixed(2)}px)` : ""; box.style.opacity = String(1 - 0.1 * s); }
+      const box = svg.current; if (box) { box.style.filter = s > 0.02 ? `blur(${(s * size * 0.001).toFixed(2)}px)` : ""; box.style.opacity = String(1 - 0.1 * s); }
       raf = requestAnimationFrame(loop);
     };
     loop();
