@@ -372,12 +372,12 @@ export function PhoneDock() {
 
               {!inCall && !calling && shownTab === "dial" && (
                 <>
-                  <div className="relative rounded-3xl bg-sunk px-3 py-4 text-center">
+                  <div className="relative flex items-center justify-center rounded-3xl bg-sunk px-3 py-3 text-center">
                     <input ref={inputRef} aria-label="Número para ligar" type="tel" inputMode="numeric" autoComplete="off" placeholder="(00) 0000-0000" style={{ outline: "none", boxShadow: "none", border: 0 }} value={maskDial(digits)}
                       onChange={(e) => { setNum(e.target.value.replace(/\D/g, "").slice(0, 13)); setPinned(null); }}
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void dialTo(digits); } }}
                       onPaste={(e) => { e.preventDefault(); const t = e.clipboardData.getData("text").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "").slice(0, 13); setNum(t); setPinned(null); }}
-                      className="figure w-full appearance-none rounded-none border-0 bg-transparent px-11 text-center text-[1.75rem] font-bold tracking-wide caret-transparent shadow-none outline-none ring-0 focus:border-0 focus:shadow-none focus:outline-none focus:ring-0 focus-visible:outline-none placeholder:text-center placeholder:text-sm placeholder:font-bold placeholder:tracking-widest placeholder:text-muted/70" />
+                      className="figure h-14 w-full appearance-none rounded-none border-0 bg-transparent px-11 py-0 text-center align-middle text-[1.75rem] font-bold leading-[3.5rem] tracking-wide caret-transparent shadow-none outline-none ring-0 focus:border-0 focus:shadow-none focus:outline-none focus:ring-0 focus-visible:outline-none placeholder:text-center placeholder:text-2xl placeholder:font-bold placeholder:tracking-normal placeholder:text-muted/60" />
                     {digits && <button type="button" onClick={() => { setNum(""); setPinned(null); inputRef.current?.focus(); }} aria-label="Apagar o número todo" title="Apagar tudo" className="absolute left-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-xl text-muted transition hover:bg-danger/10 hover:text-danger"><Eraser size={18} aria-hidden /></button>}
                     {digits && <button type="button" onClick={() => { setNum(digits.slice(0, -1)); setPinned(null); }} aria-label="Apagar último dígito" className="absolute right-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-xl text-muted transition hover:bg-accent/10 hover:text-ink"><Delete size={18} aria-hidden /></button>}
                   </div>
