@@ -2,7 +2,7 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db, leads, settings, type Db } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { invalidateSettings, settingValue } from "@/modules/settings/get";
-import { digitsOf, EOX_FALLBACK_BASE, eoxAccountsPage, eoxFindByCnpj, eoxFindByCode, eoxLink, eoxLogin, withEox, type EoxSession } from "./client";
+import { digitsOf, EOX_FALLBACK_BASE, eoxAccountsPage, eoxFindByCnpj, eoxFindByCode, eoxLink, eoxLogin, healConfig, withEox, type EoxSession } from "./client";
 import { EOX_KEY, eoxReady, parseEox } from "./config";
 
 export const EOX_SYNC_KEY = "eox_sync";
@@ -155,7 +155,7 @@ export async function eoxStep(phase: "direct" | "scan", opts: { budgetMs?: numbe
   const base = { phase, linked: 0, checked: 0, done: false, ...stat };
   if (!eoxReady(cfg)) return { ...base, ok: false, message: "Integração com a EOX desligada ou incompleta." };
   let s: EoxSession;
-  try { s = await eoxLogin(cfg); } catch (e) { return { ...base, ok: false, message: `Não entrei na EOX: ${(e as Error).message}` }; }
+  try { s = await healConfig(await eoxLogin(cfg)); } catch (e) { return { ...base, ok: false, message: `Não entrei na EOX: ${(e as Error).message}` }; }
   const st = await loadSyncState();
   const deadline = Date.now() + (opts.budgetMs ?? 20_000);
   let linked = 0, checked = 0, done = false;

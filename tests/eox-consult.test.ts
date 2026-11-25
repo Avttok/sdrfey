@@ -103,3 +103,14 @@ describe("Consulta EOX de um lead (banco real, EOX de mentira)", () => {
     expect(parseConsult({ batch: 9999, workers: 0, retryHours: "x", people: false, extraPhoneFields: "cf_1; cf-2 <b>" })).toMatchObject({ batch: 100, workers: 1, retryHours: 6, people: false, phones: true, extraPhoneFields: "cf_1,cf2,b" });
   });
 });
+
+describe("healConfig", () => {
+  it("troca campos inexistentes (cf_850) pelos reais do perfil", async () => {
+    const { healConfig } = await import("@/modules/eox/client");
+    const f = (async () => new Response(JSON.stringify({ success: true, result: { fields: [{ name: "cnpj", label: "CNPJ" }, { name: "id_erp_original", label: "Cód" }] } }))) as unknown as typeof fetch;
+    const cfg = { on: true, baseUrl: "https://x", username: "u", accessKey: "k", module: "Accounts", cnpjField: "cf_850", codeField: "account_no" };
+    const s = await healConfig({ cfg, session: "S", f });
+    expect(s.cfg.cnpjField).toBe("cnpj");
+    expect(s.cfg.codeField).toBe("id_erp_original");
+  });
+});

@@ -33,10 +33,22 @@ export async function eoxLogin(cfg: EoxConfig, f: Fetch = fetch): Promise<EoxSes
 /** Sessão guardada em memória (14 min): a conta fica "logada" e as consultas não pedem login a cada ligação. */
 const sessions = new Map<string, { s: EoxSession; at: number }>();
 const sessionKey = (c: EoxConfig) => createHash("md5").update(`${c.baseUrl}|${c.username}|${c.accessKey}`).digest("hex");
+/** Se o campo configurado não existe no módulo (ex.: um "cf_850" chutado), usa os campos reais do perfil: cnpj e id_erp_original. */
+export async function healConfig(s: EoxSession): Promise<EoxSession> {
+  try {
+    const names = new Set((await eoxFields(s)).map((f) => f.name));
+    if (!names.size) return s;
+    const cfg = { ...s.cfg };
+    if (!names.has(cfg.cnpjField) && names.has("cnpj")) cfg.cnpjField = "cnpj";
+    if (cfg.codeField && !names.has(cfg.codeField)) cfg.codeField = names.has("id_erp_original") ? "id_erp_original" : "";
+    if (!cfg.codeField && names.has("id_erp_original")) cfg.codeField = "id_erp_original";
+    return { ...s, cfg };
+  } catch { return s; }
+}
 export async function eoxLoginCached(cfg: EoxConfig, f: Fetch = fetch): Promise<EoxSession> {
   const k = sessionKey(cfg), hit = sessions.get(k);
-  if (hit && Date.now() - hit.at < 14 * 60_000) return { ...hit.s, cfg };
-  const s = await eoxLogin(cfg, f);
+  if (hit && Date.now() - hit.at < 14 * 60_000) return hit.s;
+  const s = await healConfig(await eoxLogin(cfg, f));
   sessions.set(k, { s, at: Date.now() });
   return s;
 }
