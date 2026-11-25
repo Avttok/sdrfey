@@ -95,7 +95,7 @@ export function EnrichAdmin({ initial, on: on0, cronReady, live: live0 }: { init
     try {
       const r = await runEnrichBatchAction(size, scope);
       setStats(r.stats);
-      setLog(r.tried ? `Último lote: ${r.ok} consultados, ${r.failed} sem resposta.` : "Nada pendente nesta lista.");
+      setLog(r.tried ? `Último lote: ${r.ok} consultados, ${r.failed} sem resposta.${r.rerun?.tried ? ` Nova rodada: ${r.rerun.saved} de ${r.rerun.tried} recuperados em outra fonte.` : ""}${r.rerun?.parked ? ` ${r.rerun.parked} com CNPJ inexistente ou inválido ficam de lado por 7 dias.` : ""}` : "Nada pendente nesta lista.");
       return r;
     } catch { setLog("A conexão falhou neste lote. Tento de novo."); return null; } finally { setBusy(false); }
   };

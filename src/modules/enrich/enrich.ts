@@ -19,6 +19,8 @@ export type EnrichResult = {
   newPhones: number;
   newEmails: number;
   autoDiscarded: boolean;
+  /** Falha definitiva (CNPJ inexistente ou inválido): repetir não adianta. */
+  permanent?: boolean;
 };
 
 const UA = "Mozilla/5.0 (compatible; SDRFEY/1.0; +https://sdr-fey.vercel.app)";
@@ -64,7 +66,7 @@ async function ensureAutoTag(tx: Parameters<Parameters<typeof db.transaction>[0]
 export type EnrichOrigin = "lote" | "cron" | "manual" | "auto" | "novo";
 
 /** Consulta o CNPJ e registra o resultado no histórico (tela do Adm). */
-export async function enrichLead(leadId: number, userId: number | null = null, origin: EnrichOrigin = "manual", via?: "brasilapi" | "minhareceita"): Promise<EnrichResult> {
+export async function enrichLead(leadId: number, userId: number | null = null, origin: EnrichOrigin = "manual", via?: "brasilapi" | "minhareceita", extra?: { rw?: boolean }): Promise<EnrichResult> {
   const t0 = Date.now();
   const log = async (ok: boolean, r?: EnrichResult, err?: string) => {
     try {
@@ -73,7 +75,7 @@ export async function enrichLead(leadId: number, userId: number | null = null, o
     } catch { /* o histórico nunca derruba a consulta */ }
   };
   try {
-    const r = await enrichCore(leadId, userId, via);
+    const r = await enrichCore(leadId, userId, via, extra);
     await log(r.state === "ok", r);
     return r;
   } catch (e) { await log(false, undefined, e instanceof Error ? e.message : "erro"); throw e; }
@@ -83,7 +85,7 @@ export async function enrichLead(leadId: number, userId: number | null = null, o
   }
 }
 
-async function enrichCore(leadId: number, userId: number | null, via?: "brasilapi" | "minhareceita"): Promise<EnrichResult> {
+async function enrichCore(leadId: number, userId: number | null, via?: "brasilapi" | "minhareceita", extra?: { rw?: boolean }): Promise<EnrichResult> {
   const [lead] = await db.select().from(leads).where(eq(leads.id, leadId));
   if (!lead) throw new Error("Lead não encontrado.");
 
@@ -105,7 +107,9 @@ async function enrichCore(leadId: number, userId: number | null, via?: "brasilap
     rwRes = off;
     const [prim, oc] = await Promise.all([getJson(order[0]), getJson(`https://api.opencnpj.org/${lead.cnpj}`)]);
     bRes = prim;
+    const failedBoth = async () => { /* nova tentativa: a ReceitaWS entra como outra API */ if (extra?.rw && cfg.enrich_receitaws === 1 && !parseBrasilApi(bRes.data) && bRes.why !== "HTTP 404") rwRes = await getJson(rwUrl); };
     if (!parseBrasilApi(bRes.data) && bRes.why !== "HTTP 404") { const alt = await getJson(order[1]); if (parseBrasilApi(alt.data) || !bRes.why) bRes = alt; else bRes = { ...bRes, why: `${bRes.why} · reserva: ${alt.why ?? "sem dados"}` }; }
+    await failedBoth();
     open = parseOpenCnpj(oc.data);
   } else {
     [rwRes, bRes] = await Promise.all([call(useRw, rwUrl), call(useB, bUrl)]);
@@ -141,6 +145,7 @@ async function enrichCore(leadId: number, userId: number | null, via?: "brasilap
     newPhones: 0,
     newEmails: 0,
     autoDiscarded: false,
+    permanent: !info && /HTTP 404|recusou|dígitos verificadores/.test(`${whyB ?? ""} ${whyW ?? ""}`) && !(rwRes.data && !rwRes.why),
   };
   if (!info) { await enrichWeb(leadId, lead, cfg, result); return result.newPhones + result.newEmails > 0 ? { ...result, state: "ok" } : result; }
 

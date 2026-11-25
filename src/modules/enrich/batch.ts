@@ -66,7 +66,7 @@ export async function enrichStats(): Promise<EnrichStats> {
 }
 
 /** Consulta até `max` leads, um de cada vez (as APIs gratuitas limitam o ritmo), parando quando passar de `budgetMs`. */
-export async function enrichBatch(max: number, budgetMs = 25_000, userId: number | null = null, origin: "lote" | "cron" = "lote", listIn: number | string = "new"): Promise<{ tried: number; ok: number; failed: number; left: number }> {
+export async function enrichBatch(max: number, budgetMs = 25_000, userId: number | null = null, origin: "lote" | "cron" = "lote", listIn: number | string = "new"): Promise<{ tried: number; ok: number; failed: number; left: number; rerun?: { tried: number; saved: number; parked: number } }> {
   const t0 = Date.now();
   const list = normList(listIn);
   let tried = 0, ok = 0, failed = 0;
@@ -83,20 +83,44 @@ export async function enrichBatch(max: number, budgetMs = 25_000, userId: number
     const ids = [...rows].map((r) => r.id);
     if (ids.length) await db.execute(sql`update leads set enrich_tried_at = now() where id in (${sql.join(ids.map((i) => sql`${i}`), sql`, `)})`);
     let cursor = 0;
+    /** quem falhou: definitivo (CNPJ inexistente/inválido) ou passageiro (limite, queda, tempo esgotado) */
+    const bad: { id: number; i: number; permanent: boolean }[] = [];
     const worker = async () => {
       while (cursor < ids.length && Date.now() < stop) {
         const i = cursor++;
         const id = ids[i];
         tried++;
-        try { (await enrichLead(id, userId, origin, i % 2 === 0 ? "brasilapi" : "minhareceita")).state === "ok" ? ok++ : failed++; } catch { failed++; }
+        try { const r = await enrichLead(id, userId, origin, i % 2 === 0 ? "brasilapi" : "minhareceita"); if (r.state === "ok") ok++; else { failed++; bad.push({ id, i, permanent: !!r.permanent }); } } catch { failed++; bad.push({ id, i, permanent: false }); }
       }
     };
     await Promise.all([...Array.from({ length: 10 }, worker), rwDrain(ids.length ? 0 : budgetMs - (Date.now() - t0)).then((c) => { tried += c; ok += c; })]);
+    /* Nova rodada dos que falharam (só os passageiros): espera um instante, troca a fonte principal e chama também a ReceitaWS como outra API.
+       Os definitivos ficam "estacionados" por 7 dias para não voltarem à fila a cada 6 h. */
+    const rerun = { tried: 0, saved: 0, parked: 0 };
+    const again = bad.filter((b) => !b.permanent);
+    if (again.length && Date.now() < t0 + Math.min(budgetMs, big ? 50_000 : 38_000)) {
+      await new Promise((r) => setTimeout(r, 1500));
+      const until = t0 + Math.min(budgetMs, big ? 50_000 : 38_000);
+      let c2 = 0;
+      const w2 = async () => {
+        while (c2 < again.length && Date.now() < until) {
+          const b = again[c2++];
+          rerun.tried++;
+          try {
+            const r = await enrichLead(b.id, userId, origin, b.i % 2 === 0 ? "minhareceita" : "brasilapi", { rw: true });
+            if (r.state === "ok") { rerun.saved++; ok++; failed--; } else if (r.permanent) bad.push({ id: b.id, i: b.i, permanent: true });
+          } catch { /* continua falhado: volta à fila normal em algumas horas */ }
+        }
+      };
+      await Promise.all(Array.from({ length: 4 }, w2));
+    }
+    const park = bad.filter((b) => b.permanent).map((b) => b.id);
+    if (park.length) { rerun.parked = park.length; await db.execute(sql`update leads set enrich_tried_at = now() + interval '7 days' where enriched_at is null and id in (${sql.join(park.map((i) => sql`${i}`), sql`, `)})`); }
     // o que foi sorteado e não deu tempo de consultar volta para a fila agora
     if (cursor < ids.length) await db.execute(sql`update leads set enrich_tried_at = null where id in (${sql.join(ids.slice(Math.max(cursor, 0)).map((i) => sql`${i}`), sql`, `)}) and enriched_at is null`);
     if (ids.length && (await rwStep()) === "wait") { /* a ReceitaWS tem intervalo próprio */ }
     const stF = await enrichStats();
-    return { tried, ok, failed, left: (stF.lists[list] ?? 0) + (await rwQueueSize()) };
+    return { tried, ok, failed, left: (stF.lists[list] ?? 0) + (await rwQueueSize()), rerun };
   }
   while (tried < max && Date.now() - t0 < budgetMs) {
     const [next] = await db.execute<{ id: number }>(sql`select l.id from leads l where ${scopeWhere(list)} order by (exists (select 1 from deals d where d.lead_id = l.id and d.import_pending)) desc, ${list.startsWith("age:") ? sql`l.enriched_at asc` : sql`l.enrich_tried_at nulls first`}, md5(l.id::text) limit 1`);

@@ -20,7 +20,7 @@ export async function setAutoEnrichAction(on: boolean): Promise<{ ok: boolean }>
 }
 
 /** Um lote (usado pelo botão e pelo modo contínuo da tela do Adm). */
-export async function runEnrichBatchAction(size: number, list: number | string = "new"): Promise<{ tried: number; ok: number; failed: number; left: number; stats: EnrichStats }> {
+export async function runEnrichBatchAction(size: number, list: number | string = "new"): Promise<{ tried: number; ok: number; failed: number; left: number; rerun?: { tried: number; saved: number; parked: number }; stats: EnrichStats }> {
   const me = await requireAdmin();
   const r = await enrichBatch(Math.min(10, Math.max(1, Math.floor(size) || 10)), 40_000, me.id, "lote", normList(list));
   return { ...r, stats: await enrichStats() };
