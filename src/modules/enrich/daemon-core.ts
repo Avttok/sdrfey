@@ -6,6 +6,9 @@ import { ENRICH_LIST_BY_KEY, normList } from "@/config/enrich-lists";
 import { enrichBatch, enrichStats, type EnrichStats } from "./batch";
 import { recentRows, type LogRow } from "./live";
 
+/** Quantos leads cada passo do modo contínuo consulta (a Pesquisa Rápida faz vários ao mesmo tempo). */
+export const CONTINUOUS_BATCH = 100;
+
 type Stored = { on: boolean; by: number | null; scope: string; since: string | null; stoppedWhy?: string | null };
 export type DockData = { state: DaemonState; stats: EnrichStats; rows: LogRow[]; /** ritmo dos últimos 10 min */ rate: { perMin: number; okPct: number | null; doneSince: number } };
 
@@ -57,11 +60,11 @@ export async function stopCore(me: { id: number }): Promise<DockData> {
   return dockCore(me);
 }
 
-/** Um passo: consulta 1 lead (só quem iniciou executa). Devolve também se deve continuar. */
+/** Um passo: consulta um bloco de 100 leads (só quem iniciou executa). Devolve também se deve continuar. */
 export async function tickCore(me: { id: number }): Promise<DockData & { go: boolean }> {
   const s = await enforceOffline(await read(), me.id);
   if (!s.on || s.by !== me.id) return { ...(await dockCore(me)), go: false };
-  const r = await enrichBatch(1, 40_000, me.id, "lote", s.scope);
+  const r = await enrichBatch(CONTINUOUS_BATCH, 42_000, me.id, "lote", s.scope);
   const data = await dockCore(me);
   /* acabou a fila: desliga para não ficar rodando em vazio, e avisa no painel */
   if (r.tried === 0) { await write({ ...s, on: false, stoppedWhy: "Acabou: nada pendente nesta lista." }, me.id); return { ...(await dockCore(me)), go: false }; }

@@ -44,7 +44,7 @@ export function EnrichDock({ side }: { side?: boolean }) {
     return () => { alive = false; clearInterval(t); clearInterval(c); window.removeEventListener(ENRICH_SET, onSet); window.removeEventListener(ENRICH_ASK, onAsk); };
   }, []);
 
-  /* o laço: só quem iniciou executa; um lead por vez */
+  /* o laço: só quem iniciou executa; cada passo consulta um bloco de 100 leads */
   const mine = !!d?.state.mine;
   useEffect(() => {
     if (!mine || running.current) return;

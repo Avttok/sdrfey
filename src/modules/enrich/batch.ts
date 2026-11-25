@@ -76,8 +76,9 @@ export async function enrichBatch(max: number, budgetMs = 25_000, userId: number
   if (fast) {
     /* Pesquisa Rápida em massa: um bloco grande de leads, vários ao mesmo tempo (BrasilAPI e Minha Receita alternando, OpenCNPJ para e-mail e telefone,
        e a leitura do site de cada lead). A ReceitaWS só pega o que ficou sem nenhum contato, 1 por vez. */
-    const n = max <= 1 ? 30 : max * 3;
-    const stop = t0 + Math.min(budgetMs, 30_000);
+    const big = max >= 100; // modo contínuo: um bloco de 100 por vez
+    const n = big ? 100 : max <= 1 ? 30 : max * 3;
+    const stop = t0 + Math.min(budgetMs, big ? 38_000 : 30_000);
     const rows = await db.execute<{ id: number }>(sql`select l.id from leads l where ${scopeWhere(list)} order by (exists (select 1 from deals d where d.lead_id = l.id and d.import_pending)) desc, ${list.startsWith("age:") ? sql`l.enriched_at asc` : sql`l.enrich_tried_at nulls first`}, md5(l.id::text) limit ${n}`);
     const ids = [...rows].map((r) => r.id);
     if (ids.length) await db.execute(sql`update leads set enrich_tried_at = now() where id in (${sql.join(ids.map((i) => sql`${i}`), sql`, `)})`);
