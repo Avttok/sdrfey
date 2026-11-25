@@ -113,3 +113,15 @@ export function useVisibleTouches(): TouchItem[] {
   useEffect(() => { const f = () => bump((n) => n + 1); listeners.add(f); return () => { listeners.delete(f); }; }, []);
   return visibleTouches();
 }
+
+/** O contato ainda sem resposta (o mais novo) para este e-mail/número, se houver. */
+export function touchFor(leadId: number, channel: TouchChannel, target: string): TouchItem | null {
+  const key = (x: string) => (channel === "email" ? x.trim().toLowerCase() : x.replace(/\D/g, "").slice(-8));
+  return [...items.values()].filter((t) => t.leadId === leadId && t.channel === channel && key(t.target) === key(target)).sort((a, b) => b.id - a.id)[0] ?? null;
+}
+/** Faz a tela redesenhar quando a fila de contatos muda (ex.: o VocallPhone sugeriu o resultado da ligação). */
+export function useTouchVersion(): number {
+  const [n, setN] = useState(0);
+  useEffect(() => { const f = () => setN((v) => v + 1); listeners.add(f); return () => { listeners.delete(f); }; }, []);
+  return n;
+}

@@ -1,9 +1,9 @@
 "use client";
 
 import { callNumber } from "@/components/call-number";
-import { CallResultMenu } from "@/components/call-result-menu";
+import { ResultMenu, type ResultPick } from "@/components/result-menu";
 import { resolveTouchAction, startTouchAction } from "@/modules/touches/actions";
-import { flushTouches, pendingTouches, trackTouch, useTouchScope, type TouchDone } from "@/lib/touch-bus";
+import { announceDone, flushTouches, pendingTouches, settleTouch, touchFor, trackTouch, useTouchScope, useTouchVersion, type TouchDone } from "@/lib/touch-bus";
 import { Timer, UserRound, Flag, Ban, Building2, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Send, Plus, RotateCcw, History, SkipForward, ScrollText, Square, Tag, TriangleAlert, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -198,6 +198,26 @@ export function AttendFlow({ touched = [], knowledge, autoEnrichOn = false, lead
   /** Quem fez o contato: você (agora, neste aparelho) ou a última pessoa dos últimos 30 dias. */
   const sentBy = (ch: "email" | "whatsapp" | "call", v: string): string | null => (sent.has(`${ch}:${ch === "email" ? v.trim().toLowerCase() : v.replace(/\D/g, "").slice(-8)}`) ? myName : touchedBy.get(`${ch}:${ch === "email" ? v.trim().toLowerCase() : v.replace(/\D/g, "").slice(-8)}`) ?? null);
   const isSent = (ch: "email" | "whatsapp" | "call", v: string) => sent.has(`${ch}:${ch === "email" ? v.trim().toLowerCase() : v.replace(/\D/g, "").slice(-8)}`);
+  /** Resultado já registrado de cada contato ("canal:e-mail/número"): o botão Resultado mostra qual foi e para de pulsar. */
+  const outStore = `fey:outc:${sales ? "v" : "s"}${lead.id}`;
+  const [outcomes, setOutcomes] = useState<Record<string, string>>({});
+  useEffect(() => { try { const raw = localStorage.getItem(outStore); if (raw) setOutcomes(JSON.parse(raw) as Record<string, string>); } catch { /* sem armazenamento */ } }, [outStore]);
+  const outKey = (ch: "email" | "whatsapp" | "call", v: string) => `${ch}:${ch === "email" ? v.trim().toLowerCase() : v.replace(/\D/g, "").slice(-8)}`;
+  useTouchVersion(); // a sugestão do VocallPhone (atendeu / não atendeu) chega pela fila de contatos
+  const touchHint = (ch: "email" | "whatsapp" | "call", v: string): string | null => { const h = touchFor(lead.id, ch, v)?.hint; return h ? (h.answered ? "atendeu" : ch === "call" ? "nao_atendeu" : null) : null; };
+  /** Registra como foi o contato (reaproveita o contato aberto quando a ação já foi feita; senão cria na hora). */
+  const pickResult = (ch: "email" | "whatsapp" | "call", value: string, personId: number | null, r: ResultPick) => run(async () => {
+    const open = touchFor(lead.id, ch, value);
+    let id = open?.id ?? null;
+    if (id == null) { const t = await startTouchAction({ leadId: lead.id, channel: ch, target: value, personId }); if (!t.ok) return { ok: false, message: "Não consegui registrar." }; id = t.id; }
+    const res = await resolveTouchAction({ id, outcome: r.outcome, personId: r.personId ?? personId, note: null, durationSec: open?.hint?.durationSec ?? null, retryDays: r.retryDays });
+    if (res.ok) {
+      markSent(ch, value);
+      announceDone({ id, leadId: lead.id, channel: ch, target: value, outcome: r.outcome }); settleTouch(id, false);
+      setOutcomes((cur) => { const n = { ...cur, [outKey(ch, value)]: r.outcome }; try { localStorage.setItem(outStore, JSON.stringify(n)); } catch { /* ok */ } return n; });
+    }
+    return res;
+  }, r.outcome === "numero_errado" || r.outcome === "voltou" ? "Marcado como inválido." : "Resultado registrado.");
   const keyOf = (ch: string, v: string) => (ch === "email" ? v.trim().toLowerCase() : v.replace(/\D/g, "").slice(-8));
   const CH_OF: Record<string, "email" | "whatsapp" | "call"> = { email: "email", whatsapp: "whatsapp", ligacao: "call" };
   const targetsOf = (k: string): string[] => (k === "email" ? goodEmails.map((e) => e.value) : k === "whatsapp" ? (goodPhones.filter((p) => p.value.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "").length === 11).length ? goodPhones.filter((p) => p.value.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "").length === 11) : goodPhones).map((p) => p.value) : goodPhones.map((p) => p.value));
@@ -501,7 +521,7 @@ export function AttendFlow({ touched = [], knowledge, autoEnrichOn = false, lead
                               <span className="block break-all text-base font-semibold leading-tight">{e.value}</span>
                               <span className="block text-xs text-muted">{e.personId ? allPeople.find((x) => x.id === e.personId)?.name ?? "Contato" : e.origin === "import" ? "Cadastro" : e.origin}</span>
                             </button>
-                            <button type="button" className={`${btnGhost} !px-2.5 text-danger`} title="Marcar este e-mail como inválido" aria-label="Marcar este e-mail como inválido" onClick={() => run(() => markWrongAction(lead.id, e.id, true), "E-mail marcado como inválido.")}><Ban size={15} aria-hidden /></button>
+                            <ResultMenu channel="email" onInvalid={() => run(() => markWrongAction(lead.id, e.id, true), "E-mail marcado como inválido.")} people={allPeople.map((x) => ({ id: x.id, name: x.name, role: x.roleTitle }))} linkedId={e.personId ?? null} current={outcomes[outKey("email", e.value)]} pulse={isSent("email", e.value) && !outcomes[outKey("email", e.value)]} onPick={(r) => pickResult("email", e.value, e.personId ?? null, r)} />
                           </div>
                           {sentBy("email", e.value) && <SentTag>Enviado por {sentBy("email", e.value)}</SentTag>}
                         </li>
@@ -528,8 +548,8 @@ export function AttendFlow({ touched = [], knowledge, autoEnrichOn = false, lead
               {goodPhones.map((p) => (
                 <li key={p.id} className="lift relative flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-sunk/60 px-4 py-3"><span aria-hidden className="grid size-10 place-items-center rounded-xl bg-ok/15 text-ok"><MessageCircle size={18} /></span>
                   <span className="flex-1"><CopyVal text={p.value}><span className="figure text-lg">{fmtPhone(p.value)}</span></CopyVal>{done.whatsapp?.has(keyOf("whatsapp", p.value)) && <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-ok/15 px-2 py-0.5 text-xs font-bold text-ok"><Check size={12} aria-hidden /> registrado</span>}</span>
+                  <ResultMenu channel="whatsapp" onInvalid={() => run(() => markWrongAction(lead.id, p.id, true), "Número marcado como inválido.")} people={allPeople.map((x) => ({ id: x.id, name: x.name, role: x.roleTitle }))} linkedId={p.personId ?? null} current={outcomes[outKey("whatsapp", p.value)]} pulse={isSent("whatsapp", p.value) && !outcomes[outKey("whatsapp", p.value)]} onPick={(r) => pickResult("whatsapp", p.value, p.personId ?? null, r)} />
                   <a href={chatproUrl(p.value)} target="_blank" rel="noreferrer" onClick={() => { markSent("whatsapp", p.value); void trackTouch({ leadId: lead.id, channel: "whatsapp", target: p.value, label: lead.tradeName ?? lead.company, personId: p.personId ?? null, defer: true }); }} className={btnPrimary}><MessageCircle size={16} aria-hidden /> Abrir no ChatPro</a>
-                  <button type="button" className={`${btnGhost} !px-3 text-danger`} title="Marcar este número como inválido" aria-label="Marcar este número como inválido" onClick={() => run(() => markWrongAction(lead.id, p.id, true), "Número marcado como inválido.")}><Ban size={15} aria-hidden /> Inválido</button>
                   {sentBy("whatsapp", p.value) && <SentTag>Enviado por {sentBy("whatsapp", p.value)}</SentTag>}
                 </li>
               ))}
@@ -558,9 +578,9 @@ export function AttendFlow({ touched = [], knowledge, autoEnrichOn = false, lead
                       </button>
                     </div>
                     <div className="flex items-center gap-2">
+                      <ResultMenu channel="call" people={allPeople.map((x) => ({ id: x.id, name: x.name, role: x.roleTitle }))} linkedId={p.personId ?? null} current={outcomes[outKey("call", p.value)]} pulse={isSent("call", p.value) && !outcomes[outKey("call", p.value)]} suggest={touchHint("call", p.value)} onPick={(r) => pickResult("call", p.value, p.personId ?? null, r)} />
                       <button type="button" disabled={vocall.configured && vocall.ready === false} className={`${btnPrimary} flex-1 disabled:opacity-50`} onClick={() => { setCallId(p.id); markSent("call", p.value); void callNumber(p.value, lead.tradeName ?? lead.company, toast, vocall, lead, p.personId ?? null); }}><Phone size={15} aria-hidden /> Ligar</button>
                       <button type="button" className={`${btnGhost} !px-3`} aria-label="Copiar número" title="Copiar número" onClick={() => { void copy(p.value, toast); markSent("call", p.value); void trackTouch({ leadId: lead.id, channel: "call", target: p.value, label: lead.tradeName ?? lead.company, personId: p.personId ?? null, defer: true }); }}><Copy size={16} aria-hidden /></button>
-                      <CallResultMenu onPick={(r) => run(async () => { const t = await startTouchAction({ leadId: lead.id, channel: "call", target: p.value, personId: p.personId ?? null }); if (!t.ok) return { ok: false, message: "Não consegui registrar." }; return resolveTouchAction({ id: t.id, outcome: r }); }, r === "numero_errado" ? "Número marcado como inválido." : "Resultado registrado.")} />
                     </div>
                     {sentBy("call", p.value) && <SentTag>Ligação feita por {sentBy("call", p.value)}</SentTag>}
                   </li>

@@ -3,7 +3,6 @@ import { NavBusy } from "@/components/nav-busy";
 import { Presence } from "@/components/presence";
 import { ToastProvider } from "@/components/toast";
 import { eoxBaseUrl } from "@/modules/eox/sync";
-import { TouchHost } from "@/components/touch-host";
 import { AppHeader, SideBarFor } from "@/components/app-header";
 import { navBadges } from "@/modules/deals/queries";
 import { getSettings, settingValue } from "@/modules/settings/get";
@@ -77,7 +76,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <AvatarProvider value={avatars}>
       <div className={`flex flex-1 flex-col ${user.navLayout === "side" ? "lg:flex-row" : ""}`}>
         <Presence />
-        <TouchHost />
         <Suspense fallback={null}><NavBusy /></Suspense>
         {user.navLayout === "side" && <div className="contents embed-hide"><SideBarFor user={user} badges={badges} groupNav={groupNav} /></div>}
         <div className="app-col flex min-w-0 flex-1 flex-col">
