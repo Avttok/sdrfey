@@ -111,8 +111,9 @@ input[type="checkbox"], input[type="radio"], input[type="range"] { accent-color:
 @utility bg-grad-soft { background-image: linear-gradient(135deg, color-mix(in srgb, var(--accent) 24%, transparent), color-mix(in srgb, var(--accent-2, var(--accent)) 12%, transparent)); }
 @utility bg-grad-panel { background-image: linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent 60%); }
 /* Tema das cartas: borda grossa na cor do tema, fundo em degradê e ícone em gradiente. Todo popup, menu, aviso e painel usa estes. */
-@utility card-edge { border-width: 2px; border-color: color-mix(in srgb, var(--accent) 36%, var(--line)); }
-@utility card-surface { background-color: var(--panel); background-image: linear-gradient(145deg, color-mix(in srgb, var(--accent) 14%, var(--panel)), color-mix(in srgb, var(--accent) 3%, var(--panel)) 72%); }
+@utility card-edge { border-width: 1.5px; border-color: color-mix(in srgb, var(--accent) 22%, var(--line)); }
+/* vidro: fundo translúcido + blur forte (nada aparece por trás) e só um toque da cor do tema */
+@utility card-surface { background-color: color-mix(in srgb, var(--panel) 66%, transparent); background-image: linear-gradient(145deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent 72%); -webkit-backdrop-filter: blur(22px) saturate(1.5); backdrop-filter: blur(22px) saturate(1.5); }
 @utility card-tile { background-image: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 62%, #000)); color: var(--on-accent, #fff); box-shadow: 0 6px 16px -8px var(--accent); }
 @utility text-grad { background-image: linear-gradient(90deg, var(--accent), color-mix(in oklab, var(--accent) 55%, #a855f7)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 @utility bg-grad-danger { background-image: linear-gradient(135deg, #f87171, #dc2626 55%, #b91c1c); }
@@ -538,3 +539,6 @@ html.embed .lc-aside > * { margin: 0; }
 .goal-done { animation: goal-pop 2.4s ease-in-out infinite; }
 @keyframes goal-pop { 0%,100% { filter: drop-shadow(0 0 0 transparent); } 50% { filter: drop-shadow(0 0 14px rgb(52 211 153 / .6)); } }
 @media (prefers-reduced-motion: reduce) { .goal-done { animation: none; } }
+
+/* janelas, menus e listas flutuantes: vidro mais fosco para nunca ficarem transparentes sobre o conteúdo */
+[role="dialog"].card-surface, [role="alertdialog"].card-surface, [role="menu"].card-surface, [role="listbox"].card-surface { background-color: color-mix(in srgb, var(--panel) 84%, transparent); }
