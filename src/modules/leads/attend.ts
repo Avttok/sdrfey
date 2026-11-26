@@ -39,6 +39,7 @@ async function assertMine(tx: typeof db, userId: number, leadId: number) {
   return l;
 }
 
+import { leaveLists } from "@/modules/lists/queries";
 export async function saveAttendance(userId: number, input: SaveInput): Promise<void> {
   if (input.channels.length === 0) throw new UserError("Marque ao menos um meio de contato usado.");
   const toSellers = input.handoff?.to === "sellers";
@@ -127,6 +128,7 @@ export async function saveAttendance(userId: number, input: SaveInput): Promise<
       .set({ savedAt: new Date(), outcome: "saved", startedAt: sql`coalesce(${attendanceSessions.startedAt}, ${attendanceSessions.shownAt})` })
       .where(and(eq(attendanceSessions.userId, userId), eq(attendanceSessions.leadId, lead.id), sql`${attendanceSessions.outcome} is null`));
     await logAudit(tx, { userId, leadId: lead.id, entity: "session", action: "salvou o atendimento", meta: { meios: input.channels } });
+    await leaveLists(tx, lead.id); // atendido: sai da lista
   });
 }
 
@@ -140,6 +142,7 @@ export async function discardLead(userId: number, leadId: number, reason?: strin
       .update(attendanceSessions)
       .set({ outcome: "discarded" })
       .where(and(eq(attendanceSessions.userId, userId), eq(attendanceSessions.leadId, leadId), sql`${attendanceSessions.outcome} is null`));
+    await leaveLists(tx, leadId);
   });
 }
 

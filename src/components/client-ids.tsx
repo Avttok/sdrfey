@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, ExternalLink, Pencil } from "lucide-react";
+import { Check, Copy, Pencil } from "lucide-react";
 import { useState } from "react";
 import { EoxMenu } from "@/components/eox-menu";
 import { EoxIcon, SalesforceIcon } from "@/components/brand-icons";
@@ -33,13 +33,13 @@ export function ClientIds({ leadId, eoxId, eoxCode, sfId, eoxUrl, canEdit = true
   return (
     <div className={`flex flex-wrap items-center ${compact ? "gap-1.5" : "gap-2"}`}>
       {eoxUrl && eoxId
-        ? (menu ? <EoxMenu url={eoxUrl} size={compact ? "sm" : "md"} /> : <a href={eoxUrl} target="_blank" rel="noopener noreferrer" style={{ background: "#692E81", borderColor: "#692E81" }} className={`${chip} text-white hover:brightness-110`} title="Abrir o cadastro na EOX"><EoxIcon size={compact ? 13 : 16} /> EOX <ExternalLink size={compact ? 11 : 13} aria-hidden /></a>)
-        : <span className={`${chip} border-dashed border-line text-muted`} title="Ainda sem o cadastro da EOX"><EoxIcon size={compact ? 12 : 15} /> EOX</span>}
+        ? (menu ? <EoxMenu url={eoxUrl} size={compact ? "sm" : "md"} /> : <a href={eoxUrl} target="_blank" rel="noopener noreferrer" style={{ background: "#692E81", borderColor: "#692E81" }} className={`${chip} text-white hover:brightness-110`} title="Abrir o cadastro na EOX"><EoxIcon size={compact ? 13 : 16} /> EOX</a>)
+        : canEdit ? <span className={`${chip} border-dashed border-line text-muted`} title="Ainda sem o cadastro da EOX"><EoxIcon size={compact ? 12 : 15} /> EOX</span> : null}
       {sfUrl
-        ? <a href={sfUrl} target="_blank" rel="noopener noreferrer" style={{ background: "#0070d2" }} className={`${chip} border-transparent text-white hover:brightness-110`} title="Abrir no Salesforce"><SalesforceIcon size={compact ? 13 : 16} /> Salesforce <ExternalLink size={compact ? 11 : 13} aria-hidden /></a>
+        ? <a href={sfUrl} target="_blank" rel="noopener noreferrer" style={{ background: "#0070d2" }} className={`${chip} border-transparent text-white hover:brightness-110`} title="Abrir no Salesforce"><SalesforceIcon size={compact ? 13 : 16} /> Salesforce</a>
         : sfId
           ? <button type="button" onClick={() => copy(sfId)} className={`${chip} border-transparent text-white hover:brightness-110`} style={{ background: "#0070d2" }} title="Copiar o Id do Salesforce"><SalesforceIcon size={compact ? 13 : 16} /> Salesforce <Copy size={compact ? 11 : 13} aria-hidden /></button>
-          : <span className={`${chip} border-dashed border-line text-muted`} title="Ainda sem o Id do Salesforce"><SalesforceIcon size={compact ? 12 : 15} /> Salesforce</span>}
+          : canEdit ? <span className={`${chip} border-dashed border-line text-muted`} title="Ainda sem o Id do Salesforce"><SalesforceIcon size={compact ? 12 : 15} /> Salesforce</span> : null}
       {canEdit && <button type="button" onClick={() => setEdit(true)} aria-label="Editar Ids" title="Editar Ids (EOX e Salesforce)" className={`${btnGhost} !min-h-9 !px-2.5`}><Pencil size={14} aria-hidden /></button>}
     </div>
   );

@@ -392,6 +392,8 @@ export const leadChannels = pgTable(
     label: text("label"),
     origin: text("origin").$type<"import" | "manual" | "brasilapi" | "receitaws" | "opencnpj" | "site" | "google" | "eox">().notNull().default("manual"),
     wrong: boolean("wrong").notNull().default(false),
+    /** "Conferir número": não completou nem caiu na caixa postal; vale revisar, sem invalidar. */
+    check: boolean("check_number").notNull().default(false),
     createdAt: now(),
   },
   (t) => [uniqueIndex("lead_channels_uq").on(t.leadId, t.kind, t.value), index("lead_channels_person_idx").on(t.personId), index("lead_channels_value_idx").on(t.value), index("lead_channels_value_trgm").using("gin", sql`${t.value} gin_trgm_ops`)],

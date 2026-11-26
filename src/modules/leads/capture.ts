@@ -6,7 +6,7 @@ import { db, leadChannels, leadPeople, leads } from "@/db";
 import { logAudit } from "@/modules/audit/log";
 import { requireUser } from "@/modules/auth/guard";
 
-export type CapturedChannel = { id: number; personId: number | null; kind: "phone" | "email"; value: string; label: string | null; origin: "manual"; wrong: false };
+export type CapturedChannel = { id: number; personId: number | null; kind: "phone" | "email"; value: string; label: string | null; origin: "manual"; wrong: false; check?: boolean };
 export type CapturedPerson = { id: number; name: string; roleTitle: string | null; extension: string | null };
 export type CaptureResult = { ok: boolean; message?: string; person?: CapturedPerson; channels?: CapturedChannel[] };
 

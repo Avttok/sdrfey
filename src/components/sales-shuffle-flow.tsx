@@ -1,6 +1,6 @@
 "use client";
 
-import { ClientIds } from "@/components/client-ids";
+import { LeadLinks } from "@/components/lead-links";
 import { Building2, Check, ExternalLink, Mail, MessageCircle, Pause, SkipForward, ThumbsDown, PhoneOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -42,7 +42,7 @@ export function SalesShuffleFlow({ shuffleId, h }: { shuffleId: number; h: Clien
               {l.email && <p className="pt-1"><MailAction leadId={l.id} email={l.email} label={l.tradeName ?? l.company} /></p>}
             </div>
             <div className="grid grid-cols-2 content-start gap-2">
-              <div className="col-span-2"><ClientIds leadId={l.id} eoxId={l.eoxId} eoxCode={l.eoxCode} sfId={l.sfId} eoxUrl={l.eoxUrl} canEdit={false} /></div>
+              <div className="col-span-2"><LeadLinks lead={l} compact={false} /></div>
               <a href={`/leads/${l.id}`} target="_blank" rel="noreferrer" className={`${btnGhost} col-span-2 w-full`}><ExternalLink size={15} aria-hidden /> Abrir o lead completo</a>
             </div>
           </div>

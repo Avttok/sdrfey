@@ -1,6 +1,6 @@
 "use client";
 
-import { SocialLink, type SocialKind } from "@/components/brand-icons";
+import { LeadLinks } from "@/components/lead-links";
 import { Briefcase, Building2, CalendarCheck, CalendarClock, ChevronDown, ChevronUp, CircleCheck, Factory, Landmark, MapPin, RefreshCw, Scale, TriangleAlert, UserRound, Users, type LucideIcon } from "lucide-react";
 import { ClientIds } from "@/components/client-ids";
 import { useRouter } from "next/navigation";
@@ -89,8 +89,7 @@ export function LeadInfoPanel({ lead, autoSearch = true, wide = false, showMap =
           {status ? <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${open ? "bg-ok/15 text-ok" : "bg-danger/15 text-danger"}`}>{open ? <CircleCheck size={14} aria-hidden /> : <TriangleAlert size={14} aria-hidden />} {status.toUpperCase()}</span> : <span className="rounded-full bg-sunk px-3 py-1 text-xs font-bold">{missing}</span>}
         </div>
         <div className="relative mt-3 flex flex-wrap items-center gap-2">
-          <ClientIds leadId={lead.id} eoxId={lead.eoxId} eoxCode={lead.eoxCode} sfId={lead.sfId} eoxUrl={lead.eoxUrl} canEdit={false} compact menu={false} />
-          {net.map(([k, u]) => <SocialLink key={k} kind={k as SocialKind} href={u} />)}
+          <LeadLinks lead={lead} />
         </div>
       </div>
 

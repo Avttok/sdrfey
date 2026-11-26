@@ -23,9 +23,12 @@ export async function openShuffle(userId: number): Promise<SalesShuffle | null> 
  * Sorteia um lead inativo para o vendedor. Se ele já tem um em mãos, devolve o mesmo.
  * Uma trava de transação evita que dois vendedores recebam o mesmo lead ao mesmo tempo.
  */
-export async function claimInactive(userId: number, listId?: number): Promise<SalesShuffle | null> {
+import { activeListId } from "@/modules/lists/queries";
+export async function claimInactive(userIdIn: number, listIdIn?: number): Promise<SalesShuffle | null> {
+  const userId = userIdIn;
   const mine = await openShuffle(userId);
   if (mine) return mine;
+  const listId = listIdIn ?? (await activeListId(userId, "vendas")) ?? undefined; // próximo da lista ativa, não de um sorteio geral
   return db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext('seller_shuffle'))`);
     await tx.execute(sql`update leads set locked_by = null, locked_at = null where locked_by = ${userId} and kind = 'inativo'`);

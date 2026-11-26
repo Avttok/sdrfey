@@ -69,3 +69,13 @@ export async function activeList(userId: number, kind: ListKind): Promise<{ id: 
   if (!r) return null;
   return { id: r.id, name: r.name, count: (await sizes(kind, r.id, userId)).count };
 }
+
+/** Lista ativa da pessoa (só o id): o "próximo lead" dos Shufflers sai dela, não do sorteio geral. */
+export async function activeListId(userId: number, kind: ListKind): Promise<number | null> {
+  const [r] = await db.select({ id: leadLists.id }).from(leadLists).where(and(eq(leadLists.ownerId, userId), eq(leadLists.kind, kind), eq(leadLists.active, true))).limit(1);
+  return r?.id ?? null;
+}
+/** Lead atendido sai da lista (a lista encolhe a cada atendimento). Quem só pulou continua nela. */
+export async function leaveLists(tx: Pick<typeof db, "execute">, leadId: number): Promise<void> {
+  await tx.execute(sql`delete from lead_list_items where lead_id = ${leadId}`);
+}

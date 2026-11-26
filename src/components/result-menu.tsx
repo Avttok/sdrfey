@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, Check, ChevronDown, Clock, ClipboardCheck, MessageSquareOff, MailX, PhoneForwarded, PhoneMissed, UserCheck, Voicemail, Eye, EyeOff, Reply } from "lucide-react";
+import { Ban, Check, ChevronDown, Clock, ClipboardCheck, MessageSquareOff, MailX, PhoneForwarded, PhoneMissed, UserCheck, Voicemail, SearchCheck, Eye, EyeOff, Reply } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CHANNELS, type Outcome, type TouchChannel } from "@/config/touches";
@@ -19,9 +19,10 @@ export type ResultPick = { outcome: string; personId: number | null; retryDays: 
  * mais "Com quem?" e "Tentar de novo". Um toque em um resultado já registra. Depois da ação feita e sem resultado,
  * o botão pulsa para lembrar de dizer como foi; com resultado, mostra qual foi.
  */
-export function ResultMenu({ channel, onPick, onInvalid, current, pulse, suggest, people = [], linkedId = null, disabled }: {
+export function ResultMenu({ channel, onPick, onInvalid, onCheck, checked, current, pulse, suggest, people = [], linkedId = null, disabled }: {
   channel: TouchChannel; onPick: (p: ResultPick) => void; /** Marca o e-mail/número como inválido (aparece no fim do menu). */ onInvalid?: () => void; /** Resultado já registrado (chave). */ current?: string | null; /** A ação foi feita e falta dizer como foi. */ pulse?: boolean;
   /** Resultado sugerido (ex.: pela duração da ligação). */ suggest?: string | null; people?: { id: number; name: string; role?: string | null }[]; linkedId?: number | null; disabled?: boolean;
+  /** "Conferir número": marca para revisar sem invalidar (liga/desliga). */ onCheck?: () => void; checked?: boolean;
 }) {
   const cfg = CHANNELS[channel];
   const [open, setOpen] = useState(false);
@@ -91,6 +92,13 @@ export function ResultMenu({ channel, onPick, onInvalid, current, pulse, suggest
               </button>
             );
           })}
+          {onCheck && (
+            <button type="button" role="menuitem" onClick={() => { setOpen(false); onCheck(); }} className="flex w-full items-center gap-3 border-t border-line px-3 py-2 text-left hover:bg-warn/10">
+              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-warn/15 text-warn"><SearchCheck size={16} aria-hidden /></span>
+              <span className="min-w-0 flex-1"><span className="block text-sm font-bold leading-tight text-warn">{checked ? "Número conferido" : "Conferir número"}</span><span className="block text-[11px] leading-snug text-muted">{checked ? "Tira a marca de conferir" : "Não caiu na caixa postal nem deu não atendeu: pode haver algo errado. Marca para revisar, sem invalidar"}</span></span>
+              {checked && <Check size={15} className="shrink-0 text-warn" aria-hidden />}
+            </button>
+          )}
           {onInvalid && (
             <button type="button" role="menuitem" onClick={() => { setOpen(false); if (wrongOut) onPick({ outcome: wrongOut.key, personId: null, retryDays: null }); else onInvalid(); }} className="flex w-full items-center gap-3 border-t border-line px-3 py-2 text-left hover:bg-danger/10">
               <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-danger/10 text-danger"><Ban size={16} aria-hidden /></span>

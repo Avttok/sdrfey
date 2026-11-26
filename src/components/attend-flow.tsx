@@ -4,7 +4,7 @@ import { callNumber } from "@/components/call-number";
 import { ResultMenu, type ResultPick } from "@/components/result-menu";
 import { resolveTouchAction, startTouchAction } from "@/modules/touches/actions";
 import { announceDone, flushTouches, pendingTouches, settleTouch, touchFor, trackTouch, useTouchScope, useTouchVersion, type TouchDone } from "@/lib/touch-bus";
-import { Timer, UserRound, Flag, Ban, Building2, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Send, Plus, RotateCcw, History, SkipForward, ScrollText, Square, Tag, TriangleAlert, Trash2, X } from "lucide-react";
+import { SearchCheck, Timer, UserRound, Flag, Ban, Building2, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Mail, MessageCircle, Pause, Phone, Send, Plus, RotateCcw, History, SkipForward, ScrollText, Square, Tag, TriangleAlert, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ConfirmDialog, useConfirm } from "@/components/confirm-dialog";
@@ -24,6 +24,7 @@ import { TalkingTo } from "@/components/talking-to";
 import { LiveContacts } from "@/components/live-contacts";
 import { renamePersonAction, type CapturedChannel, type CapturedPerson } from "@/modules/leads/capture";
 import { guessSegment, type ScriptDoc, type ScriptGoal } from "@/config/scripts";
+import { LeadLinks } from "@/components/lead-links";
 import { LeadInfoPanel } from "@/components/lead-info-panel";
 import { TagChip } from "@/components/tag-chip";
 import { DestPicker, FinalActions, FlashTag, SellerQueue, TagDeck, VisitFields } from "@/components/attend-final";
@@ -31,7 +32,7 @@ import { useBusyWhile, useToast } from "@/components/toast";
 import { btnGhost, btnPrimary, inputCls, panelCls } from "@/components/ui";
 import { chatproUrl, cleanRole, fmtCnpj, fmtDate, fmtDateTime, fmtMoney, fmtPhone } from "@/lib/format";
 import { finishSalesShuffleAction, saveSalesShuffleAction, startSalesShuffleAction } from "@/modules/sales/actions";
-import { addChannelAction, discardAction, heartbeatAction, markWrongAction, releaseAction, removeChannelAction, resetLeadAction, saveAction, skipAction, startAction, startedAction } from "@/modules/leads/actions";
+import { addChannelAction, discardAction, heartbeatAction, markCheckAction, markWrongAction, releaseAction, removeChannelAction, resetLeadAction, saveAction, skipAction, startAction, startedAction } from "@/modules/leads/actions";
 import { htmlToText, mailtoLink, renderHtml, renderTemplate } from "@/modules/email/render";
 import type { LeadView, TagCatalog } from "@/modules/leads/view";
 import type { Goals } from "@/modules/settings/goals";
@@ -571,6 +572,7 @@ export function AttendFlow({ touched = [], knowledge, autoEnrichOn = false, lead
             {/* Espaço de trabalho: tudo da ligação cabe numa tela, sem subir nem descer. À esquerda a ficha e os contatos; à direita o roteiro. */}
             <div className="grid gap-4 lg:grid-cols-[minmax(0,27rem)_minmax(0,1fr)] lg:items-start">
               <div className="order-2 space-y-3 lg:order-1">
+                <LeadLinks lead={lead} />
             <ul className="grid gap-2">
               {goodPhones.map((p) => {
                 const who = p.personId ? allPeople.find((x) => x.id === p.personId) : null;
@@ -585,10 +587,11 @@ export function AttendFlow({ touched = [], knowledge, autoEnrichOn = false, lead
                       </button>
                     </div>
                     <div className="flex items-center gap-2">
-                      {(acted("call", p.value) || outcomes[outKey("call", p.value)]) && <ResultMenu channel="call" people={allPeople.map((x) => ({ id: x.id, name: x.name, role: x.roleTitle }))} linkedId={p.personId ?? null} current={outcomes[outKey("call", p.value)]} pulse={acted("call", p.value) && !outcomes[outKey("call", p.value)]} suggest={touchHint("call", p.value)} onPick={(r) => pickResult("call", p.value, p.personId ?? null, r)} />}
+                      {(acted("call", p.value) || outcomes[outKey("call", p.value)]) && <ResultMenu channel="call" onCheck={() => run(() => markCheckAction(lead.id, p.id, !p.check), p.check ? "Marca de conferir removida." : "Número marcado para conferir.")} checked={!!p.check} people={allPeople.map((x) => ({ id: x.id, name: x.name, role: x.roleTitle }))} linkedId={p.personId ?? null} current={outcomes[outKey("call", p.value)]} pulse={acted("call", p.value) && !outcomes[outKey("call", p.value)]} suggest={touchHint("call", p.value)} onPick={(r) => pickResult("call", p.value, p.personId ?? null, r)} />}
                       <button type="button" disabled={vocall.configured && vocall.ready === false} className={`${btnPrimary} flex-1 disabled:opacity-50`} onClick={() => { setCallId(p.id); markSent("call", p.value); void callNumber(p.value, lead.tradeName ?? lead.company, toast, vocall, lead, p.personId ?? null); }}><Phone size={15} aria-hidden /> Ligar</button>
                       <button type="button" className={`${btnGhost} !px-3`} aria-label="Copiar número" title="Copiar número" onClick={() => { void copy(p.value, toast); markSent("call", p.value); void trackTouch({ leadId: lead.id, channel: "call", target: p.value, label: lead.tradeName ?? lead.company, personId: p.personId ?? null, defer: true }); }}><Copy size={16} aria-hidden /></button>
                     </div>
+                    {p.check && <SentTag><SearchCheck size={12} aria-hidden className="mr-1 inline text-warn" />Conferir número: pode haver algo errado com ele</SentTag>}
                     {sentBy("call", p.value) && <SentTag>Ligação feita por {sentBy("call", p.value)}</SentTag>}
                   </li>
                 );

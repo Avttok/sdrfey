@@ -1,3 +1,4 @@
+import { leaveLists } from "@/modules/lists/queries";
 import { and, eq, sql } from "drizzle-orm";
 import { db, interactions, leads, leadTags, sellerShuffles, tags, visits } from "@/db";
 import { TAG } from "@/config/tags";
@@ -59,6 +60,7 @@ export async function saveSalesWork(userId: number, shuffleId: number, input: Sa
     if (final === "sdr") await logAudit(tx, { userId, leadId: lead.id, entity: "lead", action: "devolveu lead inativo à fila dos SDR", field: "Tipo", oldValue: "Inativo", newValue: "Prospecção" });
 
     await tx.update(sellerShuffles).set({ outcome: final === "visit" ? "deal" : final === "sdr" ? "to_sdr" : "saved", dealId, doneAt: new Date(), note }).where(eq(sellerShuffles.id, shuffleId));
+    await leaveLists(tx, s.leadId);
     await logAudit(tx, { userId, leadId: lead.id, entity: "lead", action: "trabalhou lead inativo", field: "Shuffler Vendas", newValue: final, meta: { meios: input.channels } });
   });
 }

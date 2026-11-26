@@ -8,7 +8,7 @@ import { MorphMark } from "@/components/logo-morph";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { callNumber } from "@/components/call-number";
 import { estadoLabel, Timer } from "@/components/call-ui";
-import { ClientIds } from "@/components/client-ids";
+import { LeadLinks } from "@/components/lead-links";
 import { EoxInfoCard } from "@/components/eox-info";
 import { useToast } from "@/components/toast";
 import { OutcomeChip } from "@/components/touch-timeline";
@@ -151,7 +151,7 @@ function LeadSheet({ lead, others, onPick, onDial, onScript, onLead }: { onScrip
       )}
 
       <Card title="Identificação" Icon={Building2}>
-        <ClientIds leadId={lead.id} eoxId={lead.eoxId} eoxCode={lead.eoxCode} sfId={lead.sfId} eoxUrl={lead.eoxUrl} canEdit={false} compact menu={false} />
+        <LeadLinks lead={lead} />
       </Card>
 
       {others.length > 0 && (

@@ -114,6 +114,18 @@ export async function markWrongAction(leadId: number, channelId: number, wrong: 
   });
 }
 
+/** "Conferir número": marca (ou desmarca) um número para revisar, sem invalidar. */
+export async function markCheckAction(leadId: number, channelId: number, check: boolean): Promise<ActionResult> {
+  const me = await requireUser();
+  return guard(async () => {
+    const [c] = await db.select().from(leadChannels).where(and(eq(leadChannels.id, channelId), eq(leadChannels.leadId, leadId)));
+    if (!c) throw new UserError("Contato não encontrado.");
+    await db.update(leadChannels).set({ check }).where(eq(leadChannels.id, channelId));
+    await logAudit(db, { userId: me.id, leadId, entity: "lead", action: check ? "marcou número para conferir" : "desmarcou número para conferir", field: "Telefones", oldValue: check ? "ok" : "conferir", newValue: check ? "conferir" : "ok" });
+    revalidatePath("/atender");
+  });
+}
+
 export async function removeChannelAction(leadId: number, channelId: number): Promise<ActionResult> {
   const me = await requireUser();
   return guard(async () => {

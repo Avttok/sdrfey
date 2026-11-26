@@ -39,12 +39,15 @@ async function openSession(userId: number, leadId: number, isTest: boolean) {
  * Entrega o próximo lead aleatório para a pessoa. Se ela já tem um lead em mãos, devolve o mesmo.
  * O bloqueio é atômico (SKIP LOCKED): duas pessoas nunca recebem o mesmo lead.
  */
+import { activeListId } from "@/modules/lists/queries";
 export async function claimNext(userId: number, opts: { test?: boolean; listId?: number } = {}): Promise<number | null> {
   await releaseExpiredLocks();
   const [mine] = await db.select({ id: leads.id }).from(leads).where(eq(leads.lockedBy, userId)).limit(1);
   if (mine) return mine.id;
 
   const test = opts.test ?? false;
+  // sem lista no pedido: se a pessoa tem uma lista ativa, o próximo sai dela (não de um sorteio geral)
+  const listId = opts.listId ?? (test ? null : await activeListId(userId, "sdr"));
   const rows = await db.execute<{ id: number }>(sql`
     update leads set locked_by = ${userId}, locked_at = now(), last_served_at = now(), times_served = times_served + 1
     where id = (
@@ -62,7 +65,7 @@ export async function claimNext(userId: number, opts: { test?: boolean; listId?:
         and not exists (select 1 from lead_skips s
                         where s.lead_id = l.id and s.user_id = ${userId} and s.until > now())
         and not exists (select 1 from attendance_sessions asx where asx.lead_id = l.id and asx.user_id = ${userId} and asx.shown_at > now() - interval '1 day')
-        and ${opts.listId ? sql`l.id in (select lead_id from lead_list_items where list_id = ${opts.listId})` : sql`true`}
+        and ${listId ? sql`l.id in (select lead_id from lead_list_items where list_id = ${listId})` : sql`true`}
       order by (l.enriched_at is not null and not exists (select 1 from interactions i where i.lead_id = l.id)) desc, random() limit 1
       for update skip locked)
     returning id`);
