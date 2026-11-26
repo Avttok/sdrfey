@@ -1,5 +1,6 @@
 "use client";
 
+import { Floating } from "@/components/floating";
 import { Check, RotateCcw, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
@@ -85,18 +86,11 @@ export function DealPrefsMenu({ scope }: { scope: "lista" | "negociacao" }) {
   const [p, set, reset] = useDealPrefs();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const down = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
-    const key = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    document.addEventListener("mousedown", down); document.addEventListener("keydown", key);
-    return () => { document.removeEventListener("mousedown", down); document.removeEventListener("keydown", key); };
-  }, [open]);
   return (
     <div ref={ref} className="relative">
       <button type="button" aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen(!open)} className="card-surface card-edge inline-flex min-h-10 items-center gap-2 rounded-xl px-3.5 text-sm font-semibold transition hover:-translate-y-0.5"><SlidersHorizontal size={16} className="text-accent" aria-hidden /> Personalizar</button>
-      {open && (
-        <div role="dialog" aria-label="Personalizar a tela" className="card-surface card-edge absolute right-0 top-full z-50 mt-2 max-h-[min(34rem,75dvh)] w-[min(22rem,92vw)] overflow-y-auto rounded-2xl p-2 shadow-2xl">
+      <Floating anchor={ref} open={open} onClose={() => setOpen(false)} role="dialog" label="Personalizar a tela" align="right" className="card-surface card-edge w-[min(22rem,92vw)] rounded-2xl p-2 shadow-2xl">
+        <div>
           <div className="flex items-center justify-between px-2.5 py-1.5"><p className="display text-base">Personalizar</p><button type="button" aria-label="Fechar" onClick={() => setOpen(false)} className="grid size-8 place-items-center rounded-lg hover:bg-sunk"><X size={16} aria-hidden /></button></div>
           <p className="px-2.5 pb-1 text-xs text-muted">Fica salvo neste aparelho, só para você.</p>
           {scope === "lista" ? (
@@ -122,7 +116,7 @@ export function DealPrefsMenu({ scope }: { scope: "lista" | "negociacao" }) {
           )}
           <div className="mt-2 flex items-center justify-between border-t border-line/70 px-2.5 pt-2"><button type="button" onClick={reset} className="inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-ink"><RotateCcw size={14} aria-hidden /> Voltar ao padrão</button><button type="button" onClick={() => setOpen(false)} className="inline-flex items-center gap-1.5 rounded-lg bg-grad px-3 py-1.5 text-sm font-semibold text-on-accent"><Check size={14} aria-hidden /> Pronto</button></div>
         </div>
-      )}
+      </Floating>
     </div>
   );
 }

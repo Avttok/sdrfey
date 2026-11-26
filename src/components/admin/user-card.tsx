@@ -1,5 +1,6 @@
 "use client";
 
+import { Portal } from "@/components/portal";
 import { Check, Clock, KeyRound, Pencil, RotateCcw, ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -47,7 +48,7 @@ export function UserCard({ u, isMe }: { u: UserRow; isMe: boolean }) {
       <p className="flex items-center gap-1.5 border-t border-line px-4 py-2 text-xs text-muted"><Clock size={12} aria-hidden /> Último acesso: {u.lastLoginAt ?? "nunca"}</p>
 
       {open && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label={`Editar ${u.name}`} onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
+        <Portal><div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label={`Editar ${u.name}`} onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
           <div className={`${panelCls} !bg-panel max-h-[90vh] w-full max-w-lg space-y-5 overflow-y-auto p-6 shadow-2xl`}>
             <div className="flex items-start gap-3">
               <span className="grid size-11 place-items-center rounded-2xl text-sm font-bold" style={{ background: `color-mix(in srgb, ${u.hex} 26%, transparent)`, color: `color-mix(in srgb, ${u.hex} 80%, var(--ink))` }}>{u.name.slice(0, 2).toUpperCase()}</span>
@@ -102,7 +103,7 @@ export function UserCard({ u, isMe }: { u: UserRow; isMe: boolean }) {
               {!isMe && <button type="button" className={`${btnGhost} text-danger`} disabled={pending} onClick={() => ask({ title: "Excluir esta pessoa?", body: `${u.name} será excluída TOTALMENTE e não dá para desfazer. O histórico dela continua nos registros.`, label: "Sim, excluir", icon: Trash2, onConfirm: () => run(() => deleteUserAction(u.id)) })}><Trash2 size={15} aria-hidden /> Excluir</button>}
             </div>
           </div>
-        </div>
+        </div></Portal>
       )}
       {dialog}
     </li>

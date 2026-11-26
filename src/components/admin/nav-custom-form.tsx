@@ -1,7 +1,8 @@
 "use client";
 
+import { Floating } from "@/components/floating";
 import { ArrowDown, ArrowUp, FolderPlus, RotateCcw, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRun } from "@/components/use-run";
 import { btnGhost, btnPrimary, inputCls } from "@/components/ui";
 import { GROUP_ICONS, NAV } from "@/config/nav";
@@ -13,20 +14,16 @@ type Entry = { label?: string; icon?: string };
 
 function IconPick({ value, fallback, onChange }: { value?: string; fallback: React.ComponentType<{ size?: number }>; onChange: (k: string) => void }) {
   const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
   const Cur = (value && NAV_ICONS[value]) || fallback;
   return (
-    <div className="relative">
+    <div ref={boxRef} className="relative">
       <button type="button" aria-label="Escolher ícone" aria-expanded={open} onClick={() => setOpen((o) => !o)} className={`grid size-10 place-items-center rounded-xl border-2 transition ${value ? "border-accent bg-accent/10 text-accent" : "border-line text-muted hover:text-ink"}`}><Cur size={18} /></button>
-      {open && (
-        <>
-          <button type="button" aria-label="Fechar" className="fixed inset-0 z-40 cursor-default" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-12 z-50 grid w-72 grid-cols-7 gap-1 rounded-2xl card-edge card-surface p-2 shadow-xl">
+      <Floating anchor={boxRef} open={open} onClose={() => setOpen(false)} className="grid w-72 grid-cols-7 gap-1 rounded-2xl card-edge card-surface p-2 shadow-xl">
             {Object.entries(NAV_ICONS).map(([k, I]) => (
               <button key={k} type="button" title={k} onClick={() => { onChange(k); setOpen(false); }} className={`grid size-9 place-items-center rounded-lg transition hover:bg-sunk ${value === k ? "bg-accent/15 text-accent" : "text-muted hover:text-ink"}`}><I size={17} /></button>
             ))}
-          </div>
-        </>
-      )}
+      </Floating>
     </div>
   );
 }

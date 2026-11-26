@@ -1,5 +1,6 @@
 "use client";
 
+import { Portal } from "@/components/portal";
 import { Check, LayoutDashboard, MousePointerClick, PanelsTopLeft, Search, X } from "lucide-react";
 import { useState } from "react";
 import { useRun } from "@/components/use-run";
@@ -160,11 +161,11 @@ export function PermissionMatrix({ users, roles: initialRoles, target: ext, onTa
       </section>
 
       {dirty && (
-        <div role="status" className="fixed inset-x-0 bottom-5 z-30 mx-auto flex w-[min(34rem,calc(100%-2rem))] items-center gap-3 rounded-2xl border border-accent bg-panel p-3 pl-4 shadow-2xl">
+        <Portal><div role="status" className="fixed inset-x-0 bottom-5 z-30 mx-auto flex w-[min(34rem,calc(100%-2rem))] items-center gap-3 rounded-2xl border border-accent bg-panel p-3 pl-4 shadow-2xl">
           <span className="flex-1 text-sm font-medium">Alterações ainda não salvas</span>
           <button type="button" className={btnGhost} disabled={pending} onClick={() => { setRoles(initialRoles); setPer(Object.fromEntries(users.map((u) => [u.id, u.perms]))); }}>Descartar</button>
           <button type="button" className={btnPrimary} disabled={pending} onClick={() => run(() => savePermissionMatrixAction({ roles, users: per }))}>Salvar</button>
-        </div>
+        </div></Portal>
       )}
     </div>
   );

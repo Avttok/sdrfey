@@ -1,5 +1,6 @@
 "use client";
 
+import { Portal } from "@/components/portal";
 import { Bell, BellRing, CheckCheck, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -35,7 +36,7 @@ export function NotificationBell({ side = false }: { side?: boolean }) {
   }, [load]);
   useEffect(() => {
     if (!open) return;
-    const away = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
+    const away = (e: MouseEvent) => { const t = e.target as Element; if (!box.current?.contains(t) && !t.closest?.("[data-bell-panel]")) setOpen(false); };
     const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
     document.addEventListener("mousedown", away); document.addEventListener("keydown", esc);
     return () => { document.removeEventListener("mousedown", away); document.removeEventListener("keydown", esc); };
@@ -52,7 +53,7 @@ export function NotificationBell({ side = false }: { side?: boolean }) {
         {unread > 0 && <span className="figure absolute -right-0.5 -top-0.5 grid min-w-[1.1rem] place-items-center rounded-full bg-danger px-1 text-[10px] font-bold leading-[1.1rem] text-white shadow">{unread > 9 ? "9+" : unread}</span>}
       </button>
       {open && (
-        <div role="dialog" aria-label="Notificações" className={`menu-up fixed z-50 w-[min(22rem,calc(100vw-1rem))] overflow-hidden rounded-2xl card-edge card-surface shadow-2xl ${side ? "bottom-16 left-2" : "right-2 top-16"}`}>
+        <Portal><div data-bell-panel role="dialog" aria-label="Notificações" className={`menu-up fixed z-50 w-[min(22rem,calc(100vw-1rem))] overflow-hidden rounded-2xl card-edge card-surface shadow-2xl ${side ? "bottom-16 left-2" : "right-2 top-16"}`}>
           <header className="flex items-center gap-2 border-b border-line px-3 py-2.5"><p className="flex-1 text-sm font-semibold">Notificações</p>
             <button type="button" onClick={all} disabled={!unread} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted transition hover:bg-sunk hover:text-ink disabled:opacity-40"><CheckCheck size={14} aria-hidden /> Marcar lidas</button>
             <button type="button" onClick={clear} aria-label="Limpar lidas" className="grid size-7 place-items-center rounded-lg text-muted transition hover:bg-sunk hover:text-danger"><Trash2 size={14} aria-hidden /></button>
@@ -66,7 +67,7 @@ export function NotificationBell({ side = false }: { side?: boolean }) {
               </button></li>); })}
             {items.length === 0 && <li className="px-4 py-8 text-center text-sm text-muted"><Bell size={26} aria-hidden className="mx-auto mb-2 opacity-40" />Tudo em dia por aqui.</li>}
           </ul>
-        </div>
+        </div></Portal>
       )}
     </div>
   );

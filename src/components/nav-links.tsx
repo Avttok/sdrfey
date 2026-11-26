@@ -1,5 +1,6 @@
 "use client";
 
+import { Portal } from "@/components/portal";
 import { ChevronDown } from "lucide-react";
 import { useT } from "@/components/terms";
 import Link, { useLinkStatus } from "next/link";
@@ -57,7 +58,7 @@ export function NavLinks({ hrefs, vertical = false, collapsed = false, badges = 
   useEffect(() => { setOpen(null); }, [pathname]);
   useEffect(() => {
     if (!open) return;
-    const close = (e: Event) => { if (!(e.target instanceof Node) || !document.getElementById("nav-menu")?.contains(e.target)) setOpen(null); };
+    const close = (e: Event) => { if (!(e.target instanceof Node) || !document.getElementById("nav-menu")?.contains(e.target) && !(e.target as Element).closest?.("[data-nav-popup]")) setOpen(null); };
     const key = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(null); };
     document.addEventListener("mousedown", close); document.addEventListener("keydown", key); window.addEventListener("resize", close);
     return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", key); window.removeEventListener("resize", close); };
@@ -97,9 +98,9 @@ export function NavLinks({ hrefs, vertical = false, collapsed = false, badges = 
           {hasBadge && <span aria-hidden className="absolute right-1 top-1 size-2 rounded-full border-2 border-panel bg-danger" />}
         </button>
         {isOpen && (
-          <div role="menu" style={{ left: pos.left, top: pos.top }} className="fixed z-50 w-56 space-y-0.5 rounded-2xl card-edge card-surface p-1.5 shadow-xl">
+          <Portal><div data-nav-popup role="menu" style={{ left: pos.left, top: pos.top }} className="fixed z-50 w-56 space-y-0.5 rounded-2xl card-edge card-surface p-1.5 shadow-xl">
             {list.map((n) => link(n, true))}
-          </div>
+          </div></Portal>
         )}
       </div>
     );

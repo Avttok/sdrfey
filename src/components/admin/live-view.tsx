@@ -1,5 +1,6 @@
 "use client";
 
+import { Portal } from "@/components/portal";
 import { Eye, Loader2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { btnGhost, panelCls } from "@/components/ui";
@@ -32,7 +33,7 @@ export function LiveView({ uid, name }: { uid: number; name: string }) {
     <>
       <button type="button" className={`${btnGhost} !px-2.5`} title={`Ver a tela de ${name}`} onClick={() => setOpen(true)}><Eye size={15} aria-hidden /> Ver tela</button>
       {open && (
-        <div className="fixed inset-0 z-[70] grid place-items-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-label={`Tela de ${name}`} onClick={() => setOpen(false)}>
+        <Portal><div className="fixed inset-0 z-[70] grid place-items-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-label={`Tela de ${name}`} onClick={() => setOpen(false)}>
           <div className={`${panelCls} !bg-panel/85 backdrop-blur-3xl backdrop-saturate-150 flex max-h-[90vh] w-full max-w-5xl flex-col gap-3 p-4`} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between gap-3">
               <p className="font-semibold">{name}{snap.path && <span className="ml-2 text-xs font-normal text-muted">{snap.path}</span>}</p>
@@ -46,7 +47,7 @@ export function LiveView({ uid, name }: { uid: number; name: string }) {
             </div>
             <p className="text-xs text-muted">{stale ? "Sem imagem nova há alguns segundos (aba em segundo plano ou offline)." : snap.at ? `Atualizada às ${new Date(snap.at).toLocaleTimeString("pt-BR")} · foto comprimida, renova a cada 3 s · guardamos só as 10 últimas por 5 min` : "A pessoa vê um aviso enquanto a tela está sendo compartilhada."}</p>
           </div>
-        </div>
+        </div></Portal>
       )}
     </>
   );

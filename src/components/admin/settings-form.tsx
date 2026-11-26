@@ -1,5 +1,6 @@
 "use client";
 
+import { Portal } from "@/components/portal";
 import { Clock, Database, Sparkles, LayoutDashboard, ShieldCheck, MessageCircle, PanelTop, Shuffle } from "lucide-react";
 import { useState } from "react";
 import { MorphMark } from "@/components/logo-morph";
@@ -100,11 +101,11 @@ export function SettingsForm({ initial }: { initial: Record<SettingKey, number> 
         ))}
       </div>
       {dirty && (
-        <div role="status" className="fixed inset-x-0 bottom-5 z-30 mx-auto flex w-[min(34rem,calc(100%-2rem))] items-center gap-3 rounded-2xl border border-accent bg-panel p-3 pl-4 shadow-2xl">
+        <Portal><div role="status" className="fixed inset-x-0 bottom-5 z-30 mx-auto flex w-[min(34rem,calc(100%-2rem))] items-center gap-3 rounded-2xl border border-accent bg-panel p-3 pl-4 shadow-2xl">
           <span className="flex-1 text-sm font-medium">Alterações ainda não salvas</span>
           <button type="button" className={btnGhost} disabled={pending} onClick={() => setV(initial)}>Descartar</button>
           <button type="submit" disabled={pending} className={btnPrimary}>Salvar parâmetros</button>
-        </div>
+        </div></Portal>
       )}
     </form>
   );

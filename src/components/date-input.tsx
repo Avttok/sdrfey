@@ -2,6 +2,7 @@
 
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Floating } from "@/components/floating";
 
 const toBr = (iso: string) => (/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso.slice(8)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : "");
 
@@ -34,14 +35,6 @@ export function DateInput({ value, onChange, label }: { value: string; onChange:
   const [view, setView] = useState({ y: +base.slice(0, 4), m: +base.slice(5, 7) - 1 });
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => setText(toBr(value)), [value]);
-  useEffect(() => {
-    if (!open) return;
-    const click = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
-    const key = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    document.addEventListener("mousedown", click);
-    document.addEventListener("keydown", key);
-    return () => { document.removeEventListener("mousedown", click); document.removeEventListener("keydown", key); };
-  }, [open]);
 
   const shift = (d: number) => setView(({ y, m }) => { const t = new Date(Date.UTC(y, m + d, 1)); return { y: t.getUTCFullYear(), m: t.getUTCMonth() }; });
   const pick = (iso: string) => { onChange(iso); setOpen(false); };
@@ -63,8 +56,8 @@ export function DateInput({ value, onChange, label }: { value: string; onChange:
       <button type="button" aria-label={`Abrir calendário: ${label}`} aria-expanded={open} onClick={() => setOpen(!open)} className="absolute right-1.5 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted hover:bg-sunk hover:text-ink">
         <CalendarDays size={18} aria-hidden />
       </button>
-      {open && (
-        <div role="dialog" aria-label="Calendário" className="absolute left-0 top-12 z-40 w-64 rounded-xl card-edge card-surface p-3 shadow-xl">
+      <Floating anchor={box} open={open} onClose={() => setOpen(false)} role="dialog" label="Calendário" className="w-64 rounded-xl card-edge card-surface p-3 shadow-xl">
+        <div>
           <div className="mb-2 flex items-center justify-between">
             <button type="button" aria-label="Mês anterior" onClick={() => shift(-1)} className="rounded-md p-1.5 hover:bg-sunk"><ChevronLeft size={16} /></button>
             <span className="text-sm font-semibold">{MONTHS[view.m]} {view.y}</span>
@@ -87,7 +80,7 @@ export function DateInput({ value, onChange, label }: { value: string; onChange:
             <button type="button" className="text-muted hover:underline" onClick={() => pick("")}>Limpar</button>
           </div>
         </div>
-      )}
+      </Floating>
     </div>
   );
 }
